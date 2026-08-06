@@ -1,0 +1,124 @@
+@import './_tokens.css';
+
+/*
+  LaTeX Template
+  ID: latex
+
+  ATS-optimized serif academic layout matching classic LaTeX résumé style.
+  Blue-accented section rules, role-first two-line entries, blue bullet markers.
+  Single-typeface design: all text inherits --body-font, headers use --header-font.
+*/
+
+.container {
+  width: 100%;
+}
+
+/*
+  Body text is driven by the Body Font control; the name + section headers are driven
+  by the Header Font control. Both controls are live; selecting LaTeX seeds serif/serif
+  (see TEMPLATE_FONT_PRESETS) so the default look stays all-serif.
+*/
+.container,
+.container :global(p),
+.container :global(li),
+.container :global(a),
+.container :global(span),
+.container :global(div) {
+  font-family: var(--body-font);
+}
+
+.name {
+  font-family: var(--header-font);
+  font-size: calc(var(--font-size-base) * var(--header-scale));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--resume-text-primary);
+}
+
+.locationLine {
+  font-size: var(--font-size-base);
+  color: var(--resume-text-tertiary);
+}
+
+.tagline {
+  font-weight: 700;
+  font-size: calc(var(--font-size-base) * 1.2);
+  color: var(--resume-text-primary);
+}
+
+.contactRow {
+  font-size: calc(var(--font-size-base) * 0.95);
+  color: var(--resume-text-tertiary);
+}
+
+.contactSep {
+  color: var(--resume-text-tertiary);
+}
+
+/* Section header with blue accent rule (overrides base uppercase). */
+.sectionTitle {
+  font-family: var(--header-font);
+  font-size: calc(var(--font-size-base) * var(--section-header-scale));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--resume-text-primary);
+  border-bottom: 0.7pt solid var(--resume-accent-primary);
+  padding-bottom: 0.15rem;
+  margin-bottom: var(--item-gap);
+  break-after: avoid;
+  page-break-after: avoid;
+  orphans: 3;
+  widows: 3;
+}
+
+.entryPrimary {
+  font-weight: 700;
+  color: var(--resume-text-primary);
+}
+
+.entryDates {
+  font-style: italic;
+  color: var(--resume-text-body);
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.entrySecondary {
+  font-style: italic;
+  color: var(--resume-text-body);
+}
+
+.entryTech {
+  font-size: calc(var(--font-size-base) * 0.9);
+  color: var(--resume-text-tertiary);
+}
+
+/* Blue bullet markers for LaTeX template */
+.bulletMarker {
+  color: var(--resume-accent-primary);
+}
+
+/* Project separator em-dash */
+.projectSep {
+  color: var(--resume-text-tertiary);
+  margin: 0 0.15em;
+}
+
+/* Blue contact links without underline */
+.container a {
+  color: var(--resume-accent-primary);
+  text-decoration: none;
+}
+
+.container a:hover {
+  text-decoration: underline;
+}
+
+@media print {
+  .sectionTitle {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+}
