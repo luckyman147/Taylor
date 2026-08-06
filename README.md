@@ -113,7 +113,64 @@ The UI stores the key **encrypted** in the SQLite database using a Fernet key in
 
 After connecting, the status row shows the authenticated user and the repository list is populated (name, visibility, language, topics, stars). Token persistence note: the credential is stored **only** in `apps/backend/data/github_token.json` (gitignored, stays on the server, removable with Disconnect).
 
-## 5. Docker / production
+## 5. One-paste AI setup prompt
+
+Paste the block below into any coding assistant (opencode, Claude Code, Cursor, …) and it will walk you through configuring credentials and starting every server automatically. It asks you for each key the moment it is needed and never writes a secret into tracked files.
+
+```text
+Set up my Resume Matcher project locally and configure everything. Read ./README.md,
+apps/backend/.env.example and apps/backend/.env.sample first. Treat any file in apps/backend/.env,
+apps/frontend/.env, config/mcporter.json and apps/backend/data/ as SECRET — write real keys
+ONLY there, never into tracked files or commit/push them.
+
+1. BACKEND
+   - cd apps/backend && uv sync
+   - Copy .env.example to .env if it does not already exist.
+   - Ask me for my LLM provider (one of: openai, anthropic, gemini, openrouter, deepseek,
+     groq, ollama, openai_compatible), the model id (e.g. gemini/gemini-3-flash-preview), and
+     the API key. Fill LLM_PROVIDER, LLM_MODEL and LLM_API_KEY in apps/backend/.env. Leave the
+     placeholders untouched in .env.example.
+   - Start it: uv run uvicorn app.main:app --reload --port 8002
+
+2. FRONTEND
+   - In another terminal: cd apps/frontend && npm install && npm run dev  (serves :3000)
+   - If the backend runs somewhere other than 127.0.0.1:8002, set BACKEND_ORIGIN in
+     apps/frontend/.env accordingly.
+
+3. VERIFY
+   - curl http://127.0.0.1:8002/api/v1/status and confirm "llm_configured": true and
+     "llm_healthy": true. If not, ask me for the correct key/model and retry.
+
+4. GITHUB CONNECT (Settings → GitHub Repositories)
+   - Offer me two options:
+     a) OAuth app: ask for GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, help me register an OAuth
+        app at github.com/settings/developers/apps with the callback URL <frontend>/settings,
+        add the two vars to apps/backend/.env, restart the backend, then open the app's
+        "Connect GitHub" button so the browser flow completes.
+     b) Personal Access Token: tell me to create one at
+        github.com/settings/tokens/new?scopes=repo,user and paste it into
+        Settings → GitHub Repositories → Use Personal Access Token.
+   - Verify the connect worked (status shows the user, repo list is populated).
+
+5. EXA MCP
+   - Ask me for my Exa API key (dashboard.exa.ai). Install exa-mcp-server
+     (npm i -g exa-mcp-server) and register it in config/mcporter.json with the key.
+
+6. LINKEDIN MCP — OPEN THE LOGIN PAGE
+   - pip install mcp-server-linkedin, then run the first-login flow:
+     npx fastmcp run mcp-server-linkedin --login --no-headless
+   - When the browser opens the LinkedIn login page, tell me to sign in there; after I do,
+     verify the session with the server's status command (--status) and register the linkedin
+     entry in config/mcporter.json.
+
+7. OPEN EVERYTHING
+   - Open http://localhost:3000 in the browser.
+   - Open the LinkedIn connect/login page and the MCP configuration section of the Settings UI.
+   - Confirm both servers stay running (uvicorn :8002 and Next.js :3000) and report the full
+     /api/v1/status at the end.
+```
+
+## 6. Docker / production
 
 A multi-stage `Dockerfile` builds the Next.js standalone output plus the Python backend and serves both behind a single Node `server.js`:
 
@@ -135,7 +192,7 @@ docker compose up --build
 
 > Data note: all app state (SQLite DB, uploaded resumes, encrypted keys, `github_token.json`) lives under `apps/backend/data`. Keep that volume backed up.
 
-## 6. Initialize MCP servers
+## 7. Initialize MCP servers
 
 MCP servers (Exa search + LinkedIn) enrich the app's context during tailoring. Both are configured in `config/mcporter.json` — which contains real API keys and must never be committed.
 
@@ -174,7 +231,7 @@ Once registered, the app surfaces MCP state in **Settings** and through the API:
 - `POST /api/v1/mcp/configure` — apply stored configuration
 - `POST /api/v1/mcp/restart` — restart registered servers
 
-## 7. Security checklist
+## 8. Security checklist
 
 Secrets are **never** part of this repository. `.gitignore` protects them, so verify you're not force-adding anything:
 
