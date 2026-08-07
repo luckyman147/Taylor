@@ -210,6 +210,7 @@
     },
     "regenerate": {
       "buttonLabel": "AI 重新生成",
+      "stepLabel": "步骤 {current} / {total}",
       "selectDialog": {
         "title": "选择要重新生成的项目",
         "subtitle": "选择您想要改进的简历部分",
@@ -519,6 +520,19 @@
     }
   },
   "tailor": {
+    "aiConnection": {
+      "title": "AI 连接",
+      "subtitle": "开始之前，请先测试您的 LLM 提供商是否可用。",
+      "test": "测试连接",
+      "testing": "测试中…",
+      "retest": "重新测试",
+      "notConfigured": "未配置 LLM 提供商",
+      "ok": "连接正常",
+      "failed": "连接失败",
+      "connectedAs": "{provider} · {model}",
+      "latency": "{ms} 毫秒",
+      "gotoSettings": "打开设置"
+    },
     "title": "定制简历",
     "subtitle": "为特定职位优化您的简历",
     "heroTitle": "定制您的简历",

@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useTranslations } from '@/lib/i18n';
 import { getApplicationDetail, updateApplication, type ApplicationDetail } from '@/lib/api/tracker';
+import { STATUS_DOT } from './status-colors';
 
 interface CardDetailModalProps {
   applicationId: string | null;
@@ -89,8 +90,8 @@ export function CardDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
+        <DialogHeader className="border-b border-[#e6e3dc] bg-white p-6">
           <DialogTitle>{detail?.company || t('tracker.card.companyUnknown')}</DialogTitle>
           <DialogDescription>{detail?.role || t('tracker.card.roleUnknown')}</DialogDescription>
         </DialogHeader>
@@ -100,9 +101,10 @@ export function CardDetailModal({
             <Loader2 className="h-5 w-5 animate-spin text-steel-grey" />
           </div>
         ) : detail ? (
-          <div className="space-y-4">
+          <div className="space-y-4 p-6">
             <div className="flex items-center gap-2  text-xs uppercase text-ink-soft">
-              <span className="border border-[#e6e3dc] bg-paper-tint px-2 py-0.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e6e3dc] bg-white px-2.5 py-1 font-semibold text-ink shadow-sw-xs">
+                <span className={`h-2 w-2 rounded-full ${STATUS_DOT[detail.status]}`} />
                 {t(`tracker.columns.${detail.status}`)}
               </span>
               {detail.applied_at && (
@@ -117,7 +119,7 @@ export function CardDetailModal({
 
             <div className="space-y-1">
               <Label>{t('tracker.modal.jobDescription')}</Label>
-              <div className="max-h-48 overflow-y-auto whitespace-pre-wrap border border-[#e6e3dc] bg-background p-3 text-sm">
+              <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl border border-[#e6e3dc] bg-background p-3 text-sm">
                 {detail.job_content || t('tracker.modal.noJobDescription')}
               </div>
             </div>
@@ -133,9 +135,7 @@ export function CardDetailModal({
                 rows={3}
               />
               <div className="flex items-center justify-end gap-3">
-                {notesError && (
-                  <span className=" text-xs text-destructive">{notesError}</span>
-                )}
+                {notesError && <span className=" text-xs text-destructive">{notesError}</span>}
                 <Button
                   size="sm"
                   variant="outline"
@@ -152,18 +152,16 @@ export function CardDetailModal({
             </div>
 
             {!resumeAvailable && (
-              <p className=" text-xs text-warning">
-                {t('tracker.modal.resumeUnavailable')}
-              </p>
+              <p className=" text-xs text-warning">{t('tracker.modal.resumeUnavailable')}</p>
             )}
           </div>
         ) : (
-          <p className="py-6 text-center  text-sm text-steel-grey">
+          <p className="px-6 py-6 text-center  text-sm text-steel-grey">
             {t('tracker.modal.loadFailed')}
           </p>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
           <Button
             onClick={() => {
               if (detail?.resume_id) router.push(`/builder?id=${detail.resume_id}`);

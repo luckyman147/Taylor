@@ -162,14 +162,14 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
   };
 
   return (
-    <div className="border border-black bg-white shadow-sw-default">
+    <div className="overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-xs">
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-3 hover:bg-paper-tint transition-colors"
       >
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-blue-700"></div>
+          <div className="h-2.5 w-2.5 rounded-sm bg-primary"></div>
           <span className=" text-xs font-bold uppercase tracking-wider">
             {t('builder.formatting.panelTitle')}
           </span>
@@ -183,7 +183,7 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
 
       {/* Expandable Content */}
       {isExpanded && (
-        <div className="border-t border-black p-4 space-y-6">
+        <div className="border-t border-[#e6e3dc] p-4 space-y-6 md:p-5">
           {/* Template Selection */}
           <div>
             <h4 className=" text-xs font-bold uppercase tracking-wider mb-3 text-ink-soft">
@@ -194,10 +194,10 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
                 <button
                   key={template.id}
                   onClick={() => handleTemplateChange(template.id)}
-                  className={`group flex flex-col items-center p-2 border transition-all ${
+                  className={`group flex flex-col items-center rounded-xl border p-2 transition-all ${
                     settings.template === template.id
-                      ? 'border-blue-700 bg-white shadow-[2px_2px_0px_0px_#1D4ED8]'
-                      : 'border-black bg-white hover:bg-paper-tint hover:shadow-sw-xs'
+                      ? 'border-primary bg-primary/5 shadow-sw-xs ring-2 ring-primary ring-offset-1'
+                      : 'border-[#e6e3dc] bg-white hover:border-primary hover:bg-paper-tint'
                   }`}
                   title={templateLabels[template.id].description}
                 >
@@ -209,7 +209,7 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
                   </div>
                   <span
                     className={` text-[9px] uppercase tracking-wider font-bold ${
-                      settings.template === template.id ? 'text-blue-700' : 'text-ink-soft'
+                      settings.template === template.id ? 'text-primary' : 'text-ink-soft'
                     }`}
                   >
                     {templateLabels[template.id].name}
@@ -232,15 +232,15 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
                   <button
                     key={color}
                     onClick={() => handleAccentColorChange(color)}
-                    className={`flex items-center gap-2 px-3 py-2 border  text-xs transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all ${
                       settings.accentColor === color
-                        ? 'border-blue-700 bg-white shadow-[2px_2px_0px_0px_#1D4ED8]'
-                        : 'border-black bg-white hover:bg-paper-tint'
+                        ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
+                        : 'border-[#e6e3dc] bg-white hover:bg-paper-tint'
                     }`}
                     title={t(`builder.formatting.accentColors.${color}`)}
                   >
                     <span
-                      className="w-4 h-4 border border-steel-grey"
+                      className="h-4 w-4 rounded-full border border-steel-grey"
                       style={{ backgroundColor: ACCENT_COLOR_MAP[color].primary }}
                     />
                     <span>{t(`builder.formatting.accentColors.${color}`)}</span>
@@ -260,10 +260,10 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
                 <button
                   key={size}
                   onClick={() => handlePageSizeChange(size)}
-                  className={`flex-1 px-3 py-2 border  text-xs transition-all ${
+                  className={`flex-1 rounded-xl border px-3 py-2 text-xs transition-all ${
                     settings.pageSize === size
-                      ? 'border-blue-700 bg-white text-blue-700 shadow-[2px_2px_0px_0px_#1D4ED8]'
-                      : 'border-black bg-white text-ink-soft hover:bg-paper-tint'
+                      ? 'border-primary bg-primary/5 text-primary shadow-sw-xs ring-1 ring-primary'
+                      : 'border-[#e6e3dc] bg-white text-ink-soft hover:bg-paper-tint hover:border-primary'
                   }`}
                   title={PAGE_SIZE_INFO[size].dimensions}
                 >
@@ -361,10 +361,10 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
                       <button
                         key={font}
                         onClick={() => handleHeaderFontChange(font)}
-                        className={`px-2 py-1  text-xs border transition-all ${
+                        className={`rounded-lg border px-2 py-1 text-xs transition-all ${
                           settings.fontSize.headerFont === font
-                            ? 'bg-blue-700 text-white border-blue-700 shadow-sw-xs'
-                            : 'bg-white text-ink-soft border-steel-grey hover:border-black'
+                            ? 'bg-primary text-white border-primary shadow-sw-xs'
+                            : 'bg-white text-ink-soft border-[#e6e3dc] hover:border-primary hover:text-primary'
                         }`}
                         style={{
                           fontFamily:
@@ -394,10 +394,10 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
                       <button
                         key={font}
                         onClick={() => handleBodyFontChange(font)}
-                        className={`px-2 py-1  text-xs border transition-all ${
+                        className={`rounded-lg border px-2 py-1 text-xs transition-all ${
                           settings.fontSize.bodyFont === font
-                            ? 'bg-blue-700 text-white border-blue-700 shadow-sw-xs'
-                            : 'bg-white text-ink-soft border-steel-grey hover:border-black'
+                            ? 'bg-primary text-white border-primary shadow-sw-xs'
+                            : 'bg-white text-ink-soft border-[#e6e3dc] hover:border-primary hover:text-primary'
                         }`}
                         style={{
                           fontFamily:
@@ -426,18 +426,21 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
             </h4>
             <div className="space-y-3">
               {/* Compact Mode Toggle */}
-              <label className="flex items-center gap-3 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-3">
                 <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.compactMode}
                   onClick={handleCompactModeToggle}
-                  className={`relative w-10 h-5 border-2 transition-all ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 transition-colors ${
                     settings.compactMode
-                      ? 'bg-blue-700 border-blue-700'
-                      : 'bg-white border-steel-grey'
+                      ? 'border-primary bg-primary'
+                      : 'border-[#c9c5bc] bg-white hover:border-primary'
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-3.5 h-3.5 bg-white border transition-all ${
-                      settings.compactMode ? 'left-5 border-blue-700' : 'left-0.5 border-steel-grey'
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sw-xs transition-all ${
+                      settings.compactMode ? 'left-[22px]' : 'left-0.5'
                     }`}
                   />
                 </button>
@@ -447,20 +450,21 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
               </label>
 
               {/* Show Contact Icons Toggle */}
-              <label className="flex items-center gap-3 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-3">
                 <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.showContactIcons}
                   onClick={handleShowContactIconsToggle}
-                  className={`relative w-10 h-5 border-2 transition-all ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 transition-colors ${
                     settings.showContactIcons
-                      ? 'bg-blue-700 border-blue-700'
-                      : 'bg-white border-steel-grey'
+                      ? 'border-primary bg-primary'
+                      : 'border-[#c9c5bc] bg-white hover:border-primary'
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-3.5 h-3.5 bg-white border transition-all ${
-                      settings.showContactIcons
-                        ? 'left-5 border-blue-700'
-                        : 'left-0.5 border-steel-grey'
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sw-xs transition-all ${
+                      settings.showContactIcons ? 'left-[22px]' : 'left-0.5'
                     }`}
                   />
                 </button>
@@ -550,16 +554,18 @@ const MarginSlider: React.FC<MarginSliderProps> = ({ label, value, onChange }) =
         max={25}
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="flex-1 h-1 bg-paper-tint rounded-none appearance-none cursor-pointer
+        className="flex-1 h-1.5 bg-paper-tint rounded-full appearance-none cursor-pointer
                    [&::-webkit-slider-thumb]:appearance-none
-                   [&::-webkit-slider-thumb]:w-3
-                   [&::-webkit-slider-thumb]:h-3
-                   [&::-webkit-slider-thumb]:bg-blue-700
+                   [&::-webkit-slider-thumb]:w-3.5
+                   [&::-webkit-slider-thumb]:h-3.5
+                   [&::-webkit-slider-thumb]:rounded-full
+                   [&::-webkit-slider-thumb]:bg-primary
                    [&::-webkit-slider-thumb]:border-none
                    [&::-webkit-slider-thumb]:cursor-pointer
-                   [&::-moz-range-thumb]:w-3
-                   [&::-moz-range-thumb]:h-3
-                   [&::-moz-range-thumb]:bg-blue-700
+                   [&::-moz-range-thumb]:w-3.5
+                   [&::-moz-range-thumb]:h-3.5
+                   [&::-moz-range-thumb]:rounded-full
+                   [&::-moz-range-thumb]:bg-primary
                    [&::-moz-range-thumb]:border-none
                    [&::-moz-range-thumb]:cursor-pointer"
       />
@@ -590,10 +596,10 @@ const SpacingSelector: React.FC<SpacingSelectorProps> = ({ label, value, onChang
           <button
             key={level}
             onClick={() => onChange(level)}
-            className={`w-6 h-6  text-xs border transition-all ${
+            className={`h-6 w-6 rounded-lg border text-xs transition-all ${
               value === level
-                ? 'bg-blue-700 text-white border-blue-700 shadow-sw-xs'
-                : 'bg-white text-ink-soft border-steel-grey hover:border-black'
+                ? 'bg-primary text-white border-primary shadow-sw-xs'
+                : 'bg-white text-ink-soft border-[#e6e3dc] hover:border-primary hover:text-primary'
             }`}
           >
             {level}

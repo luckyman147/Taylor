@@ -7,6 +7,7 @@ declare module 'lucide-react/dist/esm/icons/*' {
 declare module 'lucide-react/dist/esm/icons' {
   import { LucideIcon } from 'lucide-react';
   export const ArrowLeft: LucideIcon;
+  export const Archive: LucideIcon;
   export const Briefcase: LucideIcon;
   export const Clock: LucideIcon;
   export const ExternalLink: LucideIcon;

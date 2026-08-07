@@ -22,16 +22,13 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
   };
 
   return (
-    <div className="space-y-4 border border-ink p-6 bg-white shadow-sw-default">
-      <h3 className="font-serif text-xl font-bold border-b border-ink pb-2 mb-4">
+    <div className="space-y-4 rounded-2xl border border-[#e6e3dc] p-6 bg-white shadow-sw-xs">
+      <h3 className="text-lg font-bold uppercase tracking-tight border-b border-[#e6e3dc] pb-2 mb-4">
         {t('builder.personalInfo')}
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label
-            htmlFor="name"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="name" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.name')}
           </Label>
           <Input
@@ -43,10 +40,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="title"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="title" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.title')}
           </Label>
           <Input
@@ -58,10 +52,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="email"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="email" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.email')}
           </Label>
           <Input
@@ -74,10 +65,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="phone"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="phone" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.phone')}
           </Label>
           <Input
@@ -90,10 +78,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="location"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="location" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.location')}
           </Label>
           <Input
@@ -105,10 +90,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="website"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="website" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.website')}
           </Label>
           <Input
@@ -120,10 +102,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="linkedin"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="linkedin" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.linkedin')}
           </Label>
           <Input
@@ -135,10 +114,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ data, onChan
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="github"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="github" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.personalInfo.github')}
           </Label>
           <Input

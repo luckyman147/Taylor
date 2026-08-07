@@ -10,9 +10,9 @@ import { useTranslations } from '@/lib/i18n';
  * Swiss International Style Dialog Component
  *
  * Native implementation without external dependencies.
- * - Square corners (rounded-lg) - Brutalist aesthetic
- * - Black borders and hard shadows
- * - Canvas background (#F0F0E8)
+ * - Rounded corners (rounded-lg) — soft aesthetic
+ * - Hairline borders and soft shadows
+ * - Canvas background (#efefef)
  * - WCAG 2.2 AA: role="dialog", aria-modal, aria-labelledby wired to title
  */
 

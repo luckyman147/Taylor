@@ -33,6 +33,7 @@ import {
 } from '@/lib/api/config';
 import { API_URL } from '@/lib/api/client';
 import { getVersionString } from '@/lib/config/version';
+import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { useStatusCache } from '@/lib/context/status-cache';
 import { Button } from '@/components/ui/button';
@@ -81,9 +82,10 @@ const PROVIDERS: LLMProvider[] = [
 ];
 
 const SEGMENTED_BUTTON_BASE =
-  'border border-ink  transition-all duration-150 ease-out shadow-sw-sm hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50';
-const SEGMENTED_BUTTON_ACTIVE = 'bg-primary text-white border-ink hover:bg-[#17304f]';
-const SEGMENTED_BUTTON_INACTIVE = 'bg-white text-black hover:bg-secondary';
+  'rounded-full border px-3 py-2 text-xs font-semibold uppercase transition-all duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50';
+const SEGMENTED_BUTTON_ACTIVE = 'border-primary bg-primary text-white shadow-sw-xs';
+const SEGMENTED_BUTTON_INACTIVE =
+  'border-[#e6e3dc] bg-white text-ink hover:border-primary hover:text-primary';
 
 const unwrapCodeBlock = (value?: string | null): string | null => {
   if (!value) return null;
@@ -172,6 +174,11 @@ export default function SettingsPage() {
   const [successMessage, setSuccessDialogMessage] = useState({ title: '', description: '' });
   const [isResetting, setIsResetting] = useState(false);
 
+  // Active settings section (sidebar navigation)
+  const [activeSection, setActiveSection] = useState<
+    'system' | 'ai' | 'content' | 'language' | 'github' | 'danger'
+  >('system');
+
   // Language settings
   const {
     contentLanguage,
@@ -185,6 +192,14 @@ export default function SettingsPage() {
 
   // Translations
   const { t } = useTranslations();
+  const SETTINGS_SECTIONS = [
+    { id: 'system', label: t('settings.systemStatus.title'), icon: Activity },
+    { id: 'ai', label: t('settings.llmConfigurationTitle'), icon: Sparkles },
+    { id: 'content', label: t('settings.contentGeneration.title'), icon: Settings2 },
+    { id: 'language', label: t('settings.uiLanguage'), icon: Globe },
+    { id: 'github', label: 'GitHub Repositories', icon: Github },
+    { id: 'danger', label: t('settings.dangerZone'), icon: AlertTriangle },
+  ] as const;
   const providerInfo = PROVIDER_INFO[provider] ?? PROVIDER_INFO['openai'];
   const fallbackPromptOptions = useMemo<PromptOption[]>(
     () => [
@@ -658,778 +673,868 @@ export default function SettingsPage() {
     providerInfo.baseUrlDescription ?? t('settings.llmConfiguration.baseUrlDescription');
 
   return (
-    <div className="flex flex-col items-center justify-start p-6 md:p-12 min-h-screen overflow-y-auto">
-      <div className="w-full max-w-4xl border border-ink bg-background shadow-sw-lg">
+    <div className="flex min-h-screen flex-col items-center justify-start overflow-y-auto p-4 md:p-8">
+      <div className="w-full max-w-6xl overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-lg">
         {/* Header */}
-        <div className="border-b border-ink p-8 bg-white flex justify-between items-start">
+        <div className="flex items-start justify-between border-b border-[#e6e3dc] bg-white p-6 md:p-8">
           <div>
-            <h1 className="font-serif text-3xl font-bold tracking-tight uppercase">
-              {t('settings.title')}
-            </h1>
-            <p className=" text-xs text-steel-grey mt-2 uppercase tracking-wider">
-              {'// '}
+            <h1 className="text-2xl font-bold tracking-tight text-ink">{t('settings.title')}</h1>
+            <p className="mt-1.5 text-xs uppercase tracking-wide text-steel-grey">
               {t('settings.subtitle')}
             </p>
           </div>
           <Link href="/dashboard">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4" />
+            <Button variant="outline" size="sm" className="rounded-full">
+              <ArrowLeft className="h-4 w-4" />
               {t('common.back')}
             </Button>
           </Link>
         </div>
 
-        <div className="p-8 space-y-10">
-          {/* API Key Not Configured Warning */}
-          {!statusLoading && systemStatus && !systemStatus.llm_configured && (
-            <div className="border-2 border-[#d9c9a3] bg-[#fbf6e9] p-4 shadow-sw-default">
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-[#fbf6e9]0 mt-1 shrink-0"></div>
-                <div className="flex-1">
-                  <p className=" text-sm font-bold uppercase tracking-wider text-amber-800">
-                    {t('settings.setupRequired.title')}
-                  </p>
-                  <p className=" text-xs text-amber-700 mt-1">
-                    {t('settings.setupRequired.description')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* System Status Panel */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[#e6e3dc] pb-2">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  <h2 className=" text-sm font-bold uppercase tracking-wider">
-                    {t('settings.systemStatus.title')}
-                  </h2>
-                </div>
-                {lastFetched && (
-                  <span className=" text-xs text-steel-grey flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {formatLastFetched()}
-                  </span>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refreshStatus}
-                disabled={statusLoading}
-                className="gap-1 text-xs"
-              >
-                <RefreshCw className={`w-3 h-3 ${statusLoading ? 'animate-spin' : ''}`} />
-                {t('settings.systemStatus.refresh')}
-              </Button>
-            </div>
-
-            {statusLoading ? (
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="w-6 h-6 animate-spin text-steel-grey" />
-              </div>
-            ) : !systemStatus ? (
-              <div className="flex flex-col items-center justify-center p-8 gap-3 border border-dashed border-red-300 bg-[#fdf3f2]">
-                <p className=" text-xs text-red-600 uppercase">
-                  {t('settings.systemStatus.unableToConnect')}
-                </p>
-                <p className=" text-xs text-ink-soft">
-                  {t('settings.systemStatus.expectedAt', { apiUrl: API_URL })}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={refreshStatus}
-                  className="gap-1 text-xs"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  {t('common.retry')}
-                </Button>
-              </div>
-            ) : (
-              // @container so the status cards adapt to the section width
-              // rather than the viewport — useful when the settings page is
-              // shown alongside a sidebar or in a split view.
-              <div className="@container">
-                <div className="grid grid-cols-2 @3xl:grid-cols-4 gap-4">
-                  {/* LLM Status */}
-                  <div className="border border-ink bg-white p-4 shadow-sw-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Server className="w-4 h-4 text-steel-grey" />
-                      <span className=" text-xs uppercase text-steel-grey">
-                        {t('settings.statusCards.llm')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {systemStatus.llm_healthy ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-red-500" />
-                      )}
-                      <span className=" text-sm font-bold">
-                        {systemStatus.llm_healthy
-                          ? t('settings.statusValues.healthy')
-                          : t('settings.statusValues.offline')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Database Status */}
-                  <div className="border border-ink bg-white p-4 shadow-sw-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Database className="w-4 h-4 text-steel-grey" />
-                      <span className=" text-xs uppercase text-steel-grey">
-                        {t('settings.statusCards.database')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      <span className=" text-sm font-bold">
-                        {t('settings.statusValues.connected')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Resumes Count */}
-                  <div className="border border-ink bg-white p-4 shadow-sw-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-4 h-4 text-steel-grey" />
-                      <span className=" text-xs uppercase text-steel-grey">
-                        {t('settings.statusCards.resumes')}
-                      </span>
-                    </div>
-                    <span className=" text-2xl font-bold">
-                      {systemStatus.database_stats.total_resumes}
-                    </span>
-                  </div>
-
-                  {/* Jobs Count */}
-                  <div className="border border-ink bg-white p-4 shadow-sw-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Briefcase className="w-4 h-4 text-steel-grey" />
-                      <span className=" text-xs uppercase text-steel-grey">
-                        {t('settings.statusCards.jobs')}
-                      </span>
-                    </div>
-                    <span className=" text-2xl font-bold">
-                      {systemStatus.database_stats.total_jobs}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Additional Stats Row */}
-            {systemStatus && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="border border-ink bg-white p-4 shadow-sw-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-steel-grey" />
-                    <span className=" text-xs uppercase text-steel-grey">
-                      {t('settings.statusCards.improvements')}
-                    </span>
-                  </div>
-                  <span className=" text-2xl font-bold">
-                    {systemStatus.database_stats.total_improvements}
-                  </span>
-                </div>
-                <div className="border border-ink bg-white p-4 shadow-sw-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4 text-steel-grey" />
-                    <span className=" text-xs uppercase text-steel-grey">
-                      {t('settings.statusCards.masterResume')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {systemStatus.has_master_resume ? (
-                      <>
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        <span className=" text-sm font-bold">
-                          {t('settings.statusValues.configured')}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-5 h-5 text-amber-500" />
-                        <span className=" text-sm font-bold">
-                          {t('settings.statusValues.notSet')}
-                        </span>
-                      </>
+        <div className="flex flex-col lg:flex-row lg:items-start">
+          {/* Settings sidebar navigation */}
+          <aside className="w-full shrink-0 border-b border-[#e6e3dc] bg-white p-3 lg:w-56 lg:border-b-0 lg:border-r lg:p-4">
+            <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+              {SETTINGS_SECTIONS.map((section) => {
+                const SectionIcon = section.icon;
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => setActiveSection(section.id)}
+                    className={cn(
+                      'flex shrink-0 items-center gap-3 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors lg:w-full',
+                      active
+                        ? 'bg-primary text-white shadow-sw-xs'
+                        : 'bg-secondary/60 text-ink-soft hover:bg-secondary hover:text-ink'
                     )}
+                  >
+                    <SectionIcon className="h-4 w-4" />
+                    {section.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+
+          {/* Settings content */}
+          <div className="min-w-0 flex-1 space-y-10 p-4 md:p-8 lg:p-8">
+            <div className="space-y-10">
+              {/* API Key Not Configured Warning */}
+              {!statusLoading && systemStatus && !systemStatus.llm_configured && (
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-[#fbf6e9] p-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                    <AlertTriangle className="h-4 w-4 text-amber-700" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold uppercase tracking-wider text-amber-800">
+                      {t('settings.setupRequired.title')}
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      {t('settings.setupRequired.description')}
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
-          </section>
+              )}
 
-          {/* LLM Configuration */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-[#e6e3dc] pb-2">
-              <Key className="w-4 h-4" />
-              <h2 className=" text-sm font-bold uppercase tracking-wider">
-                {t('settings.llmConfigurationTitle')}
-              </h2>
-            </div>
-
-            <div className="grid gap-6">
-              {/* Provider Selection */}
-              <div className="space-y-2">
-                <Label>{t('settings.providerLabel')}</Label>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                  {PROVIDERS.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => handleProviderChange(p)}
-                      className={`px-3 py-2 text-xs uppercase ${SEGMENTED_BUTTON_BASE} ${
-                        provider === p ? SEGMENTED_BUTTON_ACTIVE : SEGMENTED_BUTTON_INACTIVE
-                      }`}
+              {/* System Status Panel */}
+              {activeSection === 'system' && (
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#e6e3dc] pb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                        <Activity className="h-4 w-4 text-primary" />
+                      </span>
+                      <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
+                        {t('settings.systemStatus.title')}
+                      </h2>
+                      {lastFetched && (
+                        <span className="flex items-center gap-1 text-xs text-steel-grey">
+                          <Clock className="h-3 w-3" />
+                          {formatLastFetched()}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshStatus}
+                      disabled={statusLoading}
+                      className="gap-1 rounded-full text-xs"
                     >
-                      {PROVIDER_INFO[p].name.split(' ')[0]}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-steel-grey ">
-                  {t('settings.llmConfiguration.selectedProvider', {
-                    provider: providerInfo.name,
-                  })}
-                </p>
-              </div>
+                      <RefreshCw className={`h-3 w-3 ${statusLoading ? 'animate-spin' : ''}`} />
+                      {t('settings.systemStatus.refresh')}
+                    </Button>
+                  </div>
 
-              {/* Model Input */}
-              <div className="space-y-2">
-                <Label htmlFor="model">{t('settings.llmConfiguration.modelLabel')}</Label>
-                <Input
-                  id="model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder={providerInfo.defaultModel}
-                  className=""
-                />
-                <p className="text-xs text-steel-grey ">
-                  {t('settings.llmConfiguration.defaultModel', {
-                    model: providerInfo.defaultModel,
-                  })}
-                </p>
-              </div>
+                  {statusLoading ? (
+                    <div className="flex items-center justify-center rounded-2xl border border-dashed border-[#e6e3dc] p-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-steel-grey" />
+                    </div>
+                  ) : !systemStatus ? (
+                    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-red-300 bg-[#fdf3f2] p-8">
+                      <p className="text-xs uppercase text-red-600">
+                        {t('settings.systemStatus.unableToConnect')}
+                      </p>
+                      <p className="text-xs text-ink-soft">
+                        {t('settings.systemStatus.expectedAt', { apiUrl: API_URL })}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshStatus}
+                        className="gap-1 rounded-full text-xs"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        {t('common.retry')}
+                      </Button>
+                    </div>
+                  ) : (
+                    // @container so the status cards adapt to the section width
+                    // rather than the viewport — useful when the settings page is
+                    // shown alongside a sidebar or in a split view.
+                    <div className="@container">
+                      <div className="grid grid-cols-2 @3xl:grid-cols-4 gap-3">
+                        {/* LLM Status */}
+                        <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Server className="h-4 w-4 text-steel-grey" />
+                            <span className="text-xs uppercase text-steel-grey">
+                              {t('settings.statusCards.llm')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {systemStatus.llm_healthy ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-red-500" />
+                            )}
+                            <span className="text-sm font-bold text-ink">
+                              {systemStatus.llm_healthy
+                                ? t('settings.statusValues.healthy')
+                                : t('settings.statusValues.offline')}
+                            </span>
+                          </div>
+                        </div>
 
-              {/* API Key Input — always enabled. For providers that don't
+                        {/* Database Status */}
+                        <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Database className="h-4 w-4 text-steel-grey" />
+                            <span className="text-xs uppercase text-steel-grey">
+                              {t('settings.statusCards.database')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <span className="text-sm font-bold text-ink">
+                              {t('settings.statusValues.connected')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Resumes Count */}
+                        <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-steel-grey" />
+                            <span className="text-xs uppercase text-steel-grey">
+                              {t('settings.statusCards.resumes')}
+                            </span>
+                          </div>
+                          <span className="text-2xl font-bold text-ink">
+                            {systemStatus.database_stats.total_resumes}
+                          </span>
+                        </div>
+
+                        {/* Jobs Count */}
+                        <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Briefcase className="h-4 w-4 text-steel-grey" />
+                            <span className="text-xs uppercase text-steel-grey">
+                              {t('settings.statusCards.jobs')}
+                            </span>
+                          </div>
+                          <span className="text-2xl font-bold text-ink">
+                            {systemStatus.database_stats.total_jobs}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional Stats Row */}
+                  {systemStatus && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="h-4 w-4 text-steel-grey" />
+                          <span className="text-xs uppercase text-steel-grey">
+                            {t('settings.statusCards.improvements')}
+                          </span>
+                        </div>
+                        <span className="text-2xl font-bold text-ink">
+                          {systemStatus.database_stats.total_improvements}
+                        </span>
+                      </div>
+                      <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-steel-grey" />
+                          <span className="text-xs uppercase text-steel-grey">
+                            {t('settings.statusCards.masterResume')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {systemStatus.has_master_resume ? (
+                            <>
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <span className="text-sm font-bold text-ink">
+                                {t('settings.statusValues.configured')}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-5 w-5 text-amber-500" />
+                              <span className="text-sm font-bold text-ink">
+                                {t('settings.statusValues.notSet')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* LLM Configuration */}
+              {activeSection === 'ai' && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Key className="h-4 w-4 text-primary" />
+                    </span>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
+                      {t('settings.llmConfigurationTitle')}
+                    </h2>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Provider Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+                        {t('settings.providerLabel')}
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {PROVIDERS.map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => handleProviderChange(p)}
+                            className={`rounded-full border px-4 py-2 text-xs font-bold uppercase transition-all ${
+                              provider === p
+                                ? 'border-primary bg-primary text-white shadow-sw-xs'
+                                : 'border-[#e6e3dc] bg-white text-ink hover:border-primary hover:text-primary'
+                            }`}
+                          >
+                            {PROVIDER_INFO[p].name.split(' ')[0]}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-steel-grey">
+                        {t('settings.llmConfiguration.selectedProvider', {
+                          provider: providerInfo.name,
+                        })}
+                      </p>
+                    </div>
+
+                    {/* Model Input */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="model"
+                        className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+                      >
+                        {t('settings.llmConfiguration.modelLabel')}
+                      </Label>
+                      <Input
+                        id="model"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        placeholder={providerInfo.defaultModel}
+                        className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
+                      />
+                      <p className="text-xs text-steel-grey">
+                        {t('settings.llmConfiguration.defaultModel', {
+                          model: providerInfo.defaultModel,
+                        })}
+                      </p>
+                    </div>
+
+                    {/* API Key Input — always enabled. For providers that don't
                   require a key (Ollama, OpenAI-Compatible local servers), the
                   field is marked optional so users can STILL enter a key if
                   their deployment needs auth (e.g., a secured LM Studio or a
                   hosted OpenAI-compatible proxy). Save-time validation only
                   fails when `requiresApiKey` is true. */}
-              <div className="space-y-2">
-                <Label htmlFor="apiKey">
-                  {t('settings.llmConfiguration.apiKeyLabel')}{' '}
-                  {!requiresApiKey && (
-                    <span className="text-steel-grey">
-                      {t('settings.llmConfiguration.apiKeyOptional')}
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={
-                    requiresApiKey
-                      ? t('settings.llmConfiguration.apiKeyPlaceholder')
-                      : t('settings.llmConfiguration.apiKeyOptionalPlaceholder')
-                  }
-                  className=""
-                />
-                {hasStoredApiKey && !apiKey && (
-                  <p className="text-xs text-steel-grey ">
-                    {t('settings.llmConfiguration.leaveBlankToKeepExistingKey')}
-                  </p>
-                )}
-              </div>
-
-              {/* Saved per-provider keys — each provider keeps its own encrypted
-                  key, so switching providers never wipes another's. */}
-              {apiKeyStatuses.some((s) => s.configured) && (
-                <div className="space-y-2 border border-ink bg-paper-tint p-3 shadow-sw-xs">
-                  <p className=" text-xs uppercase tracking-wide text-ink-soft">
-                    {t('settings.apiKeys.savedTitle')}
-                  </p>
-                  <ul className="space-y-1.5">
-                    {apiKeyStatuses
-                      .filter((s) => s.configured)
-                      .map((s) => (
-                        <li
-                          key={s.provider}
-                          className="flex items-center justify-between gap-2 text-sm"
-                        >
-                          <span className="flex items-center gap-2">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                            <span className="font-medium">
-                              {API_KEY_PROVIDER_INFO[s.provider]?.name ?? s.provider}
-                            </span>
-                            <span className=" text-xs text-steel-grey">{s.masked_key}</span>
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="apiKey"
+                        className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+                      >
+                        {t('settings.llmConfiguration.apiKeyLabel')}{' '}
+                        {!requiresApiKey && (
+                          <span className="text-steel-grey">
+                            {t('settings.llmConfiguration.apiKeyOptional')}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setKeyToDelete(s.provider)}
-                            className=" text-xs uppercase text-destructive hover:underline"
-                            aria-label={t('settings.apiKeys.deleteAria', {
-                              provider: API_KEY_PROVIDER_INFO[s.provider]?.name ?? s.provider,
-                            })}
-                          >
-                            {t('common.delete')}
-                          </button>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* API Base URL (optional, for proxies/aggregators/custom endpoints) */}
-              <div className="space-y-2">
-                <Label htmlFor="apiBase">
-                  {baseUrlLabel} {requiresApiBase && <span className="text-destructive">*</span>}
-                </Label>
-                <Input
-                  id="apiBase"
-                  value={apiBase}
-                  onChange={(e) => setApiBase(e.target.value)}
-                  placeholder={baseUrlPlaceholder}
-                  className=""
-                />
-                <p className="text-xs text-steel-grey ">{baseUrlDescription}</p>
-              </div>
-
-              {/* Reasoning Effort (optional, only applies to reasoning-capable models) */}
-              <div className="space-y-2">
-                <Dropdown
-                  label={t('settings.llmConfiguration.reasoningEffortLabel')}
-                  value={reasoningEffort}
-                  onChange={(value) => setReasoningEffort(value as ReasoningEffort | 'auto')}
-                  options={[
-                    {
-                      id: 'auto',
-                      label: t('settings.llmConfiguration.reasoningEffortAuto'),
-                      description: t('settings.llmConfiguration.reasoningEffortAutoDesc'),
-                    },
-                    { id: 'minimal', label: t('settings.llmConfiguration.reasoningEffortMinimal') },
-                    { id: 'low', label: t('settings.llmConfiguration.reasoningEffortLow') },
-                    { id: 'medium', label: t('settings.llmConfiguration.reasoningEffortMedium') },
-                    { id: 'high', label: t('settings.llmConfiguration.reasoningEffortHigh') },
-                  ]}
-                />
-                <p className="text-xs text-steel-grey ">
-                  {t('settings.llmConfiguration.reasoningEffortDescription')}
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-4">
-                <Button
-                  onClick={handleSave}
-                  disabled={status === 'saving' || status === 'loading'}
-                  className="flex-1"
-                >
-                  {status === 'saving' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : status === 'saved' ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      {t('common.success')}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {t('common.save')}
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleTestConnection}
-                  disabled={status === 'testing' || status === 'saving'}
-                >
-                  {status === 'testing' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Activity className="w-4 h-4" />
-                      {t('settings.llmConfiguration.testConnection')}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="border border-red-300 bg-[#fdf3f2] p-3">
-                  <p className="text-xs text-red-600  break-words">
-                    {t('settings.llmConfiguration.errorPrefix', { error })}
-                  </p>
-                </div>
-              )}
-
-              {/* Health Check Result */}
-              {healthCheck && (
-                <div
-                  className={`border p-4 break-words ${
-                    healthCheck.healthy
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-red-300 bg-[#fdf3f2]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    {healthCheck.healthy ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-red-500" />
-                    )}
-                    <span className=" text-sm font-bold">
-                      {healthCheck.healthy
-                        ? t('settings.llmConfiguration.connectionSuccessful')
-                        : t('settings.llmConfiguration.connectionFailed')}
-                    </span>
-                  </div>
-                  <p className=" text-xs text-ink-soft">
-                    {t('settings.llmConfiguration.connectionDetails', {
-                      provider: healthCheck.provider,
-                      model: healthCheck.model,
-                    })}
-                  </p>
-                  {healthCheckError && (
-                    <p className=" text-xs text-red-600 mt-1 break-words">{healthCheckError}</p>
-                  )}
-                  {healthCheckWarning && (
-                    <p className=" text-xs text-amber-700 mt-1 break-words">{healthCheckWarning}</p>
-                  )}
-                  {healthDetailItems.length > 0 && (
-                    <div className="mt-3 space-y-3">
-                      {healthDetailItems.map((item) =>
-                        item.key === 'reasoningContent' ? (
-                          <details key={item.key} className="group">
-                            <summary className="cursor-pointer  text-[10px] uppercase tracking-wider text-ink-soft hover:text-black">
-                              {item.label}
-                            </summary>
-                            <pre className="mt-1 whitespace-pre-wrap break-words rounded-lg border border-ink bg-white p-3 text-xs text-ink-soft shadow-sw-sm">
-                              {item.value}
-                            </pre>
-                          </details>
-                        ) : (
-                          <div key={item.key}>
-                            <p className=" text-[10px] uppercase tracking-wider text-ink-soft">
-                              {item.label}
-                            </p>
-                            <pre className="mt-1 whitespace-pre-wrap break-words rounded-lg border border-ink bg-white p-3 text-xs text-ink-soft shadow-sw-sm">
-                              {item.value}
-                            </pre>
-                          </div>
-                        )
+                        )}
+                      </Label>
+                      <Input
+                        id="apiKey"
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder={
+                          requiresApiKey
+                            ? t('settings.llmConfiguration.apiKeyPlaceholder')
+                            : t('settings.llmConfiguration.apiKeyOptionalPlaceholder')
+                        }
+                        className="rounded-2xl border-[#e6e3dc] bg-white focus:border-[#e6e3dc] focus:ring-primary/20"
+                      />
+                      {hasStoredApiKey && !apiKey && (
+                        <p className="text-xs text-steel-grey">
+                          {t('settings.llmConfiguration.leaveBlankToKeepExistingKey')}
+                        </p>
                       )}
                     </div>
-                  )}
-                </div>
+
+                    {/* Saved per-provider keys — each provider keeps its own encrypted
+                  key, so switching providers never wipes another's. */}
+                    {apiKeyStatuses.some((s) => s.configured) && (
+                      <div className="space-y-2 rounded-2xl border border-[#e6e3dc] bg-secondary/40 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+                          {t('settings.apiKeys.savedTitle')}
+                        </p>
+                        <ul className="space-y-1.5">
+                          {apiKeyStatuses
+                            .filter((s) => s.configured)
+                            .map((s) => (
+                              <li
+                                key={s.provider}
+                                className="flex items-center justify-between gap-2 text-sm"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                                  <span className="font-medium text-ink">
+                                    {API_KEY_PROVIDER_INFO[s.provider]?.name ?? s.provider}
+                                  </span>
+                                  <span className="rounded-full border border-[#e6e3dc] bg-white px-2 py-0.5 text-[10px] text-steel-grey">
+                                    {s.masked_key}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setKeyToDelete(s.provider)}
+                                  className="rounded-full border border-red-400/50 bg-red-50 px-3 py-1 text-xs font-bold uppercase text-red-600 transition-colors hover:border-red-500 hover:bg-red-500 hover:text-white"
+                                  aria-label={t('settings.apiKeys.deleteAria', {
+                                    provider: API_KEY_PROVIDER_INFO[s.provider]?.name ?? s.provider,
+                                  })}
+                                >
+                                  {t('common.delete')}
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* API Base URL (optional, for proxies/aggregators/custom endpoints) */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="apiBase"
+                        className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+                      >
+                        {baseUrlLabel}{' '}
+                        {requiresApiBase && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        id="apiBase"
+                        value={apiBase}
+                        onChange={(e) => setApiBase(e.target.value)}
+                        placeholder={baseUrlPlaceholder}
+                        className="rounded-2xl border-[#e6e3dc] bg-white focus:border-[#e6e3dc] focus:ring-primary/20"
+                      />
+                      <p className="text-xs text-steel-grey">{baseUrlDescription}</p>
+                    </div>
+
+                    {/* Reasoning Effort (optional, only applies to reasoning-capable models) */}
+                    <div className="space-y-2">
+                      <Dropdown
+                        label={t('settings.llmConfiguration.reasoningEffortLabel')}
+                        value={reasoningEffort}
+                        onChange={(value) => setReasoningEffort(value as ReasoningEffort | 'auto')}
+                        options={[
+                          {
+                            id: 'auto',
+                            label: t('settings.llmConfiguration.reasoningEffortAuto'),
+                            description: t('settings.llmConfiguration.reasoningEffortAutoDesc'),
+                          },
+                          {
+                            id: 'minimal',
+                            label: t('settings.llmConfiguration.reasoningEffortMinimal'),
+                          },
+                          { id: 'low', label: t('settings.llmConfiguration.reasoningEffortLow') },
+                          {
+                            id: 'medium',
+                            label: t('settings.llmConfiguration.reasoningEffortMedium'),
+                          },
+                          { id: 'high', label: t('settings.llmConfiguration.reasoningEffortHigh') },
+                        ]}
+                      />
+                      <p className="text-xs text-steel-grey">
+                        {t('settings.llmConfiguration.reasoningEffortDescription')}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 lg:col-span-2">
+                      <Button
+                        onClick={handleSave}
+                        disabled={status === 'saving' || status === 'loading'}
+                        className="flex-1 rounded-full"
+                      >
+                        {status === 'saving' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : status === 'saved' ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            {t('common.success')}
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            {t('common.save')}
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleTestConnection}
+                        disabled={status === 'testing' || status === 'saving'}
+                        className="rounded-full"
+                      >
+                        {status === 'testing' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Activity className="w-4 h-4" />
+                            {t('settings.llmConfiguration.testConnection')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Error Message */}
+                    {error && (
+                      <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 lg:col-span-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                        <p className="text-xs text-red-700 break-words">
+                          {t('settings.llmConfiguration.errorPrefix', { error })}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Health Check Result */}
+                    {healthCheck && (
+                      <div
+                        className={`rounded-2xl border p-5 break-words lg:col-span-2 ${
+                          healthCheck.healthy
+                            ? 'border-green-200 bg-green-50'
+                            : 'border-red-200 bg-[#fdf3f2]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          {healthCheck.healthy ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-red-500" />
+                          )}
+                          <span className="text-sm font-bold text-ink">
+                            {healthCheck.healthy
+                              ? t('settings.llmConfiguration.connectionSuccessful')
+                              : t('settings.llmConfiguration.connectionFailed')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-ink-soft">
+                          {t('settings.llmConfiguration.connectionDetails', {
+                            provider: healthCheck.provider,
+                            model: healthCheck.model,
+                          })}
+                        </p>
+                        {healthCheckError && (
+                          <p className="text-xs text-red-600 mt-1 break-words">
+                            {healthCheckError}
+                          </p>
+                        )}
+                        {healthCheckWarning && (
+                          <p className="text-xs text-amber-700 mt-1 break-words">
+                            {healthCheckWarning}
+                          </p>
+                        )}
+                        {healthDetailItems.length > 0 && (
+                          <div className="mt-3 space-y-3">
+                            {healthDetailItems.map((item) =>
+                              item.key === 'reasoningContent' ? (
+                                <details key={item.key} className="group">
+                                  <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-ink-soft hover:text-black">
+                                    {item.label}
+                                  </summary>
+                                  <pre className="mt-1 whitespace-pre-wrap break-words rounded-xl border border-[#e6e3dc] bg-white p-3 text-xs text-ink-soft shadow-sw-xs">
+                                    {item.value}
+                                  </pre>
+                                </details>
+                              ) : (
+                                <div key={item.key}>
+                                  <p className="text-[10px] uppercase tracking-wider text-ink-soft">
+                                    {item.label}
+                                  </p>
+                                  <pre className="mt-1 whitespace-pre-wrap break-words rounded-xl border border-[#e6e3dc] bg-white p-3 text-xs text-ink-soft shadow-sw-xs">
+                                    {item.value}
+                                  </pre>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Content Generation Section */}
+              {activeSection === 'content' && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Settings2 className="h-4 w-4 text-primary" />
+                    </span>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
+                      {t('settings.contentGeneration.title')}
+                    </h2>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm text-ink-soft mb-4">
+                      {t('settings.contentGeneration.description')}
+                    </p>
+
+                    <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+                      <ToggleSwitch
+                        checked={enableCoverLetter}
+                        onCheckedChange={(checked) => {
+                          setEnableCoverLetter(checked);
+                          handleFeatureConfigChange('enable_cover_letter', checked);
+                        }}
+                        label={t('settings.contentGeneration.coverLetter.label')}
+                        description={t('settings.contentGeneration.coverLetter.description')}
+                        disabled={featureConfigLoading}
+                      />
+                      {enableCoverLetter && (
+                        <div className="pl-6 space-y-2">
+                          <Label htmlFor="coverLetterPrompt">
+                            {t('settings.contentGeneration.customPromptLabel')}
+                          </Label>
+                          <textarea
+                            id="coverLetterPrompt"
+                            rows={8}
+                            value={coverLetterPrompt}
+                            onChange={(e) => setCoverLetterPrompt(e.target.value)}
+                            placeholder={coverLetterDefault}
+                            className="w-full rounded-2xl border border-[#e6e3dc] bg-white p-3 text-xs break-words shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                          <p className="text-xs text-steel-grey ">
+                            {t('settings.contentGeneration.customPromptHelp')}
+                          </p>
+                          {featurePromptError?.field === 'cover_letter_prompt' && (
+                            <p className="text-xs text-red-600  break-words">
+                              {t('settings.contentGeneration.customPromptErrorMissing', {
+                                missing: featurePromptError.missing.join(', '),
+                              })}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                handleFeaturePromptSave('cover_letter_prompt', coverLetterPrompt)
+                              }
+                              disabled={featurePromptSaving === 'cover_letter_prompt'}
+                            >
+                              {featurePromptSaving === 'cover_letter_prompt' ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                t('common.save')
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleFeaturePromptSave('cover_letter_prompt', '')}
+                              disabled={featurePromptSaving === 'cover_letter_prompt'}
+                            >
+                              {t('settings.contentGeneration.customPromptResetButton')}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      <ToggleSwitch
+                        checked={enableOutreach}
+                        onCheckedChange={(checked) => {
+                          setEnableOutreach(checked);
+                          handleFeatureConfigChange('enable_outreach_message', checked);
+                        }}
+                        label={t('settings.contentGeneration.outreachMessage.label')}
+                        description={t('settings.contentGeneration.outreachMessage.description')}
+                        disabled={featureConfigLoading}
+                      />
+                      {enableOutreach && (
+                        <div className="pl-6 space-y-2">
+                          <Label htmlFor="outreachPrompt">
+                            {t('settings.contentGeneration.customPromptLabel')}
+                          </Label>
+                          <textarea
+                            id="outreachPrompt"
+                            rows={8}
+                            value={outreachPrompt}
+                            onChange={(e) => setOutreachPrompt(e.target.value)}
+                            placeholder={outreachDefault}
+                            className="w-full rounded-2xl border border-[#e6e3dc] bg-white p-3 text-xs break-words shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                          <p className="text-xs text-steel-grey ">
+                            {t('settings.contentGeneration.customPromptHelp')}
+                          </p>
+                          {featurePromptError?.field === 'outreach_message_prompt' && (
+                            <p className="text-xs text-red-600  break-words">
+                              {t('settings.contentGeneration.customPromptErrorMissing', {
+                                missing: featurePromptError.missing.join(', '),
+                              })}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                handleFeaturePromptSave('outreach_message_prompt', outreachPrompt)
+                              }
+                              disabled={featurePromptSaving === 'outreach_message_prompt'}
+                            >
+                              {featurePromptSaving === 'outreach_message_prompt' ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                t('common.save')
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleFeaturePromptSave('outreach_message_prompt', '')}
+                              disabled={featurePromptSaving === 'outreach_message_prompt'}
+                            >
+                              {t('settings.contentGeneration.customPromptResetButton')}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      <ToggleSwitch
+                        checked={enableInterviewPrep}
+                        onCheckedChange={(checked) => {
+                          setEnableInterviewPrep(checked);
+                          handleFeatureConfigChange('enable_interview_prep', checked);
+                        }}
+                        label={t('settings.contentGeneration.interviewPrep.label')}
+                        description={t('settings.contentGeneration.interviewPrep.description')}
+                        disabled={featureConfigLoading}
+                      />
+                    </div>
+
+                    <div className="pt-4 border-t border-paper-tint">
+                      <Dropdown
+                        options={localizedPromptOptions}
+                        value={defaultPromptId}
+                        onChange={handlePromptConfigChange}
+                        label={t('settings.promptSettings.title')}
+                        description={t('settings.promptSettings.description')}
+                        disabled={promptConfigLoading}
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Language Settings Section */}
+              {activeSection === 'language' && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Globe className="h-4 w-4 text-primary" />
+                    </span>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
+                      {t('settings.uiLanguage')} & {t('settings.contentLanguage')}
+                    </h2>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {/* UI Language */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className=" text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
+                          {t('settings.uiLanguage')}
+                        </h3>
+                        <p className="text-sm text-ink-soft mb-3">
+                          {t('settings.uiLanguageDescription')}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {supportedLanguages.map((lang) => (
+                            <button
+                              key={`ui-${lang}`}
+                              onClick={() => setUiLanguage(lang as Locale)}
+                              disabled={languageLoading}
+                              className={`px-4 py-3 text-sm ${SEGMENTED_BUTTON_BASE} ${uiLanguage === lang ? SEGMENTED_BUTTON_ACTIVE : SEGMENTED_BUTTON_INACTIVE}`}
+                            >
+                              {languageNames[lang]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content Language */}
+                    <div className="space-y-4 pt-4 border-t border-paper-tint">
+                      <div>
+                        <h3 className=" text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
+                          {t('settings.contentLanguage')}
+                        </h3>
+                        <p className="text-sm text-ink-soft mb-3">
+                          {t('settings.contentLanguageDescription')}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {supportedLanguages.map((lang) => (
+                            <button
+                              key={`content-${lang}`}
+                              onClick={() => setContentLanguage(lang as SupportedLanguage)}
+                              disabled={languageLoading}
+                              className={`px-4 py-3 text-sm ${SEGMENTED_BUTTON_BASE} ${contentLanguage === lang ? SEGMENTED_BUTTON_ACTIVE : SEGMENTED_BUTTON_INACTIVE}`}
+                            >
+                              {languageNames[lang]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* GitHub Integration */}
+              {activeSection === 'github' && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Github className="h-4 w-4 text-primary" />
+                    </span>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
+                      GitHub Repositories
+                    </h2>
+                  </div>
+                  <GitHubReposSection />
+                </section>
+              )}
+
+              {/* Danger Zone */}
+              {activeSection === 'danger' && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-50">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                    </span>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-red-600">
+                      {t('settings.dangerZone')}
+                    </h2>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Clear API Keys */}
+                    <div className="space-y-4 rounded-2xl border border-red-200 bg-[#fdf3f2]/50 p-5">
+                      <div>
+                        <h3 className="mb-1 text-sm font-bold text-red-900">
+                          {t('settings.clearApiKeys')}
+                        </h3>
+                        <p className="text-xs text-red-700">
+                          {t('settings.clearApiKeysDescription')}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-full border-red-200 text-red-700 hover:bg-[#fdf3f2] hover:text-red-800 hover:border-red-300"
+                        onClick={() => setShowClearApiKeysDialog(true)}
+                        disabled={isResetting}
+                      >
+                        <Key className="w-4 h-4 mr-2" />
+                        {t('settings.clearApiKeys')}
+                      </Button>
+                    </div>
+
+                    {/* Reset Database */}
+                    <div className="space-y-4 rounded-2xl border border-red-200 bg-[#fdf3f2]/50 p-5">
+                      <div>
+                        <h3 className="mb-1 text-sm font-bold text-red-900">
+                          {t('settings.resetDatabase')}
+                        </h3>
+                        <p className="text-xs text-red-700">
+                          {t('settings.resetDatabaseDescription')}
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        className="w-full rounded-full"
+                        onClick={() => setShowResetDatabaseDialog(true)}
+                        disabled={isResetting}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        {t('settings.resetDatabase')}
+                      </Button>
+                    </div>
+                  </div>
+                </section>
               )}
             </div>
-          </section>
-
-          {/* Content Generation Section */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-[#e6e3dc] pb-2">
-              <Settings2 className="w-4 h-4" />
-              <h2 className=" text-sm font-bold uppercase tracking-wider">
-                {t('settings.contentGeneration.title')}
-              </h2>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm text-ink-soft mb-4">
-                {t('settings.contentGeneration.description')}
-              </p>
-
-              <div className="space-y-3">
-                <ToggleSwitch
-                  checked={enableCoverLetter}
-                  onCheckedChange={(checked) => {
-                    setEnableCoverLetter(checked);
-                    handleFeatureConfigChange('enable_cover_letter', checked);
-                  }}
-                  label={t('settings.contentGeneration.coverLetter.label')}
-                  description={t('settings.contentGeneration.coverLetter.description')}
-                  disabled={featureConfigLoading}
-                />
-                {enableCoverLetter && (
-                  <div className="pl-6 space-y-2">
-                    <Label htmlFor="coverLetterPrompt">
-                      {t('settings.contentGeneration.customPromptLabel')}
-                    </Label>
-                    <textarea
-                      id="coverLetterPrompt"
-                      rows={8}
-                      value={coverLetterPrompt}
-                      onChange={(e) => setCoverLetterPrompt(e.target.value)}
-                      placeholder={coverLetterDefault}
-                      className="w-full rounded-lg border border-ink bg-white p-3  text-xs break-words focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <p className="text-xs text-steel-grey ">
-                      {t('settings.contentGeneration.customPromptHelp')}
-                    </p>
-                    {featurePromptError?.field === 'cover_letter_prompt' && (
-                      <p className="text-xs text-red-600  break-words">
-                        {t('settings.contentGeneration.customPromptErrorMissing', {
-                          missing: featurePromptError.missing.join(', '),
-                        })}
-                      </p>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          handleFeaturePromptSave('cover_letter_prompt', coverLetterPrompt)
-                        }
-                        disabled={featurePromptSaving === 'cover_letter_prompt'}
-                      >
-                        {featurePromptSaving === 'cover_letter_prompt' ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          t('common.save')
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleFeaturePromptSave('cover_letter_prompt', '')}
-                        disabled={featurePromptSaving === 'cover_letter_prompt'}
-                      >
-                        {t('settings.contentGeneration.customPromptResetButton')}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <ToggleSwitch
-                  checked={enableOutreach}
-                  onCheckedChange={(checked) => {
-                    setEnableOutreach(checked);
-                    handleFeatureConfigChange('enable_outreach_message', checked);
-                  }}
-                  label={t('settings.contentGeneration.outreachMessage.label')}
-                  description={t('settings.contentGeneration.outreachMessage.description')}
-                  disabled={featureConfigLoading}
-                />
-                {enableOutreach && (
-                  <div className="pl-6 space-y-2">
-                    <Label htmlFor="outreachPrompt">
-                      {t('settings.contentGeneration.customPromptLabel')}
-                    </Label>
-                    <textarea
-                      id="outreachPrompt"
-                      rows={8}
-                      value={outreachPrompt}
-                      onChange={(e) => setOutreachPrompt(e.target.value)}
-                      placeholder={outreachDefault}
-                      className="w-full rounded-lg border border-ink bg-white p-3  text-xs break-words focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <p className="text-xs text-steel-grey ">
-                      {t('settings.contentGeneration.customPromptHelp')}
-                    </p>
-                    {featurePromptError?.field === 'outreach_message_prompt' && (
-                      <p className="text-xs text-red-600  break-words">
-                        {t('settings.contentGeneration.customPromptErrorMissing', {
-                          missing: featurePromptError.missing.join(', '),
-                        })}
-                      </p>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          handleFeaturePromptSave('outreach_message_prompt', outreachPrompt)
-                        }
-                        disabled={featurePromptSaving === 'outreach_message_prompt'}
-                      >
-                        {featurePromptSaving === 'outreach_message_prompt' ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          t('common.save')
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleFeaturePromptSave('outreach_message_prompt', '')}
-                        disabled={featurePromptSaving === 'outreach_message_prompt'}
-                      >
-                        {t('settings.contentGeneration.customPromptResetButton')}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <ToggleSwitch
-                  checked={enableInterviewPrep}
-                  onCheckedChange={(checked) => {
-                    setEnableInterviewPrep(checked);
-                    handleFeatureConfigChange('enable_interview_prep', checked);
-                  }}
-                  label={t('settings.contentGeneration.interviewPrep.label')}
-                  description={t('settings.contentGeneration.interviewPrep.description')}
-                  disabled={featureConfigLoading}
-                />
-              </div>
-
-              <div className="pt-4 border-t border-paper-tint">
-                <Dropdown
-                  options={localizedPromptOptions}
-                  value={defaultPromptId}
-                  onChange={handlePromptConfigChange}
-                  label={t('settings.promptSettings.title')}
-                  description={t('settings.promptSettings.description')}
-                  disabled={promptConfigLoading}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Language Settings Section */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-[#e6e3dc] pb-2">
-              <Globe className="w-4 h-4" />
-              <h2 className=" text-sm font-bold uppercase tracking-wider">
-                {t('settings.uiLanguage')} & {t('settings.contentLanguage')}
-              </h2>
-            </div>
-
-            {/* UI Language */}
-            <div className="space-y-4">
-              <div>
-                <h3 className=" text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
-                  {t('settings.uiLanguage')}
-                </h3>
-                <p className="text-sm text-ink-soft mb-3">{t('settings.uiLanguageDescription')}</p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {supportedLanguages.map((lang) => (
-                    <button
-                      key={`ui-${lang}`}
-                      onClick={() => setUiLanguage(lang as Locale)}
-                      disabled={languageLoading}
-                      className={`px-4 py-3 text-sm ${SEGMENTED_BUTTON_BASE} ${uiLanguage === lang ? SEGMENTED_BUTTON_ACTIVE : SEGMENTED_BUTTON_INACTIVE}`}
-                    >
-                      {languageNames[lang]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Content Language */}
-            <div className="space-y-4 pt-4 border-t border-paper-tint">
-              <div>
-                <h3 className=" text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
-                  {t('settings.contentLanguage')}
-                </h3>
-                <p className="text-sm text-ink-soft mb-3">
-                  {t('settings.contentLanguageDescription')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {supportedLanguages.map((lang) => (
-                    <button
-                      key={`content-${lang}`}
-                      onClick={() => setContentLanguage(lang as SupportedLanguage)}
-                      disabled={languageLoading}
-                      className={`px-4 py-3 text-sm ${SEGMENTED_BUTTON_BASE} ${contentLanguage === lang ? SEGMENTED_BUTTON_ACTIVE : SEGMENTED_BUTTON_INACTIVE}`}
-                    >
-                      {languageNames[lang]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* GitHub Integration */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-[#e6e3dc] pb-2">
-              <Github className="w-4 h-4" />
-              <h2 className=" text-sm font-bold uppercase tracking-wider">GitHub Repositories</h2>
-            </div>
-            <GitHubReposSection />
-          </section>
-
-          {/* Danger Zone */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-red-200 pb-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              <h2 className=" text-sm font-bold uppercase tracking-wider text-red-600">
-                {t('settings.dangerZone')}
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Clear API Keys */}
-              <div className="border border-red-200 bg-[#fdf3f2]/50 p-6 space-y-4">
-                <div>
-                  <h3 className="font-bold text-sm text-red-900 mb-1">
-                    {t('settings.clearApiKeys')}
-                  </h3>
-                  <p className="text-xs text-red-700">{t('settings.clearApiKeysDescription')}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full border-red-200 text-red-700 hover:bg-[#fdf3f2] hover:text-red-800 hover:border-red-300"
-                  onClick={() => setShowClearApiKeysDialog(true)}
-                  disabled={isResetting}
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  {t('settings.clearApiKeys')}
-                </Button>
-              </div>
-
-              {/* Reset Database */}
-              <div className="border border-red-200 bg-[#fdf3f2]/50 p-6 space-y-4">
-                <div>
-                  <h3 className="font-bold text-sm text-red-900 mb-1">
-                    {t('settings.resetDatabase')}
-                  </h3>
-                  <p className="text-xs text-red-700">{t('settings.resetDatabaseDescription')}</p>
-                </div>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={() => setShowResetDatabaseDialog(true)}
-                  disabled={isResetting}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  {t('settings.resetDatabase')}
-                </Button>
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-secondary p-4 border-t border-ink flex justify-between items-center">
+        <div className="flex items-center justify-between border-t border-[#e6e3dc] bg-secondary/60 p-4">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Taylor" width={20} height={20} className="w-5 h-5" />
-            <span className=" text-xs text-steel-grey">{getVersionString().toUpperCase()}</span>
+            <Image src="/logo.png" alt="Taylor" width={20} height={20} className="w-5 h-5" />
+            <span className="text-xs text-steel-grey">{getVersionString().toUpperCase()}</span>
           </div>
           <div className="flex items-center gap-2">
             {statusLoading ? (
               <>
                 <Loader2 className="w-3 h-3 animate-spin text-steel-grey" />
-                <span className=" text-xs text-steel-grey">
+                <span className="text-xs text-steel-grey">
                   {t('settings.footer.status.checking')}
                 </span>
               </>
             ) : systemStatus ? (
               <>
-                <div
-                  className={`w-3 h-3 ${systemStatus.status === 'ready' ? 'bg-green-700' : 'bg-[#fbf6e9]0'}`}
-                ></div>
+                <span className="flex h-2 w-2 rounded-full bg-green-600" />
                 <span
-                  className={` text-xs font-bold ${systemStatus.status === 'ready' ? 'text-green-700' : 'text-amber-600'}`}
+                  className={`text-xs font-bold ${
+                    systemStatus.status === 'ready' ? 'text-green-700' : 'text-amber-600'
+                  }`}
                 >
                   {systemStatus.status === 'ready'
                     ? t('settings.footer.status.ready')
@@ -1437,9 +1542,7 @@ export default function SettingsPage() {
                 </span>
               </>
             ) : (
-              <span className=" text-xs text-steel-grey">
-                {t('settings.footer.status.offline')}
-              </span>
+              <span className="text-xs text-steel-grey">{t('settings.footer.status.offline')}</span>
             )}
           </div>
         </div>
@@ -1610,13 +1713,16 @@ function GitHubReposSection() {
           contributions.
         </p>
         {error && (
-          <div className="border border-red-300 bg-[#fdf3f2] p-3 text-xs text-red-700">{error}</div>
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+            <p className="break-words">{error}</p>
+          </div>
         )}
         <div className="flex gap-2">
           <Button
             onClick={handleConnectOAuth}
             disabled={connecting}
-            className="text-xs border border-ink px-4 py-2 bg-[#24292f] text-white hover:bg-[#1c2128] transition-colors shadow-sw-sm"
+            className="rounded-full border border-[#24292f] bg-[#24292f] px-4 py-2 text-xs text-white shadow-sw-sm transition-colors hover:bg-[#1c2128]"
           >
             {connecting ? (
               <Loader2 className="w-3 h-3 animate-spin mr-2 inline" />
@@ -1628,7 +1734,7 @@ function GitHubReposSection() {
           <Button
             onClick={() => setShowTokenInput(!showTokenInput)}
             variant="ghost"
-            className="text-xs px-4 py-2"
+            className="rounded-full px-4 py-2 text-xs"
           >
             Use Personal Access Token
           </Button>
@@ -1642,7 +1748,7 @@ function GitHubReposSection() {
                 placeholder="ghp_xxxxxxxxxxxx"
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
-                className="mt-1"
+                className="mt-1 rounded-xl"
               />
               <p className="text-[10px] text-ink-soft mt-1">
                 Create at{' '}
@@ -1660,7 +1766,7 @@ function GitHubReposSection() {
             <Button
               onClick={handleConnectToken}
               disabled={connecting || !tokenInput.trim()}
-              className="text-xs border border-ink px-4 py-2"
+              className="rounded-full px-4 py-2 text-xs"
             >
               Connect
             </Button>
@@ -1675,7 +1781,7 @@ function GitHubReposSection() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className=" text-xs">
+          <span className="text-xs">
             Connected as <strong>{ghUser}</strong>
           </span>
           <span className="text-xs text-ink-soft">· {repos.length} repositories</span>
@@ -1683,14 +1789,17 @@ function GitHubReposSection() {
         <Button
           onClick={handleDisconnect}
           variant="ghost"
-          className="text-xs text-destructive px-3 py-1"
+          className="rounded-full px-3 py-1 text-xs text-destructive"
         >
           Disconnect
         </Button>
       </div>
 
       {error && (
-        <div className="border border-red-300 bg-[#fdf3f2] p-3 text-xs text-red-700">{error}</div>
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <p className="break-words">{error}</p>
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto">
@@ -1721,37 +1830,37 @@ function RepoCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border border-ink p-3 shadow-sw-sm">
+    <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[10px]  text-ink-soft shrink-0">{index + 1}.</span>
+          <span className="text-[10px] text-ink-soft shrink-0">{index + 1}.</span>
           <a
             href={repo.url}
             target="_blank"
             rel="noopener noreferrer"
-            className=" text-xs font-bold hover:underline truncate"
+            className="truncate text-xs font-bold text-ink hover:underline"
           >
             {repo.name}
           </a>
         </div>
         <span
-          className={`text-[10px] px-1.5 py-0.5 border shrink-0 ml-2 ${
+          className={`shrink-0 ml-2 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
             repo.visibility === 'PUBLIC'
-              ? 'border-green-500 text-green-600'
-              : 'border-[#d9c9a3] text-amber-600'
+              ? 'border-green-200 bg-green-50 text-green-600'
+              : 'border-amber-200 bg-[#fbf6e9] text-amber-600'
           }`}
         >
           {repo.visibility}
         </span>
       </div>
-      <p className="text-xs text-ink-soft mt-1 line-clamp-2">
+      <p className="mt-2 text-xs text-ink-soft line-clamp-2">
         {repo.description || 'No description'}
       </p>
       <div className="flex flex-wrap gap-1 mt-2">
         {repo.languages.slice(0, 3).map((lang) => (
           <span
             key={lang}
-            className="text-[10px] px-1.5 py-0.5 border border-blue-400 text-blue-600 "
+            className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600"
           >
             {lang}
           </span>
@@ -1759,22 +1868,22 @@ function RepoCard({
         {repo.topics.slice(0, 3).map((topic) => (
           <span
             key={topic}
-            className="text-[10px] px-1.5 py-0.5 border border-green-400 text-green-600 "
+            className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600"
           >
             {topic}
           </span>
         ))}
       </div>
-      <div className="flex items-center gap-3 mt-2 text-[10px] text-ink-soft ">
+      <div className="flex items-center gap-3 mt-2 text-[10px] text-ink-soft">
         {repo.stargazer_count > 0 && <span>⭐ {repo.stargazer_count}</span>}
         {repo.readme && (
-          <button onClick={() => setExpanded(!expanded)} className="text-blue-600 hover:underline">
+          <button onClick={() => setExpanded(!expanded)} className="text-primary hover:underline">
             {expanded ? 'Hide README' : 'Show README'}
           </button>
         )}
       </div>
       {expanded && repo.readme && (
-        <pre className="mt-2 p-2 bg-gray-50 border text-[10px]  overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap">
+        <pre className="mt-2 max-h-40 overflow-y-auto overflow-x-auto whitespace-pre-wrap rounded-xl border border-[#e6e3dc] bg-secondary/30 p-3 text-[10px]">
           {repo.readme}
         </pre>
       )}

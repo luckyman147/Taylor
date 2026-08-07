@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import Check from 'lucide-react/dist/esm/icons/check';
 import { useTranslations } from '@/lib/i18n';
 
 export interface DropdownOption {
@@ -61,7 +62,7 @@ export function Dropdown({
   return (
     <div className={`space-y-1 ${className}`} ref={containerRef}>
       {label && (
-        <label className=" text-xs font-bold uppercase tracking-wider text-ink-soft block">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
           {label}
         </label>
       )}
@@ -83,24 +84,28 @@ export function Dropdown({
           aria-expanded={isOpen}
           aria-controls={isOpen ? menuId : undefined}
           aria-label={label}
-          className="w-full flex items-center justify-between border border-[#c9c5bc] bg-white px-4 py-3  text-sm transition-colors duration-150 hover:border-ink disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+          className={`flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:pointer-events-none disabled:opacity-50 ${
+            isOpen ? 'border-primary' : 'border-[#c9c5bc] hover:border-primary'
+          }`}
         >
-          <div className="flex-1 text-left min-w-0">
+          <div className="min-w-0 flex-1 text-left">
             {selectedOption ? (
               <div>
-                <div className="font-bold text-ink truncate">{selectedOption.label}</div>
+                <div className="truncate text-sm font-semibold text-ink">
+                  {selectedOption.label}
+                </div>
                 {selectedOption.description && (
-                  <div className="text-xs text-steel-grey mt-1 font-normal truncate">
+                  <div className="mt-0.5 truncate text-xs font-normal text-steel-grey">
                     {selectedOption.description}
                   </div>
                 )}
               </div>
             ) : (
-              <span className="text-steel-grey">{t('common.selectOption')}</span>
+              <span className="text-sm text-steel-grey">{t('common.selectOption')}</span>
             )}
           </div>
           <ChevronDown
-            className={`w-4 h-4 transition-transform duration-200 ml-2 shrink-0 ${
+            className={`ml-2 h-4 w-4 shrink-0 text-ink-soft transition-transform duration-200 ${
               isOpen ? 'rotate-180' : ''
             }`}
           />
@@ -118,33 +123,35 @@ export function Dropdown({
             id={menuId}
             role="menu"
             aria-label={label}
-            className="absolute top-full left-0 right-0 mt-1 z-50 border border-[#c9c5bc] bg-white shadow-sw-default rounded-lg"
+            className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-[#e6e3dc] bg-white p-1.5 shadow-sw-lg"
           >
             <div className="max-h-64 overflow-y-auto">
-              {options.map((option, index) => (
-                <React.Fragment key={option.id}>
+              {options.map((option) => {
+                const selected = option.id === value;
+                return (
                   <button
+                    key={option.id}
                     role="menuitemradio"
-                    aria-checked={option.id === value}
+                    aria-checked={selected}
                     onClick={() => handleSelect(option.id)}
-                    className={`w-full px-4 py-3 text-left  transition-colors duration-150 border border-[#e6e3dc] ${
-                      option.id === value
-                        ? 'bg-primary text-white'
-                        : 'bg-white text-ink hover:bg-paper-tint'
-                    } ${index > 0 ? '-mt-px' : ''} `}
+                    className={`flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 ${
+                      selected ? 'bg-primary text-white' : 'bg-white text-ink hover:bg-paper-tint'
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="font-bold text-sm">{option.label}</div>
-                        {option.description && (
-                          <div className="text-xs mt-1 opacity-80">{option.description}</div>
-                        )}
-                      </div>
-                      {option.id === value && <div className="text-lg font-bold mt-0.5">✓</div>}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold">{option.label}</div>
+                      {option.description && (
+                        <div
+                          className={`mt-0.5 text-xs ${selected ? 'opacity-80' : 'text-steel-grey'}`}
+                        >
+                          {option.description}
+                        </div>
+                      )}
                     </div>
+                    {selected && <Check className="mt-0.5 h-4 w-4 shrink-0 text-white" />}
                   </button>
-                </React.Fragment>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

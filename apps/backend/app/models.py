@@ -149,4 +149,5 @@ class ScrapedJob(Base):
     languages: Mapped[list] = mapped_column(JSON, default=list)
     applied: Mapped[bool] = mapped_column(Boolean, default=False)
     applied_resume_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)

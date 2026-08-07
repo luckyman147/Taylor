@@ -82,3 +82,5 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN applied BOOLEAN DEFAULT 0")
             if "applied_resume_id" not in scraped_col_names:
                 conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN applied_resume_id TEXT")
+            if "archived" not in scraped_col_names:
+                conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN archived BOOLEAN DEFAULT 0")

@@ -43,6 +43,7 @@ def _register_adapters(manager: MCPManager) -> None:
     from app.services.mcp.github import GitHubAdapter
     from app.services.mcp.tunisian import TunisianFreelanceAdapter
     from app.services.mcp.remote_freelance import RemoteFreelanceAdapter
+    from app.services.mcp.keejob import KeejobAdapter
 
     manager.register(LinkedInAdapter())
     manager.register(RSSAdapter())
@@ -51,6 +52,7 @@ def _register_adapters(manager: MCPManager) -> None:
     manager.register(GitHubAdapter())
     manager.register(TunisianFreelanceAdapter())
     manager.register(RemoteFreelanceAdapter())
+    manager.register(KeejobAdapter())
 
 
 def _make_search_id(keywords: str, filters: JobSearchFilters) -> str:

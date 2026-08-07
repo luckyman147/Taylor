@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import FileText from 'lucide-react/dist/esm/icons/file-text';
@@ -76,10 +77,13 @@ export default function Hero() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-ink bg-background/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className=" text-sm font-bold uppercase tracking-wider">Taylor</div>
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="Taylor" width={24} height={24} className="w-6 h-6" />
+            <span className="text-sm font-bold uppercase tracking-wider">Taylor</span>
+          </Link>
           <div className="flex items-center gap-3">
             <a
-              href="https://github.com/srbhr/Resume-Matcher"
+              href="https://github.com/luckyman147/Taylor"
               target="_blank"
               rel="noopener noreferrer"
               className=" text-xs uppercase tracking-wide text-ink-soft hover:text-black transition-colors"
@@ -137,7 +141,7 @@ export default function Hero() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <a
-                href="https://github.com/srbhr/Resume-Matcher"
+                href="https://github.com/luckyman147/Taylor"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-xl border border-ink px-8 py-3.5  text-sm font-bold uppercase tracking-wide text-primary hover:bg-primary hover:text-white transition-colors"
@@ -245,20 +249,12 @@ export default function Hero() {
           <div className=" text-xs font-bold uppercase tracking-wider">Taylor</div>
           <div className="flex items-center gap-6  text-xs text-white/50">
             <a
-              href="https://github.com/srbhr/Resume-Matcher"
+              href="https://github.com/luckyman147/Taylor"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-white transition-colors"
             >
               GitHub
-            </a>
-            <a
-              href="https://resumematcher.fyi"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-white transition-colors"
-            >
-              Docs
             </a>
             <Link href="/dashboard" className="hover:text-white transition-colors">
               App

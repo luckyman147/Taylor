@@ -2,7 +2,7 @@
  * Job Scraper API client.
  */
 
-import { apiPost, apiFetch } from './client';
+import { apiPost, apiFetch, apiPatch } from './client';
 
 export interface JobSearchFilters {
   keywords: string;
@@ -90,6 +90,7 @@ export interface ScrapedJobDraft {
   languages: string[];
   applied: boolean;
   applied_resume_id: string | null;
+  archived: boolean;
   created_at: string;
 }
 
@@ -122,6 +123,15 @@ export async function deleteScrapedJob(jobId: string): Promise<{ deleted: boolea
 export async function clearScrapedJobs(resumeId: string): Promise<{ cleared: number }> {
   const res = await apiFetch(`/job-scraper/drafts/all/${resumeId}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to clear jobs');
+  return res.json();
+}
+
+export async function setScrapedJobArchived(
+  jobId: string,
+  archived: boolean
+): Promise<{ job_id: string; archived: boolean }> {
+  const res = await apiPatch(`/job-scraper/drafts/${jobId}/archive`, { archived });
+  if (!res.ok) throw new Error('Failed to update job archive status');
   return res.json();
 }
 

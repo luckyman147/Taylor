@@ -52,12 +52,18 @@ class ScrapedJobResponse(BaseModel):
     languages: list[str]
     applied: bool = False
     applied_resume_id: str | None = None
+    archived: bool = False
     created_at: str
 
 
 class MarkAppliedRequest(BaseModel):
     """Request to mark a scraped job as applied."""
     resume_id: str
+
+
+class UpdateArchiveRequest(BaseModel):
+    """Request to set the archived flag on a scraped job."""
+    archived: bool = True
 
 
 @router.get("/profile-keywords/{resume_id}", response_model=ProfileKeywordsResponse)
@@ -217,6 +223,25 @@ async def mark_scraped_job_applied_endpoint(job_id: str, request: MarkAppliedReq
     except Exception as exc:
         logger.error("Failed to mark job as applied: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to mark job as applied")
+
+
+@router.patch("/drafts/{job_id}/archive")
+async def set_scraped_job_archived_endpoint(
+    job_id: str, request: UpdateArchiveRequest
+) -> dict:
+    """Archive or unarchive a scraped job draft."""
+    from app.database import db
+
+    try:
+        updated = await db.set_scraped_job_archived(job_id, request.archived)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {"job_id": job_id, "archived": request.archived}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to update job archive status: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to update job")
 
 
 @router.get("/health")

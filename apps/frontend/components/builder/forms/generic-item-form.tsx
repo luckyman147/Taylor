@@ -178,7 +178,10 @@ export const GenericItemForm: React.FC<GenericItemFormProps> = ({
 
       <div className="space-y-8">
         {items.map((item) => (
-          <div key={item.id} className="p-6 border border-ink bg-paper-tint relative group">
+          <div
+            key={item.id}
+            className="rounded-2xl border border-[#e6e3dc] bg-white relative group p-6"
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -298,7 +301,7 @@ export const GenericItemForm: React.FC<GenericItemFormProps> = ({
         ))}
 
         {items.length === 0 && (
-          <div className="text-center py-12 bg-paper-tint border border-dashed border-ink">
+          <div className="text-center rounded-xl py-12 bg-paper-tint border border-dashed border-[#e6e3dc]">
             <p className=" text-sm text-steel-grey mb-4">
               {t('builder.genericItemForm.noEntries', { label: finalItemLabel })}
             </p>
@@ -306,7 +309,7 @@ export const GenericItemForm: React.FC<GenericItemFormProps> = ({
               variant="outline"
               size="sm"
               onClick={handleAdd}
-              className="rounded-lg border-ink"
+              className="rounded-full border-[#e6e3dc]"
             >
               <Plus className="w-4 h-4 mr-2" />{' '}
               {t('builder.genericItemForm.addFirstItem', { label: finalItemLabel })}

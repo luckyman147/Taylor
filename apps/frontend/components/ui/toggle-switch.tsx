@@ -40,13 +40,13 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   return (
     <div
       className={cn(
-        'flex items-center justify-between p-4 border border-[#e6e3dc] bg-white',
+        'flex items-center justify-between rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
     >
       <div className="flex-1 mr-4">
-        <div id={labelId} className=" text-sm font-bold uppercase tracking-wider">
+        <div id={labelId} className="text-sm font-bold text-ink">
           {label}
         </div>
         {description && <div className="font-sans text-xs text-steel-grey mt-1">{description}</div>}
@@ -59,7 +59,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         disabled={disabled}
         onClick={handleToggle}
         className={cn(
-          'relative inline-flex h-6 w-12 shrink-0 cursor-pointer items-center',
+          'relative inline-flex h-6 w-12 shrink-0 cursor-pointer items-center rounded-full',
           'border border-[#c9c5bc] transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
           'disabled:cursor-not-allowed',
@@ -68,7 +68,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
       >
         <span
           className={cn(
-            'pointer-events-none block h-4 w-4 bg-white border border-[#c9c5bc]',
+            'pointer-events-none block h-4 w-4 rounded-full bg-white border border-[#c9c5bc]',
             'transition-transform duration-200',
             checked ? 'translate-x-6' : 'translate-x-1'
           )}

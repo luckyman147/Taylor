@@ -8,6 +8,8 @@
 import { API_BASE } from '@/lib/api/client';
 import { translate } from '@/lib/i18n/server';
 import { resolveLocale } from '@/lib/i18n/locale';
+import { renderMarkdownHtml, MARKDOWN_BODY_CLASSES } from '@/lib/utils/markdown';
+import { cn } from '@/lib/utils';
 
 const PAGE_DIMENSIONS = {
   A4: { width: 210, height: 297 },
@@ -88,12 +90,9 @@ export default async function PrintCoverLetterPage({ params, searchParams }: Pag
   });
   const nameFallback = translate(locale, 'resume.defaults.name');
 
-  // Split cover letter into paragraphs
-  const paragraphs = coverLetter
-    .split(/\n\n+/)
-    .flatMap((p) => p.split('\n'))
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
+  // Empty font-family fallback keeps `;` out of every generated <p> while
+  // preserving markdown-derived formatting (headings, bold, lists).
+  const bodyHtml = renderMarkdownHtml(coverLetter);
 
   return (
     <div
@@ -155,21 +154,15 @@ export default async function PrintCoverLetterPage({ params, searchParams }: Pag
         {today}
       </div>
 
-      {/* Body */}
+      {/* Body (markdown-aware) */}
       <div style={{ lineHeight: '1.6' }}>
-        {paragraphs.length > 0 ? (
-          paragraphs.map((para, idx) => (
-            <p
-              key={idx}
-              style={{
-                fontSize: '11pt',
-                margin: '0 0 4mm 0',
-                textAlign: 'justify',
-              }}
-            >
-              {para}
-            </p>
-          ))
+        {coverLetter.trim().length > 0 ? (
+          <div
+            className={cn(MARKDOWN_BODY_CLASSES)}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            // Rich text headings/lists keep readable point sizes on paper.
+            style={{ fontSize: '11pt' }}
+          />
         ) : (
           <p style={{ fontSize: '11pt', color: '#999' }}>
             {translate(locale, 'coverLetter.print.emptyContent')}

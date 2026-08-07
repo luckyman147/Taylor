@@ -852,6 +852,7 @@ class Database:
                     "languages": row.languages,
                     "applied": row.applied,
                     "applied_resume_id": row.applied_resume_id,
+                    "archived": row.archived,
                     "created_at": row.created_at,
                 }
                 for row in rows
@@ -869,15 +870,33 @@ class Database:
             return result.rowcount > 0
 
     async def clear_scraped_jobs(self, resume_id: str) -> int:
-        """Delete all scraped job drafts for a resume."""
+        """Delete all non-archived scraped job drafts for a resume."""
         from app.models import ScrapedJob
 
         async with self._session() as session:
             result = await session.execute(
-                delete(ScrapedJob).where(ScrapedJob.resume_id == resume_id)
+                delete(ScrapedJob).where(
+                    ScrapedJob.resume_id == resume_id,
+                    ScrapedJob.archived == False,  # noqa: E712
+                )
             )
             await session.commit()
             return result.rowcount
+
+    async def set_scraped_job_archived(self, job_id: str, archived: bool) -> bool:
+        """Set the archived flag on a scraped job draft."""
+        from app.models import ScrapedJob
+
+        async with self._session() as session:
+            result = await session.execute(
+                select(ScrapedJob).where(ScrapedJob.job_id == job_id)
+            )
+            row = result.scalar_one_or_none()
+            if not row:
+                return False
+            row.archived = archived
+            await session.commit()
+            return True
 
     async def mark_scraped_job_applied(self, job_id: str, resume_id: str) -> bool:
         """Mark a scraped job draft as applied with the tailored resume ID."""

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Linkedin, Mail } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
+import { MarkdownContent } from '@/components/common/markdown-content';
 
 export interface OutreachPreviewProps {
   /** Outreach message content */
@@ -14,27 +15,30 @@ export interface OutreachPreviewProps {
 
 export function OutreachPreview({ content, className }: OutreachPreviewProps) {
   const { t } = useTranslations();
+
   return (
     <div
       className={cn(
-        'bg-white border border-ink',
-        'shadow-sw-default',
-        'overflow-hidden',
+        'overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-xs md:max-w-3xl',
         className
       )}
     >
       {/* Preview Header */}
-      <div className="p-4 border-b border-ink bg-[#F5F5F0]">
+      <div className="border-b border-[#e6e3dc] bg-secondary/50 px-5 py-3">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Linkedin className="w-4 h-4 text-[#0077B5]" />
-            <span className=" text-xs uppercase">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0077B5]/10">
+              <Linkedin className="h-4 w-4 text-[#0077B5]" />
+            </span>
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
               {t('outreach.preview.channels.linkedin')}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-ink-soft" />
-            <span className=" text-xs uppercase">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+              <Mail className="h-4 w-4 text-primary" />
+            </span>
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
               {t('outreach.preview.channels.email')}
             </span>
           </div>
@@ -43,19 +47,19 @@ export function OutreachPreview({ content, className }: OutreachPreviewProps) {
 
       {/* Message Preview */}
       <div className="p-6 md:p-8">
-        {content ? (
-          <div className="space-y-4">
-            {/* Message Bubble Style */}
-            <div className="bg-[#F5F5F0] border border-ink p-4 shadow-sw-sm">
-              <p className="font-sans text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+        {content && content.trim().length > 0 ? (
+          <div className="space-y-6">
+            {/* Message Card */}
+            <div className="rounded-2xl border border-[#e6e3dc] bg-secondary/40 p-5 shadow-sw-xs">
+              <MarkdownContent content={content} />
             </div>
 
             {/* Usage Tips */}
-            <div className="pt-4 border-t border-paper-tint">
-              <p className=" text-xs text-steel-grey uppercase mb-2">
+            <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5">
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-primary">
                 {t('outreach.preview.howToUseTitle')}
               </p>
-              <ul className=" text-xs text-steel-grey space-y-1">
+              <ul className="space-y-1.5 text-xs leading-relaxed text-ink-soft">
                 <li>{t('outreach.preview.steps.step1')}</li>
                 <li>{t('outreach.preview.steps.step2')}</li>
                 <li>{t('outreach.preview.steps.step3')}</li>
@@ -64,9 +68,9 @@ export function OutreachPreview({ content, className }: OutreachPreviewProps) {
             </div>
           </div>
         ) : (
-          <div className="text-center py-12 text-steel-grey">
-            <p className=" text-sm">{t('outreach.preview.emptyTitle')}</p>
-            <p className=" text-xs mt-2">{t('outreach.preview.emptyDescription')}</p>
+          <div className="py-12 text-center text-steel-grey">
+            <p className="text-sm">{t('outreach.preview.emptyTitle')}</p>
+            <p className="mt-2 text-xs">{t('outreach.preview.emptyDescription')}</p>
           </div>
         )}
       </div>

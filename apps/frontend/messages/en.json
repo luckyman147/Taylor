@@ -210,6 +210,7 @@
     },
     "regenerate": {
       "buttonLabel": "AI Regenerate",
+      "stepLabel": "Step {current} of {total}",
       "selectDialog": {
         "title": "Select Items to Regenerate",
         "subtitle": "Choose which parts of your resume you want to improve",
@@ -519,6 +520,19 @@
     }
   },
   "tailor": {
+    "aiConnection": {
+      "title": "AI connection",
+      "subtitle": "Test your LLM provider before you start tailoring.",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "retest": "Test again",
+      "notConfigured": "No LLM provider configured",
+      "ok": "Connection healthy",
+      "failed": "Connection failed",
+      "connectedAs": "{provider} · {model}",
+      "latency": "{ms} ms",
+      "gotoSettings": "Open Settings"
+    },
     "title": "Tailor Resume",
     "subtitle": "Optimize your resume for a specific job",
     "heroTitle": "Tailor Your Resume",

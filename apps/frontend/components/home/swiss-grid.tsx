@@ -47,7 +47,7 @@ export const SwissGrid = ({ children }: { children: React.ReactNode }) => {
         {/* Footer - stays above hovered cards */}
         <div className="p-4 bg-background flex justify-between items-center  text-xs text-primary border-t border-ink shrink-0 relative z-30">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Taylor" width={20} height={20} className="w-5 h-5" />
+            <Image src="/logo.png" alt="Taylor" width={20} height={20} className="w-5 h-5" />
             <span className="uppercase font-bold">Taylor</span>
           </div>
           <div className="flex items-center gap-4">

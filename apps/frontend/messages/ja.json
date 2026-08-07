@@ -210,6 +210,7 @@
     },
     "regenerate": {
       "buttonLabel": "AIで再生成",
+      "stepLabel": "ステップ {current} / {total}",
       "selectDialog": {
         "title": "再生成する項目を選択",
         "subtitle": "改善したい履歴書の部分を選択してください",
@@ -519,6 +520,19 @@
     }
   },
   "tailor": {
+    "aiConnection": {
+      "title": "AI接続",
+      "subtitle": "開始する前に、LLMプロバイダーが動作することを確認します。",
+      "test": "接続テスト",
+      "testing": "テスト中…",
+      "retest": "再テスト",
+      "notConfigured": "LLMプロバイダーが設定されていません",
+      "ok": "接続は正常です",
+      "failed": "接続に失敗しました",
+      "connectedAs": "{provider} · {model}",
+      "latency": "{ms} ミリ秒",
+      "gotoSettings": "設定を開く"
+    },
     "title": "履歴書をカスタマイズ",
     "subtitle": "特定の求人に合わせて履歴書を最適化",
     "heroTitle": "履歴書をカスタマイズ",

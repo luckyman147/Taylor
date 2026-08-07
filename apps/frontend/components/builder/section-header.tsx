@@ -87,12 +87,12 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 
   return (
     <div
-      className={`space-y-0 border p-6 bg-white shadow-sw-default ${
-        isHidden ? 'border-dashed border-steel-grey opacity-60' : 'border-ink'
+      className={`space-y-0 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs ${
+        isHidden ? 'border-dashed border-[#c9c5bc] opacity-60' : ''
       }`}
     >
       {/* Section Header */}
-      <div className="flex justify-between items-center border-b border-ink pb-2 mb-4">
+      <div className="flex justify-between items-center border-b border-[#e6e3dc] pb-2 mb-4">
         {/* Section Name (editable) */}
         <div className="flex items-center gap-2">
           {isEditing ? (
@@ -101,7 +101,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="h-8 w-48 rounded-lg border-ink font-serif text-lg font-bold"
+                className="h-8 w-48 rounded-lg text-lg font-bold"
                 autoFocus
               />
               <Button
@@ -127,7 +127,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             </div>
           ) : (
             <>
-              <h3 className="font-serif text-xl font-bold">{section.displayName}</h3>
+              <h3 className="text-xl font-bold tracking-tight">{section.displayName}</h3>
               {!isPersonalInfo && (
                 <Button
                   variant="ghost"
@@ -146,12 +146,12 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
                 </Button>
               )}
               {!section.isDefault && (
-                <span className=" text-[10px] uppercase tracking-wider text-steel-grey bg-paper-tint px-1.5 py-0.5 border border-paper-tint">
+                <span className="rounded-full border border-[#e6e3dc] bg-white px-2 py-0.5 text-[10px] uppercase tracking-wider text-steel-grey">
                   {t('builder.sectionHeader.customTag')}
                 </span>
               )}
               {isHidden && (
-                <span className=" text-[10px] uppercase tracking-wider text-orange-600 bg-white px-1.5 py-0.5 border border-orange-500">
+                <span className="rounded-full border border-orange-500 bg-orange-50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-orange-600">
                   {t('builder.sectionHeader.hiddenFromPdfTag')}
                 </span>
               )}

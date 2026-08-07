@@ -210,6 +210,7 @@
     },
     "regenerate": {
       "buttonLabel": "Regenerar con IA",
+      "stepLabel": "Paso {current} de {total}",
       "selectDialog": {
         "title": "Selecciona elementos para regenerar",
         "subtitle": "Elige qué partes de tu currículum quieres mejorar",
@@ -519,6 +520,19 @@
     }
   },
   "tailor": {
+    "aiConnection": {
+      "title": "Conexión de IA",
+      "subtitle": "Verifica que tu proveedor de LLM funcione antes de empezar.",
+      "test": "Probar conexión",
+      "testing": "Probando…",
+      "retest": "Probar de nuevo",
+      "notConfigured": "No hay proveedor de LLM configurado",
+      "ok": "Conexión saludable",
+      "failed": "Conexión fallida",
+      "connectedAs": "{provider} · {model}",
+      "latency": "{ms} ms",
+      "gotoSettings": "Abrir ajustes"
+    },
     "title": "Personalizar CV",
     "subtitle": "Optimiza tu currículum para un trabajo específico",
     "heroTitle": "Personaliza tu currículum",

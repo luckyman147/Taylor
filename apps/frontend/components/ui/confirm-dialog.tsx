@@ -11,9 +11,13 @@ import {
 } from './dialog';
 import { Button } from './button';
 import { useTranslations } from '@/lib/i18n';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Info from 'lucide-react/dist/esm/icons/info';
 
 /**
- * Swiss International Style Confirm Dialog Component
+ * Confirm Dialog Component
  *
  * A modal dialog for confirming user actions with semantic variants:
  * - danger: Destructive actions (delete, remove)
@@ -72,52 +76,44 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   const variantStyles = {
     danger: {
-      icon: (
-        <div className="w-12 h-12 border-2 border-red-600 bg-[#fdf3f2] flex items-center justify-center">
-          <span className="text-red-600 text-2xl font-bold">!</span>
-        </div>
-      ),
+      badge: 'bg-destructive/10 text-destructive',
+      icon: Trash2,
       buttonVariant: 'destructive' as const,
     },
     warning: {
-      icon: (
-        <div className="w-12 h-12 border-2 border-orange-500 bg-[#fdf5ec] flex items-center justify-center">
-          <span className="text-orange-500 text-2xl font-bold">!</span>
-        </div>
-      ),
+      badge: 'bg-warning/10 text-warning',
+      icon: AlertTriangle,
       buttonVariant: 'warning' as const,
     },
     success: {
-      icon: (
-        <div className="w-12 h-12 border-2 border-green-700 bg-green-50 flex items-center justify-center">
-          <span className="text-green-700 text-2xl font-bold">&#10003;</span>
-        </div>
-      ),
+      badge: 'bg-success/10 text-success',
+      icon: Check,
       buttonVariant: 'success' as const,
     },
     default: {
-      icon: (
-        <div className="w-12 h-12 border border-primary bg-primary/5 flex items-center justify-center">
-          <span className="text-primary text-2xl font-bold">?</span>
-        </div>
-      ),
+      badge: 'bg-primary/10 text-primary',
+      icon: Info,
       buttonVariant: 'default' as const,
     },
   };
 
-  const { icon, buttonVariant } = variantStyles[variant];
+  const { badge, icon: Icon, buttonVariant } = variantStyles[variant];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] p-0 gap-0">
+      <DialogContent className="rounded-2xl sm:max-w-[425px] p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4">
           <div className="flex items-start gap-4">
-            {icon}
-            <div className="min-w-0 flex-1">
+            <div
+              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${badge}`}
+            >
+              <Icon className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
               <DialogTitle className="font-sans text-xl font-bold uppercase tracking-tight">
                 {title}
               </DialogTitle>
-              <DialogDescription className=" text-xs text-ink-soft mt-2 max-h-60 overflow-y-auto whitespace-pre-wrap [overflow-wrap:anywhere]">
+              <DialogDescription className="mt-2 max-h-60 overflow-y-auto whitespace-pre-wrap pl-0 text-xs text-ink-soft [overflow-wrap:anywhere]">
                 {description}
               </DialogDescription>
             </div>
@@ -125,21 +121,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </DialogHeader>
         {errorMessage && (
           <div className="px-6 pb-4">
-            <div className="border-2 border-red-600 bg-[#fdf3f2] p-3  text-xs text-red-700 max-h-60 overflow-y-auto whitespace-pre-wrap [overflow-wrap:anywhere]">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive max-h-60 overflow-y-auto whitespace-pre-wrap [overflow-wrap:anywhere]">
               {errorMessage}
             </div>
           </div>
         )}
-        <DialogFooter className="p-4 bg-secondary border-t border-[#d9d5cc] flex-row justify-end gap-3">
+        <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
           {showCancelButton && (
-            <Button variant="outline" onClick={handleCancel} className="rounded-lg">
+            <Button variant="outline" onClick={handleCancel} className="rounded-full">
               {finalCancelLabel}
             </Button>
           )}
           <Button
             variant={buttonVariant}
             onClick={handleConfirm}
-            className="rounded-lg"
+            className="rounded-full"
             disabled={confirmDisabled}
           >
             {finalConfirmLabel}

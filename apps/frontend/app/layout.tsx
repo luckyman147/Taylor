@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   description: 'Build your resume with Taylor',
   applicationName: 'Taylor',
   keywords: ['resume', 'matcher', 'job', 'application'],
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -36,18 +36,18 @@ export function HighlightedResumeView({ resumeData, keywords }: HighlightedResum
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b border-paper-tint bg-paper-tint">
-        <FileUser className="w-4 h-4 text-ink-soft" />
-        <h3 className=" text-sm font-bold uppercase text-ink-soft">
+      <div className="flex items-center gap-2 border-b border-[#e6e3dc] bg-secondary/40 px-4 py-3">
+        <FileUser className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-bold uppercase tracking-wide text-ink-soft">
           {t('builder.jdMatch.yourResume')}
         </h3>
-        <span className="text-xs text-steel-grey ml-2">
+        <span className="ml-2 rounded-full border border-[#e6e3dc] bg-white px-2 py-0.5 text-[11px] text-ink-soft">
           {t('builder.jdMatch.matchingKeywordsHighlighted')}
         </span>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {/* Summary */}
         {resumeData.summary && (
           <Section title={t('resume.sections.summary')} icon={<FileUser className="w-4 h-4" />}>
@@ -202,10 +202,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border border-paper-tint bg-white rounded-none">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-paper-tint bg-paper-tint">
+    <div className="overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-xs">
+      <div className="flex items-center gap-2 border-b border-[#e6e3dc] bg-secondary/40 px-3 py-2.5">
         {icon}
-        <span className=" text-xs font-bold uppercase text-ink-soft">{title}</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">{title}</span>
       </div>
       <div className="p-3">{children}</div>
     </div>
@@ -241,8 +241,10 @@ function SkillTag({ text, keywords }: { text: string; keywords: Set<string> }) {
 
   return (
     <span
-      className={`inline-block px-2 py-0.5 text-xs ${
-        isMatch ? 'bg-yellow-200 text-black font-medium' : 'bg-background text-ink-soft'
+      className={`inline-block rounded-full px-2.5 py-1 text-xs ${
+        isMatch
+          ? 'bg-yellow-100 font-medium text-black ring-1 ring-yellow-300'
+          : 'bg-secondary text-ink-soft'
       }`}
     >
       {text}

@@ -176,11 +176,16 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({ data, onChange }
       </div>
 
       {data.length === 0 ? (
-        <div className="text-center py-12 bg-paper-tint border border-dashed border-ink">
+        <div className="text-center rounded-xl py-12 bg-paper-tint border border-dashed border-[#e6e3dc]">
           <p className=" text-sm text-steel-grey mb-4">
             {t('builder.genericItemForm.noEntries', { label: t('resume.sections.experience') })}
           </p>
-          <Button variant="outline" size="sm" onClick={handleAdd} className="rounded-lg border-ink">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAdd}
+            className="rounded-full border-[#e6e3dc]"
+          >
             <Plus className="w-4 h-4 mr-2" /> {t('builder.forms.experience.addFirstJob')}
           </Button>
         </div>
@@ -198,7 +203,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({ data, onChange }
             <div className="space-y-8">
               {data.map((item) => (
                 <DraggableListItem key={item.id} id={item.id}>
-                  <div className="p-6 border border-ink bg-paper-tint relative group">
+                  <div className="rounded-2xl border border-[#e6e3dc] bg-white relative group p-6">
                     <Button
                       variant="ghost"
                       size="icon"

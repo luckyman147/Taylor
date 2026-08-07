@@ -93,13 +93,13 @@ export function ManualAddApplicationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
+      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden">
+        <DialogHeader className="border-b border-[#e6e3dc] bg-white p-6">
           <DialogTitle>{t('tracker.manualAdd.title')}</DialogTitle>
           <DialogDescription>{t('tracker.manualAdd.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 p-6">
           <div className="space-y-1">
             <Label>{t('tracker.manualAdd.resume')}</Label>
             <Dropdown
@@ -157,7 +157,7 @@ export function ManualAddApplicationDialog({
           {error && <p className=" text-xs text-destructive">{error}</p>}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

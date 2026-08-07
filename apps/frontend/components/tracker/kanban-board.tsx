@@ -15,6 +15,7 @@ import Plus from 'lucide-react/dist/esm/icons/plus';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import FolderKanban from 'lucide-react/dist/esm/icons/folder-kanban';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/lib/i18n';
 import {
@@ -32,6 +33,7 @@ import { BulkActionBar } from './bulk-action-bar';
 import { CardDetailModal } from './card-detail-modal';
 import { ManualAddApplicationDialog } from './manual-add-application-dialog';
 import { planMove } from './reorder';
+import { STATUS_DOT } from './status-colors';
 
 function emptyColumns(): ApplicationColumns {
   return APPLICATION_STATUS_ORDER.reduce((acc, status) => {
@@ -185,43 +187,51 @@ export function KanbanBoard() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Header — mirrors the dashboard canvas header */}
-      <div className="flex shrink-0 flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
-        <div>
-          <h1 className="font-sans text-3xl font-bold uppercase tracking-tight text-ink md:text-4xl">
-            {t('tracker.title')}
-          </h1>
-          <p className="mt-2  text-xs uppercase tracking-wide text-ink-soft">
-            {t('tracker.subtitle')}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {showScrollControls && (
-            <div className="flex items-center">
-              <button
-                type="button"
-                aria-label={t('tracker.scroll.prev')}
-                onClick={() => scrollByColumn(-1)}
-                disabled={!canScrollLeft}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#e6e3dc] bg-white text-ink shadow-sw-xs transition-all hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                aria-label={t('tracker.scroll.next')}
-                onClick={() => scrollByColumn(1)}
-                disabled={!canScrollRight}
-                className="-ml-2 flex h-10 w-10 items-center justify-center rounded-xl border border-[#e6e3dc] bg-white text-ink shadow-sw-xs transition-all hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-          <Button onClick={() => setManualAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            {t('tracker.addApplication')}
-          </Button>
+      {/* Header — navy gradient band with kicker + travel controls */}
+      <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-primary via-primary to-[#15304f] px-6 py-8 md:px-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute -bottom-28 right-40 h-60 w-60 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute -left-20 -top-10 hidden h-72 w-72 rounded-full bg-white/5 md:block" />
+        <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
+              {t('tracker.subtitle')}
+            </p>
+            <h1 className="mt-1.5 font-sans text-3xl font-bold uppercase tracking-tight text-white md:text-4xl">
+              {t('tracker.title')}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {showScrollControls && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={t('tracker.scroll.prev')}
+                  onClick={() => scrollByColumn(-1)}
+                  disabled={!canScrollLeft}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white backdrop-blur transition-all hover:border-white/40 hover:bg-white/20 disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('tracker.scroll.next')}
+                  onClick={() => scrollByColumn(1)}
+                  disabled={!canScrollRight}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white backdrop-blur transition-all hover:border-white/40 hover:bg-white/20 disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            <Button
+              onClick={() => setManualAddOpen(true)}
+              className="border-white bg-white text-primary hover:bg-blue-50 hover:border-white"
+            >
+              <Plus className="h-4 w-4" />
+              {t('tracker.addApplication')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -251,8 +261,22 @@ export function KanbanBoard() {
           </div>
         ) : isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center p-10 text-center">
-            <p className="font-sans text-lg font-bold text-ink">{t('tracker.empty.title')}</p>
-            <p className="mt-1 text-xs text-ink-soft">{t('tracker.empty.description')}</p>
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#e6e3dc] bg-white text-primary shadow-sw-sm">
+              <FolderKanban className="h-7 w-7" />
+            </div>
+            <p className="mt-4 font-sans text-lg font-bold text-ink">{t('tracker.empty.title')}</p>
+            <p className="mt-1 max-w-sm text-xs text-ink-soft">{t('tracker.empty.description')}</p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              {APPLICATION_STATUS_ORDER.map((status) => (
+                <span
+                  key={status}
+                  className="flex items-center gap-1.5 rounded-full border border-[#e6e3dc] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink-soft"
+                >
+                  <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
+                  {t(`tracker.columns.${status}`)}
+                </span>
+              ))}
+            </div>
           </div>
         ) : (
           <DndContext
@@ -260,20 +284,18 @@ export function KanbanBoard() {
             collisionDetection={closestCorners}
             onDragEnd={handleDragEnd}
           >
-            <div
-              ref={scrollRef}
-              className="flex min-h-0 flex-1 gap-4 overflow-x-auto px-4 pb-4"
-            >
+            <div ref={scrollRef} className="flex min-h-0 flex-1 gap-4 overflow-x-auto px-4 pb-4">
               {APPLICATION_STATUS_ORDER.map((status) => (
-                <KanbanColumn
-                  key={status}
-                  status={status}
-                  applications={columns[status]}
-                  selectedIds={selectedIds}
-                  sharedResumeIds={sharedResumeIds}
-                  onToggleSelect={toggleSelect}
-                  onOpen={setOpenCardId}
-                />
+                <div key={status} data-column={status} className="flex">
+                  <KanbanColumn
+                    status={status}
+                    applications={columns[status]}
+                    selectedIds={selectedIds}
+                    sharedResumeIds={sharedResumeIds}
+                    onToggleSelect={toggleSelect}
+                    onOpen={setOpenCardId}
+                  />
+                </div>
               ))}
             </div>
           </DndContext>
@@ -298,6 +320,7 @@ export function KanbanBoard() {
                 onClick={() => scrollToColumn(status)}
                 className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#e6e3dc] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-soft shadow-sw-xs transition-all hover:border-primary hover:text-primary"
               >
+                <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
                 {t(`tracker.columns.${status}`)}
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-paper-tint px-1 text-[10px] font-bold text-steel-grey">
                   {columns[status].length}

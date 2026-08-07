@@ -14,6 +14,7 @@ import {
   Save,
   X,
   RefreshCw,
+  Archive,
 } from 'lucide-react/dist/esm/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,7 @@ import {
   fetchScrapedJobs,
   deleteScrapedJob,
   clearScrapedJobs,
+  setScrapedJobArchived,
   type JobListing,
   type JobSearchResponse,
   type ScrapedJobDraft,
@@ -80,6 +82,7 @@ const SOURCE_META: Record<string, { label: string; color: string; bg: string }> 
   remoteok: { label: 'RemoteOK', color: 'border-green-600 text-green-600', bg: 'bg-green-50' },
   himalayas: { label: 'Himalayas', color: 'border-blue-600 text-blue-600', bg: 'bg-primary/5' },
   jobicy: { label: 'Jobicy', color: 'border-orange-600 text-orange-600', bg: 'bg-[#fdf5ec]' },
+  keejob: { label: 'Keejob', color: 'border-purple-600 text-purple-600', bg: 'bg-purple-50' },
 };
 
 export default function JobScraperPage() {
@@ -97,6 +100,7 @@ export default function JobScraperPage() {
   const [drafts, setDrafts] = useState<ScrapedJobDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [draftSortBy, setDraftSortBy] = useState<'relevance' | 'date'>('date');
@@ -170,6 +174,25 @@ export default function JobScraperPage() {
     loadDrafts();
   }, [loadDrafts]);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('job_scraper_hidden_sources');
+      if (stored) {
+        setHiddenSources(new Set<string>(JSON.parse(stored)));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('job_scraper_hidden_sources', JSON.stringify(Array.from(hiddenSources)));
+    } catch {
+      // ignore
+    }
+  }, [hiddenSources]);
+
   const handleSearch = useCallback(async () => {
     if (!masterResumeId) {
       setError('No master resume found. Please upload a resume first.');
@@ -226,6 +249,33 @@ export default function JobScraperPage() {
     }
   };
 
+  const handleDeleteJob = async (jobId: string, url: string) => {
+    try {
+      await deleteScrapedJob(jobId);
+      setDrafts((prev) => prev.filter((d) => d.job_id !== jobId));
+      setResults((prev) =>
+        prev
+          ? {
+              ...prev,
+              results: prev.results.filter((j) => j.url !== url),
+              total: Math.max(0, prev.total - 1),
+            }
+          : prev
+      );
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSetArchived = async (jobId: string, archived: boolean) => {
+    try {
+      await setScrapedJobArchived(jobId, archived);
+      setDrafts((prev) => prev.map((d) => (d.job_id === jobId ? { ...d, archived } : d)));
+    } catch {
+      // ignore
+    }
+  };
+
   const handleClearDrafts = async () => {
     if (!masterResumeId) return;
     try {
@@ -259,6 +309,18 @@ export default function JobScraperPage() {
 
   const mcpCount = Object.values(mcpStatus).filter((s) => s.available && s.enabled).length;
 
+  const activeDrafts = drafts.filter((d) => !d.archived);
+  const archivedDrafts = drafts.filter((d) => d.archived);
+  const draftByUrl = new Map<string, ScrapedJobDraft>(drafts.map((d) => [d.url, d]));
+
+  // Counts of all raw results per source (used for hidden-section chips)
+  const groupedResultsAll: Record<string, number> = {};
+  if (results) {
+    for (const job of results.results) {
+      groupedResultsAll[job.source] = (groupedResultsAll[job.source] || 0) + 1;
+    }
+  }
+
   // Group results by source with sorting
   const groupedResults: Record<string, JobListing[]> = {};
   if (results) {
@@ -271,6 +333,9 @@ export default function JobScraperPage() {
       return b.relevance_score - a.relevance_score;
     });
     for (const job of sorted) {
+      if (hiddenSources.has(job.source)) continue;
+      const draft = draftByUrl.get(job.url);
+      if (draft && draft.archived) continue;
       if (!groupedResults[job.source]) {
         groupedResults[job.source] = [];
       }
@@ -278,9 +343,9 @@ export default function JobScraperPage() {
     }
   }
 
-  // Group drafts by source with sorting
+  // Group active drafts by source with sorting
   const groupedDrafts: Record<string, ScrapedJobDraft[]> = {};
-  const sortedDrafts = [...drafts].sort((a, b) => {
+  const sortedDrafts = [...activeDrafts].sort((a, b) => {
     if (draftSortBy === 'date') {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -295,6 +360,15 @@ export default function JobScraperPage() {
     groupedDrafts[draft.source].push(draft);
   }
 
+  // Group archived drafts by source
+  const groupedArchived: Record<string, ScrapedJobDraft[]> = {};
+  for (const draft of archivedDrafts) {
+    if (!groupedArchived[draft.source]) {
+      groupedArchived[draft.source] = [];
+    }
+    groupedArchived[draft.source].push(draft);
+  }
+
   // Filter out hidden sources for display
   const visibleGroupedDrafts = Object.fromEntries(
     Object.entries(groupedDrafts).filter(([source]) => !hiddenSources.has(source))
@@ -305,51 +379,60 @@ export default function JobScraperPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0F0E8]">
-      <div className="max-w-6xl mx-auto p-8 space-y-8">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-6xl mx-auto p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+              className="rounded-full border border-[#e6e3dc] bg-white text-ink shadow-sw-xs hover:border-primary hover:text-primary"
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="font-serif text-3xl font-bold">Scrape Jobs</h1>
-              <p className="text-sm text-ink-soft mt-1">
+              <h1 className="text-3xl font-bold tracking-tight">Scrape Jobs</h1>
+              <p className="mt-1 text-xs uppercase tracking-wide text-ink-soft">
                 Search multiple job sites in parallel using MCP integrations
               </p>
             </div>
           </div>
           {drafts.length > 0 && (
             <Button
-              variant="ghost"
+              variant="outline"
+              size="sm"
               onClick={() => setShowDrafts(!showDrafts)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full px-4"
             >
               <Save className="w-4 h-4" />
-              <span className=" text-sm">Drafts ({drafts.length})</span>
+              <span className="text-xs">Drafts ({activeDrafts.length})</span>
             </Button>
           )}
         </div>
 
         {/* MCP Status */}
-        <div className="border border-ink p-4 shadow-sw-sm">
+        <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div
-                className={`w-2 h-2 rounded-full ${mcpCount > 0 ? 'bg-green-500' : 'bg-[#fdf3f2]0'}`}
+                className={`h-2.5 w-2.5 rounded-full ${
+                  mcpCount > 0 ? 'bg-green-500' : 'bg-red-500'
+                }`}
               />
-              <span className=" text-sm font-bold">
+              <span className="text-xs font-bold uppercase tracking-wide text-ink">
                 {mcpCount} of {Object.keys(mcpStatus).length || '?'} MCPs active
               </span>
             </div>
             <Button
               variant="ghost"
+              size="sm"
               onClick={handleRestartMCPs}
               disabled={restarting}
-              className="text-xs flex items-center gap-1"
+              className="rounded-full text-xs text-primary hover:text-primary"
             >
-              <RefreshCw className={`w-3 h-3 ${restarting ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${restarting ? 'animate-spin' : ''}`} />
               {restarting ? 'Restarting...' : 'Restart MCPs'}
             </Button>
           </div>
@@ -357,10 +440,10 @@ export default function JobScraperPage() {
             {Object.entries(mcpStatus).map(([name, status]) => (
               <span
                 key={name}
-                className={`text-xs px-2 py-1 border ${
+                className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
                   status.available && status.enabled
-                    ? 'border-green-500 text-green-600'
-                    : 'border-gray-400 text-gray-400'
+                    ? 'border-green-200 bg-green-50 text-green-600'
+                    : 'border-[#e7e5df] bg-paper-tint text-steel-grey'
                 }`}
               >
                 {name}
@@ -370,15 +453,15 @@ export default function JobScraperPage() {
         </div>
 
         {/* Search Form */}
-        <div className="border border-ink p-6 shadow-sw-sm space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Search className="w-4 h-4" />
-            <h2 className=" text-sm font-bold uppercase tracking-wider">Search Filters</h2>
+        <div className="space-y-5 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-primary" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink">Search Filters</h2>
           </div>
 
           {/* Keywords */}
           <div>
-            <label className=" text-xs font-bold uppercase tracking-wider block mb-1">
+            <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
               Keywords
             </label>
             <input
@@ -386,14 +469,14 @@ export default function JobScraperPage() {
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               placeholder="e.g. software engineer, python, react..."
-              className="w-full border border-ink px-3 py-2 text-sm  focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-[#c9c5bc] bg-white px-3 py-2 text-sm text-ink placeholder:text-steel-grey focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
 
           {/* Locations */}
           <div>
-            <label className=" text-xs font-bold uppercase tracking-wider block mb-1">
-              <MapPin className="w-3 h-3 inline mr-1" />
+            <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+              <MapPin className="h-3 w-3 inline mr-1" />
               Locations
             </label>
             <div className="flex flex-wrap gap-2">
@@ -401,10 +484,10 @@ export default function JobScraperPage() {
                 <button
                   key={opt.value}
                   onClick={() => toggleLocation(opt.value)}
-                  className={`text-xs px-3 py-1 border ${
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
                     selectedLocations.includes(opt.value)
-                      ? 'border-ink bg-primary text-white'
-                      : 'border-ink hover:bg-paper-tint'
+                      ? 'border-primary bg-primary text-white shadow-sw-xs'
+                      : 'border-[#e7e6df] bg-white text-ink hover:border-primary hover:text-primary'
                   }`}
                 >
                   {opt.label}
@@ -415,8 +498,8 @@ export default function JobScraperPage() {
 
           {/* Job Types */}
           <div>
-            <label className=" text-xs font-bold uppercase tracking-wider block mb-1">
-              <Briefcase className="w-3 h-3 inline mr-1" />
+            <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+              <Briefcase className="h-3 w-3 inline mr-1" />
               Job Type
             </label>
             <div className="flex flex-wrap gap-2">
@@ -424,10 +507,10 @@ export default function JobScraperPage() {
                 <button
                   key={opt.value}
                   onClick={() => toggleJobType(opt.value)}
-                  className={`text-xs px-3 py-1 border ${
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
                     selectedJobTypes.includes(opt.value)
-                      ? 'border-ink bg-primary text-white'
-                      : 'border-ink hover:bg-paper-tint'
+                      ? 'border-primary bg-primary text-white shadow-sw-xs'
+                      : 'border-[#e7e6df] bg-white text-ink hover:border-primary hover:text-primary'
                   }`}
                 >
                   {opt.label}
@@ -439,14 +522,14 @@ export default function JobScraperPage() {
           {/* Date Posted + Easy Apply */}
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className=" text-xs font-bold uppercase tracking-wider block mb-1">
-                <Clock className="w-3 h-3 inline mr-1" />
+              <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                <Clock className="h-3 w-3 inline mr-1" />
                 Date Posted
               </label>
               <select
                 value={datePosted}
                 onChange={(e) => setDatePosted(e.target.value)}
-                className="w-full border border-ink px-3 py-2 text-sm "
+                className="w-full rounded-xl border border-[#c9c5bc] bg-white px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 {DATE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -456,20 +539,22 @@ export default function JobScraperPage() {
               </select>
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#e7e6df] bg-white px-4 py-2.5">
                 <input
                   type="checkbox"
                   checked={easyApply}
                   onChange={(e) => setEasyApply(e.target.checked)}
-                  className="w-4 h-4"
+                  className="h-4 w-4 rounded-md border-ink accent-primary"
                 />
-                <span className="text-sm ">Easy Apply only</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink">
+                  Easy Apply only
+                </span>
               </label>
             </div>
           </div>
 
           {/* Search Button */}
-          <Button onClick={handleSearch} disabled={loading} className="w-full">
+          <Button onClick={handleSearch} disabled={loading} className="w-full rounded-xl">
             {loading ? (
               <>
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
@@ -483,38 +568,42 @@ export default function JobScraperPage() {
             )}
           </Button>
           {saving && (
-            <p className="text-xs text-ink-soft  text-center">
-              Saving results to drafts...
-            </p>
+            <p className=" text-center text-xs text-ink-soft">Saving results to drafts...</p>
           )}
         </div>
 
         {/* Error */}
         {error && (
-          <div className="border border-red-500 bg-[#fdf3f2] p-4 text-red-700 text-sm">{error}</div>
+          <div className="rounded-xl border border-red-500 bg-[#fdf3f2] p-4 text-sm text-red-700">
+            {error}
+          </div>
         )}
 
         {/* Saved Drafts */}
         {showDrafts && drafts.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className=" text-sm font-bold uppercase tracking-wider">
-                Saved Drafts ({visibleDraftsCount}/{drafts.length})
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
+                Saved Drafts ({visibleDraftsCount}/{activeDrafts.length})
               </h2>
               <div className="flex items-center gap-2">
-                <div className="flex border border-ink">
+                <div className="flex rounded-full border border-[#e7e6df] bg-white p-1">
                   <button
                     onClick={() => setDraftSortBy('relevance')}
-                    className={`text-xs px-3 py-1  ${
-                      draftSortBy === 'relevance' ? 'bg-primary text-white' : 'hover:bg-paper-tint'
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                      draftSortBy === 'relevance'
+                        ? 'bg-primary text-white'
+                        : 'text-ink-soft hover:text-primary'
                     }`}
                   >
                     Relevance
                   </button>
                   <button
                     onClick={() => setDraftSortBy('date')}
-                    className={`text-xs px-3 py-1  border-l border-ink ${
-                      draftSortBy === 'date' ? 'bg-primary text-white' : 'hover:bg-paper-tint'
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                      draftSortBy === 'date'
+                        ? 'bg-primary text-white'
+                        : 'text-ink-soft hover:text-primary'
                     }`}
                   >
                     Date
@@ -522,21 +611,42 @@ export default function JobScraperPage() {
                 </div>
                 <Button
                   variant="ghost"
+                  size="sm"
                   onClick={handleClearDrafts}
-                  className="text-xs text-red-600 border border-red-600 hover:bg-[#fdf3f2]"
+                  className="rounded-full border border-red-400/50 bg-red-50 px-4 text-red-600 hover:border-red-500 hover:bg-red-500 hover:text-white"
                 >
-                  <Trash2 className="w-3 h-3 mr-1" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   Clear All
                 </Button>
-                <Button variant="ghost" onClick={() => setShowDrafts(false)} className="text-xs">
-                  <X className="w-3 h-3 mr-1" />
+                {archivedDrafts.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={`rounded-full border px-4 text-xs ${
+                      showArchived
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-[#e7e6df] text-ink-soft hover:text-primary'
+                    }`}
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    Archived ({archivedDrafts.length})
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDrafts(false)}
+                  className="text-xs"
+                >
+                  <X className="w-3.5 h-3.5" />
                   Close
                 </Button>
               </div>
             </div>
             {hiddenSources.size > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs  text-ink-soft">Hidden:</span>
+                <span className="text-xs text-ink-soft">Hidden:</span>
                 {Array.from(hiddenSources).map((source) => {
                   const meta = SOURCE_META[source] || {
                     label: source,
@@ -548,7 +658,7 @@ export default function JobScraperPage() {
                     <button
                       key={source}
                       onClick={() => toggleSourceVisibility(source)}
-                      className={`text-xs px-2 py-0.5 border line-through opacity-50 hover:opacity-100 transition-opacity ${meta.bg} ${meta.color}`}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide line-through opacity-50 hover:opacity-100 transition-opacity ${meta.bg} ${meta.color}`}
                     >
                       {meta.label} ({count})
                     </button>
@@ -566,9 +676,7 @@ export default function JobScraperPage() {
                 <div key={source} className="space-y-2">
                   <button
                     onClick={() => toggleSourceVisibility(source)}
-                    className={` text-xs font-bold uppercase tracking-wider px-3 py-1 inline-block border transition-opacity ${
-                      meta.bg
-                    } ${meta.color} hover:opacity-80`}
+                    className={`inline-block rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-opacity ${meta.bg} ${meta.color} hover:opacity-80`}
                   >
                     {meta.label} ({sourceJobs.length})
                   </button>
@@ -579,12 +687,47 @@ export default function JobScraperPage() {
                         draft={draft}
                         meta={meta}
                         onDelete={handleDeleteDraft}
+                        onArchive={handleSetArchived}
                       />
                     ))}
                   </div>
                 </div>
               );
             })}
+            {showArchived && archivedDrafts.length > 0 && (
+              <div className="space-y-3 border-t border-[#e7e6df] pt-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+                  Archived
+                </h3>
+                {Object.entries(groupedArchived).map(([source, sourceJobs]) => {
+                  const meta = SOURCE_META[source] || {
+                    label: source,
+                    color: 'border-gray-400 text-gray-400',
+                    bg: 'bg-gray-50',
+                  };
+                  return (
+                    <div key={source} className="space-y-2">
+                      <span
+                        className={`inline-block rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${meta.bg} ${meta.color}`}
+                      >
+                        {meta.label} ({sourceJobs.length})
+                      </span>
+                      <div className="space-y-2">
+                        {sourceJobs.map((draft) => (
+                          <DraftCard
+                            key={draft.job_id}
+                            draft={draft}
+                            meta={meta}
+                            onDelete={handleDeleteDraft}
+                            onArchive={handleSetArchived}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -592,28 +735,32 @@ export default function JobScraperPage() {
         {results && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className=" text-sm font-bold uppercase tracking-wider">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
                 {results.total} jobs found
               </h2>
               <div className="flex items-center gap-2">
                 {results.cached && (
-                  <span className="text-xs text-ink-soft border border-gray-400 px-2 py-0.5">
+                  <span className="rounded-full border border-[#e7e6df] bg-paper-tint px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-soft">
                     cached
                   </span>
                 )}
-                <div className="flex border border-ink">
+                <div className="flex rounded-full border border-[#e7e6df] bg-white p-1">
                   <button
                     onClick={() => setSortBy('relevance')}
-                    className={`text-xs px-3 py-1  ${
-                      sortBy === 'relevance' ? 'bg-primary text-white' : 'hover:bg-paper-tint'
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                      sortBy === 'relevance'
+                        ? 'bg-primary text-white'
+                        : 'text-ink-soft hover:text-primary'
                     }`}
                   >
                     Relevance
                   </button>
                   <button
                     onClick={() => setSortBy('date')}
-                    className={`text-xs px-3 py-1  border-l border-ink ${
-                      sortBy === 'date' ? 'bg-primary text-white' : 'hover:bg-paper-tint'
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                      sortBy === 'date'
+                        ? 'bg-primary text-white'
+                        : 'text-ink-soft hover:text-primary'
                     }`}
                   >
                     Date
@@ -627,10 +774,10 @@ export default function JobScraperPage() {
               {Object.entries(results.mcp_status).map(([name, status]) => (
                 <span
                   key={name}
-                  className={`px-2 py-1 border ${
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
                     status.status === 'ok'
-                      ? 'border-green-500 text-green-600'
-                      : 'border-red-500 text-red-600'
+                      ? 'border-green-200 bg-green-50 text-green-600'
+                      : 'border-red-200 bg-red-50 text-red-600'
                   }`}
                 >
                   {name}: {status.status} {status.count ? `(${status.count})` : ''}
@@ -638,28 +785,70 @@ export default function JobScraperPage() {
               ))}
             </div>
 
+            {/* Hidden sources */}
+            {hiddenSources.size > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-ink-soft">Hidden:</span>
+                {Array.from(hiddenSources).map((source) => {
+                  const meta = SOURCE_META[source] || {
+                    label: source,
+                    color: 'border-gray-400 text-gray-400',
+                    bg: 'bg-gray-50',
+                  };
+                  const count = groupedResultsAll[source] || 0;
+                  return (
+                    <button
+                      key={source}
+                      onClick={() => toggleSourceVisibility(source)}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide line-through opacity-50 hover:opacity-100 transition-opacity ${meta.bg} ${meta.color}`}
+                    >
+                      {meta.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Grouped Job Cards */}
-            {Object.entries(groupedResults).map(([source, sourceJobs]) => {
-              const meta = SOURCE_META[source] || {
-                label: source,
-                color: 'border-gray-400 text-gray-400',
-                bg: 'bg-gray-50',
-              };
-              return (
-                <div key={source} className="space-y-2">
-                  <h3
-                    className={` text-xs font-bold uppercase tracking-wider px-3 py-1 inline-block ${meta.bg} border ${meta.color}`}
-                  >
-                    {meta.label} ({sourceJobs.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {sourceJobs.map((job) => (
-                      <JobCard key={job.id} job={job} meta={meta} />
-                    ))}
+            {Object.keys(groupedResults).length === 0 ? (
+              <p className="rounded-xl border border-[#e7e6df] bg-paper-tint p-6 text-center text-sm text-ink-soft">
+                No visible jobs. Deleted, archived, or all sections are hidden above.
+              </p>
+            ) : (
+              Object.entries(groupedResults).map(([source, sourceJobs]) => {
+                const meta = SOURCE_META[source] || {
+                  label: source,
+                  color: 'border-gray-400 text-gray-400',
+                  bg: 'bg-gray-50',
+                };
+                return (
+                  <div key={source} className="space-y-2">
+                    <button
+                      onClick={() => toggleSourceVisibility(source)}
+                      className={`inline-block rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-opacity ${meta.bg} ${meta.color} hover:opacity-80`}
+                    >
+                      {meta.label} ({sourceJobs.length})
+                    </button>
+                    <div className="space-y-2">
+                      {sourceJobs.map((job) => {
+                        const draft = draftByUrl.get(job.url);
+                        return (
+                          <JobCard
+                            key={job.id}
+                            job={job}
+                            meta={meta}
+                            jobId={draft?.job_id ?? null}
+                            archived={draft?.archived ?? false}
+                            onArchive={handleSetArchived}
+                            onDelete={handleDeleteJob}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         )}
       </div>
@@ -670,9 +859,17 @@ export default function JobScraperPage() {
 function JobCard({
   job,
   meta,
+  jobId,
+  archived,
+  onArchive,
+  onDelete,
 }: {
   job: JobListing;
   meta: { label: string; color: string; bg: string };
+  jobId: string | null;
+  archived: boolean;
+  onArchive: (id: string, archived: boolean) => void;
+  onDelete: (id: string, url: string) => void;
 }) {
   const handleTailor = () => {
     const jdText = `[${job.title}] ${job.company || 'Unknown Company'}\n\n${job.description || 'No description available'}\n\nLocation: ${job.location || 'Remote'}`;
@@ -681,54 +878,71 @@ function JobCard({
   };
 
   return (
-    <div
-      className={`border-2 border-primary p-4 shadow-sw-sm hover:shadow-sw-md transition-shadow ${meta.bg}/30`}
-    >
+    <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs transition-shadow hover:shadow-sw-md">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className=" text-sm font-bold truncate">{job.title}</h3>
-            <span className={`text-xs px-2 py-0.5 border ${meta.color}`}>{meta.label}</span>
+            <h3 className="text-sm font-bold truncate text-ink">{job.title}</h3>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.bg} ${meta.color}`}
+            >
+              {meta.label}
+            </span>
             {job.remote && (
-              <span className="text-xs px-2 py-0.5 border border-green-500 text-green-600">
+              <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-600">
                 Remote
               </span>
             )}
             {job.easy_apply && (
-              <span className="text-xs px-2 py-0.5 border border-blue-500 text-blue-600">
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-600">
                 Easy Apply
               </span>
             )}
           </div>
-          <p className="text-sm text-ink-soft mt-1">
+          <p className="mt-1.5 text-sm text-ink-soft">
             {job.company || 'Unknown company'}
             {job.location && ` · ${job.location}`}
           </p>
           {job.description && (
-            <p className="text-xs text-ink-soft mt-2 line-clamp-2">{job.description}</p>
+            <p className="mt-2 text-xs text-ink-soft line-clamp-2">{job.description}</p>
           )}
-          <div className="flex items-center gap-4 mt-2 text-xs text-ink-soft ">
+          <div className="mt-3 flex items-center gap-4 text-[11px] text-ink-soft">
             {job.posted_date && <span>{new Date(job.posted_date).toLocaleDateString()}</span>}
             <span>Relevance: {Math.round(job.relevance_score * 100)}%</span>
             <span className="text-success">via {meta.label}</span>
           </div>
         </div>
         <div className="flex flex-col gap-2 shrink-0">
-          <Button
-            onClick={handleTailor}
-            className="text-xs border border-primary bg-primary text-white px-3 py-1 hover:bg-primary transition-colors text-center"
-          >
+          <Button size="sm" onClick={handleTailor} className="rounded-full px-4">
             Tailor CV
           </Button>
           <a
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs border border-ink px-3 py-1 hover:bg-primary hover:text-white transition-colors text-center flex items-center justify-center gap-1"
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c9c5bc] bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-ink transition-colors hover:border-primary hover:bg-primary hover:text-white"
           >
             Apply
             <ExternalLink className="w-3 h-3" />
           </a>
+          {jobId && (
+            <>
+              <button
+                onClick={() => onArchive(jobId, !archived)}
+                className="inline-flex items-center justify-center gap-1 rounded-full border border-[#e7e6df] bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-soft transition-colors hover:border-primary hover:text-primary"
+              >
+                <Archive className="w-3 h-3" />
+                {archived ? 'Unarchive' : 'Archive'}
+              </button>
+              <button
+                onClick={() => onDelete(jobId, job.url)}
+                className="inline-flex items-center justify-center gap-1 rounded-full border border-red-400/50 bg-red-50 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-red-600 transition-colors hover:border-red-500 hover:bg-red-500 hover:text-white"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -739,10 +953,12 @@ function DraftCard({
   draft,
   meta,
   onDelete,
+  onArchive,
 }: {
   draft: ScrapedJobDraft;
   meta: { label: string; color: string; bg: string };
   onDelete: (id: string) => void;
+  onArchive: (id: string, archived: boolean) => void;
 }) {
   const handleTailor = () => {
     const jdText = `[${draft.title}] ${draft.company || 'Unknown Company'}\n\n${draft.description || 'No description available'}\n\nLocation: ${draft.location || 'Remote'}`;
@@ -752,45 +968,46 @@ function DraftCard({
   };
 
   return (
-    <div className={`border border-purple-300 p-3 ${meta.bg}/20`}>
+    <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs transition-shadow hover:shadow-sw-md">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className=" text-sm font-bold truncate">{draft.title}</h3>
-            <span className={`text-xs px-2 py-0.5 border ${meta.color}`}>{meta.label}</span>
+            <h3 className="text-sm font-bold truncate text-ink">{draft.title}</h3>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.bg} ${meta.color}`}
+            >
+              {meta.label}
+            </span>
             {draft.remote && (
-              <span className="text-xs px-2 py-0.5 border border-green-500 text-green-600">
+              <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-600">
                 Remote
               </span>
             )}
             {draft.applied && (
-              <span className="text-xs px-2 py-0.5 border border-green-600 bg-green-50 text-green-700 font-bold">
+              <span className="rounded-full border border-green-600 bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-700">
                 Applied
               </span>
             )}
           </div>
-          <p className="text-sm text-ink-soft mt-1">
+          <p className="mt-1.5 text-sm text-ink-soft">
             {draft.company || 'Unknown company'}
             {draft.location && ` · ${draft.location}`}
           </p>
-          <div className="flex items-center gap-4 mt-1 text-xs text-ink-soft ">
+          <div className="mt-3 flex items-center gap-4 text-[11px] text-ink-soft">
             <span>Relevance: {Math.round(draft.relevance_score * 100)}%</span>
             <span>Saved: {new Date(draft.created_at).toLocaleDateString()}</span>
           </div>
         </div>
-        <div className="flex flex-col gap-1 shrink-0">
+        <div className="flex flex-col gap-1.5 shrink-0">
           {draft.applied && draft.applied_resume_id ? (
             <a
               href={`/resumes/${draft.applied_resume_id}`}
-              className="text-xs border border-green-600 bg-green-50 text-green-700 px-3 py-1 hover:bg-green-100 transition-colors text-center"
+              className="rounded-full border border-green-600 bg-green-50 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-green-700 text-center hover:bg-green-100 transition-colors"
             >
               View Resume
             </a>
           ) : (
-            <Button
-              onClick={handleTailor}
-              className="text-xs border border-primary bg-primary text-white px-3 py-1 hover:bg-primary transition-colors text-center"
-            >
+            <Button size="sm" onClick={handleTailor} className="rounded-full px-4">
               Tailor CV
             </Button>
           )}
@@ -798,14 +1015,21 @@ function DraftCard({
             href={draft.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs border border-ink px-3 py-1 hover:bg-primary hover:text-white transition-colors text-center flex items-center justify-center gap-1"
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-[#c9c5bc] bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-ink transition-colors hover:border-primary hover:bg-primary hover:text-white"
           >
             Apply
             <ExternalLink className="w-3 h-3" />
           </a>
           <button
+            onClick={() => onArchive(draft.job_id, !draft.archived)}
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-[#e7e6df] bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-soft transition-colors hover:border-primary hover:text-primary"
+          >
+            <Archive className="w-3 h-3" />
+            {draft.archived ? 'Unarchive' : 'Archive'}
+          </button>
+          <button
             onClick={() => onDelete(draft.job_id)}
-            className="text-xs border border-red-400 text-red-600 px-3 py-1 hover:bg-[#fdf3f2] transition-colors text-center"
+            className="rounded-full border border-red-400/50 bg-red-50 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-red-600 transition-colors hover:border-red-500 hover:bg-red-500 hover:text-white"
           >
             Delete
           </button>

@@ -119,21 +119,26 @@ interface ErrorStepProps {
 export function ErrorStep({ error, onRetry, onClose }: ErrorStepProps) {
   const { t } = useTranslations();
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-6">
-      <div className="relative">
-        <AlertCircle className="w-16 h-16 text-red-500" />
+    <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-6 px-4">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+        <AlertCircle className="h-7 w-7 text-red-600" />
       </div>
       <div className="text-center max-w-md">
-        <p className="text-xl  font-bold">{t('enrichment.error.title')}</p>
-        <p className="text-sm text-red-600 mt-2  bg-[#fdf3f2] p-3 border border-red-200">
-          {error}
-        </p>
+        <h2 className="text-lg font-bold uppercase tracking-wide text-ink">
+          {t('enrichment.error.title')}
+        </h2>
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-left">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
       </div>
-      <div className="flex gap-3 mt-4">
-        <Button variant="outline" onClick={onClose}>
+      <div className="flex gap-3 mt-2">
+        <Button variant="outline" onClick={onClose} className="rounded-full">
           {t('common.cancel')}
         </Button>
-        <Button onClick={onRetry}>{t('common.retry')}</Button>
+        <Button onClick={onRetry} className="rounded-full">
+          {t('common.retry')}
+        </Button>
       </div>
     </div>
   );

@@ -707,37 +707,38 @@ const ResumeBuilderContent = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-background flex justify-center items-center p-4 md:p-8">
-      {/* Main Container */}
-      <div className="w-full h-full max-w-[90%] md:max-w-[95%] xl:max-w-[1800px] border border-ink bg-background shadow-sw-lg flex flex-col">
+    <div className="flex min-h-screen w-full justify-center bg-secondary px-4 py-4 md:px-8 md:py-8">
+      {/* Main Container (Card) */}
+      <div className="flex w-full max-w-[90%] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sw-lg md:max-w-[95%] xl:max-w-[1800px]">
         {/* Header Section */}
-        <div className="border-b border-ink p-6 md:p-8 bg-background no-print">
+        <div className="no-print border-b border-[#e6e3dc] bg-white p-6 md:p-8">
           {/* Top Row: Back button and Actions */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
               <Button
-                variant="link"
+                variant="ghost"
+                size="sm"
                 onClick={() => router.push('/dashboard')}
-                className="mb-2 -ml-1"
+                className="mb-3 -ml-1 rounded-full px-3 text-ink-soft hover:text-primary"
               >
                 <ArrowLeft className="w-4 h-4" />
                 {t('nav.backToDashboard')}
               </Button>
-              <h1 className="font-serif text-3xl md:text-5xl text-black tracking-tight leading-[0.95] uppercase">
-                {t('nav.builder')}
-              </h1>
-              <div className="mt-3 flex items-center gap-3">
-                <p className="text-sm  text-primary uppercase tracking-wide font-bold">
-                  {'// '}
-                  {resumeId ? t('builder.editMode') : t('builder.createAndPreview')}
-                </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-bold uppercase tracking-tight text-ink md:text-4xl">
+                  {t('nav.builder')}
+                </h1>
                 {hasUnsavedChanges && (
-                  <span className="flex items-center gap-1 text-xs  text-amber-600 bg-[#fbf6e9] px-2 py-1 border border-amber-200">
+                  <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-[#fbf6e9] px-2.5 py-1 text-[11px] font-semibold text-amber-700">
                     <AlertTriangle className="w-3 h-3" />
                     {t('builder.unsavedDraft')}
                   </span>
                 )}
               </div>
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-primary">
+                {'// '}
+                {resumeId ? t('builder.editMode') : t('builder.createAndPreview')}
+              </p>
             </div>
 
             <div className="flex gap-3 mt-4 md:mt-0">
@@ -859,13 +860,13 @@ const ResumeBuilderContent = () => {
         </div>
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 bg-black gap-[1px] flex-1 min-h-0">
+        <div className="grid grid-cols-1 gap-px bg-[#e6e3dc] lg:h-[900px] lg:grid-cols-2">
           {/* Left Panel: Editor */}
-          <div className="bg-background p-6 md:p-8 overflow-y-auto no-print">
-            <div className="max-w-3xl mx-auto space-y-6">
-              <div className="flex items-center gap-2 border-b border-ink pb-2">
-                <div className="w-3 h-3 bg-primary"></div>
-                <h2 className=" text-lg font-bold uppercase tracking-wider">
+          <div className="no-print overflow-y-auto bg-white p-6 md:p-8">
+            <div className="mx-auto max-w-3xl space-y-6">
+              <div className="flex items-center gap-2 border-b border-[#e6e3dc] pb-3">
+                <div className="h-2.5 w-2.5 rounded-sm bg-primary"></div>
+                <h2 className="text-base font-bold uppercase tracking-wider text-ink">
                   {activeTab === 'resume' && t('builder.leftPanel.editorPanel')}
                   {activeTab === 'cover-letter' && t('builder.leftPanel.coverLetterEditor')}
                   {activeTab === 'outreach' && t('builder.leftPanel.outreachEditor')}
@@ -935,20 +936,20 @@ const ResumeBuilderContent = () => {
               {/* JD Match Info Panel */}
               {activeTab === 'jd-match' && (
                 <div className="space-y-4">
-                  <div className="border border-ink bg-white p-4">
-                    <h3 className=" text-sm font-bold uppercase mb-2">
+                  <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink">
                       {t('builder.jdMatch.aboutTitle')}
                     </h3>
-                    <p className="text-sm text-ink-soft leading-relaxed">
+                    <p className="text-sm leading-relaxed text-ink-soft">
                       {t('builder.jdMatch.aboutDescription')}
                     </p>
                   </div>
 
-                  <div className="border border-ink bg-background p-4">
-                    <h3 className=" text-sm font-bold uppercase mb-2">
+                  <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink">
                       {t('builder.jdMatch.highlightedKeywordsTitle')}
                     </h3>
-                    <p className="text-sm text-ink-soft leading-relaxed">
+                    <p className="text-sm leading-relaxed text-ink-soft">
                       {(() => {
                         const template = t(
                           'builder.jdMatch.highlightedKeywordsDescriptionTemplate'
@@ -968,11 +969,11 @@ const ResumeBuilderContent = () => {
                     </p>
                   </div>
 
-                  <div className="border border-ink bg-white p-4">
-                    <h3 className=" text-sm font-bold uppercase mb-2">
+                  <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink">
                       {t('builder.jdMatch.tipsTitle')}
                     </h3>
-                    <ul className="text-sm text-ink-soft space-y-1 list-disc list-inside">
+                    <ul className="space-y-1 text-sm text-ink-soft list-disc list-inside">
                       <li>{t('builder.jdMatch.tips.items.addMissingKeywords')}</li>
                       <li>{t('builder.jdMatch.tips.items.focusTechnicalSkills')}</li>
                       <li>{t('builder.jdMatch.tips.items.matchActionVerbs')}</li>
@@ -984,112 +985,115 @@ const ResumeBuilderContent = () => {
           </div>
 
           {/* Right Panel: Preview with Tabs */}
-          <div className="bg-secondary overflow-hidden flex flex-col no-print">
-            {/* Tabs Header */}
-            <div className="px-6 pt-3 shrink-0 bg-secondary">
-              <RetroTabs
-                tabs={[
-                  { id: 'resume', label: t('builder.previewTabs.resume') },
-                  {
-                    id: 'cover-letter',
-                    label: t('builder.previewTabs.coverLetter'),
-                    disabled: !coverLetter,
-                  },
-                  {
-                    id: 'outreach',
-                    label: t('builder.previewTabs.outreach'),
-                    disabled: !outreachMessage,
-                  },
-                  {
-                    id: 'interview-prep',
-                    label: t('builder.previewTabs.interviewPrep'),
-                    disabled: !isTailoredResume,
-                  },
-                  {
-                    id: 'jd-match',
-                    label: t('builder.previewTabs.jdMatch'),
-                    disabled: !jobDescription,
-                  },
-                ]}
-                activeTab={activeTab}
-                onTabChange={(id) => setActiveTab(id as TabId)}
-              />
-            </div>
-
-            {/* Preview Content */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Resume Preview */}
-              {activeTab === 'resume' && (
-                <PaginatedPreview
-                  resumeData={localizedResumeDataForPreview}
-                  settings={templateSettings}
+          <div className="no-print flex min-h-0 flex-col bg-white p-4 md:p-6">
+            {/* Preview Card */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-sm">
+              {/* Tabs Header */}
+              <div className="shrink-0 border-b border-[#e6e3dc] bg-white px-4 pt-4 pb-3">
+                <RetroTabs
+                  tabs={[
+                    { id: 'resume', label: t('builder.previewTabs.resume') },
+                    {
+                      id: 'cover-letter',
+                      label: t('builder.previewTabs.coverLetter'),
+                      disabled: !coverLetter,
+                    },
+                    {
+                      id: 'outreach',
+                      label: t('builder.previewTabs.outreach'),
+                      disabled: !outreachMessage,
+                    },
+                    {
+                      id: 'interview-prep',
+                      label: t('builder.previewTabs.interviewPrep'),
+                      disabled: !isTailoredResume,
+                    },
+                    {
+                      id: 'jd-match',
+                      label: t('builder.previewTabs.jdMatch'),
+                      disabled: !jobDescription,
+                    },
+                  ]}
+                  activeTab={activeTab}
+                  onTabChange={(id) => setActiveTab(id as TabId)}
                 />
-              )}
+              </div>
 
-              {/* Cover Letter Preview */}
-              {activeTab === 'cover-letter' &&
-                (coverLetter && resumeData.personalInfo ? (
-                  <div className="p-6">
-                    <CoverLetterPreview
-                      content={coverLetter}
-                      personalInfo={resumeData.personalInfo}
-                      pageSize={templateSettings.pageSize}
+              {/* Preview Content */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Resume Preview */}
+                {activeTab === 'resume' && (
+                  <PaginatedPreview
+                    resumeData={localizedResumeDataForPreview}
+                    settings={templateSettings}
+                  />
+                )}
+
+                {/* Cover Letter Preview */}
+                {activeTab === 'cover-letter' &&
+                  (coverLetter && resumeData.personalInfo ? (
+                    <div className="p-6">
+                      <CoverLetterPreview
+                        content={coverLetter}
+                        personalInfo={resumeData.personalInfo}
+                        pageSize={templateSettings.pageSize}
+                      />
+                    </div>
+                  ) : (
+                    <GeneratePrompt
+                      type="cover-letter"
+                      isGenerating={isGeneratingCoverLetter}
+                      onGenerate={handleGenerateCoverLetter}
+                      isTailoredResume={isTailoredResume}
                     />
-                  </div>
-                ) : (
-                  <GeneratePrompt
-                    type="cover-letter"
-                    isGenerating={isGeneratingCoverLetter}
-                    onGenerate={handleGenerateCoverLetter}
+                  ))}
+
+                {/* Outreach Preview */}
+                {activeTab === 'outreach' &&
+                  (outreachMessage ? (
+                    <div className="p-6">
+                      <OutreachPreview content={outreachMessage} />
+                    </div>
+                  ) : (
+                    <GeneratePrompt
+                      type="outreach"
+                      isGenerating={isGeneratingOutreach}
+                      onGenerate={handleGenerateOutreach}
+                      isTailoredResume={isTailoredResume}
+                    />
+                  ))}
+
+                {/* Interview Prep Preview */}
+                {activeTab === 'interview-prep' && (
+                  <InterviewPrepView
+                    interviewPrep={interviewPrep}
+                    isGenerating={isGeneratingInterviewPrep}
+                    error={interviewPrepError}
+                    onGenerate={handleGenerateInterviewPrep}
                     isTailoredResume={isTailoredResume}
+                    canGenerate={canGenerateInterviewPrep}
+                    unavailableMessage={interviewPrepUnavailableMessage}
                   />
-                ))}
+                )}
 
-              {/* Outreach Preview */}
-              {activeTab === 'outreach' &&
-                (outreachMessage ? (
-                  <div className="p-6">
-                    <OutreachPreview content={outreachMessage} />
-                  </div>
-                ) : (
-                  <GeneratePrompt
-                    type="outreach"
-                    isGenerating={isGeneratingOutreach}
-                    onGenerate={handleGenerateOutreach}
-                    isTailoredResume={isTailoredResume}
-                  />
-                ))}
-
-              {/* Interview Prep Preview */}
-              {activeTab === 'interview-prep' && (
-                <InterviewPrepView
-                  interviewPrep={interviewPrep}
-                  isGenerating={isGeneratingInterviewPrep}
-                  error={interviewPrepError}
-                  onGenerate={handleGenerateInterviewPrep}
-                  isTailoredResume={isTailoredResume}
-                  canGenerate={canGenerateInterviewPrep}
-                  unavailableMessage={interviewPrepUnavailableMessage}
-                />
-              )}
-
-              {/* JD Match Comparison */}
-              {activeTab === 'jd-match' && jobDescription && (
-                <JDComparisonView jobDescription={jobDescription} resumeData={resumeData} />
-              )}
+                {/* JD Match Comparison */}
+                {activeTab === 'jd-match' && jobDescription && (
+                  <JDComparisonView jobDescription={jobDescription} resumeData={resumeData} />
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-background flex justify-between items-center  text-xs text-primary border-t border-ink no-print">
-          <span className="uppercase font-bold flex items-center gap-2">
-            <Image src="/logo.svg" alt="Taylor" width={20} height={20} className="w-5 h-5" />
+        <div className="no-print flex shrink-0 items-center justify-between border-t border-border bg-white px-6 py-3 text-xs font-bold uppercase tracking-wide text-primary">
+          <span className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="Taylor" width={20} height={20} className="h-5 w-5" />
             {t('builder.footer.moduleLabel')}
           </span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-ink-soft">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-700"></div>
+              <div className="h-2 w-2 rounded-full bg-success"></div>
               <span className="uppercase">
                 {templateSettings.template === 'swiss-single' ||
                 templateSettings.template === 'modern' ||

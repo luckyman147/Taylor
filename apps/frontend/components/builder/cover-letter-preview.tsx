@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
+import { MarkdownContent } from '@/components/common/markdown-content';
 
 export interface CoverLetterPersonalInfo {
   name?: string;
@@ -39,31 +40,25 @@ export function CoverLetterPreview({
     day: 'numeric',
   }).format(new Date());
 
-  // Parse content into paragraphs
-  const paragraphs = content.split('\n\n').filter((p) => p.trim().length > 0);
-
   return (
     <div
       className={cn(
-        'bg-white border border-ink',
-        'shadow-sw-default',
-        'overflow-hidden',
+        'overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-xs',
         className
       )}
     >
-      {/* Letter Content */}
       <div
-        className={cn('p-8 md:p-12', pageSize === 'A4' ? 'min-h-[297mm]' : 'min-h-[11in]')}
+        className={cn('mx-auto p-8 md:p-12', pageSize === 'A4' ? 'min-h-[297mm]' : 'min-h-[11in]')}
         style={{
           maxWidth: pageSize === 'A4' ? '210mm' : '8.5in',
         }}
       >
         {/* Header - Personal Info */}
-        <header className="mb-8 border-b border-ink pb-4">
-          <h1 className="font-serif text-2xl font-bold tracking-tight">
+        <header className="mb-8 border-b border-[#e6e3dc] pb-5">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">
             {personalInfo.name || t('coverLetter.preview.defaultName')}
           </h1>
-          <div className="mt-2  text-xs text-ink-soft flex flex-wrap gap-x-4 gap-y-1">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
             {personalInfo.email && <span>{personalInfo.email}</span>}
             {personalInfo.phone && <span>{personalInfo.phone}</span>}
             {personalInfo.location && <span>{personalInfo.location}</span>}
@@ -72,22 +67,16 @@ export function CoverLetterPreview({
         </header>
 
         {/* Date */}
-        <div className="mb-8">
-          <p className=" text-sm text-ink-soft">{today}</p>
-        </div>
+        <div className="mb-8 pb-3 text-sm text-ink-soft">{today}</div>
 
-        {/* Body */}
+        {/* Body (markdown-aware) */}
         <div className="space-y-4">
-          {paragraphs.length > 0 ? (
-            paragraphs.map((para, idx) => (
-              <p key={idx} className="font-serif text-base leading-relaxed text-ink-soft">
-                {para}
-              </p>
-            ))
+          {content && content.trim().length > 0 ? (
+            <MarkdownContent content={content} />
           ) : (
-            <div className="text-center py-12 text-steel-grey">
-              <p className=" text-sm">{t('coverLetter.preview.emptyTitle')}</p>
-              <p className=" text-xs mt-2">{t('coverLetter.preview.emptyDescription')}</p>
+            <div className="py-12 text-center text-steel-grey">
+              <p className="text-sm">{t('coverLetter.preview.emptyTitle')}</p>
+              <p className="mt-2 text-xs">{t('coverLetter.preview.emptyDescription')}</p>
             </div>
           )}
         </div>

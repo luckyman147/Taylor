@@ -43,16 +43,16 @@ export function ApplicationCard({
       <Card
         variant="interactive"
         noPadding
-        className={`p-3 ${selected ? 'ring-2 ring-primary' : ''}`}
+        className={`rounded-xl p-3 transition-shadow ${selected ? 'ring-2 ring-primary shadow-sw-sm' : 'hover:shadow-sw-sm hover:border-primary/40'}`}
       >
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2.5">
           <input
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(application.application_id)}
             onClick={(e) => e.stopPropagation()}
             aria-label={t('tracker.card.selectAria')}
-            className="mt-1 h-4 w-4 shrink-0 rounded-lg border-ink accent-primary"
+            className="mt-2 h-4 w-4 shrink-0 rounded-md border-ink accent-primary"
           />
 
           <button
@@ -60,19 +60,24 @@ export function ApplicationCard({
             onClick={() => onOpen(application.application_id)}
             className="min-w-0 flex-1 text-left"
           >
-            <p className="truncate text-sm font-semibold text-ink">
-              {company || t('tracker.card.companyUnknown')}
-            </p>
-            <p className="truncate  text-xs text-ink-soft">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-[11px] font-bold uppercase text-white">
+                {(company || '?').charAt(0)}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+                {company || t('tracker.card.companyUnknown')}
+              </p>
+            </div>
+            <p className="mt-1 pl-9 text-xs text-ink-soft">
               {role || t('tracker.card.roleUnknown')}
             </p>
             {application.applied_at && (
-              <p className="mt-1  text-[10px] uppercase tracking-wide text-steel-grey">
+              <p className="mt-1 pl-9 text-[10px] uppercase tracking-wide text-steel-grey">
                 {new Date(application.applied_at).toLocaleDateString()}
               </p>
             )}
             {sharedResume && (
-              <span className="mt-1 inline-flex items-center gap-1 border border-ink bg-paper-tint px-1  text-[10px] uppercase text-ink-soft">
+              <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[#e6e3dc] bg-paper-tint px-2 py-0.5 text-[10px] uppercase text-ink-soft">
                 <Layers className="h-3 w-3" />
                 {t('tracker.card.sharedResume')}
               </span>

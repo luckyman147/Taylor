@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, FileText, List, ListOrdered } from 'lucide-react';
+import { Plus, FileText, List, ListOrdered, Check } from 'lucide-react';
 import type { SectionType } from '@/components/dashboard/resume-component';
 import { useTranslations } from '@/lib/i18n';
 
@@ -83,20 +83,20 @@ export const AddSectionDialog: React.FC<AddSectionDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 gap-0">
+      <DialogContent className="sm:max-w-[500px] rounded-2xl p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b border-[#e6e3dc]">
           <DialogTitle className="font-sans text-xl font-bold uppercase tracking-tight">
             {t('builder.customSections.dialogTitle')}
           </DialogTitle>
-          <DialogDescription className=" text-xs text-ink-soft mt-2">
+          <DialogDescription className="mt-2 text-xs text-ink-soft">
             {t('builder.customSections.dialogDescription')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="space-y-6 p-6">
           {/* Section Name */}
           <div className="space-y-2">
-            <Label className=" text-xs uppercase tracking-wider text-steel-grey">
+            <Label className=" text-xs uppercase tracking-wider text-ink-soft">
               {t('builder.customSections.sectionNameLabel')}
             </Label>
             <Input
@@ -104,59 +104,64 @@ export const AddSectionDialog: React.FC<AddSectionDialogProps> = ({
               onChange={(e) => setDisplayName(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t('builder.customSections.sectionNamePlaceholder')}
-              className="rounded-lg border-ink"
+              className="border-[#c9c5bc] focus:border-primary"
               autoFocus
             />
           </div>
 
           {/* Section Type */}
           <div className="space-y-3">
-            <Label className=" text-xs uppercase tracking-wider text-steel-grey">
+            <Label className=" text-xs uppercase tracking-wider text-ink-soft">
               {t('builder.customSections.sectionTypeLabel')}
             </Label>
             <div className="space-y-2">
-              {sectionTypes.map((item) => (
-                <button
-                  key={item.type}
-                  type="button"
-                  onClick={() => setSectionType(item.type)}
-                  className={`w-full p-4 border text-left transition-colors ${
-                    sectionType === item.type
-                      ? 'border-ink bg-paper-tint shadow-sw-sm'
-                      : 'border-steel-grey hover:border-steel-grey'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`p-2 border ${
-                        sectionType === item.type
-                          ? 'border-ink bg-white'
-                          : 'border-steel-grey bg-paper-tint'
-                      }`}
-                    >
-                      {item.icon}
+              {sectionTypes.map((item) => {
+                const selected = sectionType === item.type;
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => setSectionType(item.type)}
+                    className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                      selected
+                        ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
+                        : 'border-[#e6e3dc] bg-white hover:border-primary hover:bg-paper-tint'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                          selected
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-[#e6e3dc] bg-paper-tint text-ink-soft'
+                        }`}
+                      >
+                        {item.icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-ink">{item.label}</div>
+                        <div className="mt-0.5 text-xs text-steel-grey">{item.description}</div>
+                      </div>
+                      {selected && (
+                        <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                          <Check className="h-3 w-3" />
+                        </span>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-sans font-medium text-sm">{item.label}</div>
-                      <div className=" text-xs text-steel-grey mt-0.5">{item.description}</div>
-                    </div>
-                    {sectionType === item.type && (
-                      <div className="w-4 h-4 border border-[#e6e3dc] bg-black" />
-                    )}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        <DialogFooter className="p-4 bg-background border-t border-[#e6e3dc] flex-row justify-end gap-3">
+        <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
           <DialogClose asChild>
-            <Button variant="outline" className="rounded-lg border-ink">
+            <Button variant="outline" className="rounded-full">
               {t('common.cancel')}
             </Button>
           </DialogClose>
-          <Button onClick={handleSubmit} disabled={!displayName.trim()} className="rounded-lg">
+          <Button onClick={handleSubmit} disabled={!displayName.trim()} className="rounded-full">
             <Plus className="w-4 h-4 mr-2" />
             {t('builder.addSection')}
           </Button>
@@ -184,7 +189,7 @@ export const AddSectionButton: React.FC<AddSectionButtonProps> = ({ onAdd }) => 
       <Button
         variant="outline"
         onClick={() => setOpen(true)}
-        className="w-full rounded-lg border-dashed border border-[#e6e3dc] py-6 hover:bg-paper-tint hover:border-solid transition-all"
+        className="w-full rounded-2xl border-dashed border-[#e6e3dc] py-6 hover:border-primary hover:bg-paper-tint hover:border-solid transition-all"
       >
         <Plus className="w-5 h-5 mr-2" />
         {t('builder.customSections.addCustomSectionButton')}

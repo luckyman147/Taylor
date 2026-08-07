@@ -76,7 +76,7 @@ export default function FreelancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F0E8]">
+    <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto p-8 space-y-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations } from '@/lib/i18n';
 
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -15,7 +16,6 @@ import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Settings from 'lucide-react/dist/esm/icons/settings';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import Search from 'lucide-react/dist/esm/icons/search';
-import Briefcase from 'lucide-react/dist/esm/icons/briefcase';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import FileText from 'lucide-react/dist/esm/icons/file-text';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
@@ -322,13 +322,18 @@ const colors = [
 
         {/* Header */}
         <div className="mb-10 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-tight">
-              Dashboard
-            </h1>
-            <p className="mt-2  text-xs text-ink-soft uppercase tracking-wide">
-              {t('dashboard.subtitle')}
-            </p>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="shrink-0">
+              <Image src="/logo.png" alt="Taylor" width={40} height={40} className="w-10 h-10" />
+            </Link>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-tight">
+                Dashboard
+              </h1>
+              <p className="mt-2  text-xs text-ink-soft uppercase tracking-wide">
+                {t('dashboard.subtitle')}
+              </p>
+            </div>
           </div>
           <Link href="/settings">
             <Button
@@ -412,7 +417,7 @@ const colors = [
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 border border-ink bg-primary text-white flex items-center justify-center shrink-0 ${colors[master.filename?.charCodeAt(0) ? master.filename.charCodeAt(0) % colors.length : 1]}`}>
+                      <div className={`w-12 h-12 border   text-white flex items-center justify-center shrink-0 rounded-xl ${colors[master.filename?.charCodeAt(0) ? master.filename.charCodeAt(0) % colors.length : 1]}`}>
                         <span className=" font-bold text-sm uppercase">{master.filename?.charAt(0) || 'M'}</span>
                       </div>
                       <div>
@@ -489,15 +494,6 @@ const colors = [
                 <div>
                   <p className=" text-sm font-bold uppercase">Scrape Jobs</p>
                   <p className=" text-xs opacity-70 mt-0.5">Find opportunities</p>
-                </div>
-              </div>
-            </Link>
-            <Link href="/freelance">
-              <div className="rounded-xl border border-ink p-5 flex items-center gap-4 bg-[#0f766e] text-white hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none shadow-sw-sm transition-all">
-                <Briefcase className="w-5 h-5 shrink-0" />
-                <div>
-                  <p className=" text-sm font-bold uppercase">Freelance</p>
-                  <p className=" text-xs opacity-70 mt-0.5">Tunisian + global gigs</p>
                 </div>
               </div>
             </Link>

@@ -19,10 +19,14 @@ import { fetchPromptConfig, type PromptOption } from '@/lib/api/config';
 import { markScrapedJobApplied } from '@/lib/api/job-scraper';
 import { Dropdown } from '@/components/ui/dropdown';
 import { useStatusCache } from '@/lib/context/status-cache';
-import { Loader2, ArrowLeft, AlertTriangle, Settings } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Settings from 'lucide-react/dist/esm/icons/settings';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import { useTranslations } from '@/lib/i18n';
 import { DiffPreviewModal } from '@/components/tailor/diff-preview-modal';
 import { ATSScoreCard } from '@/components/tailor/ats-score-card';
+import { AIConnectionCard } from '@/components/tailor/ai-connection-card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function TailorPage() {
@@ -388,42 +392,44 @@ export default function TailorPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F5EE] flex flex-col items-center justify-center p-4 md:p-8 font-sans">
-      <div className="w-full max-w-4xl bg-white border border-ink shadow-sw-lg p-8 md:p-12 lg:p-14 relative">
-        {/* Back Button */}
-        <Button variant="link" className="absolute top-4 left-4" onClick={() => router.back()}>
-          <ArrowLeft className="w-4 h-4" />
+    <div className="min-h-screen bg-white">
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <Link
+          href="/dashboard"
+          className="mb-6 inline-flex shrink-0 items-center gap-1 self-start rounded-full border border-[#e6e3dc] bg-white px-3 py-1.5 text-xs uppercase text-ink-soft shadow-sw-xs transition-all hover:border-primary hover:text-primary"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
           {t('common.back')}
-        </Button>
+        </Link>
 
-        <div className="mb-8 mt-4 text-center">
-          <h1 className="font-serif text-4xl font-bold uppercase tracking-tight mb-2">
-            {t('tailor.heroTitle')}
-          </h1>
-          <p className=" text-sm text-primary font-bold uppercase">
+        {/* Heading */}
+        <div className="mb-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">
             {'// '}
             {t('tailor.pasteJobDescriptionBelow')}
           </p>
+          <h1 className="mt-2 text-3xl font-bold uppercase tracking-tight md:text-4xl">
+            {t('tailor.heroTitle')}
+          </h1>
+          <p className="mt-2 text-sm text-ink-soft">{t('tailor.subtitle')}</p>
         </div>
 
         {/* LLM Not Configured Warning */}
         {!statusLoading && !isLlmConfigured && (
-          <div className="mb-6 border-2 border-[#d9c9a3] bg-[#fbf6e9] p-4 shadow-sw-default">
+          <div className="mb-6 rounded-2xl border-2 border-[#d9c9a3] bg-[#fbf6e9] p-5 shadow-sw-xs">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               <div className="flex-1">
-                <p className=" text-sm font-bold uppercase tracking-wider text-amber-800">
+                <p className="text-sm font-bold uppercase tracking-wider text-amber-800">
                   {t('tailor.setupRequiredTitle')}
                 </p>
-                <p className=" text-xs text-amber-700 mt-1">
-                  {t('tailor.noApiKeyMessage')}
-                </p>
+                <p className="mt-1 text-xs text-amber-700">{t('tailor.noApiKeyMessage')}</p>
                 <Link
                   href="/settings"
-                  className="inline-flex items-center gap-2 mt-3 text-amber-700 hover:text-amber-900 transition-colors"
+                  className="mt-3 inline-flex items-center gap-2 text-amber-700 transition-colors hover:text-amber-900"
                 >
-                  <Settings className="w-4 h-4" />
-                  <span className=" text-xs font-bold uppercase underline">
+                  <Settings className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase underline">
                     {t('tailor.configureApiKey')}
                   </span>
                 </Link>
@@ -432,118 +438,134 @@ export default function TailorPage() {
           </div>
         )}
 
-        <div className="space-y-6">
-          {!mastersLoading && masterResumes.length > 0 && (
-            <Dropdown
-              options={masterResumes.map((master) => ({
-                id: master.resume_id,
-                label: master.title || master.filename || t('dashboard.masterResume'),
-                description: master.filename || t('tailor.resumePromptDescription'),
-              }))}
-              value={masterResumeId ?? ''}
-              onChange={(value) => {
-                setMasterResumeId(value);
-                localStorage.setItem('master_resume_id', value);
-              }}
-              label={t('tailor.selectResume')}
-              description={t('tailor.resumePromptDescription')}
-              disabled={isLoading}
-            />
-          )}
-          <Dropdown
-            options={
-              promptOptions.length > 0
-                ? promptOptions.map((opt) => ({
-                    id: opt.id,
-                    label: t(`tailor.promptOptions.${opt.id}.label`),
-                    description: t(`tailor.promptOptions.${opt.id}.description`),
-                  }))
-                : [
-                    {
-                      id: 'nudge',
-                      label: t('tailor.promptOptions.nudge.label'),
-                      description: t('tailor.promptOptions.nudge.description'),
-                    },
-                    {
-                      id: 'keywords',
-                      label: t('tailor.promptOptions.keywords.label'),
-                      description: t('tailor.promptOptions.keywords.description'),
-                    },
-                    {
-                      id: 'full',
-                      label: t('tailor.promptOptions.full.label'),
-                      description: t('tailor.promptOptions.full.description'),
-                    },
-                  ]
-            }
-            value={selectedPromptId}
-            onChange={(value) => {
-              hasUserSelectedPrompt.current = true;
-              setSelectedPromptId(value);
-            }}
-            label={t('tailor.promptLabel')}
-            description={t('tailor.promptDescription')}
-            disabled={isLoading || promptLoading}
-          />
+        <div className="grid items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          {/* Left rail */}
+          <div className="space-y-6">
+            <div className="space-y-5 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
+              {!mastersLoading && masterResumes.length > 0 && (
+                <Dropdown
+                  options={masterResumes.map((master) => ({
+                    id: master.resume_id,
+                    label: master.title || master.filename || t('dashboard.masterResume'),
+                    description: master.filename || t('tailor.resumePromptDescription'),
+                  }))}
+                  value={masterResumeId ?? ''}
+                  onChange={(value) => {
+                    setMasterResumeId(value);
+                    localStorage.setItem('master_resume_id', value);
+                  }}
+                  label={t('tailor.selectResume')}
+                  description={t('tailor.resumePromptDescription')}
+                  disabled={isLoading}
+                />
+              )}
+            </div>
 
-          <div className="relative">
+            <div className="space-y-5 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
+              <Dropdown
+                options={
+                  promptOptions.length > 0
+                    ? promptOptions.map((opt) => ({
+                        id: opt.id,
+                        label: t(`tailor.promptOptions.${opt.id}.label`),
+                        description: t(`tailor.promptOptions.${opt.id}.description`),
+                      }))
+                    : [
+                        {
+                          id: 'nudge',
+                          label: t('tailor.promptOptions.nudge.label'),
+                          description: t('tailor.promptOptions.nudge.description'),
+                        },
+                        {
+                          id: 'keywords',
+                          label: t('tailor.promptOptions.keywords.label'),
+                          description: t('tailor.promptOptions.keywords.description'),
+                        },
+                        {
+                          id: 'full',
+                          label: t('tailor.promptOptions.full.label'),
+                          description: t('tailor.promptOptions.full.description'),
+                        },
+                      ]
+                }
+                value={selectedPromptId}
+                onChange={(value) => {
+                  hasUserSelectedPrompt.current = true;
+                  setSelectedPromptId(value);
+                }}
+                label={t('tailor.promptLabel')}
+                description={t('tailor.promptDescription')}
+                disabled={isLoading || promptLoading}
+              />
+            </div>
+
+            <AIConnectionCard configured={!statusLoading && !!systemStatus?.llm_configured} />
+          </div>
+
+          {/* Editor card */}
+          <div className="rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-ink-soft">
+                {t('tailor.pasteJobDescription')}
+              </p>
+              <span className="shrink-0 text-xs text-steel-grey">
+                {t('tailor.charactersCount', { count: jobDescription.length })}
+              </span>
+            </div>
+
             <Textarea
               placeholder={t('tailor.jobDescriptionPlaceholder')}
-              className="min-h-[300px]  text-sm bg-background border border-ink focus:ring-0 focus:border-primary resize-none p-4 rounded-lg"
+              className="min-h-[520px] w-full resize-none rounded-xl border border-[#c9c5bc] bg-white p-4 text-sm text-ink placeholder:text-steel-grey focus:border-primary focus:ring-0"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
               disabled={isLoading}
             />
-            <div className="absolute bottom-2 right-2 text-xs  text-steel-grey pointer-events-none">
-              {t('tailor.charactersCount', { count: jobDescription.length })}
-            </div>
-          </div>
 
-          {error && (
-            <div className="p-4 bg-[#fdf3f2] border border-red-200 text-red-700 text-sm  flex items-center gap-2">
-              <span>!</span> {error}
-            </div>
-          )}
-
-          <Button
-            size="lg"
-            onClick={handleGenerate}
-            disabled={
-              isLoading ||
-              statusLoading ||
-              mastersLoading ||
-              !masterResumeId ||
-              !jobDescription.trim() ||
-              !isLlmConfigured
-            }
-            className="w-full"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {t('common.processing')}
-                {elapsed > 0 && (
-                  <span className=" text-xs opacity-70 ml-2">{elapsed}s</span>
-                )}
-              </>
-            ) : statusLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {t('common.checking')}
-              </>
-            ) : !isLlmConfigured ? (
-              t('tailor.configureApiKeyFirst')
-            ) : (
-              t('tailor.generateTailored')
+            {error && (
+              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-[#eec2c2] bg-[#fdf3f2] p-3.5 text-sm text-red-700">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                {error}
+              </div>
             )}
-          </Button>
+
+            <Button
+              size="lg"
+              onClick={handleGenerate}
+              disabled={
+                isLoading ||
+                statusLoading ||
+                mastersLoading ||
+                !masterResumeId ||
+                !jobDescription.trim() ||
+                !isLlmConfigured
+              }
+              className="mt-6 w-full rounded-xl"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {t('common.processing')}
+                  {elapsed > 0 && <span className="ml-2 text-xs opacity-70">{elapsed}s</span>}
+                </>
+              ) : statusLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {t('common.checking')}
+                </>
+              ) : !isLlmConfigured ? (
+                t('tailor.configureApiKeyFirst')
+              ) : (
+                t('tailor.generateTailored')
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      </main>
 
       {/* ATS Score Breakdown — shown once a preview result is available */}
       {pendingResult?.data?.ats_score && (
-        <div className="w-full max-w-4xl mt-6">
+        <div className="mx-auto mt-6 w-full max-w-6xl px-6">
           <ATSScoreCard atsScore={pendingResult.data.ats_score} />
         </div>
       )}

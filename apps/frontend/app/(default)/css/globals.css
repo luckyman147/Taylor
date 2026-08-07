@@ -100,13 +100,13 @@
   --primary: #1e3a5f; /* Deep Navy */
   --primary-foreground: #ffffff;
 
-  --secondary: #efede8; /* Hairline Grey Panel */
+  --secondary: #efefef; /* Hairline Grey Panel */
   --secondary-foreground: #1c1917;
 
-  --muted: #efede8;
+  --muted: #efefef;
   --muted-foreground: #6b7280;
 
-  --accent: #efede8;
+  --accent: #efefef;
   --accent-foreground: #1c1917;
 
   --destructive: #dc2626; /* Alert Red */
@@ -122,7 +122,7 @@
   --chart-4: #dc2626;
   --chart-5: #6b7280;
 
-  --sidebar: #efede8;
+  --sidebar: #efefef;
   --sidebar-foreground: #1c1917;
   --sidebar-primary: #1e3a5f;
   --sidebar-primary-foreground: #ffffff;
