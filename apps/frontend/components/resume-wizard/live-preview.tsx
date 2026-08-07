@@ -43,7 +43,7 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
   return (
     <aside
       aria-label={t('resumeWizard.preview.label')}
-      className="border border-ink bg-white p-5 shadow-[4px_4px_0px_0px_#000000]"
+      className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs md:p-6"
     >
       <p className=" text-xs font-bold uppercase tracking-wider text-primary">
         {t('resumeWizard.preview.label')}
@@ -54,7 +54,7 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
       ) : (
         <div className="mt-3 space-y-5">
           <div>
-            <h2 className="font-serif text-2xl font-bold leading-tight">
+            <h2 className="text-2xl font-bold tracking-tight text-ink">
               {personalInfo.name?.trim() || t('resumeWizard.preview.unnamed')}
             </h2>
             {personalInfo.title?.trim() && (
@@ -64,7 +64,7 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
 
           {experience.length > 0 && (
             <section>
-              <p className="border-b border-ink pb-1  text-xs font-bold uppercase tracking-wider">
+              <p className="border-b border-[#e6e3dc] pb-1  text-xs font-bold uppercase tracking-wider text-ink">
                 {t('resumeWizard.preview.experience')}
               </p>
               {experience.map((item) => (
@@ -72,12 +72,10 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
                   <p className="font-sans text-sm font-bold">
                     {[item.title, item.company].filter(Boolean).join(' · ')}
                   </p>
-                  {item.years?.trim() && (
-                    <p className=" text-xs text-steel-grey">{item.years}</p>
-                  )}
+                  {item.years?.trim() && <p className=" text-xs text-steel-grey">{item.years}</p>}
                   <ul className="mt-1 list-none space-y-1">
                     {(item.description ?? []).map((line, index) => (
-                      <li key={index} className="font-sans text-xs leading-snug">
+                      <li key={index} className="font-sans text-xs leading-snug text-ink-soft">
                         {line}
                       </li>
                     ))}
@@ -89,7 +87,7 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
 
           {projects.length > 0 && (
             <section>
-              <p className="border-b border-ink pb-1  text-xs font-bold uppercase tracking-wider">
+              <p className="border-b border-[#e6e3dc] pb-1  text-xs font-bold uppercase tracking-wider text-ink">
                 {t('resumeWizard.preview.projects')}
               </p>
               {projects.map((item) => (
@@ -102,7 +100,7 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
 
           {education.length > 0 && (
             <section>
-              <p className="border-b border-ink pb-1  text-xs font-bold uppercase tracking-wider">
+              <p className="border-b border-[#e6e3dc] pb-1  text-xs font-bold uppercase tracking-wider text-ink">
                 {t('resumeWizard.preview.education')}
               </p>
               {education.map((item) => (
@@ -115,7 +113,7 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
 
           {skills.length > 0 && (
             <section>
-              <p className="border-b border-ink pb-1  text-xs font-bold uppercase tracking-wider">
+              <p className="border-b border-[#e6e3dc] pb-1  text-xs font-bold uppercase tracking-wider text-ink">
                 {t('resumeWizard.preview.skills')}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -126,8 +124,8 @@ export function LivePreview({ resumeData, inferredSkills }: LivePreviewProps) {
                       key={skill}
                       className={
                         isNew
-                          ? 'border border-green-700 bg-background px-2 py-1  text-xs text-green-700'
-                          : 'border border-ink bg-background px-2 py-1  text-xs'
+                          ? 'rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs text-green-700'
+                          : 'rounded-full border border-[#e6e3dc] bg-secondary/40 px-2.5 py-1 text-xs text-ink'
                       }
                     >
                       {skill}

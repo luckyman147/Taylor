@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStatusCache } from '@/lib/context/status-cache';
 import { useTranslations } from '@/lib/i18n';
@@ -260,24 +261,35 @@ export function ResumeWizardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 text-black md:px-8 md:py-10">
+    <main className="min-h-screen bg-background px-4 py-6 text-ink md:px-8 md:py-10">
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">
           <div className="flex items-center justify-between">
-            <h1 className=" text-xs font-bold uppercase tracking-wider text-steel-grey">
+            <h1 className="text-xs font-bold uppercase tracking-wider text-steel-grey">
               {t('resumeWizard.title')}
             </h1>
-            <Button type="button" variant="ghost" onClick={() => router.push('/dashboard')}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.push('/dashboard')}
+              className="rounded-full"
+            >
               {t('resumeWizard.actions.backToDashboard')}
             </Button>
           </div>
 
           {errorKey && (
-            <div className="border-2 border-red-600 bg-red-100 p-4" role="alert">
-              <p className=" text-sm font-bold uppercase tracking-wider text-red-600">
-                {t('common.error')}
-              </p>
-              <p className="mt-1 font-sans text-sm">{t(errorKey)}</p>
+            <div
+              className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4"
+              role="alert"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-red-800">
+                  {t('common.error')}
+                </p>
+                <p className="mt-1 text-sm text-red-700">{t(errorKey)}</p>
+              </div>
             </div>
           )}
 

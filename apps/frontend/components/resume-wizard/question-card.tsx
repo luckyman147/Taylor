@@ -65,9 +65,9 @@ export function QuestionCard({
   };
 
   return (
-    <section className="border border-ink bg-white shadow-sw-lg">
+    <section className="rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-xs">
       <div
-        className="flex gap-1 border-b border-ink p-2"
+        className="flex gap-1 border-b border-[#e6e3dc] p-2"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={totalSegments}
@@ -78,18 +78,18 @@ export function QuestionCard({
             key={index}
             className={
               index < progress.current
-                ? 'h-1.5 flex-1 border border-ink bg-black'
-                : 'h-1.5 flex-1 border border-ink bg-white'
+                ? 'h-1.5 flex-1 rounded-full bg-primary'
+                : 'h-1.5 flex-1 rounded-full bg-[#efece4]'
             }
           />
         ))}
       </div>
 
       <div className="grid gap-6 p-5 md:p-8">
-        <p className=" text-xs font-bold uppercase tracking-wider text-primary">
+        <p className="inline-flex w-fit items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
           {sectionLabel}
         </p>
-        <h2 className="font-serif text-3xl font-bold leading-tight md:text-4xl">{question}</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-ink md:text-3xl">{question}</h2>
 
         {isReview ? (
           warnings.length > 0 && (
@@ -97,7 +97,7 @@ export function QuestionCard({
               {warnings.map((warning, index) => (
                 <li
                   key={index}
-                  className="border border-steel-grey bg-white px-3 py-2 font-sans text-sm text-steel-grey"
+                  className="rounded-xl border border-amber-200 bg-[#fbf6e9] px-4 py-2.5 text-sm text-amber-900"
                 >
                   {warning}
                 </li>
@@ -118,19 +118,22 @@ export function QuestionCard({
               onChange={(event) => onAnswerChange(event.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isBusy}
-              className="min-h-40 bg-white font-sans text-base"
+              className="min-h-40 rounded-xl border-[#e6e3dc] bg-white font-sans text-base shadow-sw-xs"
             />
           </div>
         )}
 
         {isQuestion && isComplete && (
-          <p className="flex items-center gap-2  text-xs font-bold uppercase tracking-wider text-green-700">
-            <span aria-hidden="true" className="inline-block h-3 w-3 bg-green-700" />
+          <p className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-green-700">
+            <span
+              aria-hidden="true"
+              className="inline-block h-2.5 w-2.5 rounded-full bg-green-600"
+            />
             {t('resumeWizard.readyHint')}
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3 border-t-2 border-ink pt-5">
+        <div className="flex flex-wrap gap-3 border-t border-[#e6e3dc] pt-5">
           {isReview ? (
             <>
               <Button
@@ -138,30 +141,60 @@ export function QuestionCard({
                 variant="success"
                 onClick={onFinalize}
                 disabled={isBusy || !canFinalize}
+                className="rounded-full"
               >
                 {isBusy ? t('common.saving') : t('resumeWizard.actions.create')}
               </Button>
-              <Button type="button" variant="outline" onClick={onKeepAdding} disabled={isBusy}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onKeepAdding}
+                disabled={isBusy}
+                className="rounded-full"
+              >
                 {t('resumeWizard.actions.keepAdding')}
               </Button>
             </>
           ) : (
             <>
-              <Button type="button" onClick={onContinue} disabled={!canContinue}>
+              <Button
+                type="button"
+                onClick={onContinue}
+                disabled={!canContinue}
+                className="rounded-full"
+              >
                 {isBusy ? t('common.loading') : t('resumeWizard.actions.continue')}
               </Button>
               {isQuestion && (
-                <Button type="button" variant="outline" onClick={onSkip} disabled={isBusy}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onSkip}
+                  disabled={isBusy}
+                  className="rounded-full"
+                >
                   {t('resumeWizard.actions.skip')}
                 </Button>
               )}
               {isQuestion && (
-                <Button type="button" variant="outline" onClick={onReview} disabled={isBusy}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onReview}
+                  disabled={isBusy}
+                  className="rounded-full"
+                >
                   {t('resumeWizard.actions.review')}
                 </Button>
               )}
               {isQuestion && canGoBack && (
-                <Button type="button" variant="ghost" onClick={onBack} disabled={isBusy}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={onBack}
+                  disabled={isBusy}
+                  className="rounded-full"
+                >
                   {t('resumeWizard.actions.back')}
                 </Button>
               )}

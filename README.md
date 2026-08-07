@@ -1,6 +1,25 @@
-# Resume Matcher
+<p align="center">
+  <img src="apps/frontend/public/logo.png" alt="Taylor logo" width="96" height="96" />
+</p>
 
-AI-powered resume tailoring, cover letters and application tracking. Paste any job description, pick a master resume and get a perfectly matched, ATS-friendly resume with a side-by-side diff preview — plus a kanban tracker, builder templates and multi-language support.
+<h1 align="center">Taylor</h1>
+
+<p align="center">AI-powered resume tailoring, cover letters, job scraping and application tracking.</p>
+
+<p align="center"><strong>Taylor</strong> is a full-stack resume automation suite. Paste any job description, pick a master resume built by hand or assembled with the AI-guided wizard, and get a perfectly matched, ATS-friendly resume with a side-by-side diff preview you can review before committing. Beyond tailoring, it grows into your whole job-hunt command center: an AI-grounded cover-letter generator (with LinkedIn/GitHub context), a kanban application tracker, a job scraper that pulls listings from remote, freelance and Tunisian boards, and a print-optimized PDF export pipeline. It ships with a template-based resume builder, multi-language support, and is LLM-agnostic — OpenAI, Anthropic, Gemini, OpenRouter, Ollama, DeepSeek, Groq and any OpenAI-compatible endpoint.</p>
+
+## Screenshots
+
+| Screenshot | Description |
+| --- | --- |
+| [Landing page](screenshots/01-landing.png) | Hero with the value proposition, feature highlights, a "how it works" band and the sign-in CTA panel. |
+| [Dashboard](screenshots/02-dashboard.png) | Home view — master resume management, quick actions and the entry points for tailoring, the builder and the AI wizard. |
+| [Builder](screenshots/03-builder.png) | Template-based resume editor with live preview, section reordering, formatting controls and AI regeneration. |
+| [Tailor](screenshots/04-tailor.png) | Paste a job description, pick a master resume and review the side-by-side AI diff before committing the tailored version. |
+| [Resume wizard](screenshots/05-resume-wizard.png) | AI-guided setup — answer focused prompts section by section while a live draft preview builds next to you. |
+| [Application tracker](screenshots/06-tracker.png) | Kanban board tracking each application through saved → applied → response → interview → accepted/rejected. |
+| [Job scraper](screenshots/07-job-scraper.png) | Pull job listings from external sources (RSS, remote boards, Tunisian boards) straight into your search. |
+| [Settings](screenshots/08-settings.png) | LLM provider config with Save & Test, content-generation toggles, language, GitHub connection and the danger zone. |
 
 ## Features
 
