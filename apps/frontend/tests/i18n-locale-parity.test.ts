@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import en from '@/messages/en.json';
-import es from '@/messages/es.json';
-import zh from '@/messages/zh.json';
-import ja from '@/messages/ja.json';
-import pt from '@/messages/pt-BR.json';
 import fr from '@/messages/fr.json';
-import ko from '@/messages/ko.json';
 
 import { getMessages } from '@/lib/i18n/messages';
 import { locales, type Locale } from '@/i18n/config';
@@ -47,7 +42,7 @@ function keyKinds(
 }
 
 const REFERENCE = keyKinds(en);
-const LOCALES: Record<string, unknown> = { es, zh, ja, pt, fr, ko };
+const LOCALES: Record<string, unknown> = { fr };
 
 describe('i18n locale parity (guards the next build break)', () => {
   it.each(Object.keys(LOCALES))('%s.json has every en.json key with a matching shape', (name) => {

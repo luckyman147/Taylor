@@ -55,11 +55,15 @@ from app.services.improver import (
     generate_skill_target_plan,
     generate_resume_diffs,
     improve_resume,
+    reconcile_selected_projects,
     verify_skill_target_plan,
     verify_diff_result,
     _prepare_keywords_for_prompt,
 )
-from app.services.mcp.github import get_matched_repos_for_job
+from app.services.mcp.github import (
+    get_matched_repos_for_job,
+    get_selected_repos_for_diff,
+)
 from app.services.refiner import refine_resume, calculate_keyword_match
 from app.services.ats import compute_ats_score
 from app.schemas.refinement import RefinementConfig
@@ -69,6 +73,7 @@ from app.services.cover_letter import (
     generate_resume_title,
 )
 from app.services.interview_prep import generate_interview_prep
+from app.services.summary import rewrite_resume_summary
 from app.prompts import DEFAULT_IMPROVE_PROMPT_ID, IMPROVE_PROMPT_OPTIONS
 
 
@@ -935,11 +940,21 @@ async def _improve_preview_flow(
             logger.warning("Skill target planning failed, continuing without it: %s", e)
             response_warnings.append("Skill target planning failed")
 
-        # Fetch matched GitHub repos for project context
+# Fetch matched GitHub repos for project context
         github_repos = ""
+        selected_repos_prompt = ""
+        allowed_project_repos: dict[str, str] = {}
+        selected_repo_entries: list[dict[str, Any]] = []
         try:
             keywords_str = _prepare_keywords_for_prompt(job_keywords)
             github_repos = await get_matched_repos_for_job(keywords_str)
+            allowed_project_repos, selected_repos_prompt, selected_repo_entries = (
+                await get_selected_repos_for_diff(request.selected_repos)
+            )
+            if request.selected_repos and not allowed_project_repos:
+                response_warnings.append(
+                    "Selected GitHub repos could not be fetched; projects left unchanged"
+                )
         except Exception as e:
             logger.debug("Failed to fetch GitHub repos for tailoring: %s", e)
 
@@ -952,12 +967,14 @@ async def _improve_preview_flow(
             original_resume_data=original_resume_data,
             skill_targets=skill_targets,
             github_repos=github_repos,
+            selected_repos=selected_repos_prompt,
         )
 
         improved_data, applied_changes, rejected_changes = apply_diffs(
             original=original_resume_data,
             changes=diff_result.changes,
             allowed_skill_targets=skill_targets,
+            allowed_project_repos=allowed_project_repos,
         )
 
         diff_warnings = verify_diff_result(
@@ -1062,6 +1079,27 @@ async def _improve_preview_flow(
         logger.warning("Refinement failed, using unrefined result: %s", e)
         if refinement_attempted:
             response_warnings.append(f"Refinement failed: {str(e)}")
+
+    projects_added, projects_updated, projects_removed = reconcile_selected_projects(
+        improved_data, selected_repo_entries, request.remove_projects
+    )
+    if selected_repo_entries and projects_removed:
+        response_warnings.append(
+            f"{projects_removed} old project(s) replaced by your selected GitHub projects"
+        )
+
+    # Structured summary rewrite (WHY → WHAT → HOW → IMPACT), always applied.
+    # Runs after refinement and the deterministic project reconciliation so the
+    # final summary reflects all settled content; runs before the diff/preview
+    # hash so the review modal shows the change and confirm persists it.
+    if improved_data.get("summary"):
+        rewritten_summary = await rewrite_resume_summary(
+            resume_data=improved_data,
+            job_description=job["content"],
+            language=language,
+        )
+        if rewritten_summary and rewritten_summary != improved_data["summary"]:
+            improved_data["summary"] = rewritten_summary
 
     improved_text = json.dumps(improved_data, indent=2)
     preview_hash = _hash_improved_data(improved_data)
@@ -1320,9 +1358,19 @@ async def improve_resume_endpoint(
 
         # Fetch matched GitHub repos for project context
         github_repos = ""
+        selected_repos_prompt = ""
+        allowed_project_repos: dict[str, str] = {}
+        selected_repo_entries: list[dict[str, Any]] = []
         try:
             keywords_str = _prepare_keywords_for_prompt(job_keywords)
             github_repos = await get_matched_repos_for_job(keywords_str)
+            allowed_project_repos, selected_repos_prompt, selected_repo_entries = (
+                await get_selected_repos_for_diff(request.selected_repos)
+            )
+            if request.selected_repos and not allowed_project_repos:
+                response_warnings.append(
+                    "Selected GitHub repos could not be fetched; projects left unchanged"
+                )
         except Exception as e:
             logger.debug("Failed to fetch GitHub repos for tailoring: %s", e)
 
@@ -1336,11 +1384,13 @@ async def improve_resume_endpoint(
                 prompt_id=prompt_id,
                 original_resume_data=original_resume_data,
                 github_repos=github_repos,
+                selected_repos=selected_repos_prompt,
             )
 
             improved_data, applied_changes, rejected_changes = apply_diffs(
                 original=original_resume_data,
                 changes=diff_result.changes,
+                allowed_project_repos=allowed_project_repos,
             )
 
             diff_warnings = verify_diff_result(
@@ -1445,6 +1495,26 @@ async def improve_resume_endpoint(
             logger.warning("Refinement failed, using unrefined result: %s", e)
             if refinement_attempted:
                 response_warnings.append(f"Refinement failed: {str(e)}")
+
+        projects_added, projects_updated, projects_removed = reconcile_selected_projects(
+            improved_data, selected_repo_entries, request.remove_projects
+        )
+        if selected_repo_entries and projects_removed:
+            response_warnings.append(
+                f"{projects_removed} old project(s) replaced by your selected GitHub projects"
+            )
+
+        # Structured summary rewrite (WHY → WHAT → HOW → IMPACT), same as the
+        # preview flow — runs after refinement + reconciliation, before the
+        # diff calculation and persistence.
+        if improved_data.get("summary"):
+            rewritten_summary = await rewrite_resume_summary(
+                resume_data=improved_data,
+                job_description=job["content"],
+                language=language,
+            )
+            if rewritten_summary and rewritten_summary != improved_data["summary"]:
+                improved_data["summary"] = rewritten_summary
 
         # Convert improved data to JSON string for storage
         improved_text = json.dumps(improved_data, indent=2)

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Check from 'lucide-react/dist/esm/icons/check';
+import Search from 'lucide-react/dist/esm/icons/search';
 import { useTranslations } from '@/lib/i18n';
 
 export interface DropdownOption {
@@ -19,6 +20,10 @@ interface DropdownProps {
   description?: string;
   disabled?: boolean;
   className?: string;
+  // Renders a filter input at the top of the popup (for long option lists
+  // like provider model catalogs). Off by default — existing callers are
+  // unaffected.
+  searchable?: boolean;
 }
 
 export function Dropdown({
@@ -29,11 +34,14 @@ export function Dropdown({
   description,
   disabled = false,
   className = '',
+  searchable = false,
 }: DropdownProps) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   // Stable id wiring the trigger's aria-controls to the popup's id, and
   // the popup's role="menu" to its role="menuitem" children.
   const menuId = React.useId();
@@ -54,10 +62,27 @@ export function Dropdown({
     }
   }, [isOpen]);
 
+  // Focus the filter input on open; clear it on close so the next open
+  // starts from a fresh, unfiltered list.
+  useEffect(() => {
+    if (isOpen && searchable) {
+      searchRef.current?.focus();
+    }
+    if (!isOpen) {
+      setSearchQuery('');
+    }
+  }, [isOpen, searchable]);
+
   const handleSelect = (optionId: string) => {
     onChange(optionId);
     setIsOpen(false);
   };
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const visibleOptions =
+    searchable && normalizedQuery
+      ? options.filter((opt) => opt.label.toLowerCase().includes(normalizedQuery))
+      : options;
 
   return (
     <div className={`space-y-1 ${className}`} ref={containerRef}>
@@ -125,33 +150,53 @@ export function Dropdown({
             aria-label={label}
             className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-[#e6e3dc] bg-white p-1.5 shadow-sw-lg"
           >
+            {searchable && (
+              <div className="relative mb-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-steel-grey" />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t('common.search')}
+                  aria-label={t('common.search')}
+                  className="w-full rounded-lg border border-[#e6e3dc] bg-paper-tint py-2 pl-8 pr-3 text-sm text-ink placeholder:text-steel-grey focus:border-primary focus:outline-none"
+                />
+              </div>
+            )}
             <div className="max-h-64 overflow-y-auto">
-              {options.map((option) => {
-                const selected = option.id === value;
-                return (
-                  <button
-                    key={option.id}
-                    role="menuitemradio"
-                    aria-checked={selected}
-                    onClick={() => handleSelect(option.id)}
-                    className={`flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 ${
-                      selected ? 'bg-primary text-white' : 'bg-white text-ink hover:bg-paper-tint'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold">{option.label}</div>
-                      {option.description && (
-                        <div
-                          className={`mt-0.5 text-xs ${selected ? 'opacity-80' : 'text-steel-grey'}`}
-                        >
-                          {option.description}
-                        </div>
-                      )}
-                    </div>
-                    {selected && <Check className="mt-0.5 h-4 w-4 shrink-0 text-white" />}
-                  </button>
-                );
-              })}
+              {visibleOptions.length === 0 ? (
+                <div className="px-3 py-2.5 text-sm text-steel-grey">{t('common.noResults')}</div>
+              ) : (
+                visibleOptions.map((option) => {
+                  const selected = option.id === value;
+                  return (
+                    <button
+                      key={option.id}
+                      role="menuitemradio"
+                      aria-checked={selected}
+                      onClick={() => handleSelect(option.id)}
+                      className={`flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 ${
+                        selected ? 'bg-primary text-white' : 'bg-white text-ink hover:bg-paper-tint'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold">{option.label}</div>
+                        {option.description && (
+                          <div
+                            className={`mt-0.5 text-xs ${
+                              selected ? 'opacity-80' : 'text-steel-grey'
+                            }`}
+                          >
+                            {option.description}
+                          </div>
+                        )}
+                      </div>
+                      {selected && <Check className="mt-0.5 h-4 w-4 shrink-0 text-white" />}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         )}

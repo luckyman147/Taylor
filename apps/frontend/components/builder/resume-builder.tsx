@@ -1148,6 +1148,8 @@ const ResumeBuilderContent = () => {
         skillsItem={skillsItemForRegenerate}
         selectedItems={regenerateWizard.selectedItems}
         onSelectionChange={regenerateWizard.setSelectedItems}
+        selectedRepos={regenerateWizard.selectedRepos}
+        onReposChange={regenerateWizard.setSelectedRepos}
         instruction={regenerateWizard.instruction}
         onInstructionChange={regenerateWizard.setInstruction}
         regeneratedItems={regenerateWizard.regeneratedItems}

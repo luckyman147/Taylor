@@ -125,6 +125,37 @@ export async function testLlmConnection(config?: LLMConfigUpdate): Promise<LLMHe
   return res.json();
 }
 
+// Models a provider exposes, for the Settings model picker.
+export interface LLMModelsResponse {
+  provider: LLMProvider;
+  models: string[];
+  // "api" = live catalog fetch; "static" = curated fallback (or empty).
+  source: 'api' | 'static';
+  error?: string | null;
+}
+
+// List models available from a provider. Optional values preview unsaved
+// settings; omitted values fall back to the stored configuration.
+export async function fetchLlmModels(config?: LLMConfigUpdate): Promise<LLMModelsResponse> {
+  const options: RequestInit = {
+    method: 'POST',
+    credentials: 'include',
+  };
+
+  if (config) {
+    options.headers = { 'Content-Type': 'application/json' };
+    options.body = JSON.stringify(config);
+  }
+
+  const res = await apiFetch('/config/llm-models', options);
+
+  if (!res.ok) {
+    throw new Error(`Failed to load available models (status ${res.status}).`);
+  }
+
+  return res.json();
+}
+
 // Fetch system status
 export async function fetchSystemStatus(): Promise<SystemStatus> {
   const res = await apiFetch('/status', { credentials: 'include' });
@@ -222,7 +253,7 @@ export async function updateFeatureConfig(config: FeatureConfigUpdate): Promise<
 }
 
 // Language configuration types
-export type SupportedLanguage = 'en' | 'es' | 'zh' | 'ja' | 'pt' | 'fr' | 'ko';
+export type SupportedLanguage = 'en' | 'fr';
 
 export interface LanguageConfig {
   ui_language: SupportedLanguage;

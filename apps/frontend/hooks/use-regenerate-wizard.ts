@@ -26,6 +26,8 @@ interface UseRegenerateWizardReturn {
   // Selection state
   selectedItems: RegenerateItemInput[];
   setSelectedItems: (items: RegenerateItemInput[]) => void;
+  selectedRepos: string[];
+  setSelectedRepos: (repos: string[]) => void;
 
   // Instruction state
   instruction: string;
@@ -69,6 +71,7 @@ export function useRegenerateWizard({
 
   // Selection state
   const [selectedItems, setSelectedItems] = useState<RegenerateItemInput[]>([]);
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
 
   // Instruction state
   const [instruction, setInstruction] = useState<string>('');
@@ -93,7 +96,7 @@ export function useRegenerateWizard({
 
   // Generate new content using AI
   const generate = useCallback(async () => {
-    if (selectedItems.length === 0) {
+    if (selectedItems.length === 0 && selectedRepos.length === 0) {
       setError('No items selected');
       return;
     }
@@ -108,6 +111,7 @@ export function useRegenerateWizard({
         items: selectedItems,
         instruction: instruction || t('builder.regenerate.instructionDialog.defaultInstruction'),
         output_language: outputLanguage,
+        selected_repos: selectedRepos.length > 0 ? selectedRepos : undefined,
       };
 
       const response = await regenerateItemsApi(request);
@@ -122,12 +126,13 @@ export function useRegenerateWizard({
     } finally {
       setIsGenerating(false);
     }
-  }, [resumeId, selectedItems, instruction, outputLanguage, onError, t]);
+  }, [resumeId, selectedItems, selectedRepos, instruction, outputLanguage, onError, t]);
 
   // Reset all state
   const reset = useCallback(() => {
     setStep('idle');
     setSelectedItems([]);
+    setSelectedRepos([]);
     setInstruction('');
     setRegeneratedItems([]);
     setRegenerateErrors([]);
@@ -178,6 +183,8 @@ export function useRegenerateWizard({
     setStep,
     selectedItems,
     setSelectedItems,
+    selectedRepos,
+    setSelectedRepos,
     instruction,
     setInstruction,
     regeneratedItems,

@@ -4,9 +4,11 @@ import json
 import logging
 import re
 import threading
+import time
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
+import httpx
 import litellm
 from litellm import Router
 from litellm.router import RetryPolicy
@@ -50,6 +52,87 @@ MAX_JSON_CONTENT_SIZE = 1024 * 1024  # 1MB
 # output limits. Callers should use get_safe_max_tokens() so this is
 # automatically clamped to the model's actual capacity.
 DEFAULT_JSON_MAX_TOKENS = 8192
+
+# Timeout for provider model-listing calls (seconds). Listing is a short
+# metadata call, not a completion — fail fast and fall back to the curated
+# static list rather than making the Settings page wait.
+MODEL_LISTING_TIMEOUT = 10
+
+# Model-catalog results are cached per (provider, api_base) for 10 minutes.
+# They change rarely and get fetched on every Settings-page visit; the TTL
+# keeps the dropdown snappy without hammering provider APIs. The API key is
+# deliberately NOT part of the cache key: a listing endpoint returns the
+# same catalog for any valid account.
+MODEL_LISTING_CACHE_TTL = 600
+
+# Curated static catalogs per vendor provider, used when the live listing
+# API is unreachable (no key stored, network down, or local server offline)
+# so the Settings model dropdown always has options. Local-only providers
+# (openai_compatible / ollama) have NO static list — their catalogs are
+# server-defined, so the UI falls back to free-text input for those.
+_STATIC_PROVIDER_MODELS: dict[str, list[str]] = {
+    "openai": [
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "o3",
+        "o3-mini",
+        "o4-mini",
+        "gpt-4-turbo",
+    ],
+    "azure_foundry": [
+        "mistral-large-latest",
+        "mistral-large-2411",
+        "mistral-7b-instruct-v0.3",
+        "meta-llama-3.1-70b-instruct",
+        "meta-llama-3.1-8b-instruct",
+        "codestral-latest",
+        "deepseek-r1",
+        "gpt-5",
+        "gpt-5-mini",
+    ],
+    "anthropic": [
+        "claude-opus-4-1",
+        "claude-sonnet-4-5",
+        "claude-haiku-4-5",
+        "claude-3-7-sonnet-latest",
+        "claude-3-5-sonnet-latest",
+        "claude-3-5-haiku-latest",
+    ],
+    "openrouter": [
+        "openai/gpt-5",
+        "openai/gpt-5-mini",
+        "anthropic/claude-sonnet-4-5",
+        "google/gemini-3-flash-preview",
+        "deepseek/deepseek-chat",
+        "meta-llama/llama-3.3-70b-instruct",
+    ],
+    "gemini": [
+        "gemini-3-flash-preview",
+        "gemini-3-pro-preview",
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+    ],
+    "deepseek": ["deepseek-chat", "deepseek-reasoner"],
+    "groq": [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+    ],
+    "openai_compatible": [],
+    "ollama": [],
+}
+
+# Module-level cache + lock for provider model listings. The single-worker
+# assumption documented in CLAUDE.md holds, so an in-memory dict is safe.
+_models_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
+_models_cache_lock = threading.Lock()
 
 
 class LLMConfig(BaseModel):
@@ -449,6 +532,171 @@ def get_llm_config() -> LLMConfig:
         api_version=stored.get("api_version"),
         reasoning_effort=reasoning_effort,
     )
+
+
+def _fetch_models_from_api(
+    provider: str, api_base: str | None, api_key: str
+) -> dict[str, Any]:
+    """Call the provider's model-listing API once (no caching).
+
+    Returns {"models": [...], "source": "api"} on success and
+    {"models": [], "source": "static", "error": "..."} on any failure.
+    Provider-specific auth/parse quirks are handled per-vendor below.
+    """
+    base = (api_base or "").strip().rstrip("/")
+
+    if provider == "openai":
+        url = "https://api.openai.com/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    elif provider == "openai_compatible":
+        url = f"{base or 'http://localhost:8080/v1'}/models"
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    elif provider == "anthropic":
+        url = "https://api.anthropic.com/v1/models"
+        headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
+    elif provider == "openrouter":
+        # Public endpoint — no auth required to list available models.
+        url = "https://openrouter.ai/api/v1/models"
+        headers = {}
+    elif provider == "gemini":
+        url = "https://generativelanguage.googleapis.com/v1beta/models"
+        headers = {}
+        params: dict[str, str] = {"key": api_key} if api_key else {}
+    elif provider == "deepseek":
+        url = "https://api.deepseek.com/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    elif provider == "groq":
+        url = "https://api.groq.com/openai/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    elif provider == "ollama":
+        url = f"{base or 'http://localhost:11434'}/api/tags"
+        headers = {}
+    else:
+        # azure_foundry has no generic catalog API (catalogs are tenant +
+        # deployment-specific) — fall back to the curated static list.
+        return {
+            "models": [],
+            "source": "static",
+            "error": f"No catalog API for provider '{provider}'",
+        }
+
+    try:
+        with httpx.Client(timeout=MODEL_LISTING_TIMEOUT) as client:
+            request_kwargs: dict[str, Any] = {"headers": headers}
+            if provider == "gemini":
+                request_kwargs["params"] = params
+            response = client.get(url, **request_kwargs)
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as e:  # noqa: BLE001 - any failure degrades to static
+        logging.debug("Model listing failed for %s: %s", provider, e)
+        return {
+            "models": [],
+            "source": "static",
+            "error": f"Could not reach the {provider} model catalog",
+        }
+
+    ids = _parse_model_ids(provider, payload)
+    if not ids:
+        return {
+            "models": [],
+            "source": "static",
+            "error": "The provider returned an empty model catalog",
+        }
+    return {"models": ids, "source": "api", "error": None}
+
+
+def _parse_model_ids(provider: str, payload: Any) -> list[str]:
+    """Extract model ids from a provider's listing payload.
+
+    OpenAI-style APIs return ``data[].id``; Gemini returns
+    ``models[].name`` (with a "models/" prefix to strip) and only advertises
+    generateContent-capable entries; Ollama returns ``models[].name``.
+    """
+    if not isinstance(payload, dict):
+        return []
+    ids: list[str] = []
+
+    if provider in ("openai", "openai_compatible", "openrouter", "deepseek", "groq"):
+        entries = payload.get("data")
+        if isinstance(entries, list):
+            ids = [
+                entry.get("id", "")
+                for entry in entries
+                if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+            ]
+    elif provider == "anthropic":
+        entries = payload.get("data")
+        if isinstance(entries, list):
+            ids = [
+                entry.get("id", "")
+                for entry in entries
+                if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+            ]
+    elif provider == "gemini":
+        entries = payload.get("models")
+        if isinstance(entries, list):
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                methods = entry.get("supportedGenerationMethods")
+                if isinstance(methods, list) and "generateContent" not in methods:
+                    continue
+                name = entry.get("name", "")
+                ids.append(name.removeprefix("models/") if isinstance(name, str) else "")
+    elif provider == "ollama":
+        entries = payload.get("models")
+        if isinstance(entries, list):
+            ids = [
+                entry.get("name", "")
+                for entry in entries
+                if isinstance(entry, dict) and isinstance(entry.get("name"), str)
+            ]
+
+    # Dedupe while preserving order; drop empties.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for model_id in ids:
+        if model_id and model_id not in seen:
+            seen.add(model_id)
+            unique.append(model_id)
+    return unique
+
+
+def fetch_provider_models(
+    provider: str,
+    api_base: str | None = None,
+    api_key: str = "",
+) -> dict[str, Any]:
+    """Return models available from ``provider`` for the Settings dropdown.
+
+    Result::
+
+        {"models": [...], "source": "api" | "static", "error": str | None}
+
+    Live catalogs are fetched with a short timeout and merged with the
+    curated static fallback (static entries first, live entries appended).
+    Failures degrade gracefully to the static list (or an empty list for
+    local-only providers, where the UI falls back to free-text input).
+    Cached per (provider, api_base) for ``MODEL_LISTING_CACHE_TTL`` seconds.
+    """
+    cache_key = (provider, api_base or "")
+
+    with _models_cache_lock:
+        cached = _models_cache.get(cache_key)
+        if cached and time.monotonic() - cached[0] < MODEL_LISTING_CACHE_TTL:
+            return cached[1]
+
+    result = _fetch_models_from_api(provider, api_base, api_key)
+
+    static = _STATIC_PROVIDER_MODELS.get(provider, [])
+    if result["source"] == "static" and static:
+        result["models"] = static[:]
+        result["error"] = result.get("error")
+
+    with _models_cache_lock:
+        _models_cache[cache_key] = (time.monotonic(), result)
+    return result
 
 
 def get_model_name(config: LLMConfig) -> str:

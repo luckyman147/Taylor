@@ -95,6 +95,10 @@ class RegenerateRequest(BaseModel):
     items: list[RegenerateItemInput]
     instruction: str = Field(max_length=2000)  # User's feedback/instruction for improvement
     output_language: str = "en"
+    selected_repos: list[str] = Field(
+        default_factory=list,
+        description="Names of user-selected GitHub repos to add as new projects",
+    )
 
 
 class RegeneratedItem(BaseModel):
@@ -107,6 +111,7 @@ class RegeneratedItem(BaseModel):
     original_content: list[str] = Field(default_factory=list)
     new_content: list[str] = Field(default_factory=list)
     diff_summary: str = ""  # AI-generated summary of changes
+    github: str | None = None  # Server-minted GitHub URL (github_* items only)
 
 
 class RegenerateItemError(BaseModel):

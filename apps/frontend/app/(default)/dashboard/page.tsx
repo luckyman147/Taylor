@@ -70,8 +70,7 @@ export default function DashboardPage() {
     if (!value) return t('common.unknown');
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t('common.unknown');
-    const dateLocale =
-      locale === 'es' ? 'es-ES' : locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja-JP' : 'en-US';
+    const dateLocale = locale === 'fr' ? 'fr-FR' : 'en-US';
     return date.toLocaleDateString(dateLocale, { month: 'short', day: '2-digit', year: 'numeric' });
   };
 

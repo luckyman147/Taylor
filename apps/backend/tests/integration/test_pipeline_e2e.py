@@ -368,6 +368,15 @@ class TestTailoringPipeline:
                 new_callable=AsyncMock,
                 return_value="Senior Backend Engineer - TechCorp",
             ),
+            # Structured summary rewrite would fire a real LLM call; keep the
+            # canned summary byte-identical so the preview hash doesn't move.
+            patch(
+                "app.routers.resumes.rewrite_resume_summary",
+                new_callable=AsyncMock,
+                side_effect=lambda resume_data, job_description="", language="en": (
+                    resume_data or {}
+                ).get("summary", ""),
+            ),
         ):
             # --- Preview (no persistence; resume_id stays null) ---
             async with _new_client() as client:
@@ -512,6 +521,13 @@ class TestTailoringPipeline:
                 new_callable=AsyncMock,
                 return_value="Senior Backend Engineer",
             ),
+            patch(
+                "app.routers.resumes.rewrite_resume_summary",
+                new_callable=AsyncMock,
+                side_effect=lambda resume_data, job_description="", language="en": (
+                    resume_data or {}
+                ).get("summary", ""),
+            ),
         ):
             async with _new_client() as client:
                 preview_resp = await client.post(
@@ -541,6 +557,113 @@ class TestTailoringPipeline:
         tailored_id = confirm_resp.json()["data"]["resume_id"]
         assert tailored_id is not None and tailored_id != resume_id
         assert await isolated_db.get_resume(tailored_id) is not None
+
+
+class TestPreviewSummaryRewrite:
+    """The structured summary rewrite (WHY→WHAT→HOW→IMPACT) runs inside the
+    improve preview: the rewritten summary must reach the preview response,
+    show up as a summary diff, and be what confirm persists."""
+
+    NEW_SUMMARY = (
+        "Builds software to remove manual work for non-engineers. "
+        "Full-stack developer shipping React frontends on Node.js backends. "
+        "Automation-first: reusable modules and real-time dashboards. "
+        "Cut setup time 80% and reporting from an hour to 20 minutes."
+    )
+
+    async def test_preview_rewrites_summary_and_confirm_persists_it(
+        self, isolated_db, sample_resume
+    ):
+        upload_resp = await _upload_resume(isolated_db, sample_resume)
+        assert upload_resp.status_code == 200
+        resume_id = upload_resp.json()["resume_id"]
+
+        async with _new_client() as client:
+            jobs_resp = await client.post(
+                "/api/v1/jobs/upload",
+                json={"job_descriptions": ["Senior Backend Engineer: Python, FastAPI."]},
+            )
+        job_id = jobs_resp.json()["job_id"][0]
+
+        improved = ResumeData.model_validate(copy.deepcopy(sample_resume)).model_dump()
+        improved["summary"] = "Old summary that the rewrite must replace."
+
+        with (
+            patch(
+                "app.routers.resumes.extract_job_keywords",
+                new_callable=AsyncMock,
+                return_value={"keywords": ["Python", "FastAPI"], "required_skills": []},
+            ),
+            patch(
+                "app.routers.resumes.generate_skill_target_plan",
+                new_callable=AsyncMock,
+                return_value={"accepted": [], "rejected": []},
+            ),
+            patch(
+                "app.routers.resumes.verify_skill_target_plan",
+                return_value={"accepted": [], "rejected": []},
+            ),
+            patch(
+                "app.routers.resumes.generate_resume_diffs",
+                new_callable=AsyncMock,
+                return_value=SimpleNamespace(changes=[]),
+            ),
+            patch(
+                "app.routers.resumes.apply_diffs",
+                return_value=(copy.deepcopy(improved), [], []),
+            ),
+            patch("app.routers.resumes.verify_diff_result", return_value=[]),
+            patch(
+                "app.routers.resumes.refine_resume",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("refinement disabled for test"),
+            ),
+            patch(
+                "app.routers.resumes.generate_resume_title",
+                new_callable=AsyncMock,
+                return_value="Senior Backend Engineer - TechCorp",
+            ),
+            patch(
+                "app.routers.resumes.rewrite_resume_summary",
+                new_callable=AsyncMock,
+                return_value=self.NEW_SUMMARY,
+            ),
+        ):
+            async with _new_client() as client:
+                preview_resp = await client.post(
+                    "/api/v1/resumes/improve/preview",
+                    json={"resume_id": resume_id, "job_id": job_id},
+                )
+            assert preview_resp.status_code == 200, preview_resp.text
+            preview_data = preview_resp.json()["data"]
+            preview_resume = preview_data["resume_preview"]
+            # The rewritten summary reached the preview response.
+            assert preview_resume["summary"] == self.NEW_SUMMARY
+            # …and the diff preview surfaces it as a summary change.
+            summary_changes = [
+                c
+                for c in preview_data["detailed_changes"]
+                if c.get("field_type") == "summary"
+            ]
+            assert summary_changes, "expected a summary change in the diff"
+            assert summary_changes[0]["new_value"] == self.NEW_SUMMARY
+
+            async with _new_client() as client:
+                confirm_resp = await client.post(
+                    "/api/v1/resumes/improve/confirm",
+                    json={
+                        "resume_id": resume_id,
+                        "job_id": job_id,
+                        "improved_data": preview_resume,
+                        "improvements": preview_data["improvements"],
+                    },
+                )
+            assert confirm_resp.status_code == 200, confirm_resp.text
+
+        tailored_id = confirm_resp.json()["data"]["resume_id"]
+        stored = await isolated_db.get_resume(tailored_id)
+        assert stored is not None
+        assert stored["processed_data"]["summary"] == self.NEW_SUMMARY
 
 
 class TestConfigurableImproveTimeout:

@@ -76,6 +76,13 @@ async def _preview_then_confirm(isolated_db, sample_resume):
             new_callable=AsyncMock,
             return_value="Senior Backend Engineer - Acme Corp",
         ),
+        patch(
+            "app.routers.resumes.rewrite_resume_summary",
+            new_callable=AsyncMock,
+            side_effect=lambda resume_data, job_description="", language="en": (
+                resume_data or {}
+            ).get("summary", ""),
+        ),
     ):
         async with _new_client() as client:
             preview_resp = await client.post(

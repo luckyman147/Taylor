@@ -144,6 +144,9 @@ CRITICAL RULES:
 4. Maintain the exact same JSON structure
 5. Do not use em-dashes (—) or their variants (---, --)
 6. Make keyword incorporation the DEFAULT across all content sections, not an optional enhancement
+7. Bullets keep their facts and metrics and always show scope or purpose: "Developed 25+ REST API endpoints using Node.js to support marketplace operations", not a bare "Developed REST APIs using Node.js."
+8. Vary the leading verb across the bullets of one entry; never start two consecutive bullets with the same verb, and avoid "Worked on", "Responsible for", and purpose-less "Developed X using Y." leads.
+9. When a bullet's original metric survives, keep the order: result first, then action, then technology/method, then purpose.
 
 Keywords to inject (only if supported by master resume):
 {keywords_to_inject}
@@ -168,11 +171,14 @@ REMOVE or REPLACE:
 - Em-dashes (use commas or semicolons instead)
 - Overly formal language: "utilized" -> "used", "endeavored" -> "worked"
 - Generic filler: "in order to" -> "to"
+- Vague bullet leads: "Worked on", "Responsible for", and bare "Developed X using Y." without scope or purpose — rewrite them as ACTION + TECHNICAL WORK + PURPOSE (e.g. "Implemented role-based access control across five user types to ensure appropriate permissions and data visibility.")
+- Repeated leading verbs within one entry's bullets — vary them
 
 VERIFY:
 - All skills exist in the master resume
 - All certifications exist in the master resume
 - No fabricated metrics or achievements
+- Every bullet keeps its original facts, metrics, and scale
 
 Resume to polish:
 {resume}

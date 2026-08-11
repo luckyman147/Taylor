@@ -87,6 +87,34 @@ describe('DiffPreviewModal', () => {
     expect(screen.queryByText('new summary')).not.toBeInTheDocument();
   });
 
+  it('shows the Projects section expanded by default when project changes exist', () => {
+    const changes: ResumeFieldDiff[] = [
+      ...detailedChanges,
+      {
+        field_path: 'personalProjects[2]',
+        field_type: 'project',
+        change_type: 'added',
+        new_value: 'SmartParkTN — Parking automation (github.com/user/smartparktn)',
+        confidence: 'high',
+      },
+    ];
+
+    render(
+      <DiffPreviewModal
+        isOpen
+        onClose={vi.fn()}
+        onReject={vi.fn()}
+        onConfirm={vi.fn()}
+        diffSummary={diffSummary}
+        detailedChanges={changes}
+      />
+    );
+
+    expect(
+      screen.getByText('SmartParkTN — Parking automation (github.com/user/smartparktn)')
+    ).toBeInTheDocument();
+  });
+
   it('fires confirm and reject handlers', () => {
     const onConfirm = vi.fn();
     const onReject = vi.fn();

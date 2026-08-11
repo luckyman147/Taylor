@@ -13,6 +13,7 @@ import {
   previewImproveResume,
   confirmImproveResume,
   fetchResumeList,
+  fetchResume,
   type ResumeListItem,
 } from '@/lib/api/resume';
 import { fetchPromptConfig, type PromptOption } from '@/lib/api/config';
@@ -27,6 +28,7 @@ import { useTranslations } from '@/lib/i18n';
 import { DiffPreviewModal } from '@/components/tailor/diff-preview-modal';
 import { ATSScoreCard } from '@/components/tailor/ats-score-card';
 import { AIConnectionCard } from '@/components/tailor/ai-connection-card';
+import { GitHubRepoPicker } from '@/components/tailor/github-repo-picker';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function TailorPage() {
@@ -42,6 +44,9 @@ export default function TailorPage() {
   const [promptLoading, setPromptLoading] = useState(false);
   const hasUserSelectedPrompt = useRef(false);
   const missingDiffConfirmInFlight = useRef(false);
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [resumeProjects, setResumeProjects] = useState<Array<{ name?: string }>>([]);
+  const [removeProjects, setRemoveProjects] = useState<string[]>([]);
 
   // Diff preview modal state
   const [showDiffModal, setShowDiffModal] = useState(false);
@@ -145,6 +150,31 @@ export default function TailorPage() {
   useEffect(() => {
     let cancelled = false;
 
+    const loadMasterProjects = async () => {
+      if (!masterResumeId) return;
+      try {
+        const resume = await fetchResume(masterResumeId);
+        const projects = resume?.processed_resume?.personalProjects ?? [];
+        if (!cancelled) setResumeProjects(projects.map((p) => ({ name: p.name })));
+      } catch (err) {
+        console.error('Failed to load resume projects', err);
+      }
+    };
+
+    loadMasterProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [masterResumeId, router]);
+
+  useEffect(() => {
+    if (selectedRepos.length === 0) setRemoveProjects([]);
+  }, [selectedRepos]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadPromptConfig = async () => {
       setPromptLoading(true);
       try {
@@ -242,7 +272,13 @@ export default function TailorPage() {
       incrementJobs(); // Update cached counter
 
       // 2. Preview Resume
-      const result = await previewImproveResume(resumeId, jobId, selectedPromptId);
+      const result = await previewImproveResume(
+        resumeId,
+        jobId,
+        selectedPromptId,
+        selectedRepos.length > 0 ? selectedRepos : undefined,
+        removeProjects.length > 0 ? removeProjects : undefined
+      );
 
       if (!result?.data?.diff_summary || !result?.data?.detailed_changes) {
         console.warn('Diff data missing for tailor preview; requesting user confirmation.');
@@ -499,7 +535,53 @@ export default function TailorPage() {
               />
             </div>
 
-            <AIConnectionCard configured={!statusLoading && !!systemStatus?.llm_configured} />
+            <div className="space-y-5 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
+              <div className="space-y-1">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-ink-soft">
+                  {t('tailor.github.projects')}
+                </h2>
+                <p className="text-xs text-steel-grey">{t('tailor.github.subtitle')}</p>
+              </div>
+              <GitHubRepoPicker onChange={setSelectedRepos} disabled={isLoading} />
+              {selectedRepos.length > 0 && resumeProjects.length > 0 && (
+                <div className="mt-4 border-t border-[#efece6] pt-4">
+                  <p className="mb-2 text-xs font-semibold text-ink">
+                    {t('tailor.github.removeLabel')}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {resumeProjects.map((project) => {
+                      const name = project.name ?? '';
+                      if (!name) return null;
+                      const checked = removeProjects.includes(name);
+                      return (
+                        <label
+                          key={name}
+                          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                            checked
+                              ? 'border-red-300 bg-red-50 text-red-700'
+                              : 'border-[#e6e3dc] bg-white text-steel-grey hover:border-[#c9c5bc]'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 accent-red-500"
+                            checked={checked}
+                            disabled={isLoading}
+                            onChange={() =>
+                              setRemoveProjects((prev) =>
+                                checked ? prev.filter((n) => n !== name) : [...prev, name]
+                              )
+                            }
+                          />
+                          {name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-steel-grey">{t('tailor.github.removeHint')}</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Editor card */}
@@ -528,6 +610,10 @@ export default function TailorPage() {
                 {error}
               </div>
             )}
+
+            <div className="mt-4">
+              <AIConnectionCard configured={!statusLoading && !!systemStatus?.llm_configured} />
+            </div>
 
             <Button
               size="lg"

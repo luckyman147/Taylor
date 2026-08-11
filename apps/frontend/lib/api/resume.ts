@@ -161,12 +161,16 @@ export async function uploadJobDescriptions(
 export async function improveResume(
   resumeId: string,
   jobId: string,
-  promptId?: string
+  promptId?: string,
+  selectedRepos?: string[],
+  removeProjects?: string[]
 ): Promise<ImprovedResult> {
   return postImprove('/resumes/improve', {
     resume_id: resumeId,
     job_id: jobId,
     prompt_id: promptId ?? null,
+    selected_repos: selectedRepos ?? null,
+    remove_projects: removeProjects && removeProjects.length > 0 ? removeProjects : null,
   });
 }
 
@@ -174,12 +178,16 @@ export async function improveResume(
 export async function previewImproveResume(
   resumeId: string,
   jobId: string,
-  promptId?: string
+  promptId?: string,
+  selectedRepos?: string[],
+  removeProjects?: string[]
 ): Promise<ImprovedResult> {
   return postImprove('/resumes/improve/preview', {
     resume_id: resumeId,
     job_id: jobId,
     prompt_id: promptId ?? null,
+    selected_repos: selectedRepos ?? null,
+    remove_projects: removeProjects && removeProjects.length > 0 ? removeProjects : null,
   });
 }
 

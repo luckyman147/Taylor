@@ -2,7 +2,9 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
+import respx
 
 from app.llm import (
     LLMConfig,
@@ -11,6 +13,8 @@ from app.llm import (
     _get_retry_temperature,
     _normalize_api_base,
     _supports_temperature,
+    _models_cache,
+    fetch_provider_models,
     get_model_name,
     resolve_api_key,
 )
@@ -668,7 +672,142 @@ class TestCompleteDynamicTimeout:
         from app.llm import complete
 
         await complete(prompt="Hi", max_tokens=8192)
-
         mock_calc_timeout.assert_called_once_with("completion", 8192, "deepseek")
         router.acompletion.assert_awaited_once()
         assert router.acompletion.call_args.kwargs["timeout"] == 180
+
+
+# ---------------------------------------------------------------------------
+# fetch_provider_models() — provider model listing (Settings dropdown)
+# ---------------------------------------------------------------------------
+
+
+class TestProviderModels:
+    """Tests for fetch_provider_models() live catalogs and static fallback."""
+
+    @pytest.fixture(autouse=True)
+    def clear_models_cache(self):
+        """Keep the module-level TTL cache from leaking between tests."""
+        _models_cache.clear()
+        yield
+        _models_cache.clear()
+
+    def test_openai_live_catalog_parses_and_dedupes(self):
+        """A live OpenAI-style catalog is parsed into a deduped id list."""
+        with respx.mock:
+            respx.get("https://api.openai.com/v1/models").mock(
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        "data": [
+                            {"id": "gpt-5"},
+                            {"id": "gpt-5-mini"},
+                            {"id": "gpt-5"},
+                            {"id": 42},  # malformed entry must be skipped
+                        ]
+                    },
+                )
+            )
+            result = fetch_provider_models("openai", api_key="sk-test")
+        assert result["source"] == "api"
+        assert result["models"] == ["gpt-5", "gpt-5-mini"]
+        assert result["error"] is None
+
+    def test_failure_falls_back_to_static_list(self):
+        """HTTP failure (401/network) degrades to the curated static list."""
+        with respx.mock:
+            respx.get("https://api.openai.com/v1/models").mock(
+                return_value=httpx.Response(401, json={"error": "bad key"})
+            )
+            result = fetch_provider_models("openai", api_key="sk-bogus")
+        assert result["source"] == "static"
+        assert result["error"]
+        # The static list is returned so the dropdown always has options.
+        assert "gpt-5" in result["models"]
+
+    def test_gemini_parses_generate_content_models(self):
+        """Gemini names are prefixed-stripped and non-chat models filtered out."""
+        with respx.mock:
+            respx.get(
+                "https://generativelanguage.googleapis.com/v1beta/models",
+                params={"key": "gemini-key"},
+            ).mock(
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        "models": [
+                            {
+                                "name": "models/gemini-3-flash-preview",
+                                "supportedGenerationMethods": ["generateContent"],
+                            },
+                            {
+                                "name": "models/gemini-2.5-pro",
+                                "supportedGenerationMethods": [
+                                    "generateContent",
+                                    "embedContent",
+                                ],
+                            },
+                            {
+                                "name": "models/embedding-001",
+                                "supportedGenerationMethods": ["embedContent"],
+                            },
+                        ]
+                    },
+                )
+            )
+            result = fetch_provider_models("gemini", api_key="gemini-key")
+        assert result["source"] == "api"
+        assert result["models"] == ["gemini-3-flash-preview", "gemini-2.5-pro"]
+
+    def test_ollama_lists_local_tags(self):
+        """Ollama catalogs are fetched from the configured local server."""
+        with respx.mock:
+            respx.get("http://localhost:11434/api/tags").mock(
+                return_value=httpx.Response(
+                    200, json={"models": [{"name": "gemma3:4b"}, {"name": "llama3.1:8b"}]}
+                )
+            )
+            result = fetch_provider_models("ollama")
+        assert result["source"] == "api"
+        assert result["models"] == ["gemma3:4b", "llama3.1:8b"]
+
+    def test_ollama_server_down_returns_empty_not_static(self):
+        """Local providers have no static list — result is empty, source static."""
+        with respx.mock:
+            respx.get("http://localhost:11434/api/tags").mock(
+                return_value=httpx.Response(500)
+            )
+            result = fetch_provider_models("ollama")
+        assert result["source"] == "static"
+        assert result["models"] == []
+        assert result["error"]
+
+    def test_azure_foundry_uses_static_list(self):
+        """Azure has no generic catalog API — curated static list is returned."""
+        result = fetch_provider_models("azure_foundry", api_key="k")
+        assert result["source"] == "static"
+        assert "mistral-large-latest" in result["models"]
+
+    def test_openai_compatible_custom_base_and_auth(self):
+        """openai_compatible lists from the user's base URL with Bearer key."""
+        with respx.mock:
+            route = respx.get("http://localhost:8080/v1/models")
+            route.mock(return_value=httpx.Response(200, json={"data": [{"id": "llama-3.1-8b"}]}))
+            result = fetch_provider_models(
+                "openai_compatible",
+                api_base="http://localhost:8080/v1",
+                api_key="local-secret",
+            )
+        assert result["source"] == "api"
+        assert result["models"] == ["llama-3.1-8b"]
+        assert route.calls[0].request.headers["Authorization"] == "Bearer local-secret"
+
+    def test_results_are_cached_by_provider_and_base(self):
+        """A second call within TTL must not re-hit the provider API."""
+        with respx.mock:
+            route = respx.get("https://api.openai.com/v1/models").mock(
+                return_value=httpx.Response(200, json={"data": [{"id": "gpt-5"}]})
+            )
+            fetch_provider_models("openai", api_key="sk-1")
+            fetch_provider_models("openai", api_key="sk-2")  # same base → cached
+        assert route.call_count == 1

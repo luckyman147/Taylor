@@ -4,29 +4,105 @@
 
 import { apiFetch, apiPost } from './client';
 
-// Simple TTL cache
-const _cache = new Map<string, { data: unknown; expiry: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// GitHub data is cached with an explicit check-then-fetch flow:
+// fetchGitHubStatus() / fetchGitHubRepos() first look up the cache (memory +
+// localStorage) and only call the backend MCP when the cache is empty, stale,
+// or explicitly invalidated. Fetching repos is heavy (per-repo languages +
+// READMEs), so the cache is persisted across page reloads.
+const MEMORY_CACHE = new Map<string, { data: unknown; expiry: number }>();
+const LS_CACHE_PREFIX = 'gh_cache_';
+const GITHUB_STATUS_TTL = 5 * 60 * 1000; // 5 minutes
+const GITHUB_REPOS_TTL = 30 * 60 * 1000; // 30 minutes — heavy to fetch
+const IN_FLIGHT = new Map<string, Promise<unknown>>();
 
-function cached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const hit = _cache.get(key);
-  if (hit && hit.expiry > now) {
-    return Promise.resolve(hit.data as T);
+interface CacheEntry<T> {
+  data: T;
+  expiry: number;
+}
+
+function now(): number {
+  return Date.now();
+}
+
+function readMemory<T>(key: string): T | null {
+  const hit = MEMORY_CACHE.get(key);
+  if (hit && hit.expiry > now()) return hit.data as T;
+  return null;
+}
+
+function readPersisted<T>(key: string): T | null {
+  try {
+    const raw = window.localStorage.getItem(`${LS_CACHE_PREFIX}${key}`);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as CacheEntry<T>;
+    if (typeof entry?.expiry !== 'number' || typeof entry?.data === 'undefined') return null;
+    if (entry.expiry <= now()) {
+      window.localStorage.removeItem(`${LS_CACHE_PREFIX}${key}`);
+      return null;
+    }
+    return entry.data;
+  } catch {
+    return null;
   }
-  return fetcher().then((data) => {
-    _cache.set(key, { data, expiry: now + CACHE_TTL });
+}
+
+function writePersisted(key: string, data: unknown, ttl: number): void {
+  try {
+    const entry: CacheEntry<unknown> = { data, expiry: now() + ttl };
+    window.localStorage.setItem(`${LS_CACHE_PREFIX}${key}`, JSON.stringify(entry));
+  } catch {
+    // localStorage unavailable (private mode / SSR) — memory cache still applies
+  }
+}
+
+function invalidateKey(key: string): void {
+  MEMORY_CACHE.delete(key);
+  try {
+    window.localStorage.removeItem(`${LS_CACHE_PREFIX}${key}`);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+/**
+ * Resolve a cached value: memory first, then localStorage. Returns null when
+ * the cache is empty or expired, so callers know they must fetch from MCP.
+ */
+export function getCached<T>(key: string): T | null {
+  return readMemory<T>(key) ?? readPersisted<T>(key);
+}
+
+async function cached<T>(key: string, ttl: number, fetcher: () => Promise<T>): Promise<T> {
+  const fresh = getCached<T>(key);
+  if (fresh !== null) {
+    MEMORY_CACHE.set(key, { data: fresh as never, expiry: now() + ttl });
+    return fresh;
+  }
+
+  // Debounce concurrent calls so two mounted components fire one request.
+  const inFlight = IN_FLIGHT.get(key);
+  if (inFlight) {
+    return inFlight as Promise<T>;
+  }
+
+  const request = fetcher().then((data) => {
+    writePersisted(key, data, ttl);
+    MEMORY_CACHE.set(key, { data: data as never, expiry: now() + ttl });
     return data;
   });
+  IN_FLIGHT.set(key, request);
+  try {
+    return await request;
+  } finally {
+    IN_FLIGHT.delete(key);
+  }
 }
 
-export function invalidateGitHubCache() {
-  _cache.delete('github_status');
-  _cache.delete('github_repos');
+/** Force-refetch GitHub data on the next access (used after connect/disconnect). */
+export function invalidateGitHubCache(): void {
+  invalidateKey('github_status');
+  invalidateKey('github_repos');
 }
-
-// Invalidate on import to pick up latest data
-invalidateGitHubCache();
 
 export interface MCPServerStatus {
   available: boolean;
@@ -82,12 +158,12 @@ export async function restartMCPs(): Promise<{
 }> {
   const res = await apiPost('/mcp/restart', {});
   if (!res.ok) throw new Error('Failed to restart MCPs');
-  _cache.delete('mcp_status');
+  IN_FLIGHT.delete('mcp_status');
   return res.json();
 }
 
 export async function fetchGitHubStatus(): Promise<GitHubStatusResponse> {
-  return cached('github_status', async () => {
+  return cached('github_status', GITHUB_STATUS_TTL, async () => {
     const res = await apiFetch('/github/github/status');
     if (!res.ok) throw new Error('Failed to fetch GitHub status');
     return res.json();
@@ -119,7 +195,7 @@ export async function disconnectGitHub(): Promise<void> {
 }
 
 export async function fetchGitHubRepos(): Promise<GitHubReposResponse> {
-  return cached('github_repos', async () => {
+  return cached('github_repos', GITHUB_REPOS_TTL, async () => {
     const res = await apiFetch('/github/github/repos');
     if (!res.ok) throw new Error('Failed to fetch GitHub repos');
     return res.json();

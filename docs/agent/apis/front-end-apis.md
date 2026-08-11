@@ -80,6 +80,7 @@ bulkDeleteApplications(applicationIds: string[]) → ApplicationActionResponse
 fetchLlmConfig() → LLMConfig
 updateLlmConfig(config: LLMConfigUpdate) → LLMConfig
 testLlmConnection() → LLMHealthCheck
+fetchLlmModels(config?) → LLMModelsResponse   // POST /config/llm-models
 fetchSystemStatus() → SystemStatus
 
 // Per-provider API keys (encrypted server-side; switching the active
@@ -99,6 +100,8 @@ updateLanguageConfig(language: string) → LanguageConfig
 ```
 
 > `updateLlmApiKey` (`PUT /config/llm-api-key`) no longer persists a key — keys are managed per-provider via the encrypted `/config/api-keys` endpoints above.
+
+> `fetchLlmModels` (`POST /config/llm-models`) lists the models a provider exposes for the Settings model picker. Optional body fields preview unsaved settings; omitted fields use the stored config. Returns `{ provider, models, source, error }` where `source` is `"api"` (live catalog) or `"static"` (curated fallback when the provider is unreachable). The response always includes a `models` array so the picker can render; local-only providers (`openai_compatible`, `ollama`) return `[]` with `source: "static"` on failure, and the UI falls back to free-text entry.
 
 ## Provider Info
 

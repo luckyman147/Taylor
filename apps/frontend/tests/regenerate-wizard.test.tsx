@@ -30,6 +30,8 @@ describe('RegenerateDialog', () => {
         skillsItem={null}
         selectedItems={[]}
         onSelectionChange={vi.fn()}
+        selectedRepos={[]}
+        onReposChange={vi.fn()}
         onContinue={vi.fn()}
       />
     );
@@ -69,6 +71,8 @@ describe('RegenerateDialog', () => {
         skillsItem={null}
         selectedItems={[]}
         onSelectionChange={vi.fn()}
+        selectedRepos={[]}
+        onReposChange={vi.fn()}
         onContinue={vi.fn()}
       />
     );
@@ -101,6 +105,8 @@ describe('RegenerateDialog', () => {
           skillsItem={null}
           selectedItems={selectedItems}
           onSelectionChange={setSelectedItems}
+          selectedRepos={[]}
+          onReposChange={vi.fn()}
           onContinue={onContinue}
         />
       );

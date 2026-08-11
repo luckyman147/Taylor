@@ -534,6 +534,17 @@ class ImproveResumeRequest(BaseModel):
     resume_id: str
     job_id: str
     prompt_id: str | None = None
+    selected_repos: list[str] | None = Field(
+        default=None,
+        description="Names of GitHub repositories the user wants added as new "
+        "personalProjects entries in the tailored resume.",
+    )
+    remove_projects: list[str] | None = Field(
+        default=None,
+        description="Names of existing personalProjects the user wants removed "
+        "from the tailored resume (replaced by the selected GitHub repos). "
+        "Selected repo names are never removed.",
+    )
 
 
 class ImprovementSuggestion(BaseModel):
@@ -732,6 +743,29 @@ class LLMConfigResponse(BaseModel):
     reasoning_effort: ReasoningEffortLiteral | None = None
 
 
+class LLMModelsRequest(BaseModel):
+    """Request to list models for a provider.
+
+    Matches the ``/config/llm-test`` pattern: optional fields let the
+    Settings page preview models for unsaved values (provider / api_base /
+    api_key); omitted fields fall back to the stored configuration.
+    """
+
+    provider: str | None = None
+    api_base: str | None = None
+    api_key: str | None = None
+
+
+class LLMModelsResponse(BaseModel):
+    """Response listing models available from a provider."""
+
+    provider: str
+    models: list[str] = []
+    # "api" = live catalog fetch; "static" = curated fallback (or empty).
+    source: Literal["api", "static"]
+    error: str | None = None
+
+
 class FeatureConfigRequest(BaseModel):
     """Request to update feature settings."""
 
@@ -751,8 +785,8 @@ class FeatureConfigResponse(BaseModel):
 class LanguageConfigRequest(BaseModel):
     """Request to update language settings."""
 
-    ui_language: str | None = None  # en, es, zh, ja - for interface
-    content_language: str | None = None  # en, es, zh, ja - for generated content
+    ui_language: str | None = None  # en, fr - for interface
+    content_language: str | None = None  # en, fr - for generated content
 
 
 class LanguageConfigResponse(BaseModel):
@@ -760,7 +794,7 @@ class LanguageConfigResponse(BaseModel):
 
     ui_language: str = "en"  # Interface language
     content_language: str = "en"  # Generated content language
-    supported_languages: list[str] = ["en", "es", "zh", "ja"]
+    supported_languages: list[str] = ["en", "fr"]
 
 
 class PromptOption(BaseModel):
@@ -913,14 +947,19 @@ class ResumeChange(BaseModel):
     path: str = Field(
         description="Dot+bracket path, e.g. 'workExperience[0].description[1]'"
     )
-    action: Literal["replace", "append", "reorder", "add_skill"]
+    action: Literal[
+        "replace", "append", "reorder", "add_skill", "add_project", "remove_project"
+    ]
     original: str | list[str] | None = Field(
         default=None,
         description="Current text at path — for verification. May be a list (the "
         "current items) for the reorder action; only used for text verification of "
         "replace/append, ignored otherwise.",
     )
-    value: str | list[str] = Field(description="New content")
+    value: str | list[str] | dict[str, Any] = Field(
+        description="New content. A dict is only meaningful for the add_project "
+        "action, where it is the new personalProjects entry."
+    )
     reason: str = Field(description="Why this change helps match the JD")
 
     @model_validator(mode="after")

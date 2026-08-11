@@ -34,6 +34,7 @@ from app.schemas.enrichment import (
     RegenerateResponse,
     RegeneratedItem,
 )
+from app.services.mcp.github import get_selected_repos_for_tailoring
 
 logger = logging.getLogger(__name__)
 
@@ -496,7 +497,7 @@ async def regenerate_items(request: RegenerateRequest) -> RegenerateResponse:
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    if not request.items:
+    if not request.items and not request.selected_repos:
         raise HTTPException(status_code=400, detail="No items selected for regeneration")
 
     # Get language name for LLM
@@ -509,6 +510,32 @@ async def regenerate_items(request: RegenerateRequest) -> RegenerateResponse:
             tasks.append(_regenerate_skills(item, request.instruction, output_language))
         else:
             tasks.append(_regenerate_experience_or_project(item, request.instruction, output_language))
+
+    # User-selected GitHub repos become new personalProjects, grounded in their
+    # README content (bullets are server-minted, README-grounded).
+    github_items: list[RegeneratedItem] = []
+    if request.selected_repos:
+        try:
+            entries, _ = await get_selected_repos_for_tailoring(
+                request.selected_repos,
+                "",
+                request.output_language,
+            )
+            github_items = [
+                RegeneratedItem(
+                    item_id=f"github_{index}",
+                    item_type="project",
+                    title=entry.get("name", ""),
+                    subtitle=None,
+                    original_content=[],
+                    new_content=list(entry.get("description", [])),
+                    diff_summary="Added from selected GitHub repository",
+                    github=entry.get("github"),
+                )
+                for index, entry in enumerate(entries)
+            ]
+        except Exception as exc:
+            logger.warning("Failed to fetch selected GitHub repos for regeneration: %s", exc)
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -534,6 +561,8 @@ async def regenerate_items(request: RegenerateRequest) -> RegenerateResponse:
             continue
 
         regenerated_items.append(result)
+
+    regenerated_items.extend(github_items)
 
     if not regenerated_items:
         raise HTTPException(
@@ -703,6 +732,42 @@ async def apply_regenerated_items(
             projects = updated_data.get("personalProjects", [])
             if not isinstance(projects, list):
                 apply_failures.append(item_id)
+                continue
+
+            # New projects from selected GitHub repos: server-minted entries,
+            # appended (skipped when a project with the same name already exists).
+            if item_id.startswith("github_"):
+                name = _normalize_match_value(item.title)
+                if not name:
+                    apply_failures.append(item_id)
+                    continue
+                existing_names = {
+                    _normalize_match_value(str(p.get("name", "")))
+                    for p in projects
+                    if isinstance(p, dict)
+                }
+                if name in existing_names:
+                    continue  # idempotent: already present
+                next_id = max(
+                    [
+                        int(p.get("id"))
+                        for p in projects
+                        if isinstance(p, dict) and isinstance(p.get("id"), int)
+                    ]
+                    or [0]
+                ) + 1
+                projects.append(
+                    {
+                        "id": next_id,
+                        "name": item.title,
+                        "role": "",
+                        "years": "",
+                        "github": item.github or "",
+                        "website": None,
+                        "description": list(item.new_content),
+                        "descriptionStyles": ["plain"] * len(item.new_content),
+                    }
+                )
                 continue
 
             index = _parse_index(item_id, r"proj_(\d+)")

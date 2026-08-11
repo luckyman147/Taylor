@@ -3,12 +3,7 @@
 # Language code to full name mapping
 LANGUAGE_NAMES = {
     "en": "English",
-    "es": "Spanish",
-    "zh": "Chinese (Simplified)",
-    "ja": "Japanese",
-    "pt": "Brazilian Portuguese",
     "fr": "French",
-    "ko": "Korean",
 }
 
 
@@ -524,36 +519,578 @@ Output this exact JSON format:
   "strategy_notes": "brief notes for the next editing pass"
 }}"""
 
-DIFF_IMPROVE_PROMPT = """Given this resume and job description, output a JSON object with targeted changes to better align the resume with the job.
+DIFF_IMPROVE_PROMPT = """You are an expert ATS resume optimizer, technical recruiter, and resume editor.
 
-RULES:
-1. Only modify content; never change names, companies, dates, institutions, or degrees
-2. Do not invent metrics or achievements not supported by the original resume text
-3. Do not add new work entries, education entries, or project entries
-4. {strategy_instruction}
-5. Each change MUST include the original text (copied exactly) so it can be verified
-6. For each change, explain WHY it helps match the job description
-7. Generate all new text in {output_language}
-8. Do not use em dash characters
-9. Keep changes minimal and targeted; do not rewrite content that already aligns well
-10. Exception to rule 2: you may add a skill only if it appears in the verified skill targets below
-11. By DEFAULT, scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that text using the job description's terminology where it is not already phrased that way (per rule 9, leave content that already aligns well), while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
-12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
-13. When rewriting project descriptions, reference technologies and patterns from the GitHub repos listed above if they relate to the job description. Use repo languages, topics, and descriptions as evidence of skills, but do not add new project entries.
+Your task is to produce a MINIMAL, EVIDENCE-GROUNDED set of diff changes that makes the candidate's resume more relevant to the target job description.
 
-PATHS you can target:
-- "summary" — the resume summary text
-- "workExperience[i].description[j]" — a specific bullet (i = entry index, j = bullet index)
-- "workExperience[i].description" — append a new bullet (action: "append")
-- "personalProjects[i].description[j]" — a specific project bullet
-- "personalProjects[i].description" — append a new project bullet (action: "append")
-- "education[i].description" — the education entry's description text (replace only; it is a single string, not a list)
-- "additional.technicalSkills" — reorder the skills list (action: "reorder") or add one verified skill (action: "add_skill")
-- "additional.languages" — reorder the languages list (action: "reorder")
-- "additional.certificationsTraining" — reorder the certifications list (action: "reorder")
-- "additional.awards" — reorder the awards list (action: "reorder")
+The resume is the source of truth.
 
-Do NOT target: personalInfo, dates/years, company names, education degree/institution/years, customSections.
+The job description determines what should be emphasized, prioritized, and reframed.
+
+The goal is NOT to rewrite the entire resume.
+The goal is to identify the strongest existing evidence in the candidate's profile and make that evidence easier for both ATS systems and recruiters to recognize.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CORE PRINCIPLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Optimize the PRESENTATION of the candidate's existing evidence, never the FACTS.
+
+Think:
+
+JOB REQUIREMENT
+→ candidate evidence
+→ strongest resume location
+→ targeted wording improvement
+
+Do not think:
+
+JOB REQUIREMENT
+→ invent experience
+→ add unsupported technology
+→ rewrite everything
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRUTHFULNESS RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Only modify content; never change:
+
+   * names
+   * companies
+   * dates
+   * institutions
+   * degrees
+   * job titles
+   * project names
+   * GitHub URLs
+
+2. Never invent:
+
+   * metrics
+   * achievements
+   * responsibilities
+   * technologies
+   * tools
+   * certifications
+   * projects
+   * work experience
+   * seniority
+   * years of experience
+   * production experience
+   * business impact
+
+Do not invent metrics or achievements not supported by the original resume.
+
+3. Do not add new work entries, education entries, or project entries.
+
+   EXCEPTION:
+   Repositories explicitly provided under
+   "Selected GitHub repositories to add"
+   MUST be added as new personalProjects entries,
+   REPLACING outdated or less-relevant existing projects
+   (one removed project per added repository).
+
+4. A technology or skill may only be added when:
+
+   * it already appears in the original resume, OR
+   * it appears in "Verified skill targets", OR
+   * it is directly and explicitly evidenced by a selected GitHub repository.
+
+5. Never infer expertise from the job description alone.
+
+6. Never upgrade:
+
+   * "familiar with" → "expert"
+   * "used" → "led"
+   * "academic project" → "professional experience"
+   * "implemented" → "architected" unless the original evidence supports architecture ownership
+
+7. Do not invent metrics.
+
+   If the original resume contains:
+   "reduced response time by 30%"
+
+   you may preserve "30%".
+
+   If no metric exists, do not create one.
+
+8. Never remove an existing experience, certification, skill, or education item unless the system explicitly allows removal.
+
+   EXCEPTION:
+   Existing personalProjects entries MAY be removed (action "remove_project")
+   ONLY when they are replaced by a repository from
+   "Selected GitHub repositories to add".
+   Never remove an entry with the same name as a selected repository.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TAILORING STRATEGY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9. {strategy_instruction}
+
+10. Prioritize the requirements that matter most to the target role.
+
+Rank evidence using:
+
+REQUIRED JD SKILLS
+
+>
+
+CORE RESPONSIBILITIES
+
+>
+
+PREFERRED SKILLS
+
+>
+
+DOMAIN KNOWLEDGE
+
+>
+
+GENERAL SKILLS
+
+11. Do not optimize for keyword count.
+
+Optimize for:
+
+relevance + evidence + clarity + natural terminology.
+
+12. If a keyword already appears in a strong and relevant context, do not modify it merely to repeat it.
+
+13. By DEFAULT, scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that content using the job description's terminology where it is not already phrased that way, while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
+
+Example:
+
+Resume:
+"Built backend services with NestJS."
+
+JD:
+"Develop and maintain REST APIs."
+
+If the surrounding evidence supports REST APIs, a valid improvement may be:
+
+"Developed and maintained REST APIs using NestJS."
+
+Do NOT make this change if REST API development is not supported by the original evidence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVIDENCE MATCHING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+14. Before generating changes, internally map each important JD requirement to candidate evidence from:
+
+* summary
+* work experience
+* projects
+* technical skills
+* certifications
+* education
+* verified skill targets
+* selected GitHub repositories
+
+15. For every important JD requirement, determine:
+
+DIRECT_MATCH
+TRANSFERABLE_MATCH
+PARTIAL_MATCH
+NO_EVIDENCE
+
+16. Only modify the resume when there is evidence.
+
+17. Prefer stronger evidence over weaker evidence.
+
+For example:
+
+JD requirement:
+"React and REST API development"
+
+Candidate evidence:
+
+Project A:
+"Built React frontend and REST APIs with NestJS."
+
+Project B:
+"Used JavaScript."
+
+Prioritize Project A.
+
+18. A project demonstrating the required technology through implementation is stronger evidence than simply listing the technology in Skills.
+
+19. A professional experience demonstrating a skill is generally stronger than a personal project.
+
+20. A substantial project is generally stronger than a certification for demonstrating practical technical ability.
+
+Certifications should support credibility, not replace practical evidence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY OPTIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+21. Scan the summary for opportunities to align it with the target role.
+
+22. The summary should emphasize the candidate's strongest relevant:
+
+* technical capabilities
+* engineering focus
+* domain experience
+* responsibilities
+* outcomes
+
+23. Do not turn the summary into a keyword list.
+
+24. Do not add a technology to the summary unless supported elsewhere in the candidate's evidence.
+
+25. Do not mention years of experience unless explicitly present in the original resume.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXPERIENCE OPTIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+26. Scan EVERY work experience description.
+
+27. For each bullet, ask:
+
+* Does this demonstrate a JD requirement?
+* Is the relevant technology visible?
+* Is the responsibility expressed using terminology similar to the JD?
+* Is the outcome clear?
+* Is there unnecessary generic wording?
+
+28. Rewrite only when the change materially improves relevance or clarity.
+
+29. Preserve the original accomplishment.
+
+30. Prefer:
+
+ACTION + TECHNOLOGY + RESPONSIBILITY + RESULT
+
+when all four are supported.
+
+31. Do not add a result if none exists.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BULLET CRAFT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+B1. When a metric exists in the original bullet, prefer:
+
+RESULT → ACTION → TECHNOLOGY/METHOD → PURPOSE
+
+Example:
+"Reduced project setup time by 80% by automating repetitive development workflows with Python and AI agents."
+
+Without a metric, use:
+
+ACTION → TECHNICAL WORK → PURPOSE
+
+Example:
+"Implemented role-based access control across five user types to ensure appropriate permissions and data visibility."
+
+B2. Every rewritten bullet must show scope or purpose. Never leave a bare action like "Developed REST APIs using Node.js." Prefer "Developed 25+ REST API endpoints using Node.js to support marketplace operations and business workflows."
+
+B3. Do NOT start every bullet with the same verb. Vary the story across the bullets of one entry:
+* an achievement (the biggest measurable result first)
+* technical depth (a challenging component, data modeling, authentication, API design)
+* scale (users, APIs, features, repositories, data)
+* architecture or ownership (design decisions, systems, integrations, security)
+* efficiency (automation, optimization, process improvement)
+
+B4. Describe the candidate's contribution, not the company. Avoid "Worked on a marketplace platform for customers"; prefer "Built and maintained backend APIs supporting marketplace operations and business workflows."
+
+B5. Make technical complexity visible: surface API design, authentication, data modeling, deployment, performance, observability, and failure handling when the original evidence supports them.
+
+B6. Preserve original facts, metrics, and scale. Never invent, reword, or relocate a number.
+
+B7. Keep bullets concise (one or two printed lines).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROJECT OPTIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+32. Scan EVERY personal project.
+
+33. Projects may be particularly important when they provide evidence for requirements not strongly represented in professional experience.
+
+34. For relevant projects, emphasize:
+
+* technologies
+* architecture
+* engineering practices
+* APIs
+* databases
+* cloud
+* DevOps
+* testing
+* AI/ML
+* security
+* scalability
+* collaboration
+* measurable outcomes
+
+ONLY when these are supported by the original project information.
+
+35. When rewriting project descriptions, use terminology from the JD when factually accurate.
+
+36. When GitHub repository evidence is available, use it to improve the project's technical specificity.
+
+37. Do not claim functionality merely because a technology appears in the repository.
+
+38. Repository evidence must support the statement being added.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SKILLS OPTIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+39. Reorder skills so the most relevant skills appear first.
+
+40. Prioritize:
+
+* Required JD skills
+* Strongly relevant skills
+* Skills demonstrated by experience/projects
+* Other existing skills
+
+41. Only add a skill using action "add_skill" when it appears in "Verified skill targets".
+
+42. Never add a skill merely because it appears in the job description.
+
+43. Avoid duplicate skills and unnecessary repetition.
+
+Never remove an existing skill: reorder the current list (job-relevant skills first) and deduplicate only. Any removal is rejected by the pipeline's safety net, so a reorder-only output is mandatory.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CERTIFICATION OPTIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+44. Scan certifications/training for relevance to the target role.
+
+45. Reorder certifications when a relevant certification should appear earlier.
+
+46. Never modify the certification name or issuer.
+
+47. Do not treat a certification as proof of professional experience.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EDUCATION OPTIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+48. Education descriptions may only be replaced when the existing description contains relevant evidence that can be better aligned with the JD.
+
+49. Never change:
+
+* degree
+* institution
+* dates
+* academic title
+
+50. Do not invent coursework, achievements, or academic responsibilities.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GITHUB REPOSITORIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+51. GitHub repositories are supporting evidence, not permission to invent functionality.
+
+52. Only use repository information supplied in:
+
+"GitHub repos matching this job"
+and
+"Selected GitHub repositories to add"
+
+53. For selected repositories, output EXACTLY ONE add change per repository with:
+
+path: "personalProjects"
+action: "add_project"
+
+54. Every selected repository MUST replace an existing project: remove the
+    project from personalProjects (action "remove_project") that is the LEAST
+    relevant to the target role or the most outdated, then add the selected
+    repository in its place. Prefer a 1:1 swap: one removed project per added
+    repository, unless the resume has no project worth replacing — then add
+    without removing.
+
+    remove_project change contract:
+
+    path: "personalProjects"
+    action: "remove_project"
+    value: the EXACT name of the existing project to remove
+    reason: why that project is the weakest fit for this JD
+
+55. Removing a project and adding a repository count as ONE replacement: do
+not output remove_project for a project unless you also add_project a
+selected repository in the same result.
+
+56. Never remove a project whose name matches a selected repository.
+
+57. The value MUST be:
+
+{{
+  "name": "...",
+  "github": "...",
+  "role": "",
+  "years": "",
+  "description": [...]
+}}
+
+58. Repository descriptions must be evidence-grounded.
+
+59. Do not copy README marketing language blindly.
+
+60. Prefer concrete technical implementation details.
+
+61. Do not invent metrics from GitHub repository information.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE MINIMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+62. Keep changes minimal and targeted.
+
+63. Do not rewrite a sentence simply because it could sound better.
+
+64. Make a change only when at least one of these is true:
+
+* It improves ATS keyword alignment.
+* It makes existing relevant evidence clearer.
+* It better connects the candidate's experience to a JD responsibility.
+* It exposes an important technology already demonstrated.
+* It improves the relevance of the summary.
+* It improves ordering of relevant skills/certifications.
+* It adds an explicitly selected GitHub project.
+
+65. If existing content already aligns well, leave it unchanged.
+
+66. Prefer modifying an existing relevant bullet over appending a new bullet.
+
+67. Do not create multiple changes that communicate the same improvement.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+68. EVERY replace/rewrite change MUST include the exact original text.
+
+69. The "original" field must be a DIRECT copy from the resume, never a paraphrase.
+
+70. Every change MUST include a concise reason explaining why it improves alignment with the JD.
+
+71. The reason must reference a concrete JD requirement, responsibility, skill, or keyword.
+
+72. Do not use generic reasons such as:
+
+"This makes the resume better."
+
+Prefer:
+
+"Aligns the existing backend API experience with the JD's REST API development requirement."
+
+73. Do not use first-person pronouns unless the original resume already uses them.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LANGUAGE AND STYLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+74. Generate all new text in {output_language}.
+
+75. Preserve original capitalization, especially for proper nouns and technical terms:
+
+* REST
+* API
+* AWS
+* Azure
+* PostgreSQL
+* React
+* Next.js
+* TypeScript
+* Docker
+* Kubernetes
+* GitHub Actions
+
+76. Do not use em dash characters.
+
+77. Keep professional language concise.
+
+78. Avoid buzzwords unless they are relevant to the JD.
+
+79. Do not keyword-stuff sentences.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PATHS YOU CAN TARGET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+* "summary"
+
+* "workExperience[i].description[j]"
+
+* "workExperience[i].description"
+  action: "append"
+
+* "personalProjects[i].description[j]"
+
+* "personalProjects[i].description"
+  action: "append"
+
+* "personalProjects"
+  action: "add_project"
+
+* "personalProjects"
+  action: "remove_project"
+  value: the EXACT name of the existing project to remove
+
+* "education[i].description"
+
+* "additional.technicalSkills"
+
+* "additional.languages"
+
+* "additional.certificationsTraining"
+
+* "additional.awards"
+
+Allowed actions:
+
+* replace
+* append
+* reorder
+* add_skill
+* add_project
+* remove_project
+
+Do NOT target:
+
+* personalInfo
+* dates/years
+* company names
+* education degree
+* education institution
+* education years
+* customSections
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL QUALITY CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Before producing the JSON, internally verify:
+
+1. Every new claim is supported by resume or repo evidence.
+2. Every changed sentence has an exact original.
+3. No names/dates/institutions/degrees were modified.
+4. No unsupported technology was introduced.
+5. No fake metrics were introduced.
+6. No seniority was inflated.
+7. Every change improves job relevance.
+8. Existing strong content was left untouched.
+9. Important JD requirements are represented where evidence exists.
+10. Missing requirements were NOT fabricated.
+11. Selected GitHub repositories are added exactly once.
+12. Every removed project is replaced by a selected GitHub repository (never removed without a replacement).
+13. The output contains valid JSON only.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INPUT DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Keywords to emphasize (only if already supported by resume content):
 {job_keywords}
@@ -561,8 +1098,11 @@ Keywords to emphasize (only if already supported by resume content):
 Verified skill targets:
 {skill_targets}
 
-GitHub repos matching this job (use as context for enriching existing project descriptions only):
+GitHub repos matching this job:
 {github_repos}
+
+Selected GitHub repositories to add as new personalProjects entries (add ALL of these via add_project):
+{selected_repos}
 
 Job Description:
 {job_description}
@@ -570,28 +1110,40 @@ Job Description:
 Original Resume:
 {original_resume}
 
-Output this exact JSON format, nothing else:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Output this exact JSON format and NOTHING ELSE:
+
 {{
   "changes": [
     {{
-      "path": "workExperience[0].description[1]",
+      "path": "summary",
       "action": "replace",
       "original": "the exact original text at this path",
       "value": "the improved text",
-      "reason": "why this change helps"
+      "reason": "concise reason tied to a concrete JD requirement"
     }},
     {{
-      "path": "summary",
+      "path": "workExperience[0].description[1]",
       "action": "replace",
-      "original": "the current summary text",
-      "value": "the improved summary",
+      "original": "the exact original bullet text",
+      "value": "the reframed bullet",
+      "reason": "restates the existing work in the JD's terminology"
+    }},
+    {{
+      "path": "workExperience[0].description",
+      "action": "append",
+      "original": null,
+      "value": "new bullet elaborating existing, evidenced work",
       "reason": "why this change helps"
     }},
     {{
       "path": "additional.technicalSkills",
       "action": "reorder",
       "original": null,
-      "value": ["most relevant skill first", "then next", "..."],
+      "value": ["most relevant skill first", "then next", "then the rest in original order"],
       "reason": "reordered to prioritize JD-relevant skills"
     }},
     {{
@@ -600,7 +1152,89 @@ Output this exact JSON format, nothing else:
       "original": null,
       "value": "verified skill target missing from the skills list",
       "reason": "added verified JD skill for review"
+    }},
+    {{
+      "path": "personalProjects",
+      "action": "add_project",
+      "original": null,
+      "value": {{
+        "name": "repo-name",
+        "github": "https://github.com/owner/repo-name",
+        "role": "",
+        "years": "",
+        "description": ["bullet grounded in the repo README/languages"]
+      }},
+      "reason": "added user-selected GitHub repo as a project"
     }}
   ],
   "strategy_notes": "brief summary of the tailoring approach"
+}}"""
+
+DIFF_PROJECT_BULLETS_PROMPT = """Write one short description paragraph (about 2 lines) for a GitHub repository, for use on a resume.
+
+RULES:
+1. Write exactly ONE flowing paragraph of 2 sentences max — no bullet lists, no dashes, no line breaks
+2. State what the project is AND why it exists: where the repository facts support it, phrase the purpose explicitly ("built to...", "designed to...", "to ..." / "for ...") instead of only naming the project. Example: "AI-powered resume tailoring that transforms natural language into keyword-optimized PDFs." not just "An AI resume app."
+3. Describe WHAT the project does — its main purpose and what it is for. Do NOT describe how it was developed (no "built with", no tech-stack or language mention unless the repository's own description leads with it)
+4. Read like a person explaining the idea simply — skill tags may appear naturally only when the repository facts mention them as part of the purpose
+5. Only use facts that appear in the repository facts below (README excerpt, description, languages, topics)
+6. Never invent metrics, users, downloads, or impact numbers not stated in the facts
+7. All text must be in {output_language}
+
+Repository facts:
+{repo_facts}
+
+Job description context (use its terminology where it fits the facts):
+{job_description}
+
+Output a JSON object, nothing else:
+{{
+  "bullets": ["paragraph text"]
+}}"""
+
+
+SUMMARY_REWRITE_PROMPT = """You are an expert CV/resume writer specializing in concise, ATS-friendly professional summaries.
+
+Rewrite the candidate's summary below as a short professional narrative — NOT a technology list — using this 5-part mental model:
+
+IDENTITY → PROBLEM → WORK → APPROACH → VALUE
+
+That is: WHO ARE YOU? → WHAT PROBLEMS DO YOU SOLVE? → WHAT DO YOU BUILD? → HOW DO YOU BUILD IT? → WHAT VALUE DO YOU BRING?
+
+Write EXACTLY THREE sentences:
+
+Sentence 1 — Identity + Problem
+"Software Engineer focused on [type of problems/business challenges]."
+Start with the professional identity from the resume (e.g. "Software Engineer", "Full-Stack Developer") followed by the kind of problems they solve. Never open with a generic "passionate about technology" or "results-driven".
+
+Sentence 2 — What they build
+"Builds [systems/applications/APIs] across [relevant technical area]."
+Say what they actually build and where (frontend applications, backend services, REST APIs, automation tools). Be specific. Do NOT start with a list of technologies — the recruiter needs to know what the candidate does with them first.
+
+Sentence 3 — How + Value
+"Applies [engineering approach] to [type of value/outcome]."
+Ground the engineering approach in the resume (clean architecture, automation, reusable modules, role-based access, analytics dashboards, CI/CD...) and close with the type of value it creates (reliable, maintainable, scalable software; operational efficiency; teams that ship faster).
+
+HARD RULES:
+- Exactly 3 sentences — no list, no bullet points.
+- Do NOT mention years of experience.
+- NEVER use these low-signal phrases: "Passionate about...", "Results-driven...", "Experienced in React, Node.js, Python..." as a technology dump, "Seeking a challenging position...", "team player", "proven track record", "highly motivated", "strong problem solver and team player".
+- Do NOT list more than a couple of technologies, and only when they carry meaning (e.g. "React frontends on Node.js and PostgreSQL backends").
+- Do NOT repeat the experience section ("built X at company A, then Y at company B") or the skills list.
+- No generic claims the resume does not demonstrate.
+- Factual accuracy only: no technologies, companies, industries, or achievements that are not in the resume data.
+- Metrics only when they appear in the resume data; never invent numbers.
+- Be specific rather than general, active rather than passive, factual rather than embellished, and easy to scan.
+- Where the job description uses terminology the candidate's facts support, prefer that terminology (natural ATS keyword use — no keyword stuffing).
+- All text must be in {output_language}.
+
+Resume data (only factual source):
+{resume_data}
+
+Job description context (use its terminology only where it fits the candidate's facts):
+{job_description}
+
+Output a JSON object, nothing else:
+{{
+  "summary": "rewritten summary text"
 }}"""

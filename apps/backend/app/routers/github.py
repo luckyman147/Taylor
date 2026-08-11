@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import secrets
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/github", tags=["GitHub"])
 
 # Token storage file
+# Backend data dir — MUST stay in sync with services/mcp/github.py.
 _token_dir = Path(__file__).resolve().parents[2] / "data"
 _TOKEN_FILE = _token_dir / "github_token.json"
 
@@ -30,6 +33,36 @@ _TOKEN_FILE = _token_dir / "github_token.json"
 # https://github.com/settings/developers → OAuth Apps → New
 # Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env
 # Fallback: instructions to create a personal access token
+
+# Repos cache: fetching languages + READMEs for 100 repos is heavy
+# (up to ~400 GitHub API calls). Cache per-token so repeated page loads —
+# e.g. the tailor page repo picker — don't refire the whole fan-out.
+# Module-level state is safe: single-worker uvicorn (see config_cache.py).
+_repos_cache: dict[str, tuple[float, list[GitHubRepo]]] = {}
+_REPOS_CACHE_TTL: float = 600.0  # 10 minutes
+
+
+def _cache_key(token: str) -> str:
+    """Cache key derived from the token — never store the token itself."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _cache_project_repos(token: str, repos: list[GitHubRepo]) -> None:
+    _repos_cache[_cache_key(token)] = (time.monotonic(), repos)
+
+
+def _cached_repos(token: str) -> list[GitHubRepo] | None:
+    hit = _repos_cache.get(_cache_key(token))
+    if not hit:
+        return None
+    cached_at, repos = hit
+    if time.monotonic() - cached_at > _REPOS_CACHE_TTL:
+        return None
+    return repos
+
+
+def _invalidate_repos_cache() -> None:
+    _repos_cache.clear()
 
 
 def _load_token() -> dict | None:
@@ -209,6 +242,7 @@ async def github_callback(request: Request) -> dict:
 async def github_disconnect() -> dict:
     """Disconnect GitHub — remove stored token."""
     _delete_token()
+    _invalidate_repos_cache()
     return {"authenticated": False, "message": "Disconnected from GitHub"}
 
 
@@ -252,6 +286,11 @@ async def github_repos() -> GitHubReposResponse:
     token = await _get_token()
     if not token:
         raise HTTPException(status_code=401, detail="Not connected to GitHub")
+
+    # Serve from cache when fresh — the languages/README fan-out is expensive.
+    cached = _cached_repos(token)
+    if cached is not None:
+        return GitHubReposResponse(repos=cached, total=len(cached))
 
     try:
         raw_repos = await _github_api(
@@ -303,7 +342,13 @@ async def github_repos() -> GitHubReposResponse:
         )
 
         repos = []
+        seen_names: set[str] = set()
         for idx, r in enumerate(raw_repos):
+            repo_name = r.get("name", "")
+            if not repo_name or repo_name in seen_names:
+                continue
+            seen_names.add(repo_name)
+
             # Languages from parallel fetch
             langs = all_langs[idx] if idx < len(all_langs) else []
             if not langs and r.get("language"):
@@ -323,7 +368,7 @@ async def github_repos() -> GitHubReposResponse:
 
             repos.append(
                 GitHubRepo(
-                    name=r.get("name", ""),
+                    name=repo_name,
                     description=r.get("description") or _generate_description(r.get("name", ""), langs, topics),
                     visibility=r.get("visibility", "public").upper(),
                     url=r.get("html_url", ""),
@@ -336,9 +381,11 @@ async def github_repos() -> GitHubReposResponse:
                     readme=readme,
                 )
             )
+        _cache_project_repos(token, repos)
         return GitHubReposResponse(repos=repos, total=len(repos))
     except RuntimeError as exc:
         if "401" in str(exc) or "expired" in str(exc).lower():
             _delete_token()
+            _invalidate_repos_cache()
             raise HTTPException(status_code=401, detail="GitHub token expired")
         raise HTTPException(status_code=500, detail=f"Failed to fetch repos: {exc}")

@@ -219,37 +219,6 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
             </div>
           </div>
 
-          {/* Accent Color Selection - Visible for Modern templates */}
-          {(settings.template === 'modern' ||
-            settings.template === 'modern-two-column' ||
-            settings.template === 'vivid') && (
-            <div>
-              <h4 className=" text-xs font-bold uppercase tracking-wider mb-3 text-ink-soft">
-                {t('builder.formatting.accentColor')}
-              </h4>
-              <div className="flex gap-2">
-                {(Object.keys(ACCENT_COLOR_MAP) as AccentColor[]).map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => handleAccentColorChange(color)}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all ${
-                      settings.accentColor === color
-                        ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
-                        : 'border-[#e6e3dc] bg-white hover:bg-paper-tint'
-                    }`}
-                    title={t(`builder.formatting.accentColors.${color}`)}
-                  >
-                    <span
-                      className="h-4 w-4 rounded-full border border-steel-grey"
-                      style={{ backgroundColor: ACCENT_COLOR_MAP[color].primary }}
-                    />
-                    <span>{t(`builder.formatting.accentColors.${color}`)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Page Size Selection */}
           <div>
             <h4 className=" text-xs font-bold uppercase tracking-wider mb-3 text-ink-soft">
@@ -334,10 +303,10 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
             </div>
           </div>
 
-          {/* Font Size Section */}
+          {/* Typography Section */}
           <div>
             <h4 className=" text-xs font-bold uppercase tracking-wider mb-3 text-ink-soft">
-              {t('builder.formatting.fontSize')}
+              {t('builder.formatting.typography')}
             </h4>
             <div className="space-y-3">
               <SpacingSelector
@@ -418,6 +387,37 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({ settings
               </div>
             </div>
           </div>
+
+          {/* Accent Color Selection - Visible for Modern templates */}
+          {(settings.template === 'modern' ||
+            settings.template === 'modern-two-column' ||
+            settings.template === 'vivid') && (
+            <div>
+              <h4 className=" text-xs font-bold uppercase tracking-wider mb-3 text-ink-soft">
+                {t('builder.formatting.accentColor')}
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(ACCENT_COLOR_MAP) as AccentColor[]).map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => handleAccentColorChange(color)}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all ${
+                      settings.accentColor === color
+                        ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
+                        : 'border-[#e6e3dc] bg-white hover:bg-paper-tint'
+                    }`}
+                    title={t(`builder.formatting.accentColors.${color}`)}
+                  >
+                    <span
+                      className="h-4 w-4 rounded-full border border-steel-grey"
+                      style={{ backgroundColor: ACCENT_COLOR_MAP[color].primary }}
+                    />
+                    <span>{t(`builder.formatting.accentColors.${color}`)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Options Section */}
           <div>

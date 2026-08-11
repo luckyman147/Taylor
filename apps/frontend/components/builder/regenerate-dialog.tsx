@@ -15,12 +15,14 @@ import {
   Briefcase,
   FolderKanban,
   Lightbulb,
+  Github,
   ChevronDown,
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import type { RegenerateItemInput } from '@/lib/api/enrichment';
+import { GitHubRepoPicker } from '@/components/tailor/github-repo-picker';
 
 interface RegenerateDialogProps {
   open: boolean;
@@ -30,6 +32,8 @@ interface RegenerateDialogProps {
   skillsItem: RegenerateItemInput | null;
   selectedItems: RegenerateItemInput[];
   onSelectionChange: (items: RegenerateItemInput[]) => void;
+  selectedRepos: string[];
+  onReposChange: (repos: string[]) => void;
   onContinue: () => void;
 }
 
@@ -48,6 +52,8 @@ export const RegenerateDialog: React.FC<RegenerateDialogProps> = ({
   skillsItem,
   selectedItems,
   onSelectionChange,
+  selectedRepos,
+  onReposChange,
   onContinue,
 }) => {
   const { t } = useTranslations();
@@ -168,6 +174,17 @@ export const RegenerateDialog: React.FC<RegenerateDialogProps> = ({
               />
             </SectionCard>
           )}
+
+          {/* GitHub Projects Section */}
+          <SectionCard
+            icon={<Github className="h-4 w-4 text-primary" />}
+            label={t('builder.regenerate.selectDialog.githubProjects')}
+            count={selectedRepos.length}
+            isExpanded={expandedSections.has('github')}
+            onToggle={() => toggleSection('github')}
+          >
+            <GitHubRepoPicker onChange={onReposChange} disabled={false} />
+          </SectionCard>
         </div>
 
         <DialogFooter className="flex-row justify-end gap-3 rounded-b-2xl border-t border-[#e6e3dc] bg-secondary p-4">
@@ -178,7 +195,7 @@ export const RegenerateDialog: React.FC<RegenerateDialogProps> = ({
           </DialogClose>
           <Button
             onClick={onContinue}
-            disabled={selectedItems.length === 0}
+            disabled={selectedItems.length === 0 && selectedRepos.length === 0}
             className="rounded-full"
           >
             {t('builder.regenerate.selectDialog.continueButton')}

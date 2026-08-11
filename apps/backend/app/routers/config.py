@@ -7,10 +7,12 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.config import settings
-from app.llm import check_llm_health, LLMConfig, resolve_api_key
+from app.llm import check_llm_health, fetch_provider_models, LLMConfig, resolve_api_key
 from app.schemas import (
     LLMConfigRequest,
     LLMConfigResponse,
+    LLMModelsRequest,
+    LLMModelsResponse,
     FeatureConfigRequest,
     FeatureConfigResponse,
     FeaturePromptsRequest,
@@ -217,6 +219,45 @@ async def test_llm_connection(request: LLMConfigRequest | None = None) -> dict:
     return await check_llm_health(config, include_details=True, test_prompt=test_prompt)
 
 
+@router.post("/llm-models", response_model=LLMModelsResponse)
+async def get_llm_models(request: LLMModelsRequest | None = None) -> LLMModelsResponse:
+    """List models available from a provider (for the Settings dropdown).
+
+    Mirrors ``/config/llm-test``: optional body values preview unsaved
+    settings; omitted fields fall back to the stored configuration. The
+    response always includes a ``models`` list (live catalog fetch, or a
+    curated static fallback when the provider is unreachable) so the
+    client can always render a picker.
+    """
+    stored = _load_config()
+
+    provider = (
+        request.provider
+        if request and request.provider
+        else stored.get("provider", settings.llm_provider)
+    )
+    api_key = (
+        request.api_key
+        if request and request.api_key
+        else resolve_api_key(stored, provider)
+    )
+    api_base = (
+        request.api_base
+        if request and request.api_base is not None
+        else stored.get("api_base", settings.llm_api_base)
+    )
+
+    result = fetch_provider_models(
+        provider=provider, api_base=api_base, api_key=api_key
+    )
+    return LLMModelsResponse(
+        provider=provider,
+        models=result.get("models", []),
+        source=result.get("source", "static"),
+        error=result.get("error"),
+    )
+
+
 @router.get("/features", response_model=FeatureConfigResponse)
 async def get_feature_config() -> FeatureConfigResponse:
     """Get current feature configuration."""
@@ -253,7 +294,7 @@ async def update_feature_config(request: FeatureConfigRequest) -> FeatureConfigR
 
 
 # Supported languages for i18n
-SUPPORTED_LANGUAGES = ["en", "es", "zh", "ja", "pt", "fr", "ko"]
+SUPPORTED_LANGUAGES = ["en", "fr"]
 
 
 @router.get("/language", response_model=LanguageConfigResponse)

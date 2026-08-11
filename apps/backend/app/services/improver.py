@@ -223,10 +223,180 @@ def _verify_original_matches(actual: Any, expected: str | list[str] | None) -> b
     return actual.strip().casefold() == expected.strip().casefold()
 
 
+def _apply_add_project(
+    result: dict[str, Any],
+    change: ResumeChange,
+    allowed_project_repos: dict[str, str] | None,
+) -> bool:
+    """Add a new personalProjects entry, server-validated against the user's
+    selected repos. Returns True when the entry was appended."""
+    if not isinstance(change.value, dict):
+        logger.info("Diff rejected (add_project with non-dict value)")
+        return False
+
+    name = str(change.value.get("name", "")).strip()
+    if not name or not allowed_project_repos or name not in allowed_project_repos:
+        logger.info("Diff rejected (add_project repo not in allowed selection): %s", name)
+        return False
+
+    projects = result.get("personalProjects")
+    if not isinstance(projects, list):
+        logger.info("Diff rejected (personalProjects is not a list)")
+        return False
+
+    description = change.value.get("description")
+    if not isinstance(description, list) or not any(
+        isinstance(b, str) and b.strip() for b in description
+    ):
+        logger.info("Diff rejected (add_project with empty description)")
+        return False
+
+    next_id = max(
+        [int(p.get("id")) for p in projects if isinstance(p, dict) and isinstance(p.get("id"), int)] or [0]
+    ) + 1
+
+    entry = {
+        "id": next_id,
+        "name": name,
+        "role": "",
+        "years": "",
+        "github": allowed_project_repos[name],
+        "website": None,
+        "description": [str(b) for b in description if str(b).strip()],
+        "descriptionStyles": ["bullet"] * len(description),
+    }
+    projects.append(entry)
+    return True
+
+
+def _apply_remove_project(
+    result: dict[str, Any],
+    change: ResumeChange,
+    allowed_project_repos: dict[str, str] | None,
+) -> bool:
+    """Remove an existing personalProjects entry by exact name.
+
+    Mirrors the add_project gate: only entries the user did NOT select may be
+    removed, so selected repos are never deleted. Removal is the server-side
+    counterpart of "replace old projects with my selected GitHub repos".
+    """
+    name = change.value.strip() if isinstance(change.value, str) else ""
+    if not name:
+        logger.info("Diff rejected (remove_project with empty value)")
+        return False
+    if allowed_project_repos and name in allowed_project_repos:
+        logger.info("Diff rejected (remove_project on selected repo): %s", name)
+        return False
+
+    projects = result.get("personalProjects")
+    if not isinstance(projects, list):
+        logger.info("Diff rejected (remove_project: personalProjects is not a list)")
+        return False
+
+    for index, entry in enumerate(projects):
+        if isinstance(entry, dict) and str(entry.get("name", "")).strip().casefold() == name.casefold():
+            del projects[index]
+            logger.info("Diff applied (remove_project): %s", name)
+            return True
+
+    logger.info("Diff rejected (remove_project entry not found): %s", name)
+    return False
+
+
+def reconcile_selected_projects(
+    data: dict[str, Any],
+    selected_entries: list[dict[str, Any]],
+    remove_names: list[str] | None = None,
+) -> tuple[int, int, int]:
+    """Deterministically reconcile personalProjects with the user's selection.
+
+    Runs after apply_diffs so the result never depends on LLM compliance:
+    - entries matching a selected repo get their server-minted content
+      (description paragraph, github URL, plain styles) — LLM add_project
+      wording is overwritten with the user's curated phrasing
+    - every selected repo is present in personalProjects (added if missing)
+    - entries listed in ``remove_names`` are removed — and only those; the
+      user says which old projects the selected GitHub repos replace
+
+    Returns (entries_added, entries_updated, entries_removed). A repo name is
+    never removed, even when listed in ``remove_names``. Selection of no repos
+    is a no-op (updates only). Matching is case-insensitive on ``name``.
+    """
+    remove_set = {
+        str(name).strip().casefold() for name in (remove_names or []) if name and str(name).strip()
+    }
+
+    selected_by_name: dict[str, dict[str, Any]] = {}
+    for entry in selected_entries:
+        name = str(entry.get("name", "")).strip()
+        if name:
+            selected_by_name[name.casefold()] = entry
+
+    projects = data.get("personalProjects")
+    if not isinstance(projects, list):
+        projects = []
+        data["personalProjects"] = projects
+
+    added = 0
+    updated = 0
+    removed = 0
+
+    existing_names: set[str] = set()
+    kept: list[dict[str, Any]] = []
+    for entry in projects:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name", "")).strip().casefold()
+        if name in selected_by_name:
+            kept.append(entry)
+            existing_names.add(name)
+            server = selected_by_name[name]
+            server_description = list(server.get("description") or [])
+            entry.update(
+                {
+                    "role": server.get("role", ""),
+                    "years": server.get("years", ""),
+                    "github": server.get("github") or entry.get("github"),
+                    "website": server.get("website"),
+                    "description": server_description,
+                    "descriptionStyles": list(server.get("descriptionStyles"))
+                    or ["plain"] * len(server_description),
+                }
+            )
+            updated += 1
+        elif remove_set and name in remove_set:
+            removed += 1
+        else:
+            kept.append(entry)
+            existing_names.add(name)
+
+    projects[:] = kept
+
+    seen: set[str] = set()
+    for name_cf, entry in selected_by_name.items():
+        if name_cf in existing_names or name_cf in seen:
+            continue
+        seen.add(name_cf)
+        next_id = max(
+            [
+                int(p.get("id"))
+                for p in projects
+                if isinstance(p, dict) and isinstance(p.get("id"), int)
+            ]
+            or [0]
+        ) + 1
+        projects.append({**entry, "id": next_id})
+        existing_names.add(name_cf)
+        added += 1
+
+    return added, updated, removed
+
+
 def apply_diffs(
     original: dict[str, Any],
     changes: list[ResumeChange],
     allowed_skill_targets: list[dict[str, Any] | str] | None = None,
+    allowed_project_repos: dict[str, str] | None = None,
 ) -> tuple[dict[str, Any], list[ResumeChange], list[ResumeChange]]:
     """Apply verified diffs to original resume.
 
@@ -237,11 +407,15 @@ def apply_diffs(
     4. Original text matches (for replace actions)
 
     For reorder: validates the new list contains exactly the same items.
+    For add_project: the entry is validated against ``allowed_project_repos``
+    (user-selected repos, name + server-side URL) before being appended.
 
     Args:
         original: The original resume data (ResumeData-compatible dict)
         changes: List of changes from the LLM
         allowed_skill_targets: Verified skill targets allowed for add_skill actions
+        allowed_project_repos: name -> GitHub URL map for user-selected repos,
+            the only repos the add_project action may add
 
     Returns:
         (result_dict, applied_changes, rejected_changes)
@@ -254,6 +428,20 @@ def apply_diffs(
     for change in changes:
         path = change.path
         action = change.action
+
+        if action == "add_project":
+            if _apply_add_project(result, change, allowed_project_repos):
+                applied.append(change)
+            else:
+                rejected.append(change)
+            continue
+
+        if action == "remove_project":
+            if _apply_remove_project(result, change, allowed_project_repos):
+                applied.append(change)
+            else:
+                rejected.append(change)
+            continue
 
         # Gate 1: Path must be in allowed whitelist
         if not _is_path_allowed(path):
@@ -446,11 +634,17 @@ def verify_diff_result(
         return warnings
 
     # Check 2: Section counts preserved
+    projects_touched = any(
+        c.action in ("add_project", "remove_project") for c in applied_changes
+    )
     for key, label in [
         ("workExperience", "work experience"),
         ("education", "education"),
         ("personalProjects", "project"),
     ]:
+        if key == "personalProjects" and projects_touched:
+            # add/remove_project intentionally changes the project count
+            continue
         orig_count = len(original.get(key, []))
         result_count = len(result.get(key, []))
         if orig_count != result_count:
@@ -512,6 +706,7 @@ async def generate_resume_diffs(
     original_resume_data: dict[str, Any] | None = None,
     skill_targets: list[dict[str, Any]] | None = None,
     github_repos: str = "",
+    selected_repos: str = "",
 ) -> ImproveDiffResult:
     """Generate targeted resume diffs via LLM.
 
@@ -527,6 +722,8 @@ async def generate_resume_diffs(
         original_resume_data: Structured resume JSON
         skill_targets: Verified skill targets from the planning pass
         github_repos: Formatted GitHub repos matching the job (for context)
+        selected_repos: Formatted user-selected GitHub repos that MUST be added
+            as new personalProjects entries
 
     Returns:
         ImproveDiffResult with list of changes and strategy notes
@@ -562,6 +759,7 @@ async def generate_resume_diffs(
         job_keywords=keywords_str,
         skill_targets=_prepare_skill_targets_for_prompt(skill_targets),
         github_repos=github_repos or "No GitHub repos available.",
+        selected_repos=selected_repos or "None.",
         job_description=sanitized_jd,
         original_resume=resume_input,
     )
@@ -1020,14 +1218,11 @@ def _format_education_entry(entry: dict[str, Any], index: int) -> str:
 
 
 def _format_project_entry(entry: dict[str, Any], index: int) -> str:
-    return _format_entry_label(
-        [
-            entry.get("name", ""),
-            entry.get("role", ""),
-            entry.get("years", ""),
-        ],
-        f"Project #{index + 1}",
-    )
+    label = [entry.get("name", ""), entry.get("github", "")]
+    description = entry.get("description")
+    if isinstance(description, list):
+        label.append(" ".join(str(b) for b in description if str(b).strip()))
+    return _format_entry_label(label, f"Project #{index + 1}")
 
 
 def _normalize_entry(

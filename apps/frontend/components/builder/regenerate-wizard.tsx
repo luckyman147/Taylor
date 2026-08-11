@@ -26,6 +26,8 @@ interface RegenerateWizardProps {
   // Selection state
   selectedItems: RegenerateItemInput[];
   onSelectionChange: (items: RegenerateItemInput[]) => void;
+  selectedRepos: string[];
+  onReposChange: (repos: string[]) => void;
 
   // Instruction state
   instruction: string;
@@ -65,6 +67,8 @@ export const RegenerateWizard: React.FC<RegenerateWizardProps> = ({
   skillsItem,
   selectedItems,
   onSelectionChange,
+  selectedRepos,
+  onReposChange,
   instruction,
   onInstructionChange,
   regeneratedItems,
@@ -124,6 +128,8 @@ export const RegenerateWizard: React.FC<RegenerateWizardProps> = ({
         skillsItem={skillsItem}
         selectedItems={selectedItems}
         onSelectionChange={onSelectionChange}
+        selectedRepos={selectedRepos}
+        onReposChange={onReposChange}
         onContinue={handleContinueToInstruction}
       />
 

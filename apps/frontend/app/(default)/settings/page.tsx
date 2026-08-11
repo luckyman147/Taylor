@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   fetchLlmConfig,
   updateLlmConfig,
   testLlmConnection,
+  fetchLlmModels,
   fetchFeatureConfig,
   updateFeatureConfig,
   fetchPromptConfig,
@@ -34,13 +35,13 @@ import {
 import { API_URL } from '@/lib/api/client';
 import { getVersionString } from '@/lib/config/version';
 import { cn } from '@/lib/utils';
-import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { useStatusCache } from '@/lib/context/status-cache';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Dropdown } from '@/components/ui/dropdown';
+import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
+import { FeatureToggleCard } from '@/components/settings/feature-toggle-card';
 import {
   Save,
   Key,
@@ -130,6 +131,16 @@ export default function SettingsPage() {
   // won't re-fire on next load). Typed tightly so invalid values can't leak
   // through the save path.
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort | 'auto'>('auto');
+  // Provider model catalog for the model picker. null = not loaded / failed
+  // (UI falls back to free-text input); [] = loaded but empty (local-only
+  // providers with an unreachable server).
+  const [availableModels, setAvailableModels] = useState<string[] | null>(null);
+  const [modelsSource, setModelsSource] = useState<'api' | 'static' | null>(null);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  // 'custom' mode shows the free-text input instead of the dropdown, so
+  // users can type a model the catalog doesn't list.
+  const [showCustomModel, setShowCustomModel] = useState(false);
 
   // Use cached system status (loaded on app start, refreshes every 30 min)
   const {
@@ -201,6 +212,46 @@ export default function SettingsPage() {
     { id: 'danger', label: t('settings.dangerZone'), icon: AlertTriangle },
   ] as const;
   const providerInfo = PROVIDER_INFO[provider] ?? PROVIDER_INFO['openai'];
+
+  // Options for the model picker: the current value (when it isn't part of
+  // the fetched catalog), the catalog itself, then the custom escape hatch.
+  const modelOptions = useMemo<DropdownOption[]>(() => {
+    if (!availableModels || availableModels.length === 0) return [];
+    const options: DropdownOption[] = [];
+    if (model && !availableModels.includes(model)) {
+      options.push({
+        id: model,
+        label: model,
+        description: t('settings.llmConfiguration.currentModelOption'),
+      });
+    }
+    options.push(...availableModels.map((m) => ({ id: m, label: m })));
+    options.push({
+      id: '__custom__',
+      label: t('settings.llmConfiguration.customModelOption'),
+    });
+    return options;
+  }, [availableModels, model, t]);
+
+  // Free-text mode is active when the user chose it, the field is empty, or
+  // the current model isn't in the catalog (keeps a valid value visible).
+  const customModelActive =
+    showCustomModel || !model || (!!availableModels && !availableModels.includes(model));
+
+  const modelHint = modelsLoading
+    ? t('settings.llmConfiguration.modelListLoading')
+    : modelsError
+      ? t('settings.llmConfiguration.modelListError')
+      : availableModels && availableModels.length > 0
+        ? t(
+            modelsSource === 'api'
+              ? 'settings.llmConfiguration.modelSourceApi'
+              : 'settings.llmConfiguration.modelSourceStatic',
+            { provider: providerInfo.name }
+          )
+        : t('settings.llmConfiguration.defaultModel', {
+            model: providerInfo.defaultModel,
+          });
   const fallbackPromptOptions = useMemo<PromptOption[]>(
     () => [
       {
@@ -364,6 +415,45 @@ export default function SettingsPage() {
     };
   }, [t]);
 
+  // Load the provider's model catalog for the model picker. Re-runs on
+  // provider change and when the Base URL changes (debounced for local-only
+  // providers, where the catalog lives on the target server).
+  const loadAvailableModels = useCallback(
+    async (targetProvider: LLMProvider, targetBase: string) => {
+      setModelsLoading(true);
+      try {
+        const res = await fetchLlmModels({
+          provider: targetProvider,
+          api_base: targetBase.trim() || null,
+        });
+        setAvailableModels(res.models);
+        setModelsSource(res.source);
+        setModelsError(res.error ?? null);
+      } catch (err) {
+        console.error('Failed to load available models', err);
+        setAvailableModels(null);
+        setModelsSource(null);
+        setModelsError(t('settings.llmConfiguration.modelListError'));
+      } finally {
+        setModelsLoading(false);
+      }
+    },
+    [t]
+  );
+
+  useEffect(() => {
+    const isLocalProvider = provider === 'openai_compatible' || provider === 'ollama';
+    // Debounce Base URL edits so local providers don't fire a request per
+    // keystroke; cloud providers resolve instantly on provider switch.
+    const timer = setTimeout(
+      () => {
+        void loadAvailableModels(provider, apiBase);
+      },
+      isLocalProvider ? 500 : 0
+    );
+    return () => clearTimeout(timer);
+  }, [provider, apiBase, loadAvailableModels]);
+
   // Whether a given key-store provider currently has a saved key.
   const providerHasStoredKey = (p: LLMProvider): boolean => {
     const keyProvider = llmProviderToKeyProvider(p);
@@ -400,6 +490,11 @@ export default function SettingsPage() {
   const handleProviderChange = (newProvider: LLMProvider) => {
     setProvider(newProvider);
     setModel(PROVIDER_INFO[newProvider].defaultModel);
+    // Reset the model catalog until the fetch for the new provider lands.
+    setAvailableModels(null);
+    setModelsSource(null);
+    setModelsError(null);
+    setShowCustomModel(false);
 
     if (newProvider === 'azure_foundry' && provider !== 'azure_foundry') {
       setApiBase('');
@@ -416,6 +511,16 @@ export default function SettingsPage() {
     // (each provider keeps its own key — switching no longer wipes anything).
     setApiKey('');
     setHasStoredApiKey(providerHasStoredKey(newProvider));
+  };
+
+  // Model picker: a real catalog selection, or the free-text 'custom' mode.
+  const handleModelSelect = (value: string) => {
+    if (value === '__custom__') {
+      setShowCustomModel(true);
+      return;
+    }
+    setShowCustomModel(false);
+    setModel(value);
   };
 
   // Save configuration
@@ -947,26 +1052,49 @@ export default function SettingsPage() {
                       </p>
                     </div>
 
-                    {/* Model Input */}
+                    {/* Model selection — dropdown of the provider's catalog
+                    with a custom free-text escape hatch. Falls back to
+                    free-text input when no catalog is available (local
+                    servers, load failures). */}
                     <div className="space-y-2">
-                      <Label
-                        htmlFor="model"
-                        className="text-xs font-bold uppercase tracking-wider text-ink-soft"
-                      >
-                        {t('settings.llmConfiguration.modelLabel')}
-                      </Label>
-                      <Input
-                        id="model"
-                        value={model}
-                        onChange={(e) => setModel(e.target.value)}
-                        placeholder={providerInfo.defaultModel}
-                        className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
-                      />
-                      <p className="text-xs text-steel-grey">
-                        {t('settings.llmConfiguration.defaultModel', {
-                          model: providerInfo.defaultModel,
-                        })}
-                      </p>
+                      {availableModels && availableModels.length > 0 ? (
+                        <>
+                          <Dropdown
+                            label={t('settings.llmConfiguration.modelLabel')}
+                            value={customModelActive ? '__custom__' : model}
+                            onChange={handleModelSelect}
+                            disabled={modelsLoading}
+                            options={modelOptions}
+                            searchable
+                          />
+                          {customModelActive && (
+                            <Input
+                              id="model"
+                              value={model}
+                              onChange={(e) => setModel(e.target.value)}
+                              placeholder={providerInfo.defaultModel}
+                              className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Label
+                            htmlFor="model"
+                            className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+                          >
+                            {t('settings.llmConfiguration.modelLabel')}
+                          </Label>
+                          <Input
+                            id="model"
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            placeholder={providerInfo.defaultModel}
+                            className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
+                          />
+                        </>
+                      )}
+                      <p className="text-xs text-steel-grey">{modelHint}</p>
                     </div>
 
                     {/* API Key Input — always enabled. For providers that don't
@@ -1222,147 +1350,176 @@ export default function SettingsPage() {
                     </h2>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-sm text-ink-soft mb-4">
+                  <div className="space-y-3">
+                    <p className="text-sm text-ink-soft">
                       {t('settings.contentGeneration.description')}
                     </p>
 
-                    <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-                      <ToggleSwitch
-                        checked={enableCoverLetter}
-                        onCheckedChange={(checked) => {
-                          setEnableCoverLetter(checked);
-                          handleFeatureConfigChange('enable_cover_letter', checked);
-                        }}
-                        label={t('settings.contentGeneration.coverLetter.label')}
-                        description={t('settings.contentGeneration.coverLetter.description')}
-                        disabled={featureConfigLoading}
-                      />
-                      {enableCoverLetter && (
-                        <div className="pl-6 space-y-2">
-                          <Label htmlFor="coverLetterPrompt">
-                            {t('settings.contentGeneration.customPromptLabel')}
-                          </Label>
-                          <textarea
-                            id="coverLetterPrompt"
-                            rows={8}
-                            value={coverLetterPrompt}
-                            onChange={(e) => setCoverLetterPrompt(e.target.value)}
-                            placeholder={coverLetterDefault}
-                            className="w-full rounded-2xl border border-[#e6e3dc] bg-white p-3 text-xs break-words shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          />
-                          <p className="text-xs text-steel-grey ">
+                    {/* Each feature is one card: toggle row + editor that
+                        unfolds inside the same card when enabled. */}
+                    <FeatureToggleCard
+                      icon={FileText}
+                      label={t('settings.contentGeneration.coverLetter.label')}
+                      description={t('settings.contentGeneration.coverLetter.description')}
+                      checked={enableCoverLetter}
+                      onToggle={(checked) => {
+                        setEnableCoverLetter(checked);
+                        handleFeatureConfigChange('enable_cover_letter', checked);
+                      }}
+                      disabled={featureConfigLoading}
+                    >
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="coverLetterPrompt"
+                          className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+                        >
+                          {t('settings.contentGeneration.customPromptLabel')}
+                        </Label>
+                        <textarea
+                          id="coverLetterPrompt"
+                          rows={8}
+                          value={coverLetterPrompt}
+                          onChange={(e) => setCoverLetterPrompt(e.target.value)}
+                          placeholder={coverLetterDefault}
+                          className="w-full break-words rounded-xl border border-[#e6e3dc] bg-white p-3 text-xs leading-relaxed shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        {featurePromptError?.field === 'cover_letter_prompt' ? (
+                          <p className="break-words text-xs text-destructive">
+                            {t('settings.contentGeneration.customPromptErrorMissing', {
+                              missing: featurePromptError.missing.join(', '),
+                            })}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-steel-grey">
                             {t('settings.contentGeneration.customPromptHelp')}
                           </p>
-                          {featurePromptError?.field === 'cover_letter_prompt' && (
-                            <p className="text-xs text-red-600  break-words">
-                              {t('settings.contentGeneration.customPromptErrorMissing', {
-                                missing: featurePromptError.missing.join(', '),
-                              })}
-                            </p>
-                          )}
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleFeaturePromptSave('cover_letter_prompt', coverLetterPrompt)
-                              }
-                              disabled={featurePromptSaving === 'cover_letter_prompt'}
-                            >
-                              {featurePromptSaving === 'cover_letter_prompt' ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                t('common.save')
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleFeaturePromptSave('cover_letter_prompt', '')}
-                              disabled={featurePromptSaving === 'cover_letter_prompt'}
-                            >
-                              {t('settings.contentGeneration.customPromptResetButton')}
-                            </Button>
-                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleFeaturePromptSave('cover_letter_prompt', '')}
+                            disabled={featurePromptSaving === 'cover_letter_prompt'}
+                          >
+                            {t('settings.contentGeneration.customPromptResetButton')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleFeaturePromptSave('cover_letter_prompt', coverLetterPrompt)
+                            }
+                            disabled={featurePromptSaving === 'cover_letter_prompt'}
+                          >
+                            {featurePromptSaving === 'cover_letter_prompt' ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              t('common.save')
+                            )}
+                          </Button>
                         </div>
-                      )}
-                      <ToggleSwitch
-                        checked={enableOutreach}
-                        onCheckedChange={(checked) => {
-                          setEnableOutreach(checked);
-                          handleFeatureConfigChange('enable_outreach_message', checked);
-                        }}
-                        label={t('settings.contentGeneration.outreachMessage.label')}
-                        description={t('settings.contentGeneration.outreachMessage.description')}
-                        disabled={featureConfigLoading}
-                      />
-                      {enableOutreach && (
-                        <div className="pl-6 space-y-2">
-                          <Label htmlFor="outreachPrompt">
-                            {t('settings.contentGeneration.customPromptLabel')}
-                          </Label>
-                          <textarea
-                            id="outreachPrompt"
-                            rows={8}
-                            value={outreachPrompt}
-                            onChange={(e) => setOutreachPrompt(e.target.value)}
-                            placeholder={outreachDefault}
-                            className="w-full rounded-2xl border border-[#e6e3dc] bg-white p-3 text-xs break-words shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          />
-                          <p className="text-xs text-steel-grey ">
-                            {t('settings.contentGeneration.customPromptHelp')}
-                          </p>
-                          {featurePromptError?.field === 'outreach_message_prompt' && (
-                            <p className="text-xs text-red-600  break-words">
-                              {t('settings.contentGeneration.customPromptErrorMissing', {
-                                missing: featurePromptError.missing.join(', '),
-                              })}
-                            </p>
-                          )}
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleFeaturePromptSave('outreach_message_prompt', outreachPrompt)
-                              }
-                              disabled={featurePromptSaving === 'outreach_message_prompt'}
-                            >
-                              {featurePromptSaving === 'outreach_message_prompt' ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                t('common.save')
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleFeaturePromptSave('outreach_message_prompt', '')}
-                              disabled={featurePromptSaving === 'outreach_message_prompt'}
-                            >
-                              {t('settings.contentGeneration.customPromptResetButton')}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      <ToggleSwitch
-                        checked={enableInterviewPrep}
-                        onCheckedChange={(checked) => {
-                          setEnableInterviewPrep(checked);
-                          handleFeatureConfigChange('enable_interview_prep', checked);
-                        }}
-                        label={t('settings.contentGeneration.interviewPrep.label')}
-                        description={t('settings.contentGeneration.interviewPrep.description')}
-                        disabled={featureConfigLoading}
-                      />
-                    </div>
+                      </div>
+                    </FeatureToggleCard>
 
-                    <div className="pt-4 border-t border-paper-tint">
-                      <Dropdown
-                        options={localizedPromptOptions}
-                        value={defaultPromptId}
-                        onChange={handlePromptConfigChange}
-                        label={t('settings.promptSettings.title')}
-                        description={t('settings.promptSettings.description')}
-                        disabled={promptConfigLoading}
-                      />
+                    <FeatureToggleCard
+                      icon={Briefcase}
+                      label={t('settings.contentGeneration.outreachMessage.label')}
+                      description={t('settings.contentGeneration.outreachMessage.description')}
+                      checked={enableOutreach}
+                      onToggle={(checked) => {
+                        setEnableOutreach(checked);
+                        handleFeatureConfigChange('enable_outreach_message', checked);
+                      }}
+                      disabled={featureConfigLoading}
+                    >
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="outreachPrompt"
+                          className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+                        >
+                          {t('settings.contentGeneration.customPromptLabel')}
+                        </Label>
+                        <textarea
+                          id="outreachPrompt"
+                          rows={8}
+                          value={outreachPrompt}
+                          onChange={(e) => setOutreachPrompt(e.target.value)}
+                          placeholder={outreachDefault}
+                          className="w-full break-words rounded-xl border border-[#e6e3dc] bg-white p-3 text-xs leading-relaxed shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        {featurePromptError?.field === 'outreach_message_prompt' ? (
+                          <p className="break-words text-xs text-destructive">
+                            {t('settings.contentGeneration.customPromptErrorMissing', {
+                              missing: featurePromptError.missing.join(', '),
+                            })}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-steel-grey">
+                            {t('settings.contentGeneration.customPromptHelp')}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleFeaturePromptSave('outreach_message_prompt', '')}
+                            disabled={featurePromptSaving === 'outreach_message_prompt'}
+                          >
+                            {t('settings.contentGeneration.customPromptResetButton')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleFeaturePromptSave('outreach_message_prompt', outreachPrompt)
+                            }
+                            disabled={featurePromptSaving === 'outreach_message_prompt'}
+                          >
+                            {featurePromptSaving === 'outreach_message_prompt' ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              t('common.save')
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </FeatureToggleCard>
+
+                    <FeatureToggleCard
+                      icon={Sparkles}
+                      label={t('settings.contentGeneration.interviewPrep.label')}
+                      description={t('settings.contentGeneration.interviewPrep.description')}
+                      checked={enableInterviewPrep}
+                      onToggle={(checked) => {
+                        setEnableInterviewPrep(checked);
+                        handleFeatureConfigChange('enable_interview_prep', checked);
+                      }}
+                      disabled={featureConfigLoading}
+                    />
+
+                    {/* Prompt Settings — default tailoring prompt, its own card
+                        so it reads as a first-class setting, not an afterthought. */}
+                    <div className="rounded-2xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <Settings2 className="h-4 w-4 text-primary" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-bold text-ink">
+                            {t('settings.promptSettings.title')}
+                          </h3>
+                          <p className="mt-0.5 text-xs text-steel-grey">
+                            {t('settings.promptSettings.description')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Dropdown
+                          options={localizedPromptOptions}
+                          value={defaultPromptId}
+                          onChange={handlePromptConfigChange}
+                          label={t('settings.promptSettings.defaultLabel')}
+                          disabled={promptConfigLoading}
+                        />
+                      </div>
                     </div>
                   </div>
                 </section>

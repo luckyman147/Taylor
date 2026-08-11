@@ -73,6 +73,49 @@ class TestVerifySectionCounts:
         section_warnings = [w for w in warnings if "section count" in w.lower()]
         assert len(section_warnings) == 0
 
+    def test_no_project_count_warning_when_add_project_applied(self, sample_resume, sample_job_keywords):
+        """Check 2: add_project legitimately grows personalProjects — no warning."""
+        result = copy.deepcopy(sample_resume)
+        result["personalProjects"].append({"id": 99, "name": "new-repo"})
+        applied = [
+            ResumeChange(
+                path="personalProjects",
+                action="add_project",
+                original=None,
+                value={"name": "new-repo", "description": ["Some project"]},
+                reason="test",
+            )
+        ]
+        warnings = verify_diff_result(sample_resume, result, applied, sample_job_keywords)
+        section_warnings = [w for w in warnings if "section count" in w.lower()]
+        assert len(section_warnings) == 0
+
+    def test_project_count_warning_still_fires_without_add_project(self, sample_resume, sample_job_keywords):
+        """Sections that change by non-add_project means still warn."""
+        result = copy.deepcopy(sample_resume)
+        result["personalProjects"].append({"id": 99, "name": "new-repo"})
+        applied = [ResumeChange(path="summary", action="replace", original="x", value="Changed.", reason="z")]
+        warnings = verify_diff_result(sample_resume, result, applied, sample_job_keywords)
+        section_warnings = [w for w in warnings if "section count" in w.lower()]
+        assert any("project" in w.lower() for w in section_warnings)
+
+    def test_no_project_count_warning_when_remove_project_applied(self, sample_resume, sample_job_keywords):
+        """Check 2: remove_project legitimately shrinks personalProjects — no warning."""
+        result = copy.deepcopy(sample_resume)
+        result["personalProjects"] = result["personalProjects"][1:]
+        applied = [
+            ResumeChange(
+                path="personalProjects",
+                action="remove_project",
+                original=None,
+                value=sample_resume["personalProjects"][0]["name"],
+                reason="Replaced by selected repo",
+            )
+        ]
+        warnings = verify_diff_result(sample_resume, result, applied, sample_job_keywords)
+        section_warnings = [w for w in warnings if "section count" in w.lower()]
+        assert len(section_warnings) == 0
+
 
 class TestVerifyIdentityFields:
     """Check 3: Identity fields unchanged."""

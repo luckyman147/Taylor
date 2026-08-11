@@ -12,9 +12,13 @@ Two invariants this locks:
 from app.prompts.templates import (
     COVER_LETTER_PROMPT,
     DIFF_IMPROVE_PROMPT,
+    DIFF_PROJECT_BULLETS_PROMPT,
     INTERVIEW_PREP_PROMPT,
 )
-from app.prompts.refinement import KEYWORD_INJECTION_PROMPT
+from app.prompts.refinement import (
+    KEYWORD_INJECTION_PROMPT,
+    VALIDATION_POLISH_PROMPT,
+)
 
 
 class TestJdIncorporationIsDefault:
@@ -40,6 +44,26 @@ class TestAntiFabricationClausesPresent:
     def test_keyword_injection_keeps_no_invent_clauses(self):
         assert "do not invent new content, metrics, or work history" in KEYWORD_INJECTION_PROMPT
         assert "Do NOT add skills, technologies, or certifications not in the master resume" in KEYWORD_INJECTION_PROMPT
+
+    def test_diff_prompt_bullet_craft_rules_present(self):
+        assert "BULLET CRAFT" in DIFF_IMPROVE_PROMPT
+        assert "RESULT → ACTION → TECHNOLOGY/METHOD → PURPOSE" in DIFF_IMPROVE_PROMPT
+        assert "ACTION → TECHNICAL WORK → PURPOSE" in DIFF_IMPROVE_PROMPT
+        assert "Never leave a bare action" in DIFF_IMPROVE_PROMPT
+
+    def test_diff_prompt_skills_never_removed(self):
+        assert "Never remove an existing skill" in DIFF_IMPROVE_PROMPT
+        assert "safety net" in DIFF_IMPROVE_PROMPT
+
+    def test_project_prompt_is_purpose_led(self):
+        assert "why it exists" in DIFF_PROJECT_BULLETS_PROMPT
+        assert "purpose explicitly" in DIFF_PROJECT_BULLETS_PROMPT
+
+    def test_refiner_prompts_keep_bullet_guardrails(self):
+        for prompt in (KEYWORD_INJECTION_PROMPT, VALIDATION_POLISH_PROMPT):
+            assert "Worked on" in prompt
+            assert "Responsible for" in prompt
+            assert "scope or purpose" in prompt
 
     def test_cover_letter_keeps_no_invent_clauses(self):
         assert "Do NOT invent information not in the resume" in COVER_LETTER_PROMPT

@@ -119,6 +119,7 @@ export interface RegenerateRequest {
   items: RegenerateItemInput[];
   instruction: string;
   output_language?: string;
+  selected_repos?: string[];
 }
 
 export interface RegeneratedItem {
@@ -129,6 +130,7 @@ export interface RegeneratedItem {
   original_content: string[];
   new_content: string[];
   diff_summary: string;
+  github?: string | null;
 }
 
 export interface RegenerateItemError {

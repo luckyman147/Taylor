@@ -147,6 +147,20 @@ await generate_cover_letter(resume, job) → str    # LLM call
 await generate_outreach_message(resume, job) → str # LLM call
 ```
 
+### Summary rewrite (`services/summary.py`)
+```python
+await rewrite_resume_summary(resume_data, job_description, language) → str  # LLM call
+```
+Rewrites the resume `summary` with an IDENTITY → PROBLEM → WORK → APPROACH →
+VALUE structure in exactly three sentences (identity + problems solved, what
+the candidate builds, how they build it and the value it creates; prompt:
+`SUMMARY_REWRITE_PROMPT` in `app/prompts/templates.py`). Runs
+unconditionally inside the improve **preview** flow, after refinement and the
+deterministic GitHub project reconciliation, and before the preview hash is
+computed — so the rewritten summary appears in the diff review and is what
+confirm persists. Non-destructive: returns the original summary unchanged on
+LLM failure.
+
 ## PDF Rendering (`pdf.py`)
 
 Uses Playwright headless Chromium:

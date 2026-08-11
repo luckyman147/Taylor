@@ -328,3 +328,114 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ctx.exception.status_code, 409)
         mock_db.update_resume.assert_not_called()
+
+
+class TestRegenerateGitHubProjects(unittest.IsolatedAsyncioTestCase):
+    """Selected GitHub repos are added as new projects, README-grounded."""
+
+    def _request(self, selected_repos: list[str], items: list[RegenerateItemInput]) -> RegenerateRequest:
+        return RegenerateRequest(
+            resume_id="resume_1",
+            items=items,
+            instruction="Improve wording",
+            output_language="en",
+            selected_repos=selected_repos,
+        )
+
+    async def test_regenerate_adds_selected_github_repos(self) -> None:
+        mock_db = AsyncMock()
+        mock_db.get_resume.return_value = {"processed_data": {"workExperience": []}}
+
+        repo_entries = [
+            {
+                "name": "fastapi-skeleton",
+                "github": "https://github.com/janedoe/fastapi-skeleton",
+                "description": ["FastAPI project with CI and Docker"],
+            }
+        ]
+
+        with (
+            patch.object(enrichment_router, "db", mock_db),
+            patch.object(
+                enrichment_router,
+                "get_selected_repos_for_tailoring",
+                AsyncMock(return_value=(repo_entries, "context")),
+            ),
+        ):
+            response = await enrichment_router.regenerate_items(
+                self._request(["fastapi-skeleton"], [])
+            )
+
+        self.assertEqual(len(response.regenerated_items), 1)
+        item = response.regenerated_items[0]
+        self.assertEqual(item.item_id, "github_0")
+        self.assertEqual(item.item_type, "project")
+        self.assertEqual(item.title, "fastapi-skeleton")
+        self.assertEqual(item.new_content, ["FastAPI project with CI and Docker"])
+        self.assertEqual(item.github, "https://github.com/janedoe/fastapi-skeleton")
+        self.assertEqual(item.original_content, [])
+
+    async def test_apply_regenerated_appends_github_project(self) -> None:
+        resume_id = "resume_1"
+        processed_data = {
+            "workExperience": [],
+            "personalProjects": [
+                {"id": 1, "name": "old-project", "description": ["Old"], "descriptionStyles": ["bullet"]},
+            ],
+            "additional": {"technicalSkills": []},
+        }
+
+        mock_db = AsyncMock()
+        mock_db.get_resume.return_value = {"processed_data": processed_data}
+
+        item = RegeneratedItem(
+            item_id="github_0",
+            item_type="project",
+            title="fastapi-skeleton",
+            new_content=["FastAPI project with CI and Docker"],
+            diff_summary="Added from selected GitHub repository",
+            github="https://github.com/janedoe/fastapi-skeleton",
+        )
+
+        with patch.object(enrichment_router, "db", mock_db):
+            result = await enrichment_router.apply_regenerated_items(resume_id, [item])
+
+        self.assertEqual(result["updated_items"], 1)
+        updated = mock_db.update_resume.call_args.args[1]["processed_data"]
+        self.assertEqual(len(updated["personalProjects"]), 2)
+        entry = updated["personalProjects"][-1]
+        self.assertEqual(entry["name"], "fastapi-skeleton")
+        self.assertEqual(entry["github"], "https://github.com/janedoe/fastapi-skeleton")
+        self.assertEqual(entry["description"], ["FastAPI project with CI and Docker"])
+        self.assertEqual(entry["descriptionStyles"], ["plain"])
+        self.assertEqual(entry["id"], 2)
+
+    async def test_apply_github_project_is_idempotent(self) -> None:
+        resume_id = "resume_1"
+        processed_data = {
+            "workExperience": [],
+            "personalProjects": [
+                {"id": 1, "name": "fastapi-skeleton", "github": "https://github.com/janedoe/fastapi-skeleton"},
+            ],
+            "additional": {"technicalSkills": []},
+        }
+
+        mock_db = AsyncMock()
+        mock_db.get_resume.return_value = {"processed_data": processed_data}
+
+        item = RegeneratedItem(
+            item_id="github_0",
+            item_type="project",
+            title="fastapi-skeleton",
+            new_content=["Bullets"],
+            diff_summary="Summary",
+            github="https://github.com/janedoe/fastapi-skeleton",
+        )
+
+        with patch.object(enrichment_router, "db", mock_db):
+            result = await enrichment_router.apply_regenerated_items(resume_id, [item])
+
+        self.assertTrue(result["updated_items"] >= 1)
+        updated = mock_db.update_resume.call_args.args[1]["processed_data"]
+        self.assertEqual(len(updated["personalProjects"]), 1)
+        self.assertEqual(updated["personalProjects"][0]["name"], "fastapi-skeleton")

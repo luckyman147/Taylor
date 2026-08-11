@@ -339,13 +339,13 @@ class TestLanguageConfig:
 
     @patch("app.routers.config._load_config")
     async def test_get_language(self, mock_load, client):
-        mock_load.return_value = {"ui_language": "en", "content_language": "es"}
+        mock_load.return_value = {"ui_language": "en", "content_language": "fr"}
         async with client:
             resp = await client.get("/api/v1/config/language")
         assert resp.status_code == 200
         data = resp.json()
         assert data["ui_language"] == "en"
-        assert data["content_language"] == "es"
+        assert data["content_language"] == "fr"
         assert "en" in data["supported_languages"]
 
     @patch("app.routers.config._save_config")
@@ -522,3 +522,75 @@ class TestLegacyKeyMigration:
         if config_module.CONFIG_FILE_PATH.exists():
             config_module.CONFIG_FILE_PATH.unlink()
         migrate_legacy_keys()
+
+
+class TestLlmModels:
+    """POST /api/v1/config/llm-models — provider model listing."""
+
+    @patch("app.routers.config._load_config")
+    @patch("app.routers.config.fetch_provider_models")
+    async def test_list_models_uses_stored_config(self, mock_fetch, mock_load, client):
+        """Empty body falls back to the stored provider/base/key."""
+        mock_load.return_value = {
+            "provider": "openai",
+            "model": "gpt-5-nano",
+            # Key resolution runs through resolve_api_key — give it a
+            # deterministic per-provider value so the env default can't leak in.
+            "api_keys": {"openai": "sk-stored"},
+        }
+        mock_fetch.return_value = {"models": ["gpt-5"], "source": "api"}
+
+        async with client:
+            resp = await client.post("/api/v1/config/llm-models", json={})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["provider"] == "openai"
+        assert data["models"] == ["gpt-5"]
+        assert data["source"] == "api"
+
+        _, kwargs = mock_fetch.call_args
+        assert kwargs["provider"] == "openai"
+        assert kwargs["api_base"] is None
+        assert kwargs["api_key"] == "sk-stored"
+
+    @patch("app.routers.config._load_config")
+    @patch("app.routers.config.fetch_provider_models")
+    async def test_list_models_previews_unsaved_values(self, mock_fetch, mock_load, client):
+        """Body values preview unsaved settings (provider/base/key)."""
+        mock_load.return_value = {"provider": "openai"}
+        mock_fetch.return_value = {"models": ["llama-3.1-8b"], "source": "api"}
+
+        async with client:
+            resp = await client.post(
+                "/api/v1/config/llm-models",
+                json={
+                    "provider": "openai_compatible",
+                    "api_base": "http://localhost:8080/v1",
+                    "api_key": "local-secret",
+                },
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["provider"] == "openai_compatible"
+        assert data["models"] == ["llama-3.1-8b"]
+
+        _, kwargs = mock_fetch.call_args
+        assert kwargs["provider"] == "openai_compatible"
+        assert kwargs["api_base"] == "http://localhost:8080/v1"
+        assert kwargs["api_key"] == "local-secret"
+
+    @patch("app.routers.config.fetch_provider_models")
+    async def test_list_models_propagates_error(self, mock_fetch, client):
+        """The static-fallback error is forwarded for the UI hint."""
+        mock_fetch.return_value = {
+            "models": ["gpt-5"],
+            "source": "static",
+            "error": "Could not reach the openai model catalog",
+        }
+
+        async with client:
+            resp = await client.post("/api/v1/config/llm-models")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["source"] == "static"
+        assert data["error"] is not None

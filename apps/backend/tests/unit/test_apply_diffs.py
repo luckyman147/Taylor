@@ -4,7 +4,7 @@ import copy
 import pytest
 
 from app.schemas.models import ResumeChange
-from app.services.improver import apply_diffs
+from app.services.improver import apply_diffs, reconcile_selected_projects
 
 
 class TestApplyDiffsReplace:
@@ -183,6 +183,320 @@ class TestApplyDiffsAddSkill:
         assert len(applied) == 0
         assert len(rejected) == 1
         assert "Kubernetes" not in result["additional"]["technicalSkills"]
+
+
+class TestApplyDiffsAddProject:
+    """Tests for adding user-selected GitHub repos as new personalProjects."""
+
+    ALLOWED = {"fastapi-skeleton": "https://github.com/janedoe/fastapi-skeleton"}
+
+    def _change(self, value: dict | str) -> ResumeChange:
+        return ResumeChange(
+            path="personalProjects",
+            action="add_project",
+            original=None,
+            value=value,
+            reason="User-selected GitHub repo",
+        )
+
+    def test_add_project_appends_server_url(self, sample_resume):
+        original_count = len(sample_resume["personalProjects"])
+        change = self._change(
+            {
+                "name": "fastapi-skeleton",
+                "github": "https://github.com/evil/malicious-url",
+                "role": "",
+                "years": "",
+                "description": ["FastAPI project with CI and Docker"],
+            }
+        )
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 1
+        assert len(rejected) == 0
+        assert len(result["personalProjects"]) == original_count + 1
+        entry = result["personalProjects"][-1]
+        assert entry["name"] == "fastapi-skeleton"
+        # GitHub URL is server-minted, never taken from the LLM payload
+        assert entry["github"] == "https://github.com/janedoe/fastapi-skeleton"
+        assert entry["description"] == ["FastAPI project with CI and Docker"]
+
+    def test_add_project_assigns_next_id(self, sample_resume):
+        change = self._change(
+            {
+                "name": "fastapi-skeleton",
+                "description": ["Starter API project"],
+            }
+        )
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 1
+        entry = result["personalProjects"][-1]
+        assert entry["id"] == max(p["id"] for p in sample_resume["personalProjects"]) + 1
+        assert entry["years"] == ""
+        assert entry["role"] == ""
+        assert entry["descriptionStyles"] == ["bullet"]
+
+    def test_add_project_rejects_unselected_repo(self, sample_resume):
+        change = self._change(
+            {
+                "name": "not-validated-repo",
+                "description": ["Some project"],
+            }
+        )
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 0
+        assert len(rejected) == 1
+        assert len(result["personalProjects"]) == len(sample_resume["personalProjects"])
+
+    def test_add_project_rejects_non_dict_value(self, sample_resume):
+        result, applied, rejected = apply_diffs(
+            sample_resume,
+            [self._change("fastapi-skeleton")],
+            allowed_project_repos=self.ALLOWED,
+        )
+        assert len(applied) == 0
+        assert len(rejected) == 1
+
+    def test_add_project_rejects_empty_description(self, sample_resume):
+        change = self._change(
+            {
+                "name": "fastapi-skeleton",
+                "description": ["", "   "],
+            }
+        )
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 0
+        assert len(rejected) == 1
+
+    def test_add_project_rejects_when_no_allowed_repos(self, sample_resume):
+        change = self._change(
+            {
+                "name": "fastapi-skeleton",
+                "description": ["Some project"],
+            }
+        )
+        result, applied, rejected = apply_diffs(sample_resume, [change])
+        assert len(applied) == 0
+        assert len(rejected) == 1
+
+
+class TestApplyDiffsRemoveProject:
+    """Tests for removing an existing project, replaced by a selected repo."""
+
+    ALLOWED = {"fastapi-skeleton": "https://github.com/janedoe/fastapi-skeleton"}
+
+    def _change(self, name: str, original: str | None = None) -> ResumeChange:
+        return ResumeChange(
+            path="personalProjects",
+            action="remove_project",
+            original=original,
+            value=name,
+            reason="Replaced by user-selected GitHub repo",
+        )
+
+    def test_remove_project_removes_exact_name(self, sample_resume):
+        original_count = len(sample_resume["personalProjects"])
+        target = sample_resume["personalProjects"][0]["name"]
+        change = self._change(target)
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 1
+        assert len(rejected) == 0
+        assert len(result["personalProjects"]) == original_count - 1
+        assert all(p["name"] != target for p in result["personalProjects"])
+
+    def test_remove_project_case_insensitive(self, sample_resume):
+        target = sample_resume["personalProjects"][0]["name"]
+        change = self._change(target.upper())
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 1
+        assert all(p["name"] != target for p in result["personalProjects"])
+
+    def test_remove_project_rejects_selected_repo(self, sample_resume):
+        # A selected repo's own name must never be removable
+        change = self._change("fastapi-skeleton")
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 0
+        assert len(rejected) == 1
+        assert len(result["personalProjects"]) == len(sample_resume["personalProjects"])
+
+    def test_remove_project_rejects_empty_value(self, sample_resume):
+        change = self._change("   ")
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 0
+        assert len(rejected) == 1
+
+    def test_remove_project_rejects_missing_entry(self, sample_resume):
+        change = self._change("no-such-project")
+        result, applied, rejected = apply_diffs(
+            sample_resume, [change], allowed_project_repos=self.ALLOWED
+        )
+        assert len(applied) == 0
+        assert len(rejected) == 1
+        assert len(result["personalProjects"]) == len(sample_resume["personalProjects"])
+
+    def test_remove_project_allows_removal_when_no_selection(self, sample_resume):
+        target = sample_resume["personalProjects"][0]["name"]
+        change = self._change(target)
+        result, applied, rejected = apply_diffs(sample_resume, [change])
+        assert len(applied) == 1
+        assert len(result["personalProjects"]) == len(sample_resume["personalProjects"]) - 1
+
+    def test_remove_then_add_replaces_project(self, sample_resume):
+        original_count = len(sample_resume["personalProjects"])
+        target = sample_resume["personalProjects"][0]["name"]
+        add_change = ResumeChange(
+            path="personalProjects",
+            action="add_project",
+            original=None,
+            value={
+                "name": "fastapi-skeleton",
+                "description": ["FastAPI project with CI and Docker"],
+            },
+            reason="User-selected GitHub repo",
+        )
+        remove_change = self._change(target)
+        result, applied, rejected = apply_diffs(
+            sample_resume,
+            [remove_change, add_change],
+            allowed_project_repos=self.ALLOWED,
+        )
+        assert len(applied) == 2
+        assert len(rejected) == 0
+        assert len(result["personalProjects"]) == original_count  # 1:1 swap
+        assert result["personalProjects"][-1]["name"] == "fastapi-skeleton"
+        assert all(p["name"] != target for p in result["personalProjects"])
+
+
+class TestReconcileSelectedProjects:
+    """Tests for reconcile_selected_projects — the deterministic GitHub-repo
+    guarantee that runs after apply_diffs, so projects update even when the
+    diff LLM omits add_project/remove_project."""
+
+    def _repo_entries(self):
+        return [
+            {
+                "name": "tailor-diff",
+                "role": "",
+                "years": "",
+                "github": "https://github.com/janedoe/tailor-diff",
+                "website": None,
+                "description": ["Tailor diffs for resumes"],
+                "descriptionStyles": ["plain"],
+            },
+            {
+                "name": "mcp-hub",
+                "role": "",
+                "years": "",
+                "github": "https://github.com/janedoe/mcp-hub",
+                "website": None,
+                "description": ["MCP gateway service"],
+                "descriptionStyles": ["plain"],
+            },
+        ]
+
+    def test_no_selection_is_noop(self, sample_resume):
+        before = copy.deepcopy(sample_resume["personalProjects"])
+        added, updated, removed = reconcile_selected_projects(sample_resume, [])
+        assert (added, updated, removed) == (0, 0, 0)
+        assert sample_resume["personalProjects"] == before
+
+    def test_adds_selected_repos_without_removing_others(self, sample_resume):
+        original_names = {p["name"] for p in sample_resume["personalProjects"]}
+        added, updated, removed = reconcile_selected_projects(sample_resume, self._repo_entries())
+        assert (added, updated, removed) == (2, 0, 0)
+        names = {p["name"] for p in sample_resume["personalProjects"]}
+        assert names == original_names | {"tailor-diff", "mcp-hub"}
+        assert sample_resume["personalProjects"][-1]["github"].startswith("https://github.com/janedoe/")
+
+    def test_removes_only_project_names_the_user_listed(self, sample_resume):
+        entries = self._repo_entries()
+        added, updated, removed = reconcile_selected_projects(
+            sample_resume, entries, ["OpenAPI Generator", "no-such-project"]
+        )
+        assert (added, updated, removed) == (2, 0, 1)
+        names = {p["name"] for p in sample_resume["personalProjects"]}
+        assert names == {"tailor-diff", "mcp-hub"}
+
+    def test_selected_repo_names_are_never_removed(self, sample_resume):
+        entries = self._repo_entries()
+        sample_resume["personalProjects"][0].update(
+            {"name": "tailor-diff", "github": "https://github.com/janedoe/tailor-diff"}
+        )
+        added, updated, removed = reconcile_selected_projects(
+            sample_resume, entries, ["tailor-diff", "mcp-hub"]
+        )
+        assert (added, updated, removed) == (1, 1, 0)
+        names = {p["name"] for p in sample_resume["personalProjects"]}
+        assert names == {"tailor-diff", "mcp-hub"}
+
+    def test_remove_names_work_without_selected_repos(self, sample_resume):
+        added, updated, removed = reconcile_selected_projects(
+            sample_resume, [], ["OpenAPI Generator"]
+        )
+        assert (added, updated, removed) == (0, 0, 1)
+        assert sample_resume["personalProjects"] == []
+
+    def test_keeps_already_selected_entries_in_place(self, sample_resume):
+        sample_resume["personalProjects"][0].update(
+            {"name": "tailor-diff", "github": "https://github.com/janedoe/tailor-diff"}
+        )
+        sample_resume["personalProjects"].append({"id": 2, "name": "Old Project", "description": ["x"]})
+        added, updated, removed = reconcile_selected_projects(sample_resume, self._repo_entries())
+        assert (added, updated, removed) == (1, 1, 0)
+        names = [p["name"] for p in sample_resume["personalProjects"]]
+        assert names.count("tailor-diff") == 1
+        assert names == ["tailor-diff", "Old Project", "mcp-hub"]
+
+    def test_overwrites_llm_content_for_selected_repo(self, sample_resume):
+        # Simulates the LLM's own add_project: entry exists with LLM wording + bullets
+        sample_resume["personalProjects"][0].update(
+            {
+                "name": "tailor-diff",
+                "github": "https://github.com/janedoe/tailor-diff",
+                "description": ["Built a full-stack suite using TypeScript and Python"],
+                "descriptionStyles": ["bullet"],
+            }
+        )
+        added, updated, removed = reconcile_selected_projects(sample_resume, self._repo_entries())
+        assert (added, updated, removed) == (1, 1, 0)
+        entry = sample_resume["personalProjects"][0]
+        assert entry["description"] == ["Tailor diffs for resumes"]
+        assert entry["descriptionStyles"] == ["plain"]
+        assert entry["role"] == "" and entry["years"] == "" and entry["website"] is None
+
+    def test_match_is_case_insensitive(self, sample_resume):
+        entries = self._repo_entries()
+        entries[0]["name"] = "Tailor-Diff"
+        sample_resume["personalProjects"][0].update({"name": "tailor-diff"})
+        added, updated, removed = reconcile_selected_projects(sample_resume, entries)
+        assert (added, updated, removed) == (1, 1, 0)
+        assert {p["name"] for p in sample_resume["personalProjects"]} == {"tailor-diff", "mcp-hub"}
+
+    def test_creates_projects_list_when_missing(self, sample_resume):
+        del sample_resume["personalProjects"]
+        added, updated, removed = reconcile_selected_projects(sample_resume, self._repo_entries())
+        assert (added, updated, removed) == (2, 0, 0)
+        assert len(sample_resume["personalProjects"]) == 2
+
+    def test_assigns_incrementing_ids(self, sample_resume):
+        reconcile_selected_projects(sample_resume, self._repo_entries())
+        ids = sorted(p["id"] for p in sample_resume["personalProjects"])
+        assert ids == list(range(1, len(ids) + 1))
 
 
 class TestApplyDiffsReorder:

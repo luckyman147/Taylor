@@ -33,7 +33,7 @@ export function DiffPreviewModal({
 }: DiffPreviewModalProps) {
   const { t } = useTranslations();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['summary', 'skills', 'descriptions', 'experience'])
+    new Set(['summary', 'skills', 'descriptions', 'experience', 'project'])
   );
 
   // Elapsed timer while confirming
