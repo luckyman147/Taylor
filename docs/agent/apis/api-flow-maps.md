@@ -142,3 +142,40 @@ GET /api/v1/applications/{id}
 | `POST /applications/bulk-delete` | db.bulk_delete_applications() |
 
 > **Auto-create:** `POST /resumes/improve/confirm` (and legacy `POST /resumes/improve`) create an `applied` card after persisting the tailored resume — best-effort (a tracker failure never breaks tailoring); company/role reuse the cached keyword extraction, so no extra LLM call.
+
+## Company Tracker
+
+```
+GET /api/v1/companies
+├── db.list_companies()
+└── Return {companies}        # ordered by name (case-insensitive)
+
+POST /api/v1/companies        # create — only name required
+├── db.create_company()       # dedupes on name (case-insensitive): returns existing row
+└── Return Company
+
+POST /api/v1/companies/import # CSV or Excel (.xlsx) upload
+├── db.get_company_by_name()  # skip rows whose name already exists
+├── db.create_company()       # per valid row
+└── Return {created, skipped, errors: [{row, name, error}]}
+    # headers matched flexibly (name/email/phone/address/website/size/type/
+    # linkedin/industry/founded aliases)
+    # optional `mapping` form field (JSON {field: exact header}) pins columns:
+    # only mapped fields are imported (no alias fallback)
+    # size accepts friendly forms ("51-200 employees"); bad rows are
+    # reported, never fatal
+
+POST /api/v1/companies/import/headers # read columns of a CSV/Excel file
+└── Return {headers: [..], detected: {field: header}}  # no DB writes
+
+GET /api/v1/companies/{id}    # db.get_company()
+PATCH /api/v1/companies/{id}  # db.update_company() — partial; 409 on duplicate rename
+DELETE /api/v1/companies/{id} # db.delete_company()
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `company_size` | string enum | `1-10 \| 11-50 \| 51-200 \| 201-1000 \| 1000+` |
+| `company_type` | string enum | `startup \| agency \| enterprise \| nonprofit \| education \| government \| other` |
+| `year_founded` | int | validated 1600–2100 |
+| `email`/`website`/`linkedin_url` | string | stored plain; linked client-side |

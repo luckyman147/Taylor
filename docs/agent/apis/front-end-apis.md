@@ -43,6 +43,22 @@ updateOutreachMessage(resumeId: string, content: string) → void
 generateInterviewPrep(resumeId: string) → InterviewPrepData
 ```
 
+`getResumePdfUrl` (used by `downloadResumePdf`) forwards the full
+`TemplateSettings` as query params to `GET /api/v1/resumes/{id}/pdf`, including
+the `advanced` block (`settingsToCssVars` parity):
+
+- `bulletMarker` (`•|*|-|>>|->`), `listSeparator` (`*|-|,|\|`)
+- `sizeFullName|PrimaryHeading|SecondaryHeading|SectionTitle|BodyCopy|MinorCopy` (pt)
+- `weightFullName|PrimaryHeading|SecondaryHeading|SectionTitle|BodyCopy|MinorCopy`
+  (`light|regular|bold|extralight`)
+- `transformFullName|PrimaryHeading|SecondaryHeading|SectionTitle|BodyCopy|MinorCopy`
+  (`uppercase|as-written|capitalize`)
+- `vspaceBetweenSections|TitlesContent|PrimarySecondary|ContentBlocks|ListItems` (pt)
+- `borderAboveHeader|BelowHeader|SectionTitles` (pt; `0` = hidden)
+
+The print page (`app/print/resumes/[id]/page.tsx`) parses all of them back into
+`settings.advanced` via `parseEnum`/`parsePt`-style helpers.
+
 ## Resume Wizard (`lib/api/resume-wizard.ts`)
 
 ```typescript
@@ -73,6 +89,26 @@ bulkUpdateStatus(applicationIds: string[], status: ApplicationStatus) → Applic
 deleteApplication(id: string) → void
 bulkDeleteApplications(applicationIds: string[]) → ApplicationActionResponse
 ```
+
+## Company Tracker (`lib/api/companies.ts`)
+
+```typescript
+// Standalone company CRM (name/email/phone/address/website/size/type/linkedin/industry/founded)
+listCompanies() → CompanyListResponse                  // { companies: Company[] } ordered by name
+createCompany(payload: CompanyCreate) → Company        // dedupes (case-insensitive) on name server-side
+getCompany(id: string) → Company
+updateCompany(id: string, payload: CompanyUpdate) → Company   // partial; 409 on duplicate rename
+deleteCompany(id: string) → void
+
+// Bulk CSV / Excel (.xlsx) upload with optional column mapping
+getImportHeaders(file) → CompanyImportHeaders          // { headers, detected: {field: header} }
+importCompanies(file, mapping?) → CompanyImportResponse
+// mapping: {field: exact column header}; only mapped fields are imported;
+// without it the server auto-detects columns via aliases
+// CSV export is client-side via lib/utils/csv.ts (downloadCsv with BOM + RFC 4180 escaping)
+```
+
+> Enums are stable keys, decoupled from i18n labels: `company_size` ∈ `1-10 | 11-50 | 51-200 | 201-1000 | 1000+`; `company_type` ∈ `startup | agency | enterprise | nonprofit | education | government | other`.
 
 ## Config Operations (`lib/api/config.ts`)
 
