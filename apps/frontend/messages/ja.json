@@ -45,7 +45,12 @@
     "settings": "設定",
     "backToDashboard": "ダッシュボードに戻る",
     "goToSettings": "設定へ",
-    "applicationTracker": "応募トラッカー"
+    "applicationTracker": "応募トラッカー",
+    "jobSearch": "Job Search",
+    "jobTracking": "Job Tracking",
+    "resumeBuilder": "Resume Builder",
+    "companies": "Company Tracker",
+    "contacts": "Contact Tracker"
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -437,7 +442,115 @@
       "effectiveHeaderFont": "見出しフォント",
       "effectiveBodyFont": "本文フォント",
       "compactHint": "コンパクトモードでは間隔と行間が詰まります。余白と本文フォントサイズは維持されます。",
-      "resetDefaults": "デフォルトに戻す"
+      "resetDefaults": "デフォルトに戻す",
+      "dateFormat": "Date Format",
+      "dateFormats": {
+        "short": "Short name (Sep 2020)",
+        "long": "Long name (September 2020)",
+        "mmmyyyy": "Number (MMM/YYYY)",
+        "years": "Years (2020 - 2024)"
+      },
+      "lineHeight": "Line Height",
+      "listLineHeight": "List Line Height",
+      "headerAlignment": "Header Alignment",
+      "dateAlignment": "Date Alignment",
+      "locationAlignment": "Location Alignment",
+      "alignmentOptions": {
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      },
+      "skillsLayout": "Skills Layout",
+      "skillsLayoutOptions": {
+        "comma": "Comma separated",
+        "list": "Line separated",
+        "columns": "Columns"
+      },
+      "marginUnit": "Units",
+      "marginUnits": {
+        "mm": "Millimeters (mm)",
+        "percent": "Percent of page"
+      },
+      "typography": "Typography",
+      "bulletMarker": "Bullet Marker",
+      "listSeparator": "List Separator",
+      "markerOptions": {
+        "*": "*",
+        "-": "-",
+        ">>": ">>",
+        "->": "->"
+      },
+      "separatorOptions": {
+        "*": "*",
+        "-": "-",
+        ",": "Comma",
+        "|": "Pipe"
+      },
+      "weightOptions": {
+        "light": "Light",
+        "regular": "Regular",
+        "bold": "Bold",
+        "extralight": "Extra Light"
+      },
+      "transformOptions": {
+        "uppercase": "All Caps",
+        "as-written": "As Written",
+        "capitalize": "Title Case"
+      },
+      "elementNames": {
+        "bodyCopy": "Body Copy",
+        "primaryHeading": "Primary Heading",
+        "secondaryHeading": "Secondary Heading",
+        "sectionTitle": "Section Titles",
+        "fullName": "Full Name",
+        "minorCopy": "Minor Copy"
+      },
+      "spacingRows": {
+        "betweenSections": "Between Sections",
+        "titlesContent": "Titles & Content",
+        "primarySecondaryHeadings": "Primary & Secondary Headings",
+        "contentBlocks": "Content Blocks",
+        "listItems": "List Items"
+      },
+      "borderRows": {
+        "aboveHeader": "Above Header",
+        "belowHeader": "Below Header",
+        "sectionTitles": "Section Titles"
+      },
+      "borderEnabled": "Show",
+      "ptUnit": "pt",
+      "effectiveListLineHeight": "List Line Height",
+      "workShowBy": "Show work experience by",
+      "workDatesBy": "Show dates by",
+      "workLocationBy": "Show location by",
+      "workShowByOptions": {
+        "company": "Company",
+        "position": "Position"
+      },
+      "workDatesByOptions": {
+        "company": "Company",
+        "position": "Position",
+        "both": "Both"
+      },
+      "workLocationByOptions": {
+        "company": "Company",
+        "position": "Position",
+        "none": "None"
+      },
+      "educationShowBy": "Show education by",
+      "educationLayout": "Layout",
+      "educationShowByOptions": {
+        "degree": "Degree",
+        "institution": "Institution"
+      },
+      "educationLayoutOptions": {
+        "stacked": "Stacked",
+        "inline": "Inline"
+      },
+      "previewSelectors": {
+        "metaSample": "Sep 2020",
+        "locationSample": "Paris"
+      }
     },
     "personalInfoForm": {
       "placeholders": {
@@ -475,6 +588,37 @@
       "coverLetterGenerateFailed": "カバーレターの生成に失敗しました: {error}",
       "outreachGenerateFailed": "連絡メールの生成に失敗しました: {error}",
       "interviewPrepGenerateFailed": "面接準備の生成に失敗しました: {error}"
+    },
+    "editorModes": {
+      "design": "Design",
+      "content": "Content"
+    },
+    "designTabs": {
+      "presentation": "Presentation",
+      "sections": "Sections",
+      "settings": "Settings",
+      "advanced": "Advanced"
+    },
+    "designGroups": {
+      "controls": "Controls",
+      "styling": "Styling",
+      "heightsPaddings": "Heights & Paddings",
+      "alignmentsLayouts": "Alignments & Layouts",
+      "pageSetup": "Page Setup",
+      "workExperienceSettings": "Work Experience Settings",
+      "educationSettings": "Education Settings",
+      "advancedStyles": "Advanced Styles",
+      "textSizes": "Text Sizes",
+      "textWeights": "Text Weights",
+      "textTransformations": "Text Transformations",
+      "verticalSpacing": "Vertical Spacing",
+      "borders": "Borders",
+      "comingSoon": "Coming soon",
+      "comingSoonHint": "These settings are not available yet."
+    },
+    "sectionOrder": {
+      "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
+      "dragToReorder": "Drag to reorder"
     }
   },
   "enrichment": {
@@ -1037,6 +1181,279 @@
       "loadFailed": "応募を読み込めませんでした。",
       "moveFailed": "応募を移動できませんでした。",
       "deleteFailed": "応募を削除できませんでした。"
+    }
+  },
+  "companies": {
+    "title": "Company Tracker",
+    "subtitle": "Keep tabs on every company you engage with.",
+    "addCompany": "Add Company",
+    "empty": {
+      "title": "No companies yet",
+      "description": "Track the companies you apply to, contact, or want to keep an eye on.",
+      "noResults": "No companies match your filters",
+      "noResultsHint": "Try adjusting the search or clearing the filters."
+    },
+    "table": {
+      "company": "Company",
+      "phone": "Phone",
+      "industry": "Industry",
+      "size": "Size",
+      "type": "Type",
+      "status": "Status",
+      "yearFounded": "Founded",
+      "links": "Links",
+      "actions": "Actions",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "edit": "Edit company",
+      "delete": "Delete company",
+      "editHint": "Click to edit",
+      "viewDetails": "View details"
+    },
+    "size": {
+      "1-10": "1-10 employees",
+      "11-50": "11-50 employees",
+      "51-200": "51-200 employees",
+      "201-1000": "201-1000 employees",
+      "1000+": "1000+ employees"
+    },
+    "type": {
+      "startup": "Startup",
+      "agency": "Agency",
+      "enterprise": "Enterprise",
+      "nonprofit": "Nonprofit",
+      "education": "Education",
+      "government": "Government",
+      "other": "Other"
+    },
+    "status": {
+      "watching": "Watching",
+      "contacted": "Contacted",
+      "applied": "Applied",
+      "interviewing": "Interviewing",
+      "negotiating": "Negotiating",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "form": {
+      "addTitle": "Add Company",
+      "editTitle": "Edit Company",
+      "description": "Save contact details and background info for a company you are tracking.",
+      "name": "Company Name",
+      "namePlaceholder": "e.g. Acme Corp",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "website": "Website",
+      "linkedin": "LinkedIn URL",
+      "industry": "Industry",
+      "size": "Company Size",
+      "type": "Company Type",
+      "status": "Status",
+      "yearFounded": "Year Founded",
+      "optional": "Optional",
+      "none": "None",
+      "validation": "Company name is required.",
+      "invalidYear": "Year must be between 1600 and 2100.",
+      "failed": "Could not save the company.",
+      "save": "Save Changes",
+      "submit": "Add Company"
+    },
+    "delete": {
+      "title": "Delete company?",
+      "description": "Delete {name}? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "loadFailed": "Could not load companies.",
+      "deleteFailed": "Could not delete the company.",
+      "updateFailed": "Could not update the company."
+    },
+    "toolbar": {
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Search by name, industry or email…",
+      "size": "Size",
+      "type": "Type",
+      "groupBy": "Group by",
+      "groupNone": "No grouping",
+      "groupSize": "Company size",
+      "groupType": "Company type",
+      "groupIndustry": "Industry",
+      "groupStatus": "Company status",
+      "status": "Status",
+      "columns": "Columns",
+      "import": "Import",
+      "export": "Export CSV",
+      "count": "{count} companies"
+    },
+    "import": {
+      "title": "Import companies",
+      "description": "CSV or Excel (.xlsx) upload result",
+      "created": "{count} companies added",
+      "skipped": "{count} already existed (skipped)",
+      "failedCount": "{count} rows failed",
+      "errorRow": "Row {row}: {name} — {error}",
+      "done": "Done",
+      "failed": "Could not import the file.",
+      "mappingTitle": "Map columns",
+      "mappingDescription": "Choose which CSV or Excel column goes into each company field.",
+      "mappingHint": "Only mapped fields are imported. Company name is required.",
+      "mappingAuto": "auto",
+      "mappingNameRequired": "Map the company name column before importing.",
+      "mappingImport": "Import"
+    },
+    "selection": {
+      "count": "{count} selected",
+      "clear": "Clear",
+      "delete": "Delete",
+      "selectAll": "Select all companies on this page",
+      "selectRow": "Select {name}",
+      "deleteTitle": "Delete companies?",
+      "deleteDescription": "Delete {count} selected companies? This cannot be undone."
+    },
+    "details": {
+      "created": "Added",
+      "updated": "Last updated"
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {count}",
+      "perPage": "{count} per page"
+    }
+  },
+  "contacts": {
+    "title": "Contact Tracker",
+    "subtitle": "Keep track of the people in your professional network.",
+    "addContact": "Add Contact",
+    "empty": {
+      "title": "No contacts yet",
+      "description": "Track recruiters, mentors, alumni, and everyone else you want to follow up with.",
+      "noResults": "No contacts match your filters",
+      "noResultsHint": "Try adjusting the search or clearing the filters."
+    },
+    "table": {
+      "name": "Contact",
+      "company": "Company",
+      "location": "Location",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "followUpDate": "Follow-up date",
+      "actions": "Actions",
+      "edit": "Edit contact",
+      "delete": "Delete contact",
+      "viewDetails": "View details"
+    },
+    "goal": {
+      "networking": "Networking",
+      "informational_interview": "Informational interview",
+      "request_referral": "Request referral",
+      "research_interviewer": "Research interviewer",
+      "research_career": "Research career"
+    },
+    "status": {
+      "to_contact": "To contact",
+      "follow_up": "Follow up",
+      "meeting_scheduled": "Meeting scheduled",
+      "thank_you_sent": "Thank-you sent"
+    },
+    "relationship": {
+      "self": "Self",
+      "coworker": "Coworker",
+      "friend": "Friend",
+      "family": "Family",
+      "other": "Other",
+      "recruiter": "Recruiter",
+      "mentor": "Mentor",
+      "hiring_manager": "Hiring manager",
+      "alumni": "Alumni"
+    },
+    "form": {
+      "addTitle": "Add Contact",
+      "editTitle": "Edit Contact",
+      "description": "Save the details of a person in your professional network.",
+      "name": "Full name",
+      "namePlaceholder": "e.g. Jane Doe",
+      "company": "Company",
+      "location": "Location",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "followUpDate": "Follow-up date",
+      "optional": "Optional",
+      "none": "None",
+      "validation": "Contact name is required.",
+      "invalidDate": "Enter the date as YYYY-MM-DD.",
+      "failed": "Could not save the contact.",
+      "save": "Save Changes",
+      "submit": "Add Contact"
+    },
+    "delete": {
+      "title": "Delete contact?",
+      "description": "Delete {name}? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "loadFailed": "Could not load contacts.",
+      "deleteFailed": "Could not delete the contact.",
+      "updateFailed": "Could not update the contact."
+    },
+    "toolbar": {
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Search by name, company or location…",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "groupBy": "Group by",
+      "groupNone": "No grouping",
+      "groupGoal": "Goal",
+      "groupStatus": "Status",
+      "groupRelationship": "Relationship",
+      "columns": "Columns",
+      "import": "Import",
+      "export": "Export CSV",
+      "count": "{count} contacts"
+    },
+    "import": {
+      "title": "Import contacts",
+      "description": "CSV or Excel (.xlsx) upload result",
+      "created": "{count} contacts added",
+      "skipped": "{count} already existed (skipped)",
+      "failedCount": "{count} rows failed",
+      "errorRow": "Row {row}: {name} — {error}",
+      "done": "Done",
+      "failed": "Could not import the file.",
+      "mappingTitle": "Map columns",
+      "mappingDescription": "Choose which CSV or Excel column goes into each contact field.",
+      "mappingHint": "Only mapped fields are imported. Contact name is required.",
+      "mappingAuto": "auto",
+      "mappingNameRequired": "Map the contact name column before importing.",
+      "mappingImport": "Import"
+    },
+    "selection": {
+      "count": "{count} selected",
+      "clear": "Clear",
+      "delete": "Delete",
+      "selectAll": "Select all contacts on this page",
+      "selectRow": "Select {name}",
+      "deleteTitle": "Delete contacts?",
+      "deleteDescription": "Delete {count} selected contacts? This cannot be undone."
+    },
+    "details": {
+      "created": "Added",
+      "updated": "Last updated",
+      "noCompany": "No company"
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {count}",
+      "perPage": "{count} per page"
     }
   },
   "interviewPrep": {
