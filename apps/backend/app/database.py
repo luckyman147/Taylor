@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 from app.db_engine import init_models_sync, make_async_engine, make_sync_engine
-from app.models import ApiKey, Application, Improvement, Job, Resume
+from app.models import ApiKey, Application, Company, Contact, Improvement, Job, Resume
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +173,40 @@ class Database:
             "applied_at": row.applied_at,
             "notes": row.notes,
             "position": row.position,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _company_to_dict(row: Company) -> dict[str, Any]:
+        return {
+            "company_id": row.company_id,
+            "name": row.name,
+            "email": row.email,
+            "phone": row.phone,
+            "address": row.address,
+            "website": row.website,
+            "company_size": row.company_size,
+            "company_type": row.company_type,
+            "linkedin_url": row.linkedin_url,
+            "industry": row.industry,
+            "status": row.status,
+            "year_founded": row.year_founded,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _contact_to_dict(row: Contact) -> dict[str, Any]:
+        return {
+            "contact_id": row.contact_id,
+            "name": row.name,
+            "company": row.company,
+            "location": row.location,
+            "goal": row.goal,
+            "status": row.status,
+            "relationship": row.relationship,
+            "follow_up_date": row.follow_up_date,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -678,6 +712,304 @@ class Database:
             await session.flush()
             for status in affected:
                 await self._renumber(session, status)
+            await session.commit()
+        return deleted
+
+    # -- Company (tracker) operations ---------------------------------------
+
+    async def create_company(
+        self,
+        name: str,
+        email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
+        website: str | None = None,
+        company_size: str | None = None,
+        company_type: str | None = None,
+        linkedin_url: str | None = None,
+        industry: str | None = None,
+        status: str | None = None,
+        year_founded: int | None = None,
+    ) -> dict[str, Any]:
+        """Create a company, deduped on name (case-insensitive).
+
+        If a company with the same lowercased name already exists it is
+        returned as-is (survives double-submit); the caller decides whether to
+        treat that as a conflict or a no-op.
+        """
+        async with self._session() as session:
+            existing = await session.execute(
+                select(Company).where(func.lower(Company.name) == name.lower())
+            )
+            found = existing.scalars().first()
+            if found is not None:
+                return self._company_to_dict(found)
+
+            now = _now()
+            row = Company(
+                company_id=str(uuid4()),
+                name=name,
+                email=email,
+                phone=phone,
+                address=address,
+                website=website,
+                company_size=company_size,
+                company_type=company_type,
+                linkedin_url=linkedin_url,
+                industry=industry,
+                status=status,
+                year_founded=year_founded,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            try:
+                await session.commit()
+            except IntegrityError:
+                # A concurrent create won the name unique constraint — return
+                # the existing row instead of duplicating.
+                await session.rollback()
+                dup = await session.execute(
+                    select(Company).where(func.lower(Company.name) == name.lower())
+                )
+                found = dup.scalars().first()
+                if found is not None:
+                    logger.debug("Deduped concurrent company create for name=%s", name)
+                    return self._company_to_dict(found)
+                raise
+            return self._company_to_dict(row)
+
+    async def list_companies(self) -> list[dict[str, Any]]:
+        """List all companies ordered by name (case-insensitive)."""
+        async with self._session() as session:
+            stmt = select(Company).order_by(func.lower(Company.name), Company.created_at)
+            result = await session.execute(stmt)
+            return [self._company_to_dict(row) for row in result.scalars().all()]
+
+    async def get_company(self, company_id: str) -> dict[str, Any] | None:
+        """Get a company by ID."""
+        async with self._session() as session:
+            row = await session.get(Company, company_id)
+            return self._company_to_dict(row) if row else None
+
+    async def get_company_by_name(self, name: str) -> dict[str, Any] | None:
+        """Get a company by name (case-insensitive)."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(Company).where(func.lower(Company.name) == name.lower())
+            )
+            row = result.scalars().first()
+            return self._company_to_dict(row) if row else None
+
+    async def update_company(
+        self, company_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a company's editable fields. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(Company, company_id)
+            if row is None:
+                return None
+
+            new_name = updates.get("name")
+            if new_name is not None and new_name.lower() != row.name.lower():
+                conflict = await session.execute(
+                    select(Company).where(
+                        func.lower(Company.name) == new_name.lower(),
+                        Company.company_id != company_id,
+                    )
+                )
+                if conflict.scalars().first() is not None:
+                    raise ValueError(f"Company with name {new_name!r} already exists")
+
+            for key in (
+                "name",
+                "email",
+                "phone",
+                "address",
+                "website",
+                "company_size",
+                "company_type",
+                "linkedin_url",
+                "industry",
+                "status",
+                "year_founded",
+            ):
+                if key in updates:
+                    setattr(row, key, updates[key])
+
+            row.updated_at = _now()
+            try:
+                await session.commit()
+            except IntegrityError:
+                # Renaming to a name that already exists — surface as a
+                # conflict to the caller.
+                await session.rollback()
+                raise ValueError(f"Company with name {updates.get('name')!r} already exists")
+            return self._company_to_dict(row)
+
+    async def delete_company(self, company_id: str) -> bool:
+        """Delete a company. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(Company, company_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    async def bulk_delete_companies(self, company_ids: list[str]) -> int:
+        """Delete many companies (missing ids are skipped). Returns count."""
+        deleted = 0
+        async with self._session() as session:
+            for company_id in company_ids:
+                row = await session.get(Company, company_id)
+                if row is None:
+                    continue
+                await session.delete(row)
+                deleted += 1
+            await session.commit()
+        return deleted
+
+    # -- Contact (tracker) operations --------------------------------------
+
+    async def create_contact(
+        self,
+        name: str,
+        company: str | None = None,
+        location: str | None = None,
+        goal: str | None = None,
+        status: str | None = None,
+        relationship: str | None = None,
+        follow_up_date: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a contact, deduped on name (case-insensitive).
+
+        If a contact with the same lowercased name already exists it is
+        returned as-is (survives double-submit); the caller decides whether to
+        treat that as a conflict or a no-op.
+        """
+        async with self._session() as session:
+            existing = await session.execute(
+                select(Contact).where(func.lower(Contact.name) == name.lower())
+            )
+            found = existing.scalars().first()
+            if found is not None:
+                return self._contact_to_dict(found)
+
+            now = _now()
+            row = Contact(
+                contact_id=str(uuid4()),
+                name=name,
+                company=company,
+                location=location,
+                goal=goal,
+                status=status,
+                relationship=relationship,
+                follow_up_date=follow_up_date,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            try:
+                await session.commit()
+            except IntegrityError:
+                # A concurrent create won the name unique constraint — return
+                # the existing row instead of duplicating.
+                await session.rollback()
+                dup = await session.execute(
+                    select(Contact).where(func.lower(Contact.name) == name.lower())
+                )
+                found = dup.scalars().first()
+                if found is not None:
+                    logger.debug("Deduped concurrent contact create for name=%s", name)
+                    return self._contact_to_dict(found)
+                raise
+            return self._contact_to_dict(row)
+
+    async def list_contacts(self) -> list[dict[str, Any]]:
+        """List all contacts ordered by name (case-insensitive)."""
+        async with self._session() as session:
+            stmt = select(Contact).order_by(func.lower(Contact.name), Contact.created_at)
+            result = await session.execute(stmt)
+            return [self._contact_to_dict(row) for row in result.scalars().all()]
+
+    async def get_contact(self, contact_id: str) -> dict[str, Any] | None:
+        """Get a contact by ID."""
+        async with self._session() as session:
+            row = await session.get(Contact, contact_id)
+            return self._contact_to_dict(row) if row else None
+
+    async def get_contact_by_name(self, name: str) -> dict[str, Any] | None:
+        """Get a contact by name (case-insensitive)."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(Contact).where(func.lower(Contact.name) == name.lower())
+            )
+            row = result.scalars().first()
+            return self._contact_to_dict(row) if row else None
+
+    async def update_contact(
+        self, contact_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a contact's editable fields. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(Contact, contact_id)
+            if row is None:
+                return None
+
+            new_name = updates.get("name")
+            if new_name is not None and new_name.lower() != row.name.lower():
+                conflict = await session.execute(
+                    select(Contact).where(
+                        func.lower(Contact.name) == new_name.lower(),
+                        Contact.contact_id != contact_id,
+                    )
+                )
+                if conflict.scalars().first() is not None:
+                    raise ValueError(f"Contact with name {new_name!r} already exists")
+
+            for key in (
+                "name",
+                "company",
+                "location",
+                "goal",
+                "status",
+                "relationship",
+                "follow_up_date",
+            ):
+                if key in updates:
+                    setattr(row, key, updates[key])
+
+            row.updated_at = _now()
+            try:
+                await session.commit()
+            except IntegrityError:
+                # Renaming to a name that already exists — surface as a
+                # conflict to the caller.
+                await session.rollback()
+                raise ValueError(f"Contact with name {updates.get('name')!r} already exists")
+            return self._contact_to_dict(row)
+
+    async def delete_contact(self, contact_id: str) -> bool:
+        """Delete a contact. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(Contact, contact_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    async def bulk_delete_contacts(self, contact_ids: list[str]) -> int:
+        """Delete many contacts (missing ids are skipped). Returns count."""
+        deleted = 0
+        async with self._session() as session:
+            for contact_id in contact_ids:
+                row = await session.get(Contact, contact_id)
+                if row is None:
+                    continue
+                await session.delete(row)
+                deleted += 1
             await session.commit()
         return deleted
 

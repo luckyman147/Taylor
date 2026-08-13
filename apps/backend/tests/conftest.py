@@ -207,6 +207,8 @@ async def isolated_db(tmp_path, monkeypatch):
         "config",
         "health",
         "applications",
+        "companies",
+        "contacts",
         "resume_wizard",
     ):
         try:

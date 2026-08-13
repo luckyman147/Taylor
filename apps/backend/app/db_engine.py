@@ -84,3 +84,14 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN applied_resume_id TEXT")
             if "archived" not in scraped_col_names:
                 conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN archived BOOLEAN DEFAULT 0")
+
+        # Add contact columns to companies table
+        company_columns = conn.exec_driver_sql("PRAGMA table_info(companies)").mappings().all()
+        if company_columns:
+            company_col_names = {column["name"] for column in company_columns}
+            if "phone" not in company_col_names:
+                conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN phone TEXT")
+            if "address" not in company_col_names:
+                conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN address TEXT")
+            if "status" not in company_col_names:
+                conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN status TEXT")

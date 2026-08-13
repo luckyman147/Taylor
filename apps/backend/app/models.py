@@ -110,6 +110,55 @@ class Application(Base):
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
 
+class Company(Base):
+    """A tracked company the user applies to.
+
+    ``company_size`` / ``company_type`` store stable enum keys (decoupled from
+    i18n labels); ``email`` / ``website`` / ``linkedin_url`` are stored as
+    plain strings. ``name`` is unique (case-insensitively enforced by the
+    facade) so a company can't be created twice.
+    """
+
+    __tablename__ = "companies"
+
+    company_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    address: Mapped[str | None] = mapped_column(String, nullable=True)
+    website: Mapped[str | None] = mapped_column(String, nullable=True)
+    company_size: Mapped[str | None] = mapped_column(String, nullable=True)
+    company_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    industry: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str | None] = mapped_column(String, nullable=True)
+    year_founded: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class Contact(Base):
+    """A tracked networking contact.
+
+    ``goal`` / ``status`` / ``relationship`` store stable enum keys (decoupled
+    from i18n labels). ``name`` is unique (case-insensitively enforced by the
+    facade) so a contact can't be created twice.
+    """
+
+    __tablename__ = "contacts"
+
+    contact_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    company: Mapped[str | None] = mapped_column(String, nullable=True)
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    goal: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str | None] = mapped_column(String, nullable=True)
+    relationship: Mapped[str | None] = mapped_column(String, nullable=True)
+    follow_up_date: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
 class ApiKey(Base):
     """An encrypted LLM provider API key.
 
