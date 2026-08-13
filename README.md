@@ -6,7 +6,7 @@
 
 <p align="center">AI-powered resume tailoring, cover letters, job scraping and application tracking.</p>
 
-<p align="center"><strong>Taylor</strong> is a full-stack resume automation suite. Paste any job description, pick a master resume built by hand or assembled with the AI-guided wizard, and get a perfectly matched, ATS-friendly resume with a side-by-side diff preview you can review before committing. Beyond tailoring, it grows into your whole job-hunt command center: an AI-grounded cover-letter generator (with LinkedIn/GitHub context), a kanban application tracker, a job scraper that pulls listings from remote, freelance and Tunisian boards, and a print-optimized PDF export pipeline. It ships with a template-based resume builder, multi-language support, and is LLM-agnostic — OpenAI, Anthropic, Gemini, OpenRouter, Ollama, DeepSeek, Groq and any OpenAI-compatible endpoint.</p>
+<p align="center"><strong>Taylor</strong> is a full-stack resume automation suite. Paste any job description, pick a master resume built by hand or assembled with the AI-guided wizard, and get a perfectly matched, ATS-friendly resume with a side-by-side diff preview you can review before committing. Beyond tailoring, it grows into your whole job-hunt command center: an AI-grounded cover-letter generator (with LinkedIn/GitHub context), a kanban application tracker, a company pipeline, a contact/recruiter CRM, a job scraper that pulls listings from remote, freelance and Tunisian boards, and a print-optimized PDF export pipeline. It ships with a template-based resume builder (with advanced typography and layout controls), multi-language support, and is LLM-agnostic — OpenAI, Anthropic, Gemini, OpenRouter, Ollama, DeepSeek, Groq and any OpenAI-compatible endpoint.</p>
 
 ## Screenshots
 
@@ -25,9 +25,11 @@
 
 - **AI tailoring & regeneration** — one-click resume rewrite against a job description
 - **Diff preview** — see exactly what changed before you commit
-- **Resume builder** — template-based editing with live preview
+- **Resume builder** — template-based editing with live preview, section reordering, advanced typography/layout controls and AI regeneration
 - **ATS formatting** — clean, single-column, keyword-matched output
 - **Application tracker** — kanban board for jobs, statuses, notes
+- **Company pipeline** — track target companies through watching → contacted → applied → interviewing → negotiating → won/lost, with CSV/XLSX import
+- **Contact CRM** — networking and recruiter contacts with goals, relationship types, follow-up dates and CSV/XLSX import
 - **Freelance & scraper support** — pull jobs from external sources (RSS, remote-freelance, Tunisian boards)
 - **Multi-language** — tuned for any language the master resume is written in
 - **PDF export** — Playwright-rendered, print-optimized
