@@ -12,15 +12,15 @@
 .grid {
   display: grid;
   grid-template-columns: 63% 37%;
-  gap: calc(var(--section-gap) * 1.25);
-  margin-top: var(--section-gap);
+  gap: calc(var(--vspace-between-sections) * 1.25);
+  margin-top: var(--vspace-between-sections);
   align-items: start;
 }
 
 .mainColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: var(--vspace-between-sections);
   padding-right: 0.875rem;
   min-width: 0;
   overflow: hidden;
@@ -29,7 +29,7 @@
 .sidebarColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: var(--vspace-between-sections);
   padding-left: 0.75rem;
   min-width: 0;
   overflow: hidden;
@@ -50,7 +50,7 @@
 /* Monospace title + contact row */
 .titleLine {
   font-family: var(--resume-font-mono);
-  font-size: calc(var(--font-size-base) * 1.05);
+  font-size: var(--size-primary-heading);
   color: var(--resume-text-tertiary);
   margin-top: 0.15rem;
   letter-spacing: 0.01em;
@@ -58,7 +58,7 @@
 
 .contactRow {
   font-family: var(--resume-font-mono);
-  font-size: calc(var(--font-size-base) * 0.8);
+  font-size: calc(var(--size-minor-copy) * 1.05);
   color: var(--resume-text-body);
 }
 
@@ -83,12 +83,12 @@
 /* Accent small-caps section headers */
 .sectionTitle {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--section-header-scale) * 1.1);
-  font-weight: 700;
+  font-size: calc(var(--size-section-title) * 1.1);
+  font-weight: var(--weight-section-title);
   font-variant: small-caps;
   letter-spacing: 0.03em;
   color: var(--resume-accent-primary);
-  margin-bottom: var(--item-gap);
+  margin-bottom: var(--vspace-titles-content);
   break-after: avoid;
   page-break-after: avoid;
   orphans: 3;
@@ -97,14 +97,12 @@
 
 .sectionTitleSm {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--section-header-scale) * 0.95);
-  font-weight: 700;
+  font-size: calc(var(--size-section-title) * 1.045);
+  font-weight: var(--weight-section-title);
   font-variant: small-caps;
   letter-spacing: 0.03em;
   color: var(--resume-accent-primary);
-  margin-bottom: var(--item-gap);
-  break-after: avoid;
-  page-break-after: avoid;
+  margin-bottom: var(--vspace-titles-content);
 }
 
 .arrow {
@@ -131,7 +129,7 @@
 
 .entryMeta {
   font-family: var(--resume-font-mono);
-  font-size: calc(var(--font-size-base) * 0.72);
+  font-size: calc(var(--size-minor-copy) * 0.95);
   font-weight: 700;
   color: var(--resume-text-tertiary);
 }

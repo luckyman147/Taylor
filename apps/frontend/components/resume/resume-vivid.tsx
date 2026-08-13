@@ -8,6 +8,12 @@ import type {
 } from '@/components/dashboard/resume-component';
 import { getSortedSections, getSectionMeta } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
+import {
+  type EducationSettings,
+  type SkillsLayoutMode,
+  type WorkExperienceSettings,
+} from '@/lib/types/template-settings';
+import { arrangeEducationEntry, arrangeWorkEntry, workEntryInlineMeta } from './entry-arrange';
 import { DescriptionList } from './description-list';
 import baseStyles from './styles/_base.module.css';
 import styles from './styles/vivid.module.css';
@@ -17,6 +23,9 @@ interface ResumeVividProps {
   showContactIcons?: boolean;
   sectionHeadings?: Partial<ResumeSectionHeadings>;
   fallbackLabels?: Partial<ResumeFallbackLabels>;
+  skillsLayout?: SkillsLayoutMode;
+  workExperienceSettings?: WorkExperienceSettings;
+  educationSettings?: EducationSettings;
 }
 
 /**
@@ -35,6 +44,9 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
   showContactIcons = false,
   sectionHeadings,
   fallbackLabels,
+  skillsLayout = 'comma',
+  workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
+  educationSettings = { showBy: 'institution', layout: 'stacked' },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -141,7 +153,6 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
       items={items}
       styles={itemStyles}
       textClassName={textClass}
-      marker="➜"
       markerClassName={`mr-1.5 ${styles.arrow}`}
     />
   );
@@ -186,31 +197,37 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
                 {getSectionDisplayName('workExperience', headingFallbacks.experience)}
               </h3>
               <div className={baseStyles['resume-items']}>
-                {workExperience.map((exp) => (
-                  <div key={exp.id} className={baseStyles['resume-item']}>
-                    <div
-                      className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
-                    >
-                      <span>
-                        <span className={styles.entryCompany}>{exp.company}</span>
-                        {exp.title && (
-                          <>
-                            <span className={styles.entrySep}>|</span>
-                            <span className={styles.entryRole}>{exp.title}</span>
-                          </>
-                        )}
-                      </span>
+                {workExperience.map((exp) => {
+                  const entry = arrangeWorkEntry(exp, workExperienceSettings);
+                  const meta = workEntryInlineMeta(entry, exp.years);
+                  return (
+                    <div key={exp.id} className={baseStyles['resume-item']}>
+                      <div
+                        className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
+                      >
+                        <span>
+                          <span className={styles.entryCompany}>{entry.primary}</span>
+                          {entry.secondary && (
+                            <>
+                              <span className={styles.entrySep}>|</span>
+                              <span className={styles.entryRole}>{entry.secondary}</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      {meta && (
+                        <div className={`${baseStyles['resume-row-tight']} ${styles.entryMeta}`}>
+                          {meta}
+                        </div>
+                      )}
+                      {renderArrowBullets(
+                        exp.description,
+                        baseStyles['resume-text-xs'],
+                        exp.descriptionStyles
+                      )}
                     </div>
-                    <div className={`${baseStyles['resume-row-tight']} ${styles.entryMeta}`}>
-                      {[formatDateRange(exp.years), exp.location].filter(Boolean).join(' | ')}
-                    </div>
-                    {renderArrowBullets(
-                      exp.description,
-                      baseStyles['resume-text-xs'],
-                      exp.descriptionStyles
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -316,7 +333,27 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
           {isSectionVisible('additional') && technicalSkills.length > 0 && (
             <div className={baseStyles['resume-section']}>
               <h3 className={styles.sectionTitleSm}>{headingFallbacks.skills}</h3>
-              <p className={baseStyles['resume-text-xs']}>{technicalSkills.join(' • ')}</p>
+              {skillsLayout === 'comma' && (
+                <p className={baseStyles['resume-text-xs']}>{technicalSkills.join(' • ')}</p>
+              )}
+              {skillsLayout === 'list' && (
+                <div className="flex flex-col gap-0.5">
+                  {technicalSkills.map((skill, index) => (
+                    <p key={index} className={baseStyles['resume-text-xs']}>
+                      {skill}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {skillsLayout === 'columns' && (
+                <div className="grid grid-cols-2 gap-0.5">
+                  {technicalSkills.map((skill, index) => (
+                    <p key={index} className={baseStyles['resume-text-xs']}>
+                      {skill}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -333,26 +370,38 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
                 {getSectionDisplayName('education', headingFallbacks.education)}
               </h3>
               <div className={baseStyles['resume-stack']}>
-                {education.map((edu) => (
-                  <div key={edu.id}>
-                    <h4
-                      className={`${baseStyles['resume-item-title-sm']} ${baseStyles['sidebar-text-wrap']}`}
-                    >
-                      {edu.institution}
-                    </h4>
-                    <p className={baseStyles['resume-item-subtitle-sm']}>{edu.degree}</p>
-                    {edu.years && (
-                      <p className={`${baseStyles['resume-meta-sm']}`}>
-                        {formatDateRange(edu.years)}
-                      </p>
-                    )}
-                    {edu.description && (
-                      <p className={`${baseStyles['resume-text-xs']} ${baseStyles['resume-meta']}`}>
-                        {edu.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                {education.map((edu) => {
+                  const eduEntry = arrangeEducationEntry(edu, educationSettings);
+                  const inline = educationSettings.layout === 'inline';
+                  return (
+                    <div key={edu.id}>
+                      <h4
+                        className={`${baseStyles['resume-item-title-sm']} ${baseStyles['sidebar-text-wrap']}`}
+                      >
+                        {inline && eduEntry.secondary
+                          ? `${eduEntry.primary} — ${eduEntry.secondary}`
+                          : eduEntry.primary}
+                      </h4>
+                      {!inline && eduEntry.secondary && (
+                        <p className={baseStyles['resume-item-subtitle-sm']}>
+                          {eduEntry.secondary}
+                        </p>
+                      )}
+                      {edu.years && (
+                        <p className={`${baseStyles['resume-meta-sm']}`}>
+                          {formatDateRange(edu.years)}
+                        </p>
+                      )}
+                      {edu.description && (
+                        <p
+                          className={`${baseStyles['resume-text-xs']} ${baseStyles['resume-meta']}`}
+                        >
+                          {edu.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

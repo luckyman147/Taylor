@@ -7,6 +7,19 @@ import {
   type HeaderFontFamily,
   type BodyFontFamily,
   type AccentColor,
+  type DateRangeFormat,
+  type TextAlign,
+  type SkillsLayoutMode,
+  type MarginUnit,
+  type EducationShowBy,
+  type EducationLayout,
+  type WorkShowBy,
+  type WorkDatesBy,
+  type WorkLocationBy,
+  type BulletMarker,
+  type ListSeparator,
+  type TextWeightOption,
+  type TextTransformOption,
   DEFAULT_TEMPLATE_SETTINGS,
 } from '@/lib/types/template-settings';
 import { API_BASE } from '@/lib/api/client';
@@ -23,9 +36,16 @@ type PageProps = {
     marginBottom?: string;
     marginLeft?: string;
     marginRight?: string;
+    marginUnit?: string;
     sectionSpacing?: string;
     itemSpacing?: string;
     lineHeight?: string;
+    listLineHeight?: string;
+    dateFormat?: string;
+    headerAlign?: string;
+    dateAlign?: string;
+    locationAlign?: string;
+    skillsLayout?: string;
     fontSize?: string;
     headerScale?: string;
     headerFont?: string;
@@ -33,6 +53,39 @@ type PageProps = {
     compactMode?: string;
     showContactIcons?: string;
     accentColor?: string;
+    workShowBy?: string;
+    workDatesBy?: string;
+    workLocationBy?: string;
+    educationShowBy?: string;
+    educationLayout?: string;
+    bulletMarker?: string;
+    listSeparator?: string;
+    sizeFullName?: string;
+    sizePrimaryHeading?: string;
+    sizeSecondaryHeading?: string;
+    sizeSectionTitle?: string;
+    sizeBodyCopy?: string;
+    sizeMinorCopy?: string;
+    weightFullName?: string;
+    weightPrimaryHeading?: string;
+    weightSecondaryHeading?: string;
+    weightSectionTitle?: string;
+    weightBodyCopy?: string;
+    weightMinorCopy?: string;
+    transformFullName?: string;
+    transformPrimaryHeading?: string;
+    transformSecondaryHeading?: string;
+    transformSectionTitle?: string;
+    transformBodyCopy?: string;
+    transformMinorCopy?: string;
+    vspaceBetweenSections?: string;
+    vspaceTitlesContent?: string;
+    vspacePrimarySecondary?: string;
+    vspaceContentBlocks?: string;
+    vspaceListItems?: string;
+    borderAboveHeader?: string;
+    borderBelowHeader?: string;
+    borderSectionTitles?: string;
     lang?: string;
   }>;
 };
@@ -117,13 +170,165 @@ function parseSpacingLevel(value: string | undefined, defaultValue: SpacingLevel
 }
 
 /**
- * Parse margin value from string, clamped to valid range 5-25
+ * Parse a percentage value, clamped to valid range 100-200
+ */
+function parsePercent(value: string | undefined, defaultValue: number): number {
+  if (!value) return defaultValue;
+  const num = parseInt(value, 10);
+  if (isNaN(num)) return defaultValue;
+  return Math.max(100, Math.min(200, num));
+}
+
+/**
+ * Parse margin value from string, clamped to a safe range.
+ * The range is wide (0-40) because percent-based margins are converted to
+ * millimeters by the backend before reaching this page.
  */
 function parseMargin(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const num = parseInt(value, 10);
   if (isNaN(num)) return defaultValue;
-  return Math.max(5, Math.min(25, num));
+  return Math.max(0, Math.min(40, num));
+}
+
+/**
+ * Parse the date range format
+ */
+function parseDateFormat(value: string | undefined): DateRangeFormat {
+  if (value === 'short' || value === 'long' || value === 'mmmyyyy' || value === 'years') {
+    return value;
+  }
+  return DEFAULT_TEMPLATE_SETTINGS.dateFormat;
+}
+
+/**
+ * Parse a text alignment value
+ */
+function parseTextAlign(value: string | undefined, defaultValue: TextAlign): TextAlign {
+  if (value === 'left' || value === 'center' || value === 'right') {
+    return value;
+  }
+  return defaultValue;
+}
+
+/**
+ * Parse the skills layout mode
+ */
+function parseSkillsLayout(value: string | undefined): SkillsLayoutMode {
+  if (value === 'comma' || value === 'list' || value === 'columns') {
+    return value;
+  }
+  return DEFAULT_TEMPLATE_SETTINGS.skillsLayout;
+}
+
+/**
+ * Parse the margin unit
+ */
+function parseMarginUnit(value: string | undefined): MarginUnit {
+  if (value === 'mm' || value === 'percent') {
+    return value;
+  }
+  return DEFAULT_TEMPLATE_SETTINGS.marginUnit;
+}
+
+/**
+ * Parse a value from an allow-list of strings, falling back to the default.
+ */
+function parseEnum<T extends string>(
+  value: string | undefined,
+  allowed: readonly T[],
+  defaultValue: T
+): T {
+  if (value && (allowed as readonly string[]).includes(value)) {
+    return value as T;
+  }
+  return defaultValue;
+}
+
+/**
+ * Parse work/education entry arrangement settings
+ */
+function parseWorkShowBy(value: string | undefined): WorkShowBy {
+  return parseEnum(
+    value,
+    ['company', 'position'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.workExperience.showBy
+  );
+}
+
+function parseWorkDatesBy(value: string | undefined): WorkDatesBy {
+  return parseEnum(
+    value,
+    ['company', 'position', 'both'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.workExperience.datesBy
+  );
+}
+
+function parseWorkLocationBy(value: string | undefined): WorkLocationBy {
+  return parseEnum(
+    value,
+    ['company', 'position', 'none'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.workExperience.locationBy
+  );
+}
+
+function parseEducationShowBy(value: string | undefined): EducationShowBy {
+  return parseEnum(
+    value,
+    ['degree', 'institution'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.education.showBy
+  );
+}
+
+function parseEducationLayout(value: string | undefined): EducationLayout {
+  return parseEnum(
+    value,
+    ['stacked', 'inline'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.education.layout
+  );
+}
+
+/**
+ * Parse a point (pt) value, clamped to a safe range. 0 means "hidden" for
+ * border widths.
+ */
+function parsePt(value: string | undefined, defaultValue: number): number {
+  if (!value) return defaultValue;
+  const num = parseFloat(value);
+  if (isNaN(num)) return defaultValue;
+  return Math.max(0, Math.min(40, num));
+}
+
+function parseBulletMarker(value: string | undefined): BulletMarker {
+  return parseEnum(
+    value,
+    ['•', '*', '-', '>>', '->'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.advanced.bulletMarker
+  );
+}
+
+function parseListSeparator(value: string | undefined): ListSeparator {
+  return parseEnum(
+    value,
+    ['*', '-', ',', '|'] as const,
+    DEFAULT_TEMPLATE_SETTINGS.advanced.listSeparator
+  );
+}
+
+function parseTextWeight(value: string | undefined, defaultValue: TextWeightOption): TextWeightOption {
+  return parseEnum(value, ['light', 'regular', 'bold', 'extralight'] as const, defaultValue);
+}
+
+function parseTextTransform(
+  value: string | undefined,
+  defaultValue: TextTransformOption
+): TextTransformOption {
+  return parseEnum(value, ['uppercase', 'as-written', 'capitalize'] as const, defaultValue);
+}
+
+function parseBorderWidth(value: string | undefined, defaultValue: number): { enabled: boolean; thickness: number } {
+  const pt = parsePt(value, defaultValue);
+  return { enabled: pt > 0, thickness: pt > 0 ? pt : 1 };
 }
 
 /**
@@ -209,10 +414,6 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
         resolvedSearchParams?.itemSpacing,
         DEFAULT_TEMPLATE_SETTINGS.spacing.item
       ),
-      lineHeight: parseSpacingLevel(
-        resolvedSearchParams?.lineHeight,
-        DEFAULT_TEMPLATE_SETTINGS.spacing.lineHeight
-      ),
       padding: DEFAULT_TEMPLATE_SETTINGS.spacing.padding,
     },
     fontSize: {
@@ -227,6 +428,31 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
       headerFont: parseHeaderFont(resolvedSearchParams?.headerFont),
       bodyFont: parseBodyFont(resolvedSearchParams?.bodyFont),
     },
+    lineHeight: parsePercent(
+      resolvedSearchParams?.lineHeight,
+      DEFAULT_TEMPLATE_SETTINGS.lineHeight
+    ),
+    listLineHeight: parsePercent(
+      resolvedSearchParams?.listLineHeight,
+      DEFAULT_TEMPLATE_SETTINGS.listLineHeight
+    ),
+    dateFormat: parseDateFormat(resolvedSearchParams?.dateFormat),
+    alignment: {
+      header: parseTextAlign(
+        resolvedSearchParams?.headerAlign,
+        DEFAULT_TEMPLATE_SETTINGS.alignment.header
+      ),
+      date: parseTextAlign(
+        resolvedSearchParams?.dateAlign,
+        DEFAULT_TEMPLATE_SETTINGS.alignment.date
+      ),
+      location: parseTextAlign(
+        resolvedSearchParams?.locationAlign,
+        DEFAULT_TEMPLATE_SETTINGS.alignment.location
+      ),
+    },
+    skillsLayout: parseSkillsLayout(resolvedSearchParams?.skillsLayout),
+    marginUnit: parseMarginUnit(resolvedSearchParams?.marginUnit),
     compactMode: parseBoolean(
       resolvedSearchParams?.compactMode,
       DEFAULT_TEMPLATE_SETTINGS.compactMode
@@ -236,6 +462,55 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
       DEFAULT_TEMPLATE_SETTINGS.showContactIcons
     ),
     accentColor: parseAccentColor(resolvedSearchParams?.accentColor),
+    workExperience: {
+      showBy: parseWorkShowBy(resolvedSearchParams?.workShowBy),
+      datesBy: parseWorkDatesBy(resolvedSearchParams?.workDatesBy),
+      locationBy: parseWorkLocationBy(resolvedSearchParams?.workLocationBy),
+    },
+    education: {
+      showBy: parseEducationShowBy(resolvedSearchParams?.educationShowBy),
+      layout: parseEducationLayout(resolvedSearchParams?.educationLayout),
+    },
+    advanced: {
+      bulletMarker: parseBulletMarker(resolvedSearchParams?.bulletMarker),
+      listSeparator: parseListSeparator(resolvedSearchParams?.listSeparator),
+      textSizes: {
+        fullName: parsePt(resolvedSearchParams?.sizeFullName, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.fullName),
+        primaryHeading: parsePt(resolvedSearchParams?.sizePrimaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.primaryHeading),
+        secondaryHeading: parsePt(resolvedSearchParams?.sizeSecondaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.secondaryHeading),
+        sectionTitle: parsePt(resolvedSearchParams?.sizeSectionTitle, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.sectionTitle),
+        bodyCopy: parsePt(resolvedSearchParams?.sizeBodyCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.bodyCopy),
+        minorCopy: parsePt(resolvedSearchParams?.sizeMinorCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.minorCopy),
+      },
+      textWeights: {
+        fullName: parseTextWeight(resolvedSearchParams?.weightFullName, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.fullName),
+        primaryHeading: parseTextWeight(resolvedSearchParams?.weightPrimaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.primaryHeading),
+        secondaryHeading: parseTextWeight(resolvedSearchParams?.weightSecondaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.secondaryHeading),
+        sectionTitle: parseTextWeight(resolvedSearchParams?.weightSectionTitle, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.sectionTitle),
+        bodyCopy: parseTextWeight(resolvedSearchParams?.weightBodyCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.bodyCopy),
+        minorCopy: parseTextWeight(resolvedSearchParams?.weightMinorCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.minorCopy),
+      },
+      textTransforms: {
+        fullName: parseTextTransform(resolvedSearchParams?.transformFullName, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.fullName),
+        primaryHeading: parseTextTransform(resolvedSearchParams?.transformPrimaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.primaryHeading),
+        secondaryHeading: parseTextTransform(resolvedSearchParams?.transformSecondaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.secondaryHeading),
+        sectionTitle: parseTextTransform(resolvedSearchParams?.transformSectionTitle, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.sectionTitle),
+        bodyCopy: parseTextTransform(resolvedSearchParams?.transformBodyCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.bodyCopy),
+        minorCopy: parseTextTransform(resolvedSearchParams?.transformMinorCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.minorCopy),
+      },
+      verticalSpacing: {
+        betweenSections: parsePt(resolvedSearchParams?.vspaceBetweenSections, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.betweenSections),
+        titlesContent: parsePt(resolvedSearchParams?.vspaceTitlesContent, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.titlesContent),
+        primarySecondaryHeadings: parsePt(resolvedSearchParams?.vspacePrimarySecondary, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.primarySecondaryHeadings),
+        contentBlocks: parsePt(resolvedSearchParams?.vspaceContentBlocks, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.contentBlocks),
+        listItems: parsePt(resolvedSearchParams?.vspaceListItems, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.listItems),
+      },
+      borders: {
+        aboveHeader: parseBorderWidth(resolvedSearchParams?.borderAboveHeader, DEFAULT_TEMPLATE_SETTINGS.advanced.borders.aboveHeader.enabled ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.aboveHeader.thickness : 0),
+        belowHeader: parseBorderWidth(resolvedSearchParams?.borderBelowHeader, DEFAULT_TEMPLATE_SETTINGS.advanced.borders.belowHeader.enabled ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.belowHeader.thickness : 0),
+        sectionTitles: parseBorderWidth(resolvedSearchParams?.borderSectionTitles, DEFAULT_TEMPLATE_SETTINGS.advanced.borders.sectionTitles.enabled ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.sectionTitles.thickness : 0),
+      },
+    },
   };
 
   // Note: Margins are applied by Playwright's PDF renderer (not here)

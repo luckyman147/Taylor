@@ -7,8 +7,16 @@ import type {
 } from '@/components/dashboard/resume-component';
 import { getSortedSections } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
+import {
+  type EducationSettings,
+  type ListSeparator,
+  type SkillsLayoutMode,
+  type WorkExperienceSettings,
+} from '@/lib/types/template-settings';
+import { arrangeEducationEntry, arrangeWorkEntry, workEntryMeta } from './entry-arrange';
 import { DynamicResumeSection } from './dynamic-resume-section';
 import { DescriptionList } from './description-list';
+import { ResumeSkillsContent } from './resume-skills';
 import baseStyles from './styles/_base.module.css';
 import styles from './styles/swiss-single.module.css';
 
@@ -16,6 +24,10 @@ interface ResumeSingleColumnProps {
   data: ResumeData;
   showContactIcons?: boolean;
   additionalSectionLabels?: Partial<AdditionalSectionLabels>;
+  skillsLayout?: SkillsLayoutMode;
+  listSeparator?: ListSeparator;
+  workExperienceSettings?: WorkExperienceSettings;
+  educationSettings?: EducationSettings;
 }
 
 /**
@@ -30,6 +42,10 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
   data,
   showContactIcons = false,
   additionalSectionLabels,
+  skillsLayout = 'comma',
+  listSeparator = ',',
+  workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
+  educationSettings = { showBy: 'institution', layout: 'stacked' },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -111,25 +127,31 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
           <div key={section.id} className={baseStyles['resume-section']}>
             <h3 className={baseStyles['resume-section-title']}>{section.displayName}</h3>
             <div className={baseStyles['resume-items']}>
-              {workExperience.map((exp) => (
-                <div key={exp.id} className={baseStyles['resume-item']}>
-                  <div
-                    className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
-                  >
-                    <h4 className={baseStyles['resume-item-title']}>{exp.title}</h4>
-                    <span className={`${baseStyles['resume-date']} ml-4`}>
-                      {formatDateRange(exp.years)}
-                    </span>
+              {workExperience.map((exp) => {
+                const entry = arrangeWorkEntry(exp, workExperienceSettings);
+                const { primaryMeta, secondaryMeta } = workEntryMeta(entry, exp.years);
+                return (
+                  <div key={exp.id} className={baseStyles['resume-item']}>
+                    <div
+                      className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
+                    >
+                      <h4 className={baseStyles['resume-item-title']}>{entry.primary}</h4>
+                      {primaryMeta && (
+                        <span className={`${baseStyles['resume-date']} ml-4`}>{primaryMeta}</span>
+                      )}
+                    </div>
+                    <div
+                      className={`flex justify-between items-center ${baseStyles['resume-row']} ${baseStyles['resume-item-subtitle']}`}
+                    >
+                      <span>{entry.secondary}</span>
+                      {secondaryMeta && (
+                        <span className={baseStyles['resume-location']}>{secondaryMeta}</span>
+                      )}
+                    </div>
+                    <DescriptionList items={exp.description} styles={exp.descriptionStyles} />
                   </div>
-                  <div
-                    className={`flex justify-between items-center ${baseStyles['resume-row']} ${baseStyles['resume-item-subtitle']}`}
-                  >
-                    <span>{exp.company}</span>
-                    {exp.location && <span>{exp.location}</span>}
-                  </div>
-                  <DescriptionList items={exp.description} styles={exp.descriptionStyles} />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
@@ -214,26 +236,36 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
           <div key={section.id} className={baseStyles['resume-section']}>
             <h3 className={baseStyles['resume-section-title']}>{section.displayName}</h3>
             <div className={baseStyles['resume-items']}>
-              {education.map((edu) => (
-                <div key={edu.id} className={baseStyles['resume-item']}>
-                  <div
-                    className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
-                  >
-                    <h4 className={baseStyles['resume-item-title']}>{edu.institution}</h4>
-                    <span className={`${baseStyles['resume-date']} ml-4`}>
-                      {formatDateRange(edu.years)}
-                    </span>
+              {education.map((edu) => {
+                const eduEntry = arrangeEducationEntry(edu, educationSettings);
+                const inline = educationSettings.layout === 'inline';
+                return (
+                  <div key={edu.id} className={baseStyles['resume-item']}>
+                    <div
+                      className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
+                    >
+                      <h4 className={baseStyles['resume-item-title']}>
+                        {inline && eduEntry.secondary
+                          ? `${eduEntry.primary} — ${eduEntry.secondary}`
+                          : eduEntry.primary}
+                      </h4>
+                      <span className={`${baseStyles['resume-date']} ml-4`}>
+                        {formatDateRange(edu.years)}
+                      </span>
+                    </div>
+                    {!inline && eduEntry.secondary && (
+                      <div
+                        className={`flex justify-between ${baseStyles['resume-item-subtitle']} ${baseStyles['resume-row-tight']}`}
+                      >
+                        <span>{eduEntry.secondary}</span>
+                      </div>
+                    )}
+                    {edu.description && (
+                      <p className={baseStyles['resume-text-sm']}>{edu.description}</p>
+                    )}
                   </div>
-                  <div
-                    className={`flex justify-between ${baseStyles['resume-item-subtitle']} ${baseStyles['resume-row-tight']}`}
-                  >
-                    <span>{edu.degree}</span>
-                  </div>
-                  {edu.description && (
-                    <p className={baseStyles['resume-text-sm']}>{edu.description}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
@@ -246,6 +278,8 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
             additional={additional}
             displayName={section.displayName}
             labels={additionalSectionLabels}
+            skillsLayout={skillsLayout}
+            listSeparator={listSeparator}
           />
         );
 
@@ -263,7 +297,7 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
       {/* Header Section - Centered Layout (always first) */}
       {personalInfo && (
         <header
-          className={`text-center ${baseStyles['resume-header']} border-b`}
+          className={`${baseStyles['resume-header']} border-b`}
           style={{ borderColor: 'var(--resume-border-primary)' }}
         >
           {/* Name - Centered */}
@@ -336,7 +370,9 @@ const AdditionalSection: React.FC<{
   additional: ResumeData['additional'];
   displayName?: string;
   labels?: Partial<AdditionalSectionLabels>;
-}> = ({ additional, displayName = 'Skills & Awards', labels }) => {
+  skillsLayout?: SkillsLayoutMode;
+  listSeparator?: ListSeparator;
+}> = ({ additional, displayName = 'Skills & Awards', labels, skillsLayout = 'comma', listSeparator = ',' }) => {
   if (!additional) return null;
 
   const {
@@ -383,7 +419,11 @@ const AdditionalSection: React.FC<{
         {technicalSkills.length > 0 && (
           <div className="flex">
             <span className="font-bold w-32 shrink-0">{mergedLabels.technicalSkills}</span>
-            <span>{technicalSkills.join(', ')}</span>
+            <ResumeSkillsContent
+              skills={technicalSkills}
+              layout={skillsLayout}
+              listSeparator={listSeparator}
+            />
           </div>
         )}
         {languages.length > 0 && (

@@ -11,9 +11,11 @@ import {
 import {
   type TemplateSettings,
   type TemplateType,
-  DEFAULT_TEMPLATE_SETTINGS,
+  type DateRangeFormat,
+  normalizeTemplateSettings,
   settingsToCssVars,
 } from '@/lib/types/template-settings';
+import { formatDateRangeWithFormat } from '@/lib/utils/date-format';
 import baseStyles from '@/components/resume/styles/_base.module.css';
 
 export interface PersonalInfo {
@@ -141,6 +143,43 @@ interface ResumeProps {
 }
 
 /**
+ * Apply the configured date format to every date range in the resume data.
+ *
+ * Done at the data layer (instead of inside each template) so templates keep
+ * rendering dates through formatDateRange, which is a no-op on already
+ * formatted strings. The 'short' format is a passthrough: templates already
+ * normalize it.
+ */
+function applyDateFormat(data: ResumeData, format: DateRangeFormat): ResumeData {
+  if (!data || format === 'short') return data;
+
+  const formatYears = (years?: string) =>
+    years ? formatDateRangeWithFormat(years, format) : years;
+
+  const mapItems = <T extends { years?: string }>(items?: T[]): T[] | undefined =>
+    items?.map((item) => ({ ...item, years: formatYears(item.years) }));
+
+  const customSections = data.customSections
+    ? Object.fromEntries(
+        Object.entries(data.customSections).map(([key, section]) => [
+          key,
+          section && section.items
+            ? { ...section, items: mapItems(section.items) }
+            : section,
+        ])
+      )
+    : undefined;
+
+  return {
+    ...data,
+    workExperience: mapItems(data.workExperience),
+    education: mapItems(data.education),
+    personalProjects: mapItems(data.personalProjects),
+    customSections,
+  };
+}
+
+/**
  * Resume Component
  *
  * Main wrapper component that delegates rendering to template-specific components.
@@ -160,14 +199,8 @@ const Resume: React.FC<ResumeProps> = ({
   sectionHeadings,
   fallbackLabels,
 }) => {
-  // Merge provided settings with defaults
-  const mergedSettings: TemplateSettings = {
-    ...DEFAULT_TEMPLATE_SETTINGS,
-    ...settings,
-    margins: { ...DEFAULT_TEMPLATE_SETTINGS.margins, ...settings?.margins },
-    spacing: { ...DEFAULT_TEMPLATE_SETTINGS.spacing, ...settings?.spacing },
-    fontSize: { ...DEFAULT_TEMPLATE_SETTINGS.fontSize, ...settings?.fontSize },
-  };
+  // Merge provided settings with defaults (nested objects included)
+  const mergedSettings: TemplateSettings = normalizeTemplateSettings(settings);
 
   // If template is provided as prop but not in settings, use the prop
   if (template && !settings?.template) {
@@ -177,6 +210,9 @@ const Resume: React.FC<ResumeProps> = ({
   // Convert settings to CSS variables
   const cssVars = settingsToCssVars(mergedSettings);
 
+  // Reformat date ranges per the chosen date format (no-op for 'short')
+  const formattedData = applyDateFormat(resumeData, mergedSettings.dateFormat);
+
   return (
     <div
       className={`${baseStyles['resume-body']} bg-white text-black w-full mx-auto resume-template-${mergedSettings.template}`}
@@ -184,53 +220,78 @@ const Resume: React.FC<ResumeProps> = ({
     >
       {mergedSettings.template === 'swiss-single' && (
         <ResumeSingleColumn
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           additionalSectionLabels={additionalSectionLabels}
+          skillsLayout={mergedSettings.skillsLayout}
+          listSeparator={mergedSettings.advanced.listSeparator}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
       {mergedSettings.template === 'swiss-two-column' && (
         <ResumeTwoColumn
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           sectionHeadings={sectionHeadings}
+          skillsLayout={mergedSettings.skillsLayout}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
       {mergedSettings.template === 'modern' && (
         <ResumeModern
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           additionalSectionLabels={additionalSectionLabels}
+          skillsLayout={mergedSettings.skillsLayout}
+          listSeparator={mergedSettings.advanced.listSeparator}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
       {mergedSettings.template === 'modern-two-column' && (
         <ResumeModernTwoColumn
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           sectionHeadings={sectionHeadings}
           fallbackLabels={fallbackLabels}
+          skillsLayout={mergedSettings.skillsLayout}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
       {mergedSettings.template === 'latex' && (
         <ResumeLatex
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           additionalSectionLabels={additionalSectionLabels}
+          skillsLayout={mergedSettings.skillsLayout}
+          listSeparator={mergedSettings.advanced.listSeparator}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
       {mergedSettings.template === 'clean' && (
         <ResumeClean
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           additionalSectionLabels={additionalSectionLabels}
+          skillsLayout={mergedSettings.skillsLayout}
+          listSeparator={mergedSettings.advanced.listSeparator}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
       {mergedSettings.template === 'vivid' && (
         <ResumeVivid
-          data={resumeData}
+          data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
           sectionHeadings={sectionHeadings}
           fallbackLabels={fallbackLabels}
+          skillsLayout={mergedSettings.skillsLayout}
+          workExperienceSettings={mergedSettings.workExperience}
+          educationSettings={mergedSettings.education}
         />
       )}
     </div>

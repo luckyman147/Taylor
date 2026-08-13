@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -35,6 +36,7 @@ import { API_URL } from '@/lib/api/client';
 import { getVersionString } from '@/lib/config/version';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import SidebarNav from '@/components/common/SidebarNav';
 import { useStatusCache } from '@/lib/context/status-cache';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,6 +117,7 @@ const getHealthCheckMessage = (
 export default function SettingsPage() {
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   // LLM Config state
   const [provider, setProvider] = useState<LLMProvider>('openai');
@@ -673,7 +676,11 @@ export default function SettingsPage() {
     providerInfo.baseUrlDescription ?? t('settings.llmConfiguration.baseUrlDescription');
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start overflow-y-auto p-4 md:p-8">
+    <div className="flex min-h-screen flex-col items-center justify-start overflow-y-auto pl-16 p-4 md:p-8">
+      <SidebarNav
+        currentPage="settings"
+        onNavigate={(page) => router.push(page)}
+      />
       <div className="w-full max-w-6xl overflow-hidden rounded-2xl border border-[#e6e3dc] bg-white shadow-sw-lg">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[#e6e3dc] bg-white p-6 md:p-8">

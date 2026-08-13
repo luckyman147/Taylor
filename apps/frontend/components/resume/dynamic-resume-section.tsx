@@ -104,7 +104,9 @@ const ItemListSectionContent: React.FC<{ items: CustomSectionItem[] }> = ({ item
               className={`flex justify-between items-center ${baseStyles['resume-row']} ${baseStyles['resume-item-subtitle']}`}
             >
               {item.subtitle && <span>{item.subtitle}</span>}
-              {item.location && <span>{item.location}</span>}
+              {item.location && (
+                <span className={baseStyles['resume-location']}>{item.location}</span>
+              )}
             </div>
           )}
 

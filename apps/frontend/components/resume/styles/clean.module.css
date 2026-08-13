@@ -29,19 +29,19 @@
 
 .name {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--header-scale));
+  font-size: var(--size-full-name);
   font-weight: 400;
   letter-spacing: 0.01em;
   color: var(--resume-text-primary);
 }
 
 .tagline {
-  font-size: calc(var(--font-size-base) * 1.05);
+  font-size: calc(var(--size-primary-heading) * 0.92);
   color: var(--resume-text-tertiary);
 }
 
 .contactRow {
-  font-size: calc(var(--font-size-base) * 0.85);
+  font-size: calc(var(--size-minor-copy) * 1.1);
   color: var(--resume-text-body);
 }
 
@@ -53,14 +53,14 @@
 /* Large, understated, gray uppercase header with a thin rule. */
 .sectionTitle {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--section-header-scale) * 1.15);
-  font-weight: 600;
-  text-transform: uppercase;
+  font-size: calc(var(--size-section-title) * 1.15);
+  font-weight: var(--weight-section-title);
+  text-transform: var(--transform-section-title);
   letter-spacing: 0.12em;
   color: var(--resume-text-tertiary);
-  border-bottom: 1px solid var(--resume-border-secondary);
+  border-bottom: var(--border-section-titles-w) solid var(--resume-border-secondary);
   padding-bottom: 0.15rem;
-  margin-bottom: var(--item-gap);
+  margin-bottom: var(--vspace-titles-content);
   break-after: avoid;
   page-break-after: avoid;
   orphans: 3;
@@ -79,7 +79,7 @@
 }
 
 .entryMeta {
-  font-size: calc(var(--font-size-base) * 0.85);
+  font-size: calc(var(--size-minor-copy) * 1.1);
   color: var(--resume-text-tertiary);
   white-space: nowrap;
   flex-shrink: 0;

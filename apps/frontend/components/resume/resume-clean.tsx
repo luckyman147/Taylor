@@ -7,7 +7,15 @@ import type {
 } from '@/components/dashboard/resume-component';
 import { getSortedSections } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
+import {
+  type EducationSettings,
+  type ListSeparator,
+  type SkillsLayoutMode,
+  type WorkExperienceSettings,
+} from '@/lib/types/template-settings';
+import { arrangeEducationEntry, arrangeWorkEntry, workEntryInlineMeta } from './entry-arrange';
 import { DescriptionList } from './description-list';
+import { ResumeSkillsContent } from './resume-skills';
 import baseStyles from './styles/_base.module.css';
 import styles from './styles/clean.module.css';
 
@@ -15,6 +23,10 @@ interface ResumeCleanProps {
   data: ResumeData;
   showContactIcons?: boolean;
   additionalSectionLabels?: Partial<AdditionalSectionLabels>;
+  skillsLayout?: SkillsLayoutMode;
+  listSeparator?: ListSeparator;
+  workExperienceSettings?: WorkExperienceSettings;
+  educationSettings?: EducationSettings;
 }
 
 /**
@@ -33,6 +45,10 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
   data,
   showContactIcons = false,
   additionalSectionLabels,
+  skillsLayout = 'comma',
+  listSeparator = ',',
+  workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
+  educationSettings = { showBy: 'institution', layout: 'stacked' },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -99,13 +115,18 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
   ].filter(Boolean);
 
   // Single-line entry header: COMPANY | Role (left), Location | Dates (right).
+  // With work/education settings, the left side is the arranged primary |
+  // secondary and the right side a prebuilt meta string (dates + location).
   const renderEntryHeader = (
     primary?: string,
     role?: string,
     location?: string,
-    dates?: string
+    dates?: string,
+    metaOverride?: string
   ) => {
-    const meta = [location, dates ? formatDateRange(dates) : undefined].filter(Boolean).join(' | ');
+    const meta =
+      metaOverride ??
+      [location, dates ? formatDateRange(dates) : undefined].filter(Boolean).join(' | ');
     return (
       <div
         className={`flex justify-between items-baseline gap-3 ${baseStyles['resume-row-tight']}`}
@@ -148,12 +169,16 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
           <div key={section.id} className={baseStyles['resume-section']}>
             <h3 className={styles.sectionTitle}>{section.displayName}</h3>
             <div className={baseStyles['resume-items']}>
-              {workExperience.map((exp) => (
-                <div key={exp.id} className={baseStyles['resume-item']}>
-                  {renderEntryHeader(exp.company, exp.title, exp.location, exp.years)}
-                  {renderBullets(exp.description, exp.descriptionStyles)}
-                </div>
-              ))}
+              {workExperience.map((exp) => {
+                const entry = arrangeWorkEntry(exp, workExperienceSettings);
+                const meta = workEntryInlineMeta(entry, exp.years);
+                return (
+                  <div key={exp.id} className={baseStyles['resume-item']}>
+                    {renderEntryHeader(entry.primary, entry.secondary, undefined, undefined, meta)}
+                    {renderBullets(exp.description, exp.descriptionStyles)}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -235,14 +260,25 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
           <div key={section.id} className={baseStyles['resume-section']}>
             <h3 className={styles.sectionTitle}>{section.displayName}</h3>
             <div className={baseStyles['resume-items']}>
-              {education.map((edu) => (
-                <div key={edu.id} className={baseStyles['resume-item']}>
-                  {renderEntryHeader(edu.institution, edu.degree, undefined, edu.years)}
-                  {edu.description && (
-                    <p className={baseStyles['resume-text-sm']}>{edu.description}</p>
-                  )}
-                </div>
-              ))}
+              {education.map((edu) => {
+                const eduEntry = arrangeEducationEntry(edu, educationSettings);
+                const inline = educationSettings.layout === 'inline';
+                return (
+                  <div key={edu.id} className={baseStyles['resume-item']}>
+                    {renderEntryHeader(
+                      inline && eduEntry.secondary
+                        ? `${eduEntry.primary} — ${eduEntry.secondary}`
+                        : eduEntry.primary,
+                      inline ? undefined : eduEntry.secondary,
+                      undefined,
+                      edu.years
+                    )}
+                    {edu.description && (
+                      <p className={baseStyles['resume-text-sm']}>{edu.description}</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -255,6 +291,8 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
             additional={additional}
             displayName={section.displayName}
             labels={additionalSectionLabels}
+            skillsLayout={skillsLayout}
+            listSeparator={listSeparator}
           />
         );
 
@@ -277,7 +315,7 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
   return (
     <div className={styles.container}>
       {personalInfo && (
-        <header className={`text-center ${baseStyles['resume-header']}`}>
+        <header className={baseStyles['resume-header']}>
           {personalInfo.name && <h1 className={`${styles.name} mb-1`}>{personalInfo.name}</h1>}
           {personalInfo.title && (
             <div className={`${styles.tagline} mb-1`}>{personalInfo.title}</div>
@@ -312,7 +350,9 @@ const AdditionalSection: React.FC<{
   additional: ResumeData['additional'];
   displayName?: string;
   labels?: Partial<AdditionalSectionLabels>;
-}> = ({ additional, displayName = 'Skills & Awards', labels }) => {
+  skillsLayout?: SkillsLayoutMode;
+  listSeparator?: ListSeparator;
+}> = ({ additional, displayName = 'Skills & Awards', labels, skillsLayout = 'comma', listSeparator = ',' }) => {
   if (!additional) return null;
 
   const clean = (items?: string[]) =>
@@ -349,7 +389,16 @@ const AdditionalSection: React.FC<{
     <div className={baseStyles['resume-section']}>
       <h3 className={styles.sectionTitle}>{displayName}</h3>
       <div className={`${baseStyles['resume-stack']} ${baseStyles['resume-text-sm']}`}>
-        {line(mergedLabels.technicalSkills, technicalSkills)}
+        {technicalSkills.length > 0 && (
+          <div>
+            <span className={styles.skillLabel}>{mergedLabels.technicalSkills}</span>{' '}
+            <ResumeSkillsContent
+              skills={technicalSkills}
+              layout={skillsLayout}
+              listSeparator={listSeparator}
+            />
+          </div>
+        )}
         {line(mergedLabels.languages, languages)}
         {line(mergedLabels.certifications, certificationsTraining)}
         {line(mergedLabels.awards, awards)}

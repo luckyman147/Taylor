@@ -4,7 +4,22 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { ChevronUp, ChevronDown, Trash2, Eye, EyeOff, Pencil, Check, X } from 'lucide-react';
+import {
+  ChevronDown,
+  Trash2,
+  Eye,
+  EyeOff,
+  Pencil,
+  Check,
+  X,
+  User,
+  FileText,
+  Briefcase,
+  GraduationCap,
+  Rocket,
+  Sparkles,
+  LayoutTemplate,
+} from 'lucide-react';
 import type { SectionMeta } from '@/components/dashboard/resume-component';
 import { useTranslations } from '@/lib/i18n';
 
@@ -12,37 +27,59 @@ interface SectionHeaderProps {
   section: SectionMeta;
   onRename: (newName: string) => void;
   onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   onToggleVisibility: () => void;
-  isFirst: boolean;
-  isLast: boolean;
   canDelete: boolean;
   children?: React.ReactNode;
 }
 
 /**
+ * Section icon lookup by section key.
+ * Exported for reuse in the Design > Sections list.
+ */
+export const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  personalInfo: User,
+  summary: FileText,
+  workExperience: Briefcase,
+  education: GraduationCap,
+  personalProjects: Rocket,
+  additional: Sparkles,
+};
+
+export const getSectionIcon = (section: SectionMeta): React.ComponentType<{ className?: string }> =>
+  SECTION_ICONS[section.key] ?? SECTION_ICONS[section.id] ?? LayoutTemplate;
+
+/**
+ * Render the icon element for a section (avoids creating components during render).
+ */
+export const getSectionIconElement = (
+  section: SectionMeta,
+  className = 'h-4 w-4'
+): React.ReactElement => {
+  const Icon = getSectionIcon(section);
+  return <Icon className={className} />;
+};
+
+/**
  * SectionHeader Component
  *
- * Provides controls for section management:
+ * Accordion-style section header:
+ * - Click the header row to expand/collapse the section content (collapsed by default)
+ * - Per-section icon badge
  * - Editable display name
- * - Move up/down buttons for reordering
- * - Delete button with confirmation
- * - Visibility toggle
+ * - Visibility toggle and delete (with confirmation for custom sections)
+ *
+ * Reordering (drag & drop / move controls) lives in Design > Sections.
  */
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
   section,
   onRename,
   onDelete,
-  onMoveUp,
-  onMoveDown,
   onToggleVisibility,
-  isFirst,
-  isLast,
   canDelete,
   children,
 }) => {
   const { t } = useTranslations();
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(section.displayName);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -87,166 +124,156 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 
   return (
     <div
-      className={`space-y-0 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs ${
-        isHidden ? 'border-dashed border-[#c9c5bc] opacity-60' : ''
+      className={`overflow-hidden rounded-2xl border bg-white shadow-sw-xs transition-colors ${
+        isHidden
+          ? 'border-dashed border-[#c9c5bc] opacity-60'
+          : isExpanded
+            ? 'border-primary/40'
+            : 'border-[#e6e3dc] hover:border-[#c9c5bc]'
       }`}
     >
-      {/* Section Header */}
-      <div className="flex justify-between items-center border-b border-[#e6e3dc] pb-2 mb-4">
-        {/* Section Name (editable) */}
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <div className="flex items-center gap-1">
-              <Input
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="h-8 w-48 rounded-lg text-lg font-bold"
-                autoFocus
-              />
+      {/* Header Row */}
+      <div className="flex items-center">
+        {/* Toggle */}
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          className="group flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left"
+        >
+          {/* Icon Badge */}
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+              isExpanded
+                ? 'border-primary/30 bg-primary/5 text-primary'
+                : 'border-transparent bg-paper-tint text-steel-grey group-hover:text-primary'
+            }`}
+          >
+            {getSectionIconElement(section)}
+          </span>
+
+          {/* Name */}
+          {isEditing ? null : (
+            <span className="truncate text-base font-bold tracking-tight text-ink">
+              {section.displayName}
+            </span>
+          )}
+
+          {!section.isDefault && !isEditing && (
+            <span className="hidden rounded-full border border-[#e6e3dc] bg-white px-2 py-0.5 text-[10px] uppercase tracking-wider text-steel-grey sm:inline">
+              {t('builder.sectionHeader.customTag')}
+            </span>
+          )}
+          {isHidden && !isEditing && (
+            <span className="hidden rounded-full border border-orange-500 bg-orange-50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-orange-600 sm:inline">
+              {t('builder.sectionHeader.hiddenFromPdfTag')}
+            </span>
+          )}
+
+          {/* Chevron */}
+          <ChevronDown
+            className={`ml-auto h-4 w-4 shrink-0 text-steel-grey transition-transform duration-200 ${
+              isExpanded ? 'rotate-180 text-primary' : ''
+            }`}
+          />
+        </button>
+
+        {/* Controls */}
+        {!isEditing ? (
+          <div className="flex shrink-0 items-center gap-0.5 pr-2">
+            {!isPersonalInfo && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-green-700 hover:text-green-800 hover:bg-green-50"
-                onClick={handleSaveEdit}
-                aria-label={t('common.save')}
-                title={t('common.save')}
+                className="h-8 w-8 text-steel-grey"
+                onClick={handleStartEdit}
+                aria-label={t('builder.sectionHeader.renameSection')}
+                title={t('builder.sectionHeader.renameSection')}
               >
-                <Check className="w-4 h-4" />
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
+            )}
+            {!isPersonalInfo && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-steel-grey hover:text-ink-soft hover:bg-paper-tint"
-                onClick={handleCancelEdit}
-                aria-label={t('common.cancel')}
-                title={t('common.cancel')}
+                className="h-8 w-8 text-steel-grey"
+                onClick={onToggleVisibility}
+                aria-label={
+                  section.isVisible
+                    ? t('builder.sectionHeader.hideSection')
+                    : t('builder.sectionHeader.showSection')
+                }
+                aria-pressed={!section.isVisible}
+                title={
+                  section.isVisible
+                    ? t('builder.sectionHeader.hideSection')
+                    : t('builder.sectionHeader.showSection')
+                }
               >
-                <X className="w-4 h-4" />
+                {section.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
-            </div>
-          ) : (
-            <>
-              <h3 className="text-xl font-bold tracking-tight">{section.displayName}</h3>
-              {!isPersonalInfo && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  // Visible 24×24 (matches the small inline pencil aesthetic
-                  // next to the section title), but the touch area is
-                  // extended to 44×44 via -inset-[10px] to meet WCAG 2.5.8.
-                  // The default Button overlay (-inset-1.5) only gives 36×36
-                  // for h-6 buttons; this override adds 4 more px per side.
-                  className="h-6 w-6 text-steel-grey hover:text-ink-soft before:-inset-[10px]"
-                  onClick={handleStartEdit}
-                  aria-label={t('builder.sectionHeader.renameSection')}
-                  title={t('builder.sectionHeader.renameSection')}
-                >
-                  <Pencil className="w-3 h-3" />
-                </Button>
-              )}
-              {!section.isDefault && (
-                <span className="rounded-full border border-[#e6e3dc] bg-white px-2 py-0.5 text-[10px] uppercase tracking-wider text-steel-grey">
-                  {t('builder.sectionHeader.customTag')}
-                </span>
-              )}
-              {isHidden && (
-                <span className="rounded-full border border-orange-500 bg-orange-50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-orange-600">
-                  {t('builder.sectionHeader.hiddenFromPdfTag')}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Section Controls */}
-        <div className="flex items-center gap-1">
-          {/* Visibility Toggle. The parent container already applies
-              opacity-60 when hidden (line 91), which carries the visual
-              "faded" cue for the hidden state. A conditional text color
-              here would be redundant — just use steel-grey. */}
-          {!isPersonalInfo && (
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={handleDeleteClick}
+                aria-label={
+                  section.isDefault
+                    ? section.isVisible
+                      ? t('builder.sectionHeader.hideSection')
+                      : t('builder.sectionHeader.showSection')
+                    : t('builder.sectionHeader.deleteSection')
+                }
+                title={
+                  section.isDefault
+                    ? section.isVisible
+                      ? t('builder.sectionHeader.hideSection')
+                      : t('builder.sectionHeader.showSection')
+                    : t('builder.sectionHeader.deleteSection')
+                }
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex shrink-0 items-center gap-1 pr-2">
+            <Input
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="h-8 w-40 rounded-lg text-base font-bold sm:w-48"
+              autoFocus
+            />
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-steel-grey"
-              onClick={onToggleVisibility}
-              aria-label={
-                section.isVisible
-                  ? t('builder.sectionHeader.hideSection')
-                  : t('builder.sectionHeader.showSection')
-              }
-              aria-pressed={!section.isVisible}
-              title={
-                section.isVisible
-                  ? t('builder.sectionHeader.hideSection')
-                  : t('builder.sectionHeader.showSection')
-              }
+              className="h-8 w-8 text-green-700 hover:text-green-800 hover:bg-green-50"
+              onClick={handleSaveEdit}
+              aria-label={t('common.save')}
+              title={t('common.save')}
             >
-              {section.isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              <Check className="h-4 w-4" />
             </Button>
-          )}
-
-          {/* Move Up */}
-          {!isPersonalInfo && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-steel-grey hover:text-ink-soft disabled:opacity-30"
-              onClick={onMoveUp}
-              disabled={isFirst}
-              aria-label={t('builder.sectionHeader.moveUp')}
-              title={t('builder.sectionHeader.moveUp')}
+              className="h-8 w-8 text-steel-grey hover:text-ink-soft hover:bg-paper-tint"
+              onClick={handleCancelEdit}
+              aria-label={t('common.cancel')}
+              title={t('common.cancel')}
             >
-              <ChevronUp className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </Button>
-          )}
-
-          {/* Move Down */}
-          {!isPersonalInfo && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-steel-grey hover:text-ink-soft disabled:opacity-30"
-              onClick={onMoveDown}
-              disabled={isLast}
-              aria-label={t('builder.sectionHeader.moveDown')}
-              title={t('builder.sectionHeader.moveDown')}
-            >
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          )}
-
-          {/* Delete / Hide */}
-          {canDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={handleDeleteClick}
-              aria-label={
-                section.isDefault
-                  ? section.isVisible
-                    ? t('builder.sectionHeader.hideSection')
-                    : t('builder.sectionHeader.showSection')
-                  : t('builder.sectionHeader.deleteSection')
-              }
-              title={
-                section.isDefault
-                  ? section.isVisible
-                    ? t('builder.sectionHeader.hideSection')
-                    : t('builder.sectionHeader.showSection')
-                  : t('builder.sectionHeader.deleteSection')
-              }
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Section Content */}
-      {children}
+      {isExpanded && <div className="border-t border-[#e6e3dc] px-4 py-4 md:px-5">{children}</div>}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

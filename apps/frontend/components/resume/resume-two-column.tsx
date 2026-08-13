@@ -3,6 +3,12 @@ import { Mail, Phone, MapPin, Globe, Linkedin, Github, ExternalLink } from 'luci
 import type { ResumeData, ResumeSectionHeadings } from '@/components/dashboard/resume-component';
 import { getSortedSections, getSectionMeta } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
+import {
+  type EducationSettings,
+  type SkillsLayoutMode,
+  type WorkExperienceSettings,
+} from '@/lib/types/template-settings';
+import { arrangeEducationEntry, arrangeWorkEntry, workEntryMeta } from './entry-arrange';
 import { DynamicResumeSection } from './dynamic-resume-section';
 import { DescriptionList } from './description-list';
 import baseStyles from './styles/_base.module.css';
@@ -12,6 +18,9 @@ interface ResumeTwoColumnProps {
   data: ResumeData;
   showContactIcons?: boolean;
   sectionHeadings?: Partial<ResumeSectionHeadings>;
+  skillsLayout?: SkillsLayoutMode;
+  workExperienceSettings?: WorkExperienceSettings;
+  educationSettings?: EducationSettings;
 }
 
 /**
@@ -29,8 +38,19 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
   data,
   showContactIcons = false,
   sectionHeadings,
+  skillsLayout = 'comma',
+  workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
+  educationSettings = { showBy: 'institution', layout: 'stacked' },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
+
+  // Container classes for the skill pills per layout
+  const skillsContainerClass =
+    skillsLayout === 'list'
+      ? 'flex flex-col gap-1 items-start'
+      : skillsLayout === 'columns'
+        ? 'grid grid-cols-2 gap-1 content-start'
+        : 'flex flex-wrap gap-1';
 
   // Drop blank/whitespace-only entries so empty lines (e.g. from editing in the
   // builder) never render in the resume or PDF (issue #763).
@@ -142,7 +162,7 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
       {/* Header Section - Centered Layout */}
       {personalInfo && (
         <header
-          className={`text-center ${baseStyles['resume-header']} border-b`}
+          className={`${baseStyles['resume-header']} border-b`}
           style={{ borderColor: 'var(--resume-border-primary)' }}
         >
           {/* Name - Centered */}
@@ -221,35 +241,37 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
                 {getSectionDisplayName('workExperience', headingFallbacks.experience)}
               </h3>
               <div className={baseStyles['resume-items']}>
-                {workExperience.map((exp) => (
-                  <div key={exp.id} className={baseStyles['resume-item']}>
-                    <div
-                      className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
-                    >
-                      <h4 className={baseStyles['resume-item-title-sm']}>{exp.title}</h4>
-                      {exp.years && (
-                        <span className={`${baseStyles['resume-date']} ml-2`}>
-                          {formatDateRange(exp.years)}
-                        </span>
-                      )}
-                    </div>
+                {workExperience.map((exp) => {
+                  const entry = arrangeWorkEntry(exp, workExperienceSettings);
+                  const { primaryMeta, secondaryMeta } = workEntryMeta(entry, exp.years);
+                  return (
+                    <div key={exp.id} className={baseStyles['resume-item']}>
+                      <div
+                        className={`flex justify-between items-baseline ${baseStyles['resume-row-tight']}`}
+                      >
+                        <h4 className={baseStyles['resume-item-title-sm']}>{entry.primary}</h4>
+                        {primaryMeta && (
+                          <span className={`${baseStyles['resume-date']} ml-2`}>{primaryMeta}</span>
+                        )}
+                      </div>
 
-                    <div
-                      className={`flex justify-between items-center ${baseStyles['resume-row-tight']} ${baseStyles['resume-item-subtitle-sm']}`}
-                    >
-                      <span>
-                        {exp.company}
-                        {exp.location && <> • {exp.location}</>}
-                      </span>
-                    </div>
+                      <div
+                        className={`flex justify-between items-center ${baseStyles['resume-row-tight']} ${baseStyles['resume-item-subtitle-sm']}`}
+                      >
+                        <span>{entry.secondary}</span>
+                        {secondaryMeta && (
+                          <span className={baseStyles['resume-location']}>{secondaryMeta}</span>
+                        )}
+                      </div>
 
-                    <DescriptionList
-                      items={exp.description}
-                      styles={exp.descriptionStyles}
-                      textClassName={baseStyles['resume-text-xs']}
-                    />
-                  </div>
-                ))}
+                      <DescriptionList
+                        items={exp.description}
+                        styles={exp.descriptionStyles}
+                        textClassName={baseStyles['resume-text-xs']}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -367,29 +389,41 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
                 {getSectionDisplayName('education', headingFallbacks.education)}
               </h3>
               <div className={baseStyles['resume-stack']}>
-                {education.map((edu) => (
-                  <div key={edu.id}>
-                    <h4
-                      className={`${baseStyles['resume-item-title-sm']} ${baseStyles['sidebar-text-wrap']}`}
-                    >
-                      {edu.institution}
-                      {edu.years && (
-                        <span
-                          className={`font-normal ${baseStyles['resume-date']} ${baseStyles['text-muted']}`}
-                        >
-                          {' '}
-                          | {formatDateRange(edu.years)}
-                        </span>
+                {education.map((edu) => {
+                  const eduEntry = arrangeEducationEntry(edu, educationSettings);
+                  const inline = educationSettings.layout === 'inline';
+                  return (
+                    <div key={edu.id}>
+                      <h4
+                        className={`${baseStyles['resume-item-title-sm']} ${baseStyles['sidebar-text-wrap']}`}
+                      >
+                        {inline && eduEntry.secondary
+                          ? `${eduEntry.primary} — ${eduEntry.secondary}`
+                          : eduEntry.primary}
+                        {edu.years && (
+                          <span
+                            className={`font-normal ${baseStyles['resume-date']} ${baseStyles['text-muted']}`}
+                          >
+                            {' '}
+                            | {formatDateRange(edu.years)}
+                          </span>
+                        )}
+                      </h4>
+                      {!inline && eduEntry.secondary && (
+                        <p className={baseStyles['resume-item-subtitle-sm']}>
+                          {eduEntry.secondary}
+                        </p>
                       )}
-                    </h4>
-                    <p className={baseStyles['resume-item-subtitle-sm']}>{edu.degree}</p>
-                    {edu.description && (
-                      <p className={`${baseStyles['resume-text-xs']} ${baseStyles['resume-meta']}`}>
-                        {edu.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                      {edu.description && (
+                        <p
+                          className={`${baseStyles['resume-text-xs']} ${baseStyles['resume-meta']}`}
+                        >
+                          {edu.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -398,7 +432,7 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
           {isSectionVisible('additional') && technicalSkills.length > 0 && (
             <div className={baseStyles['resume-section']}>
               <h3 className={baseStyles['resume-section-title-sm']}>{headingFallbacks.skills}</h3>
-              <div className="flex flex-wrap gap-1">
+              <div className={skillsContainerClass}>
                 {technicalSkills.map((skill, index) => (
                   <span key={index} className={baseStyles['resume-skill-pill']}>
                     {skill}

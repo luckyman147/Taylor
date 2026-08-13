@@ -1614,13 +1614,20 @@ async def download_resume_pdf(
     resume_id: str,
     template: str = Query("swiss-single"),
     pageSize: str = Query("A4", pattern="^(A4|LETTER)$"),
-    marginTop: int = Query(10, ge=5, le=25),
-    marginBottom: int = Query(10, ge=5, le=25),
-    marginLeft: int = Query(10, ge=5, le=25),
-    marginRight: int = Query(10, ge=5, le=25),
+    marginTop: int = Query(10, ge=0, le=40),
+    marginBottom: int = Query(10, ge=0, le=40),
+    marginLeft: int = Query(10, ge=0, le=40),
+    marginRight: int = Query(10, ge=0, le=40),
+    marginUnit: str = Query("mm", pattern="^(mm|percent)$"),
     sectionSpacing: int = Query(3, ge=1, le=5),
     itemSpacing: int = Query(2, ge=1, le=5),
-    lineHeight: int = Query(3, ge=1, le=5),
+    lineHeight: int = Query(135, ge=100, le=200),
+    listLineHeight: int = Query(125, ge=100, le=200),
+    dateFormat: str = Query("short", pattern="^(short|long|mmmyyyy|years)$"),
+    headerAlign: str = Query("center", pattern="^(left|center|right)$"),
+    dateAlign: str = Query("right", pattern="^(left|center|right)$"),
+    locationAlign: str = Query("left", pattern="^(left|center|right)$"),
+    skillsLayout: str = Query("comma", pattern="^(comma|list|columns)$"),
     fontSize: int = Query(3, ge=1, le=5),
     headerScale: int = Query(3, ge=1, le=5),
     headerFont: str = Query("serif", pattern="^(serif|sans-serif|mono|times-roman)$"),
@@ -1628,6 +1635,43 @@ async def download_resume_pdf(
     compactMode: bool = Query(False),
     showContactIcons: bool = Query(False),
     accentColor: str = Query("blue", pattern="^(blue|green|orange|red)$"),
+    workShowBy: str = Query("position", pattern="^(company|position)$"),
+    workDatesBy: str = Query("position", pattern="^(company|position|both)$"),
+    workLocationBy: str = Query("company", pattern="^(company|position|none)$"),
+    educationShowBy: str = Query("institution", pattern="^(degree|institution)$"),
+    educationLayout: str = Query("stacked", pattern="^(stacked|inline)$"),
+    bulletMarker: str = Query("•", pattern="^(\\*|-|>>|->|•)$"),
+    listSeparator: str = Query(",", pattern="^(\\*|-|,|\\|)$"),
+    sizeFullName: float = Query(21, ge=4, le=40),
+    sizePrimaryHeading: float = Query(12, ge=4, le=40),
+    sizeSecondaryHeading: float = Query(10.5, ge=4, le=40),
+    sizeSectionTitle: float = Query(12.5, ge=4, le=40),
+    sizeBodyCopy: float = Query(10.5, ge=4, le=40),
+    sizeMinorCopy: float = Query(8, ge=4, le=40),
+    weightFullName: str = Query("bold", pattern="^(light|regular|bold|extralight)$"),
+    weightPrimaryHeading: str = Query("regular", pattern="^(light|regular|bold|extralight)$"),
+    weightSecondaryHeading: str = Query("bold", pattern="^(light|regular|bold|extralight)$"),
+    weightSectionTitle: str = Query("bold", pattern="^(light|regular|bold|extralight)$"),
+    weightBodyCopy: str = Query("regular", pattern="^(light|regular|bold|extralight)$"),
+    weightMinorCopy: str = Query("regular", pattern="^(light|regular|bold|extralight)$"),
+    transformFullName: str = Query("as-written", pattern="^(uppercase|as-written|capitalize)$"),
+    transformPrimaryHeading: str = Query(
+        "as-written", pattern="^(uppercase|as-written|capitalize)$"
+    ),
+    transformSecondaryHeading: str = Query(
+        "as-written", pattern="^(uppercase|as-written|capitalize)$"
+    ),
+    transformSectionTitle: str = Query("uppercase", pattern="^(uppercase|as-written|capitalize)$"),
+    transformBodyCopy: str = Query("as-written", pattern="^(uppercase|as-written|capitalize)$"),
+    transformMinorCopy: str = Query("as-written", pattern="^(uppercase|as-written|capitalize)$"),
+    vspaceBetweenSections: float = Query(12, ge=0, le=40),
+    vspaceTitlesContent: float = Query(3, ge=0, le=40),
+    vspacePrimarySecondary: float = Query(3, ge=0, le=40),
+    vspaceContentBlocks: float = Query(3, ge=0, le=40),
+    vspaceListItems: float = Query(2, ge=0, le=40),
+    borderAboveHeader: float = Query(0, ge=0, le=10),
+    borderBelowHeader: float = Query(0, ge=0, le=10),
+    borderSectionTitles: float = Query(1, ge=0, le=10),
     lang: str | None = Query(None, pattern="^[a-z]{2}(-[A-Z]{2})?$"),
 ) -> Response:
     """Generate a PDF for a resume using headless Chromium.
@@ -1635,21 +1679,50 @@ async def download_resume_pdf(
     Accepts template settings for customization:
     - template: swiss-single, swiss-two-column, modern, modern-two-column, latex, clean, or vivid
     - pageSize: A4 or LETTER
-    - marginTop/Bottom/Left/Right: page margins in mm (5-25)
+    - marginTop/Bottom/Left/Right: page margins in mm (0-40) or percent of the
+      page (0-40) when marginUnit is 'percent' (percent of height for
+      top/bottom, percent of width for left/right)
     - sectionSpacing: gap between sections (1-5)
     - itemSpacing: gap between items (1-5)
-    - lineHeight: text line height (1-5)
+    - lineHeight: text line height in percent (100-200)
+    - listLineHeight: list/bullet line height in percent (100-200)
+    - dateFormat: short, long, mmmyyyy, or years
+    - headerAlign/dateAlign/locationAlign: left, center, or right
+    - skillsLayout: comma, list, or columns
     - fontSize: base font size (1-5)
     - headerScale: header size scale (1-5)
     - headerFont: serif, sans-serif, or mono
     - bodyFont: serif, sans-serif, or mono
     - compactMode: enable tighter spacing
     - showContactIcons: show icons in contact info
+    - workShowBy: field shown first in work entries (company or position)
+    - workDatesBy: line carrying the date range (company, position, or both)
+    - workLocationBy: line carrying the location (company, position, or none)
+    - educationShowBy: field shown first in education entries (degree or institution)
+    - educationLayout: stacked or inline education entries
+    - bulletMarker: list bullet character (*, -, >>, ->, or the default bullet)
+    - listSeparator: inline separator for skills joins (*, -, comma, or pipe)
+    - sizeFullName/PrimaryHeading/SecondaryHeading/SectionTitle/BodyCopy/MinorCopy:
+      text sizes in pt (4-40)
+    - weight*: light, regular, bold, or extralight per text target
+    - transform*: uppercase, as-written, or capitalize per text target
+    - vspace*: vertical spacing controls in pt (0-40)
+    - border*: border widths in pt (0 = hidden)
     - lang: locale used for print page translations
     """
     resume = await db.get_resume(resume_id)
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
+
+    # Percent margins are resolved against the page dimensions (top/bottom use
+    # the page height, left/right the page width) before being handed to the
+    # print page, which only understands millimeters.
+    if marginUnit == "percent":
+        page_width, page_height = _page_dimensions_mm(pageSize)
+        marginTop = round((marginTop / 100) * page_height, 1)
+        marginBottom = round((marginBottom / 100) * page_height, 1)
+        marginLeft = round((marginLeft / 100) * page_width, 1)
+        marginRight = round((marginRight / 100) * page_width, 1)
 
     # Build print URL with all settings
     params = (
@@ -1662,6 +1735,12 @@ async def download_resume_pdf(
         f"&sectionSpacing={sectionSpacing}"
         f"&itemSpacing={itemSpacing}"
         f"&lineHeight={lineHeight}"
+        f"&listLineHeight={listLineHeight}"
+        f"&dateFormat={dateFormat}"
+        f"&headerAlign={headerAlign}"
+        f"&dateAlign={dateAlign}"
+        f"&locationAlign={locationAlign}"
+        f"&skillsLayout={skillsLayout}"
         f"&fontSize={fontSize}"
         f"&headerScale={headerScale}"
         f"&headerFont={headerFont}"
@@ -1669,6 +1748,39 @@ async def download_resume_pdf(
         f"&compactMode={str(compactMode).lower()}"
         f"&showContactIcons={str(showContactIcons).lower()}"
         f"&accentColor={accentColor}"
+        f"&workShowBy={workShowBy}"
+        f"&workDatesBy={workDatesBy}"
+        f"&workLocationBy={workLocationBy}"
+        f"&educationShowBy={educationShowBy}"
+        f"&educationLayout={educationLayout}"
+        f"&bulletMarker={bulletMarker}"
+        f"&listSeparator={listSeparator}"
+        f"&sizeFullName={sizeFullName}"
+        f"&sizePrimaryHeading={sizePrimaryHeading}"
+        f"&sizeSecondaryHeading={sizeSecondaryHeading}"
+        f"&sizeSectionTitle={sizeSectionTitle}"
+        f"&sizeBodyCopy={sizeBodyCopy}"
+        f"&sizeMinorCopy={sizeMinorCopy}"
+        f"&weightFullName={weightFullName}"
+        f"&weightPrimaryHeading={weightPrimaryHeading}"
+        f"&weightSecondaryHeading={weightSecondaryHeading}"
+        f"&weightSectionTitle={weightSectionTitle}"
+        f"&weightBodyCopy={weightBodyCopy}"
+        f"&weightMinorCopy={weightMinorCopy}"
+        f"&transformFullName={transformFullName}"
+        f"&transformPrimaryHeading={transformPrimaryHeading}"
+        f"&transformSecondaryHeading={transformSecondaryHeading}"
+        f"&transformSectionTitle={transformSectionTitle}"
+        f"&transformBodyCopy={transformBodyCopy}"
+        f"&transformMinorCopy={transformMinorCopy}"
+        f"&vspaceBetweenSections={vspaceBetweenSections}"
+        f"&vspaceTitlesContent={vspaceTitlesContent}"
+        f"&vspacePrimarySecondary={vspacePrimarySecondary}"
+        f"&vspaceContentBlocks={vspaceContentBlocks}"
+        f"&vspaceListItems={vspaceListItems}"
+        f"&borderAboveHeader={borderAboveHeader}"
+        f"&borderBelowHeader={borderBelowHeader}"
+        f"&borderSectionTitles={borderSectionTitles}"
     )
     if lang:
         params = f"{params}&lang={lang}"
@@ -1690,6 +1802,13 @@ async def download_resume_pdf(
 
     headers = {"Content-Disposition": f'attachment; filename="resume_{resume_id}.pdf"'}
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
+def _page_dimensions_mm(page_size: str) -> tuple[float, float]:
+    """Return (width, height) in millimeters for the supported page sizes."""
+    if page_size == "LETTER":
+        return (215.9, 279.4)
+    return (210.0, 297.0)
 
 
 @router.delete("/{resume_id}")

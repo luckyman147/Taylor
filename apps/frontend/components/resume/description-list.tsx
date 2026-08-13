@@ -9,7 +9,6 @@ interface DescriptionListProps {
   items?: string[];
   styles?: DescriptionStyle[];
   textClassName?: string;
-  marker?: string;
   markerClassName?: string;
 }
 
@@ -17,7 +16,6 @@ export const DescriptionList: React.FC<DescriptionListProps> = ({
   items,
   styles,
   textClassName = baseStyles['resume-text-sm'],
-  marker = '•',
   markerClassName = 'mr-1.5 flex-shrink-0',
 }) => {
   if (!items || items.length === 0) return null;
@@ -30,8 +28,10 @@ export const DescriptionList: React.FC<DescriptionListProps> = ({
         return (
           <li key={index} className={cn('flex', showMarker && 'ml-4')}>
             {showMarker && (
-              <span className={markerClassName} aria-hidden="true">
-                {marker}
+              <span
+                className={cn(markerClassName, baseStyles['resume-bullet-marker'])}
+                aria-hidden="true"
+              >
                 {'\u00A0'}
               </span>
             )}

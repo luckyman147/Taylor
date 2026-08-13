@@ -25,13 +25,13 @@
 
 /* Section title with accent color and underline */
 .section-title-accent {
-  font-size: calc(var(--font-size-base) * var(--section-header-scale));
+  font-size: var(--size-section-title);
   font-family: var(--header-font);
-  font-weight: 700;
-  text-transform: uppercase;
+  font-weight: var(--weight-section-title);
+  text-transform: var(--transform-section-title);
   color: var(--resume-accent-primary);
-  border-bottom: 2px solid var(--resume-accent-primary);
-  margin-bottom: var(--item-gap);
+  border-bottom: var(--border-section-titles-w) solid var(--resume-accent-primary);
+  margin-bottom: var(--vspace-titles-content);
   padding-bottom: 0.125rem;
   letter-spacing: 0.05em;
   /* Prevent title from being orphaned at bottom of page */
@@ -43,13 +43,13 @@
 
 /* Smaller accent title for sidebar (if used) */
 .section-title-accent-sm {
-  font-size: calc(var(--font-size-base) * var(--section-header-scale) * 0.88);
+  font-size: calc(var(--size-section-title) * 0.88);
   font-family: var(--header-font);
-  font-weight: 700;
-  text-transform: uppercase;
+  font-weight: var(--weight-section-title);
+  text-transform: var(--transform-section-title);
   color: var(--resume-accent-primary);
-  border-bottom: 2px solid var(--resume-accent-primary);
-  margin-bottom: var(--item-gap);
+  border-bottom: var(--border-section-titles-w) solid var(--resume-accent-primary);
+  margin-bottom: var(--vspace-titles-content);
   padding-bottom: 0.125rem;
   letter-spacing: 0.05em;
   /* Prevent title from being orphaned at bottom of page */

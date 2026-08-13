@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import SidebarNav from '@/components/common/SidebarNav';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import Resume, { ResumeData } from '@/components/dashboard/resume-component';
 import { type TemplateSettings, DEFAULT_TEMPLATE_SETTINGS } from '@/lib/types/template-settings';
@@ -387,7 +388,11 @@ export default function ResumeViewerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4 md:px-8 overflow-y-auto">
+    <div className="min-h-screen bg-background py-12 pl-16 px-4 md:px-8 overflow-y-auto">
+      <SidebarNav
+        currentPage="resumes"
+        onNavigate={(page) => router.push(page)}
+      />
       <div className="max-w-7xl mx-auto">
         {/* Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">

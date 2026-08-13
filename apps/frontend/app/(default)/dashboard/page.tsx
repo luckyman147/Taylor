@@ -18,6 +18,7 @@ import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Building2 from 'lucide-react/dist/esm/icons/building-2';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
@@ -494,6 +495,15 @@ const colors = [
                 <div>
                   <p className=" text-sm font-bold uppercase">Scrape Jobs</p>
                   <p className=" text-xs opacity-70 mt-0.5">Find opportunities</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/companies">
+              <div className="rounded-xl border border-ink p-5 flex items-center gap-4 bg-warning text-white hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none shadow-sw-sm transition-all">
+                <Building2 className="w-5 h-5 shrink-0" />
+                <div>
+                  <p className=" text-sm font-bold uppercase">Company Tracker</p>
+                  <p className=" text-xs opacity-70 mt-0.5">Track companies</p>
                 </div>
               </div>
             </Link>

@@ -28,6 +28,7 @@ import { DiffPreviewModal } from '@/components/tailor/diff-preview-modal';
 import { ATSScoreCard } from '@/components/tailor/ats-score-card';
 import { AIConnectionCard } from '@/components/tailor/ai-connection-card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import SidebarNav from '@/components/common/SidebarNav';
 
 export default function TailorPage() {
   const { t } = useTranslations();
@@ -392,7 +393,11 @@ export default function TailorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pl-16">
+      <SidebarNav
+        currentPage="tailor"
+        onNavigate={(page) => router.push(page)}
+      />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <Link
           href="/dashboard"

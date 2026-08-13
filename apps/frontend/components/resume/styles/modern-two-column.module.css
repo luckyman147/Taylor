@@ -11,15 +11,15 @@
 .grid {
   display: grid;
   grid-template-columns: 65% 35%; /* Main column 65%, Sidebar 35% */
-  gap: var(--section-gap);
-  margin-top: var(--section-gap);
+  gap: var(--vspace-between-sections);
+  margin-top: var(--vspace-between-sections);
   align-items: start;
 }
 
 .mainColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: var(--vspace-between-sections);
   padding-right: 0.875rem;
   border-right: 2px solid var(--resume-accent-primary);
   /* Prevent content overflow into sidebar */
@@ -29,7 +29,7 @@
 .sidebarColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: var(--vspace-between-sections);
   padding-left: 0.75rem;
   /* Prevent sidebar content from overflowing */
   overflow: hidden;
@@ -40,14 +40,14 @@
 /* Section titles with accent color underline */
 .sectionTitleAccent {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--section-header-scale));
-  font-weight: 700;
+  font-size: var(--size-section-title);
+  font-weight: var(--weight-section-title);
   color: var(--resume-accent-primary);
-  text-transform: uppercase;
+  text-transform: var(--transform-section-title);
   letter-spacing: 0.05em;
-  margin-bottom: calc(var(--item-gap) * 1.5);
-  padding-bottom: calc(var(--item-gap) * 0.5);
-  border-bottom: 2px solid var(--resume-accent-primary);
+  margin-bottom: calc(var(--vspace-titles-content) * 1.5);
+  padding-bottom: calc(var(--vspace-titles-content) * 0.5);
+  border-bottom: var(--border-section-titles-w) solid var(--resume-accent-primary);
 }
 
 /* Name header with accent underline */

@@ -29,25 +29,25 @@
 
 .name {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--header-scale));
-  font-weight: 700;
+  font-size: var(--size-full-name);
+  font-weight: var(--weight-full-name);
   letter-spacing: 0.02em;
   color: var(--resume-text-primary);
 }
 
 .locationLine {
-  font-size: var(--font-size-base);
+  font-size: var(--size-body-copy);
   color: var(--resume-text-tertiary);
 }
 
 .tagline {
   font-weight: 700;
-  font-size: calc(var(--font-size-base) * 1.2);
+  font-size: calc(var(--size-primary-heading) * 1.05);
   color: var(--resume-text-primary);
 }
 
 .contactRow {
-  font-size: calc(var(--font-size-base) * 0.95);
+  font-size: calc(var(--size-body-copy) * 0.95);
   color: var(--resume-text-tertiary);
 }
 
@@ -58,14 +58,14 @@
 /* Section header with blue accent rule (overrides base uppercase). */
 .sectionTitle {
   font-family: var(--header-font);
-  font-size: calc(var(--font-size-base) * var(--section-header-scale));
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: var(--size-section-title);
+  font-weight: var(--weight-section-title);
+  text-transform: var(--transform-section-title);
   letter-spacing: 0.05em;
   color: var(--resume-text-primary);
-  border-bottom: 0.7pt solid var(--resume-accent-primary);
+  border-bottom: var(--border-section-titles-w) solid var(--resume-accent-primary);
   padding-bottom: 0.15rem;
-  margin-bottom: var(--item-gap);
+  margin-bottom: var(--vspace-titles-content);
   break-after: avoid;
   page-break-after: avoid;
   orphans: 3;
@@ -91,7 +91,7 @@
 }
 
 .entryTech {
-  font-size: calc(var(--font-size-base) * 0.9);
+  font-size: calc(var(--size-body-copy) * 0.9);
   color: var(--resume-text-tertiary);
 }
 

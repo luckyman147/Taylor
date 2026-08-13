@@ -49,7 +49,11 @@ import { JDComparisonView } from './jd-comparison-view';
 import { RegenerateWizard } from './regenerate-wizard';
 import { useRegenerateWizard } from '@/hooks/use-regenerate-wizard';
 import { useTranslations } from '@/lib/i18n';
-import { type TemplateSettings, DEFAULT_TEMPLATE_SETTINGS } from '@/lib/types/template-settings';
+import {
+  type TemplateSettings,
+  DEFAULT_TEMPLATE_SETTINGS,
+  normalizeTemplateSettings,
+} from '@/lib/types/template-settings';
 import { withLocalizedDefaultSections } from '@/lib/utils/section-helpers';
 import { useLanguage } from '@/lib/context/language-context';
 import { buildResumeFilename, downloadBlobAsFile, openUrlInNewTab } from '@/lib/utils/download';
@@ -57,6 +61,7 @@ import type { RegenerateItemInput } from '@/lib/api/enrichment';
 
 type TabId = 'resume' | 'cover-letter' | 'outreach' | 'interview-prep' | 'jd-match';
 type JobContextStatus = 'idle' | 'loading' | 'available' | 'missing';
+type EditorMode = 'design' | 'content';
 
 const STORAGE_KEY = 'resume_builder_draft';
 const SETTINGS_STORAGE_KEY = 'resume_builder_settings';
@@ -129,14 +134,7 @@ const ResumeBuilderContent = () => {
     try {
       const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          ...DEFAULT_TEMPLATE_SETTINGS,
-          ...parsed,
-          margins: { ...DEFAULT_TEMPLATE_SETTINGS.margins, ...parsed.margins },
-          spacing: { ...DEFAULT_TEMPLATE_SETTINGS.spacing, ...parsed.spacing },
-          fontSize: { ...DEFAULT_TEMPLATE_SETTINGS.fontSize, ...parsed.fontSize },
-        };
+        return normalizeTemplateSettings(JSON.parse(saved));
       }
     } catch {
       // fall through to defaults
@@ -166,6 +164,9 @@ const ResumeBuilderContent = () => {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabId>(() => getTabFromSearchParams(searchParams));
+
+  // Editor panel mode (resume tab only)
+  const [editorMode, setEditorMode] = useState<EditorMode>('content');
 
   useEffect(() => {
     setActiveTab(getTabFromSearchParams(searchParams));
@@ -864,22 +865,45 @@ const ResumeBuilderContent = () => {
           {/* Left Panel: Editor */}
           <div className="no-print overflow-y-auto bg-white p-6 md:p-8">
             <div className="mx-auto max-w-3xl space-y-6">
-              <div className="flex items-center gap-2 border-b border-[#e6e3dc] pb-3">
-                <div className="h-2.5 w-2.5 rounded-sm bg-primary"></div>
-                <h2 className="text-base font-bold uppercase tracking-wider text-ink">
-                  {activeTab === 'resume' && t('builder.leftPanel.editorPanel')}
-                  {activeTab === 'cover-letter' && t('builder.leftPanel.coverLetterEditor')}
-                  {activeTab === 'outreach' && t('builder.leftPanel.outreachEditor')}
-                  {activeTab === 'interview-prep' && t('builder.leftPanel.interviewPrep')}
-                  {activeTab === 'jd-match' && t('builder.leftPanel.jdMatchAnalysis')}
-                </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e6e3dc] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 rounded-sm bg-primary"></div>
+                  <h2 className="text-base font-bold uppercase tracking-wider text-ink">
+                    {activeTab === 'resume' && t('builder.leftPanel.editorPanel')}
+                    {activeTab === 'cover-letter' && t('builder.leftPanel.coverLetterEditor')}
+                    {activeTab === 'outreach' && t('builder.leftPanel.outreachEditor')}
+                    {activeTab === 'interview-prep' && t('builder.leftPanel.interviewPrep')}
+                    {activeTab === 'jd-match' && t('builder.leftPanel.jdMatchAnalysis')}
+                  </h2>
+                </div>
+
+                {/* Editor Mode Switch (resume only) */}
+                {activeTab === 'resume' && (
+                  <RetroTabs
+                    activeTab={editorMode}
+                    onTabChange={(mode) => setEditorMode(mode as EditorMode)}
+                    tabs={[
+                      { id: 'design', label: t('builder.editorModes.design') },
+                      { id: 'content', label: t('builder.editorModes.content') },
+                    ]}
+                  />
+                )}
               </div>
 
               {/* Resume Editor */}
               {activeTab === 'resume' && (
                 <>
-                  <FormattingControls settings={templateSettings} onChange={handleSettingsChange} />
-                  <ResumeForm resumeData={resumeData} onUpdate={handleUpdate} />
+                  <div className={editorMode === 'design' ? '' : 'hidden'}>
+                    <FormattingControls
+                      settings={templateSettings}
+                      onChange={handleSettingsChange}
+                      resumeData={resumeData}
+                      onResumeDataUpdate={handleUpdate}
+                    />
+                  </div>
+                  <div className={editorMode === 'content' ? '' : 'hidden'}>
+                    <ResumeForm resumeData={resumeData} onUpdate={handleUpdate} />
+                  </div>
                 </>
               )}
 

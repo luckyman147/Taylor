@@ -19,6 +19,16 @@ interface DropdownProps {
   description?: string;
   disabled?: boolean;
   className?: string;
+  /**
+   * Screen-reader label, falling back to `label`. Lets callers keep an
+   * accessible name while visually hiding the label (e.g. compact toolbars).
+   */
+  ariaLabel?: string;
+  /**
+   * Replaces the default trigger sizing (`rounded-xl px-4 py-3`) — use to
+   * match a surrounding row's control height (e.g. `h-10 rounded-lg px-3 py-0`).
+   */
+  triggerClassName?: string;
 }
 
 export function Dropdown({
@@ -29,6 +39,8 @@ export function Dropdown({
   description,
   disabled = false,
   className = '',
+  ariaLabel,
+  triggerClassName,
 }: DropdownProps) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
@@ -83,10 +95,10 @@ export function Dropdown({
           aria-haspopup="menu"
           aria-expanded={isOpen}
           aria-controls={isOpen ? menuId : undefined}
-          aria-label={label}
-          className={`flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:pointer-events-none disabled:opacity-50 ${
-            isOpen ? 'border-primary' : 'border-[#c9c5bc] hover:border-primary'
-          }`}
+          aria-label={ariaLabel ?? label}
+          className={`flex w-full items-center justify-between border bg-white transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:pointer-events-none disabled:opacity-50 ${
+            triggerClassName ?? 'rounded-xl px-4 py-3'
+          } ${isOpen ? 'border-primary' : 'border-[#c9c5bc] hover:border-primary'}`}
         >
           <div className="min-w-0 flex-1 text-left">
             {selectedOption ? (
