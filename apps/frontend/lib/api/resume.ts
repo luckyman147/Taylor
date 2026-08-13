@@ -239,9 +239,16 @@ export function getResumePdfUrl(
     params.set('marginBottom', String(settings.margins.bottom));
     params.set('marginLeft', String(settings.margins.left));
     params.set('marginRight', String(settings.margins.right));
+    params.set('marginUnit', settings.marginUnit);
     params.set('sectionSpacing', String(settings.spacing.section));
     params.set('itemSpacing', String(settings.spacing.item));
-    params.set('lineHeight', String(settings.spacing.lineHeight));
+    params.set('lineHeight', String(settings.lineHeight));
+    params.set('listLineHeight', String(settings.listLineHeight));
+    params.set('dateFormat', settings.dateFormat);
+    params.set('headerAlign', settings.alignment.header);
+    params.set('dateAlign', settings.alignment.date);
+    params.set('locationAlign', settings.alignment.location);
+    params.set('skillsLayout', settings.skillsLayout);
     params.set('fontSize', String(settings.fontSize.base));
     params.set('headerScale', String(settings.fontSize.headerScale));
     params.set('headerFont', settings.fontSize.headerFont);
@@ -249,6 +256,44 @@ export function getResumePdfUrl(
     params.set('compactMode', String(settings.compactMode));
     params.set('showContactIcons', String(settings.showContactIcons));
     params.set('accentColor', settings.accentColor);
+    params.set('workShowBy', settings.workExperience.showBy);
+    params.set('workDatesBy', settings.workExperience.datesBy);
+    params.set('workLocationBy', settings.workExperience.locationBy);
+    params.set('educationShowBy', settings.education.showBy);
+    params.set('educationLayout', settings.education.layout);
+    params.set('bulletMarker', settings.advanced.bulletMarker);
+    params.set('listSeparator', settings.advanced.listSeparator);
+    params.set('sizeFullName', String(settings.advanced.textSizes.fullName));
+    params.set('sizePrimaryHeading', String(settings.advanced.textSizes.primaryHeading));
+    params.set('sizeSecondaryHeading', String(settings.advanced.textSizes.secondaryHeading));
+    params.set('sizeSectionTitle', String(settings.advanced.textSizes.sectionTitle));
+    params.set('sizeBodyCopy', String(settings.advanced.textSizes.bodyCopy));
+    params.set('sizeMinorCopy', String(settings.advanced.textSizes.minorCopy));
+    params.set('weightFullName', settings.advanced.textWeights.fullName);
+    params.set('weightPrimaryHeading', settings.advanced.textWeights.primaryHeading);
+    params.set('weightSecondaryHeading', settings.advanced.textWeights.secondaryHeading);
+    params.set('weightSectionTitle', settings.advanced.textWeights.sectionTitle);
+    params.set('weightBodyCopy', settings.advanced.textWeights.bodyCopy);
+    params.set('weightMinorCopy', settings.advanced.textWeights.minorCopy);
+    params.set('transformFullName', settings.advanced.textTransforms.fullName);
+    params.set('transformPrimaryHeading', settings.advanced.textTransforms.primaryHeading);
+    params.set('transformSecondaryHeading', settings.advanced.textTransforms.secondaryHeading);
+    params.set('transformSectionTitle', settings.advanced.textTransforms.sectionTitle);
+    params.set('transformBodyCopy', settings.advanced.textTransforms.bodyCopy);
+    params.set('transformMinorCopy', settings.advanced.textTransforms.minorCopy);
+    params.set('vspaceBetweenSections', String(settings.advanced.verticalSpacing.betweenSections));
+    params.set('vspaceTitlesContent', String(settings.advanced.verticalSpacing.titlesContent));
+    params.set(
+      'vspacePrimarySecondary',
+      String(settings.advanced.verticalSpacing.primarySecondaryHeadings)
+    );
+    params.set('vspaceContentBlocks', String(settings.advanced.verticalSpacing.contentBlocks));
+    params.set('vspaceListItems', String(settings.advanced.verticalSpacing.listItems));
+    const borderWidth = (b: { enabled: boolean; thickness: number }) =>
+      b.enabled ? String(b.thickness) : '0';
+    params.set('borderAboveHeader', borderWidth(settings.advanced.borders.aboveHeader));
+    params.set('borderBelowHeader', borderWidth(settings.advanced.borders.belowHeader));
+    params.set('borderSectionTitles', borderWidth(settings.advanced.borders.sectionTitles));
   } else {
     params.set('template', 'swiss-single');
     params.set('pageSize', 'A4');
