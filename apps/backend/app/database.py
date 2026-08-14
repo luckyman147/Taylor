@@ -11,6 +11,7 @@ Two engines back one SQLite file:
 """
 
 import asyncio
+import hashlib
 import logging
 import shutil
 from datetime import datetime, timezone
@@ -25,7 +26,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 from app.db_engine import init_models_sync, make_async_engine, make_sync_engine
-from app.models import ApiKey, Application, Company, Contact, Improvement, Job, Resume
+from app.models import (
+    ApiKey,
+    Application,
+    CareerCertification,
+    CareerProfile,
+    CareerSkill,
+    Company,
+    Contact,
+    Improvement,
+    Job,
+    Resume,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +184,8 @@ class Database:
             "role": row.role,
             "applied_at": row.applied_at,
             "notes": row.notes,
+            "rejection_reason": row.rejection_reason,
+            "interview_rounds": row.interview_rounds,
             "position": row.position,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
@@ -207,6 +221,58 @@ class Database:
             "status": row.status,
             "relationship": row.relationship,
             "follow_up_date": row.follow_up_date,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _career_profile_to_dict(row: CareerProfile) -> dict[str, Any]:
+        return {
+            "profile_id": row.profile_id,
+            "name": row.name,
+            "title": row.title,
+            "email": row.email,
+            "phone": row.phone,
+            "location": row.location,
+            "website": row.website,
+            "linkedin": row.linkedin,
+            "github": row.github,
+            "summary": row.summary,
+            "career_goals": row.career_goals,
+            "target_roles": row.target_roles,
+            "target_locations": row.target_locations,
+            "target_salary_min": row.target_salary_min,
+            "target_salary_max": row.target_salary_max,
+            "work_experience": row.work_experience or [],
+            "languages": row.languages or [],
+            "awards": row.awards or [],
+            "source_resume_id": row.source_resume_id,
+            "source_resume_title": row.source_resume_title,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _career_skill_to_dict(row: CareerSkill) -> dict[str, Any]:
+        return {
+            "skill_id": row.skill_id,
+            "name": row.name,
+            "category": row.category,
+            "proficiency": row.proficiency,
+            "years_experience": row.years_experience,
+            "last_used": row.last_used,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _career_certification_to_dict(row: CareerCertification) -> dict[str, Any]:
+        return {
+            "certification_id": row.certification_id,
+            "name": row.name,
+            "issuer": row.issuer,
+            "date_obtained": row.date_obtained,
+            "url": row.url,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -535,6 +601,8 @@ class Database:
         role: str | None = None,
         applied_at: str | None = None,
         notes: str | None = None,
+        rejection_reason: str | None = None,
+        interview_rounds: int | None = None,
     ) -> dict[str, Any]:
         """Create a tracker card, deduped on (job_id, resume_id).
 
@@ -565,6 +633,8 @@ class Database:
                 role=role,
                 applied_at=applied_at,
                 notes=notes,
+                rejection_reason=rejection_reason,
+                interview_rounds=interview_rounds,
                 position=position,
                 created_at=now,
                 updated_at=now,
@@ -627,7 +697,7 @@ class Database:
             new_status = updates.get("status", old_status)
             target_position = updates.get("position", None)
 
-            for key in ("company", "role", "applied_at", "notes"):
+            for key in ("company", "role", "applied_at", "notes", "rejection_reason", "interview_rounds"):
                 if key in updates:
                     setattr(row, key, updates[key])
 
@@ -1013,6 +1083,253 @@ class Database:
             await session.commit()
         return deleted
 
+    # -- Career profile operations ------------------------------------------
+
+    async def get_career_profile(self) -> dict[str, Any] | None:
+        """Get the single career profile row, if any."""
+        async with self._session() as session:
+            result = await session.execute(select(CareerProfile))
+            row = result.scalars().first()
+            return self._career_profile_to_dict(row) if row else None
+
+    async def create_career_profile(self) -> dict[str, Any]:
+        """Create an empty career profile row (idempotent)."""
+        async with self._session() as session:
+            result = await session.execute(select(CareerProfile))
+            existing = result.scalars().first()
+            if existing is not None:
+                return self._career_profile_to_dict(existing)
+            now = _now()
+            row = CareerProfile(
+                profile_id=str(uuid4()),
+                career_goals=[],
+                target_roles=[],
+                target_locations=[],
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._career_profile_to_dict(row)
+
+    async def update_career_profile(self, updates: dict[str, Any]) -> dict[str, Any]:
+        """Update the career profile row (creating it first when absent)."""
+        profile = await self.get_career_profile()
+        if profile is None:
+            profile = await self.create_career_profile()
+
+        editable = (
+            "name",
+            "title",
+            "email",
+            "phone",
+            "location",
+            "website",
+            "linkedin",
+            "github",
+            "summary",
+            "career_goals",
+            "target_roles",
+            "target_locations",
+            "target_salary_min",
+            "target_salary_max",
+            "work_experience",
+            "languages",
+            "awards",
+            "source_resume_id",
+            "source_resume_title",
+        )
+        async with self._session() as session:
+            row = await session.get(CareerProfile, profile["profile_id"])
+            if row is None:
+                raise ValueError(f"Career profile not found: {profile['profile_id']}")
+            for key in editable:
+                if key in updates:
+                    setattr(row, key, updates[key])
+            row.updated_at = _now()
+            await session.commit()
+            return self._career_profile_to_dict(row)
+
+    # -- Career skills ------------------------------------------------------
+
+    async def create_career_skill(
+        self,
+        name: str,
+        category: str | None = None,
+        proficiency: int | None = None,
+        years_experience: int | None = None,
+        last_used: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a skill, deduped on name (case-insensitive).
+
+        If a skill with the same lowercased name already exists it is returned
+        as-is; the caller decides whether to treat that as a conflict or a
+        no-op.
+        """
+        async with self._session() as session:
+            existing = await session.execute(
+                select(CareerSkill).where(func.lower(CareerSkill.name) == name.lower())
+            )
+            found = existing.scalars().first()
+            if found is not None:
+                return self._career_skill_to_dict(found)
+
+            now = _now()
+            row = CareerSkill(
+                skill_id=str(uuid4()),
+                name=name,
+                category=category,
+                proficiency=proficiency,
+                years_experience=years_experience,
+                last_used=last_used,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                dup = await session.execute(
+                    select(CareerSkill).where(
+                        func.lower(CareerSkill.name) == name.lower()
+                    )
+                )
+                found = dup.scalars().first()
+                if found is not None:
+                    logger.debug("Deduped concurrent skill create for name=%s", name)
+                    return self._career_skill_to_dict(found)
+                raise
+            return self._career_skill_to_dict(row)
+
+    async def list_career_skills(self) -> list[dict[str, Any]]:
+        """List all skills ordered by name (case-insensitive)."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(CareerSkill).order_by(func.lower(CareerSkill.name))
+            )
+            return [self._career_skill_to_dict(row) for row in result.scalars().all()]
+
+    async def get_career_skill(self, skill_id: str) -> dict[str, Any] | None:
+        """Get a skill by ID."""
+        async with self._session() as session:
+            row = await session.get(CareerSkill, skill_id)
+            return self._career_skill_to_dict(row) if row else None
+
+    async def get_career_skill_by_name(self, name: str) -> dict[str, Any] | None:
+        """Get a skill by name (case-insensitive)."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(CareerSkill).where(func.lower(CareerSkill.name) == name.lower())
+            )
+            row = result.scalars().first()
+            return self._career_skill_to_dict(row) if row else None
+
+    async def update_career_skill(
+        self, skill_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a skill's editable fields. Returns None when not found.
+
+        Raises ValueError when renaming onto an existing skill name.
+        """
+        async with self._session() as session:
+            row = await session.get(CareerSkill, skill_id)
+            if row is None:
+                return None
+
+            new_name = updates.get("name")
+            if new_name is not None and new_name.lower() != row.name.lower():
+                conflict = await session.execute(
+                    select(CareerSkill).where(
+                        func.lower(CareerSkill.name) == new_name.lower(),
+                        CareerSkill.skill_id != skill_id,
+                    )
+                )
+                if conflict.scalars().first() is not None:
+                    raise ValueError(f"Skill with name {new_name!r} already exists")
+
+            for key in ("name", "category", "proficiency", "years_experience", "last_used"):
+                if key in updates:
+                    setattr(row, key, updates[key])
+
+            row.updated_at = _now()
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                raise ValueError(f"Skill with name {updates.get('name')!r} already exists")
+            return self._career_skill_to_dict(row)
+
+    async def delete_career_skill(self, skill_id: str) -> bool:
+        """Delete a skill. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerSkill, skill_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    # -- Career certifications ----------------------------------------------
+
+    async def create_career_certification(
+        self,
+        name: str,
+        issuer: str | None = None,
+        date_obtained: str | None = None,
+        url: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a certification entry."""
+        now = _now()
+        async with self._session() as session:
+            row = CareerCertification(
+                certification_id=str(uuid4()),
+                name=name,
+                issuer=issuer,
+                date_obtained=date_obtained,
+                url=url,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._career_certification_to_dict(row)
+
+    async def list_career_certifications(self) -> list[dict[str, Any]]:
+        """List all certifications ordered by name."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(CareerCertification).order_by(CareerCertification.name)
+            )
+            return [
+                self._career_certification_to_dict(row) for row in result.scalars().all()
+            ]
+
+    async def update_career_certification(
+        self, certification_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a certification's editable fields. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerCertification, certification_id)
+            if row is None:
+                return None
+            for key in ("name", "issuer", "date_obtained", "url"):
+                if key in updates:
+                    setattr(row, key, updates[key])
+            row.updated_at = _now()
+            await session.commit()
+            return self._career_certification_to_dict(row)
+
+    async def delete_career_certification(self, certification_id: str) -> bool:
+        """Delete a certification. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerCertification, certification_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
     # -- Encrypted API key store (sync; read on the LLM hot path) -----------
 
     def get_api_key_ciphertexts(self) -> dict[str, str]:
@@ -1099,6 +1416,9 @@ class Database:
             await session.execute(delete(Improvement))
             await session.execute(delete(Job))
             await session.execute(delete(Resume))
+            await session.execute(delete(CareerProfile))
+            await session.execute(delete(CareerSkill))
+            await session.execute(delete(CareerCertification))
             await session.commit()
 
         uploads_dir = settings.data_dir / "uploads"
@@ -1190,6 +1510,36 @@ class Database:
                 for row in rows
             ]
 
+    async def list_scraped_jobs_for_analysis(self) -> list[dict[str, Any]]:
+        """List all non-archived scraped jobs across resumes (career analysis).
+
+        Powers the skill-ROI engine and career-memory aggregation; archived
+        drafts are excluded because the user has already dismissed them.
+        """
+        from app.models import ScrapedJob
+
+        async with self._session() as session:
+            result = await session.execute(
+                select(ScrapedJob)
+                .where(ScrapedJob.archived == False)  # noqa: E712
+                .order_by(ScrapedJob.created_at.desc())
+            )
+            rows = result.scalars().all()
+            return [
+                {
+                    "job_id": row.job_id,
+                    "title": row.title,
+                    "company": row.company,
+                    "location": row.location,
+                    "description": row.description,
+                    "salary": row.salary,
+                    "experience_level": row.experience_level,
+                    "job_type": row.job_type,
+                    "languages": row.languages,
+                }
+                for row in rows
+            ]
+
     async def delete_scraped_job(self, job_id: str) -> bool:
         """Delete a single scraped job draft."""
         from app.models import ScrapedJob
@@ -1245,6 +1595,48 @@ class Database:
             row.applied_resume_id = resume_id
             await session.commit()
             return True
+
+    async def career_data_fingerprint(self) -> str:
+        """Fingerprint of every table feeding the career-memory bundle.
+
+        Any write that affects the memory (applications, scraped jobs, career
+        profile/skills/certifications, contacts, resumes, API keys) changes the
+        row counts or the latest ``updated_at``, so the stamp changes and the
+        in-process career caches rebuild. Queries go through the ORM models
+        (row count + latest timestamp, preferring ``updated_at`` when the
+        table has it) so tables without an ``updated_at`` column still count.
+        """
+        from app.models import (  # local import: avoids module-cycle surprises
+            ApiKey,
+            Application,
+            CareerCertification,
+            CareerProfile,
+            CareerSkill,
+            Contact,
+            Resume,
+            ScrapedJob,
+        )
+
+        table_models = (
+            ("applications", Application, "updated_at"),
+            ("scraped_jobs", ScrapedJob, "created_at"),
+            ("career_profiles", CareerProfile, "updated_at"),
+            ("career_skills", CareerSkill, "updated_at"),
+            ("career_certifications", CareerCertification, "updated_at"),
+            ("contacts", Contact, "updated_at"),
+            ("resumes", Resume, "updated_at"),
+            ("api_keys", ApiKey, "updated_at"),
+        )
+        parts: list[str] = []
+        async with self._session() as session:
+            for name, model, ts_col in table_models:
+                count, latest = (
+                    await session.execute(
+                        select(func.count(), func.max(getattr(model, ts_col)))
+                    )
+                ).one()
+                parts.append(f"{name}:{count}:{latest}")
+        return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
 # Global database instance

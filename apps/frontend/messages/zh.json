@@ -50,7 +50,9 @@
     "jobTracking": "Job Tracking",
     "resumeBuilder": "Resume Builder",
     "companies": "Company Tracker",
-    "contacts": "Contact Tracker"
+    "contacts": "Contact Tracker",
+    "profile": "My Profile",
+    "chat": "AI 聊天"
   },
   "dashboard": {
     "title": "仪表板",
@@ -1124,6 +1126,8 @@
     "title": "申请追踪",
     "subtitle": "追踪每份定制简历在求职流程中的进展。",
     "addApplication": "添加申请",
+    "showOverview": "概览",
+    "hideOverview": "隐藏概览",
     "columns": {
       "saved": "已保存",
       "applied": "已投递",
@@ -1153,7 +1157,11 @@
       "saveNotes": "保存备注",
       "resumeUnavailable": "所投递的简历已不可用。",
       "loadFailed": "无法加载此申请。",
-      "editResume": "编辑简历"
+      "editResume": "编辑简历",
+      "rejectionReason": "Rejection reason (for AI career insights)",
+      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
+      "interviewRounds": "Interview rounds",
+      "interviewRoundsPlaceholder": "e.g. 2"
     },
     "bulk": {
       "selected": "已选择 {count} 项",
@@ -1474,5 +1482,184 @@
       "skillGaps": "技能差距",
       "talkingPoints": "沟通要点"
     }
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "header": {
+      "sourceFrom": "来自简历"
+    },
+    "currentLocation": {
+      "title": "当前所在地",
+      "placeholder": "例如：北京，中国"
+    },
+    "workExperience": {
+      "title": "工作经历",
+      "empty": "暂无工作经历。添加条目或从简历导入。",
+      "add": "添加条目",
+      "edit": "编辑",
+      "delete": "删除",
+      "deleteTitle": "删除此条目？",
+      "deleteDescription": "此操作无法撤销。",
+      "addTitle": "添加工作经历",
+      "editTitle": "编辑工作经历",
+      "formDescription": "这些条目供职业顾问使用，也可以从简历导入。",
+      "role": "职位 / 头衔",
+      "company": "公司",
+      "location": "地点",
+      "years": "年限",
+      "description": "成就",
+      "descriptionPlaceholder": "每行一个要点",
+      "roleRequired": "请输入职位或公司。",
+      "save": "保存条目"
+    },
+    "github": {
+      "title": "GitHub 仓库",
+      "loading": "正在加载 GitHub 状态…",
+      "connectHint": "连接您的 GitHub 账户即可查看仓库，并根据开源贡献优化简历。",
+      "connect": "连接 GitHub",
+      "useToken": "使用个人访问令牌",
+      "tokenLabel": "个人访问令牌",
+      "tokenHelpStart": "在",
+      "tokenHelpEnd": "创建，需要 repo + user 权限",
+      "tokenSubmit": "连接",
+      "connectedAs": "已连接为",
+      "repositories": "个仓库",
+      "disconnect": "断开连接",
+      "noDescription": "无描述",
+      "showReadme": "显示 README",
+      "hideReadme": "隐藏 README"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "skillRoi": "Skill ROI"
+    },
+    "overview": {
+      "totalApplications": "Total applications",
+      "rejectionRate": "Rejection rate",
+      "rejectionRateHint": "Rejected ÷ advanced applications",
+      "appliedToInterview": "Applied → Interview",
+      "interviewToAccepted": "Interview → Accepted",
+      "medianDaysToInterview": "Median days to interview",
+      "medianDaysHint": "Across interview-stage applications",
+      "llmInsights": "AI Insights",
+      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
+      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
+    },
+    "languages": {
+      "title": "语言",
+      "add": "添加",
+      "empty": "还没有语言。",
+      "placeholder": "例如：中文、英语"
+    },
+    "awards": {
+      "title": "荣誉与奖项",
+      "add": "添加",
+      "empty": "还没有荣誉或奖项。",
+      "placeholder": "例如：优秀毕业生"
+    },
+    "form": {
+      "provision": "Automatic setup",
+      "seedHint": "从您的主简历复制姓名、联系方式、摘要、技能、工作经历、语言和荣誉。",
+      "seeded": "已从主简历导入个人资料。",
+      "saved": "Profile saved.",
+      "personalInfo": "Personal info",
+      "name": "Full name",
+      "title": "Job title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "summary": "Professional summary",
+      "careerGoals": "Career goals",
+      "targetRoles": "Target roles",
+      "targetLocations": "Target locations",
+      "salaryMin": "Target salary min",
+      "salaryMax": "Target salary max",
+      "seedFromMaster": "从主简历导入",
+      "tagPlaceholder": "输入后按回车",
+      "uploadDesktop": "从电脑上传",
+      "uploaded": "简历已上传。",
+      "save": "Save profile"
+    },
+    "skills": {
+      "title": "Skills",
+      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
+      "add": "Add skill",
+      "edit": "Edit skill",
+      "delete": "Delete skill",
+      "deleteTitle": "Delete this skill?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add skill",
+      "editTitle": "Edit skill",
+      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
+      "name": "Skill name",
+      "nameRequired": "Skill name is required.",
+      "category": "Category",
+      "proficiency": "Proficiency (1–5)",
+      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
+      "yearsExperience": "Years of experience",
+      "lastUsed": "Last used",
+      "optional": "Optional",
+      "save": "Save skill"
+    },
+    "certifications": {
+      "title": "Certifications",
+      "empty": "No certifications yet.",
+      "add": "Add certification",
+      "edit": "Edit certification",
+      "delete": "Delete certification",
+      "deleteTitle": "Delete this certification?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add certification",
+      "editTitle": "Edit certification",
+      "formDescription": "Certifications strengthen your career advisor memory.",
+      "name": "Certification name",
+      "nameRequired": "Certification name is required.",
+      "issuer": "Issuer",
+      "dateObtained": "Date obtained",
+      "invalidDate": "Use YYYY or YYYY-MM.",
+      "url": "Credential URL",
+      "optional": "Optional",
+      "save": "Save certification"
+    },
+    "roi": {
+      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
+      "refresh": "Refresh",
+      "getAdvice": "Ask AI what to learn",
+      "skill": "Skill",
+      "jobsUnlocked": "Jobs unlocked",
+      "salaryImpact": "Salary impact",
+      "learningEffort": "Learning effort",
+      "roiScore": "ROI score",
+      "noData": "—",
+      "effort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
+      "advice": "AI Recommendation"
+    },
+    "chat": {
+      "title": "Career Advisor",
+      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
+      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
+      "suggestions": {
+        "q1": "Why am I getting rejected?",
+        "q2": "Which skill should I learn next?",
+        "q3": "How can I improve my interview-to-accepted rate?",
+        "q4": "What salary should I target?"
+      }
+    }
   }
 }
+
+
+
+
+
+
+

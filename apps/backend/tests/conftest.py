@@ -210,6 +210,7 @@ async def isolated_db(tmp_path, monkeypatch):
         "companies",
         "contacts",
         "resume_wizard",
+        "profile",
     ):
         try:
             module = importlib.import_module(f"app.routers.{router_name}")
@@ -221,3 +222,21 @@ async def isolated_db(tmp_path, monkeypatch):
         yield test_db
     finally:
         await test_db.close()
+
+
+@pytest.fixture
+async def isolated_career_db(isolated_db, monkeypatch):
+    """Point the career service at the isolated DB and drop its caches.
+
+    ``app.services.career_profile`` binds its own ``db`` reference at import
+    time, and its memory/insights caches are keyed on a fingerprint of the
+    database rows, so without this the service would keep reading (and
+    caching) cross-test data from a previous isolation scope.
+    """
+    import app.services.career_profile as career_profile_module
+
+    monkeypatch.setattr(career_profile_module, "db", isolated_db)
+    career_profile_module._career_memory_cache = None
+    career_profile_module._career_memory_stamp = None
+    career_profile_module._insights_cache = None
+    return isolated_db

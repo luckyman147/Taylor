@@ -22,6 +22,9 @@ import Building2 from 'lucide-react/dist/esm/icons/building-2';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import UserRound from 'lucide-react/dist/esm/icons/user-round';
+import Users from 'lucide-react/dist/esm/icons/users';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 
 import {
   fetchResume,
@@ -214,14 +217,14 @@ export default function DashboardPage() {
     setDeleteTargetId(resumeId);
     setShowDeleteDialog(true);
   };
-const colors = [
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-yellow-500",
-  "bg-purple-500",
-  "bg-pink-500",
-];
+  const colors = [
+    'bg-red-500',
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-yellow-500',
+    'bg-purple-500',
+    'bg-pink-500',
+  ];
   const confirmDeleteAndReupload = async () => {
     const resumeId = deleteTargetId ?? masterResumeId;
     if (!resumeId) return;
@@ -328,24 +331,26 @@ const colors = [
               <Image src="/logo.png" alt="Taylor" width={40} height={40} className="w-10 h-10" />
             </Link>
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-tight">
-                Dashboard
-              </h1>
+              <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-tight">Dashboard</h1>
               <p className="mt-2  text-xs text-ink-soft uppercase tracking-wide">
                 {t('dashboard.subtitle')}
               </p>
             </div>
           </div>
-          <Link href="/settings">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-ink  text-xs uppercase shrink-0"
-            >
-              <Settings className="w-3.5 h-3.5 mr-1" />
-              {t('nav.settings')}
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/profile">
+              <Button variant="outline" size="sm" className="border-ink text-xs uppercase">
+                <UserRound className="w-3.5 h-3.5 mr-1" />
+                {t('nav.profile')}
+              </Button>
+            </Link>
+            <Link href="/settings">
+              <Button variant="outline" size="sm" className="border-ink text-xs uppercase">
+                <Settings className="w-3.5 h-3.5 mr-1" />
+                {t('nav.settings')}
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Master Resume Section */}
@@ -401,9 +406,7 @@ const colors = [
                     <p className=" text-sm font-bold uppercase">
                       {t('dashboard.initializeMasterResume')}
                     </p>
-                    <p className=" text-xs opacity-60 mt-1">
-                      {t('dashboard.initializeSequence')}
-                    </p>
+                    <p className=" text-xs opacity-60 mt-1">{t('dashboard.initializeSequence')}</p>
                   </div>
                 </div>
               </div>
@@ -418,8 +421,12 @@ const colors = [
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 border   text-white flex items-center justify-center shrink-0 rounded-xl ${colors[master.filename?.charCodeAt(0) ? master.filename.charCodeAt(0) % colors.length : 1]}`}>
-                        <span className=" font-bold text-sm uppercase">{master.filename?.charAt(0) || 'M'}</span>
+                      <div
+                        className={`w-12 h-12 border   text-white flex items-center justify-center shrink-0 rounded-xl ${colors[master.filename?.charCodeAt(0) ? master.filename.charCodeAt(0) % colors.length : 1]}`}
+                      >
+                        <span className=" font-bold text-sm uppercase">
+                          {master.filename?.charAt(0) || 'M'}
+                        </span>
                       </div>
                       <div>
                         <p className=" text-sm font-bold uppercase truncate max-w-75">
@@ -471,39 +478,48 @@ const colors = [
           <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft mb-4">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Link href="/tailor" className={!isTailorEnabled ? 'pointer-events-none' : ''}>
               <div
-                className={`rounded-xl border border-ink p-5 flex items-center gap-4 transition-all ${
+                className={`h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm transition-all ${
                   isTailorEnabled
-                    ? 'bg-primary text-white hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none shadow-sw-sm'
+                    ? 'hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none'
                     : 'opacity-40 cursor-not-allowed'
                 }`}
               >
-                <Plus className="w-5 h-5 shrink-0" />
+                <Plus className="w-5 h-5 shrink-0 text-primary" />
                 <div>
-                  <p className=" text-sm font-bold uppercase">
+                  <p className="text-sm font-bold uppercase text-ink">
                     {t('dashboard.createResume')}
                   </p>
-                  <p className=" text-xs opacity-70 mt-0.5">AI-tailored for a job</p>
+                  <p className="text-xs text-steel-grey mt-0.5">AI-tailored for a job</p>
                 </div>
               </div>
             </Link>
             <Link href="/job-scraper">
-              <div className="rounded-xl border border-ink p-5 flex items-center gap-4 bg-success text-white hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none shadow-sw-sm transition-all">
-                <Search className="w-5 h-5 shrink-0" />
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <Search className="w-5 h-5 shrink-0 text-primary" />
                 <div>
-                  <p className=" text-sm font-bold uppercase">Scrape Jobs</p>
-                  <p className=" text-xs opacity-70 mt-0.5">Find opportunities</p>
+                  <p className="text-sm font-bold uppercase text-ink">Scrape Jobs</p>
+                  <p className="text-xs text-steel-grey mt-0.5">Find opportunities</p>
                 </div>
               </div>
             </Link>
             <Link href="/companies">
-              <div className="rounded-xl border border-ink p-5 flex items-center gap-4 bg-warning text-white hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none shadow-sw-sm transition-all">
-                <Building2 className="w-5 h-5 shrink-0" />
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <Building2 className="w-5 h-5 shrink-0 text-primary" />
                 <div>
-                  <p className=" text-sm font-bold uppercase">Company Tracker</p>
-                  <p className=" text-xs opacity-70 mt-0.5">Track companies</p>
+                  <p className="text-sm font-bold uppercase text-ink">Company Tracker</p>
+                  <p className="text-xs text-steel-grey mt-0.5">Track companies</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/contacts">
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <Users className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">{t('nav.contacts')}</p>
+                  <p className="text-xs text-steel-grey mt-0.5">Manage your contacts</p>
                 </div>
               </div>
             </Link>
@@ -630,6 +646,15 @@ const colors = [
           onConfirm={confirmDeleteAndReupload}
           variant="danger"
         />
+
+        {/* Floating AI Chat */}
+        <Link
+          href="/chat"
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full bg-primary text-white px-5 py-3.5 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all"
+        >
+          <Sparkles className="w-5 h-5" />
+          <span className="text-xs font-bold uppercase">{t('nav.chat')}</span>
+        </Link>
       </div>
     </div>
   );

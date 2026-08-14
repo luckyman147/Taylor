@@ -24,6 +24,8 @@ export interface Application {
   role: string | null;
   applied_at: string | null;
   notes: string | null;
+  rejection_reason: string | null;
+  interview_rounds: number | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -57,6 +59,8 @@ export interface ApplicationUpdate {
   company?: string;
   role?: string;
   applied_at?: string;
+  rejection_reason?: string | null;
+  interview_rounds?: number | null;
 }
 
 export interface ApplicationActionResponse {

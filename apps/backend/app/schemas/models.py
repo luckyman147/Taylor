@@ -107,6 +107,47 @@ def _coerce_string_list(value: Any) -> list[str]:
     return [coerced] if coerced else []
 
 
+def _split_list_entries(value: str) -> list[str]:
+    """Split a string into list entries on commas/semicolons.
+
+    Commas inside parentheses (e.g. "PHP (Laravel, Symfony)") are preserved.
+    Empty parts are dropped and entries are deduplicated case-insensitively,
+    keeping the first occurrence's casing.
+    """
+    if not value:
+        return []
+
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for char in value:
+        if char in "([":
+            depth += 1
+            current.append(char)
+        elif char in ")]":
+            depth = max(0, depth - 1)
+            current.append(char)
+        elif char in ",;" and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    parts.append("".join(current))
+
+    seen: set[str] = set()
+    entries: list[str] = []
+    for part in parts:
+        entry = part.strip()
+        if not entry:
+            continue
+        key = entry.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        entries.append(entry)
+    return entries
+
+
 def _coerce_description_styles(value: Any) -> list[Literal["bullet", "plain"]]:
     """Coerce description style values into supported row styles."""
     if not isinstance(value, list):
@@ -245,7 +286,17 @@ class AdditionalInfo(BaseModel):
     )
     @classmethod
     def _normalize_string_fields(cls, value: Any) -> list[str]:
-        return _coerce_string_list(value)
+        items = _coerce_string_list(value)
+        entries: list[str] = []
+        seen: set[str] = set()
+        for item in items:
+            for entry in _split_list_entries(item):
+                key = entry.casefold()
+                if key in seen:
+                    continue
+                seen.add(key)
+                entries.append(entry)
+        return entries
 
 
 # Section Metadata Models for dynamic section management

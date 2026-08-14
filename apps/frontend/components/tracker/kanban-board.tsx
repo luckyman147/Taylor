@@ -16,6 +16,7 @@ import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import FolderKanban from 'lucide-react/dist/esm/icons/folder-kanban';
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/lib/i18n';
 import {
@@ -32,6 +33,7 @@ import { KanbanColumn } from './kanban-column';
 import { BulkActionBar } from './bulk-action-bar';
 import { CardDetailModal } from './card-detail-modal';
 import { ManualAddApplicationDialog } from './manual-add-application-dialog';
+import { OverviewSection } from './overview-section';
 import { planMove } from './reorder';
 import { STATUS_DOT } from './status-colors';
 
@@ -55,6 +57,7 @@ export function KanbanBoard() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [manualAddOpen, setManualAddOpen] = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
 
   // Horizontal-scroll affordance: the seven stages overflow the canvas, so we
   // track whether more columns sit off-screen and surface controls + a stage
@@ -225,6 +228,17 @@ export function KanbanBoard() {
               </div>
             )}
             <Button
+              onClick={() => setShowOverview((v) => !v)}
+              className={
+                showOverview
+                  ? 'border-white bg-white text-primary hover:bg-blue-50 hover:border-white'
+                  : 'border-white/30 bg-white/10 text-white backdrop-blur transition-all hover:border-white/40 hover:bg-white/20'
+              }
+            >
+              <BarChart3 className="h-4 w-4" />
+              {showOverview ? t('tracker.hideOverview') : t('tracker.showOverview')}
+            </Button>
+            <Button
               onClick={() => setManualAddOpen(true)}
               className="border-white bg-white text-primary hover:bg-blue-50 hover:border-white"
             >
@@ -238,6 +252,14 @@ export function KanbanBoard() {
       {error && (
         <div className="mx-6 mb-2 shrink-0 rounded-xl border border-destructive/30 bg-[#fdf3f2] px-4 py-2.5 text-xs font-medium text-destructive md:mx-8">
           {error}
+        </div>
+      )}
+
+      {showOverview && (
+        <div className="shrink-0 border-b border-[#e6e3dc] bg-paper-tint/40 px-6 pt-5 md:px-8">
+          <div className="max-h-[55vh] overflow-y-auto pr-2">
+            <OverviewSection />
+          </div>
         </div>
       )}
 

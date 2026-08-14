@@ -1,5 +1,15 @@
 import * as React from 'react';
-import { Search, FolderKanban, Settings, FileText, Building2, LayoutDashboard, Users } from 'lucide-react';
+import {
+  Search,
+  FolderKanban,
+  Settings,
+  FileText,
+  Building2,
+  LayoutDashboard,
+  Users,
+  UserRound,
+  Sparkles,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -17,7 +27,9 @@ interface SidebarNavProps {
     | 'resumes'
     | 'resume-wizard'
     | 'companies'
-    | 'contacts';
+    | 'contacts'
+    | 'profile'
+    | 'chat';
   onNavigate?: (page: string) => void;
 }
 
@@ -41,6 +53,8 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ currentPage, onNavigate }) => {
     { key: 'tracker', label: 'jobTracking', icon: FolderKanban, route: '/tracker' },
     { key: 'companies', label: 'companies', icon: Building2, route: '/companies' },
     { key: 'contacts', label: 'contacts', icon: Users, route: '/contacts' },
+    { key: 'profile', label: 'profile', icon: UserRound, route: '/profile' },
+    { key: 'chat', label: 'chat', icon: Sparkles, route: '/chat' },
     { key: 'tailor', label: 'resumeBuilder', icon: FileText, route: '/builder' },
     { key: 'settings', label: 'settings', icon: Settings, route: '/settings' },
   ];

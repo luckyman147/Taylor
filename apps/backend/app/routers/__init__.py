@@ -10,6 +10,7 @@ from app.routers.health import router as health_router
 from app.routers.jobs import router as jobs_router
 from app.routers.job_scraper import router as job_scraper_router
 from app.routers.mcp import router as mcp_router
+from app.routers.profile import router as profile_router
 from app.routers.resume_wizard import router as resume_wizard_router
 from app.routers.resumes import router as resumes_router
 
@@ -26,4 +27,5 @@ __all__ = [
     "mcp_router",
     "job_scraper_router",
     "github_router",
+    "profile_router",
 ]

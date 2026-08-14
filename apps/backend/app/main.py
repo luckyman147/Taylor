@@ -29,6 +29,7 @@ from app.routers import (
     jobs_router,
     job_scraper_router,
     mcp_router,
+    profile_router,
     resume_wizard_router,
     resumes_router,
 )
@@ -104,6 +105,7 @@ app.include_router(resume_wizard_router, prefix="/api/v1")
 app.include_router(mcp_router, prefix="/api/v1")
 app.include_router(job_scraper_router, prefix="/api/v1")
 app.include_router(github_router, prefix="/api/v1")
+app.include_router(profile_router, prefix="/api/v1")
 
 
 @app.get("/")

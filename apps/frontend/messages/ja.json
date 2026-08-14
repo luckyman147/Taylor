@@ -50,7 +50,9 @@
     "jobTracking": "Job Tracking",
     "resumeBuilder": "Resume Builder",
     "companies": "Company Tracker",
-    "contacts": "Contact Tracker"
+    "contacts": "Contact Tracker",
+    "profile": "My Profile",
+    "chat": "AIチャット"
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -1124,6 +1126,8 @@
     "title": "応募トラッカー",
     "subtitle": "各カスタマイズ済み履歴書の選考状況を管理します。",
     "addApplication": "応募を追加",
+    "showOverview": "概要",
+    "hideOverview": "概要を隠す",
     "columns": {
       "saved": "保存済み",
       "applied": "応募済み",
@@ -1153,7 +1157,11 @@
       "saveNotes": "メモを保存",
       "resumeUnavailable": "応募した履歴書は利用できなくなりました。",
       "loadFailed": "この応募を読み込めませんでした。",
-      "editResume": "履歴書を編集"
+      "editResume": "履歴書を編集",
+      "rejectionReason": "Rejection reason (for AI career insights)",
+      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
+      "interviewRounds": "Interview rounds",
+      "interviewRoundsPlaceholder": "e.g. 2"
     },
     "bulk": {
       "selected": "{count} 件選択中",
@@ -1474,5 +1482,184 @@
       "skillGaps": "スキルギャップ",
       "talkingPoints": "話すべき要点"
     }
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "header": {
+      "sourceFrom": "元の履歴書"
+    },
+    "currentLocation": {
+      "title": "現在の居住地",
+      "placeholder": "例: 東京、日本"
+    },
+    "workExperience": {
+      "title": "職歴",
+      "empty": "職歴がまだありません。エントリを追加するか、履歴書からインポートしてください。",
+      "add": "エントリを追加",
+      "edit": "編集",
+      "delete": "削除",
+      "deleteTitle": "このエントリを削除しますか？",
+      "deleteDescription": "この操作は元に戻せません。",
+      "addTitle": "職歴を追加",
+      "editTitle": "職歴を編集",
+      "formDescription": "このエントリはキャリアアドバイザーが使用し、履歴書からインポートできます。",
+      "role": "役職 / 肩書き",
+      "company": "会社",
+      "location": "勤務地",
+      "years": "期間",
+      "description": "実績",
+      "descriptionPlaceholder": "1行に1つの箇条書き",
+      "roleRequired": "役職または会社を入力してください。",
+      "save": "エントリを保存"
+    },
+    "github": {
+      "title": "GitHub リポジトリ",
+      "loading": "GitHub の状態を読み込み中…",
+      "connectHint": "GitHub アカウントを接続すると、リポジトリを確認し、オープンソースへの貢献に合わせて履歴書を調整できます。",
+      "connect": "GitHub に接続",
+      "useToken": "個人アクセストークンを使用",
+      "tokenLabel": "個人アクセストークン",
+      "tokenHelpStart": "作成場所:",
+      "tokenHelpEnd": "（repo + user スコープ）",
+      "tokenSubmit": "接続",
+      "connectedAs": "接続ユーザー",
+      "repositories": "リポジトリ",
+      "disconnect": "切断",
+      "noDescription": "説明なし",
+      "showReadme": "README を表示",
+      "hideReadme": "README を隠す"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "skillRoi": "Skill ROI"
+    },
+    "overview": {
+      "totalApplications": "Total applications",
+      "rejectionRate": "Rejection rate",
+      "rejectionRateHint": "Rejected ÷ advanced applications",
+      "appliedToInterview": "Applied → Interview",
+      "interviewToAccepted": "Interview → Accepted",
+      "medianDaysToInterview": "Median days to interview",
+      "medianDaysHint": "Across interview-stage applications",
+      "llmInsights": "AI Insights",
+      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
+      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
+    },
+    "languages": {
+      "title": "言語",
+      "add": "追加",
+      "empty": "言語はまだありません。",
+      "placeholder": "例: 日本語、英語"
+    },
+    "awards": {
+      "title": "栄誉・受賞歴",
+      "add": "追加",
+      "empty": "栄誉・受賞歴はまだありません。",
+      "placeholder": "例: 成績優秀者"
+    },
+    "form": {
+      "provision": "Automatic setup",
+      "seedHint": "マスター履歴書から氏名、連絡先、要約、スキル、職歴、言語、受賞歴をコピーします。",
+      "seeded": "マスター履歴書からプロフィールをインポートしました。",
+      "saved": "Profile saved.",
+      "personalInfo": "Personal info",
+      "name": "Full name",
+      "title": "Job title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "summary": "Professional summary",
+      "careerGoals": "Career goals",
+      "targetRoles": "Target roles",
+      "targetLocations": "Target locations",
+      "salaryMin": "Target salary min",
+      "salaryMax": "Target salary max",
+      "seedFromMaster": "マスター履歴書からインポート",
+      "tagPlaceholder": "入力して Enter を押す",
+      "uploadDesktop": "デスクトップからアップロード",
+      "uploaded": "履歴書をアップロードしました。",
+      "save": "Save profile"
+    },
+    "skills": {
+      "title": "Skills",
+      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
+      "add": "Add skill",
+      "edit": "Edit skill",
+      "delete": "Delete skill",
+      "deleteTitle": "Delete this skill?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add skill",
+      "editTitle": "Edit skill",
+      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
+      "name": "Skill name",
+      "nameRequired": "Skill name is required.",
+      "category": "Category",
+      "proficiency": "Proficiency (1–5)",
+      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
+      "yearsExperience": "Years of experience",
+      "lastUsed": "Last used",
+      "optional": "Optional",
+      "save": "Save skill"
+    },
+    "certifications": {
+      "title": "Certifications",
+      "empty": "No certifications yet.",
+      "add": "Add certification",
+      "edit": "Edit certification",
+      "delete": "Delete certification",
+      "deleteTitle": "Delete this certification?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add certification",
+      "editTitle": "Edit certification",
+      "formDescription": "Certifications strengthen your career advisor memory.",
+      "name": "Certification name",
+      "nameRequired": "Certification name is required.",
+      "issuer": "Issuer",
+      "dateObtained": "Date obtained",
+      "invalidDate": "Use YYYY or YYYY-MM.",
+      "url": "Credential URL",
+      "optional": "Optional",
+      "save": "Save certification"
+    },
+    "roi": {
+      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
+      "refresh": "Refresh",
+      "getAdvice": "Ask AI what to learn",
+      "skill": "Skill",
+      "jobsUnlocked": "Jobs unlocked",
+      "salaryImpact": "Salary impact",
+      "learningEffort": "Learning effort",
+      "roiScore": "ROI score",
+      "noData": "—",
+      "effort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
+      "advice": "AI Recommendation"
+    },
+    "chat": {
+      "title": "Career Advisor",
+      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
+      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
+      "suggestions": {
+        "q1": "Why am I getting rejected?",
+        "q2": "Which skill should I learn next?",
+        "q3": "How can I improve my interview-to-accepted rate?",
+        "q4": "What salary should I target?"
+      }
+    }
   }
 }
+
+
+
+
+
+
+

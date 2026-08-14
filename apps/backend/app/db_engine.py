@@ -95,3 +95,33 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN address TEXT")
             if "status" not in company_col_names:
                 conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN status TEXT")
+
+        # Rejection-learning columns on applications (career insights).
+        application_columns = conn.exec_driver_sql("PRAGMA table_info(applications)").mappings().all()
+        if application_columns:
+            application_col_names = {column["name"] for column in application_columns}
+            if "rejection_reason" not in application_col_names:
+                conn.exec_driver_sql("ALTER TABLE applications ADD COLUMN rejection_reason TEXT")
+            if "interview_rounds" not in application_col_names:
+                conn.exec_driver_sql("ALTER TABLE applications ADD COLUMN interview_rounds INTEGER")
+
+        # Career-profile columns (work experience + resume-import reference).
+        profile_columns = conn.exec_driver_sql("PRAGMA table_info(career_profiles)").mappings().all()
+        if profile_columns:
+            profile_col_names = {column["name"] for column in profile_columns}
+            if "work_experience" not in profile_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN work_experience TEXT")
+            if "source_resume_id" not in profile_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN source_resume_id TEXT")
+            if "source_resume_title" not in profile_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN source_resume_title TEXT")
+            if "languages" not in profile_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN languages TEXT")
+            if "awards" not in profile_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN awards TEXT")
+            # Pre-existing rows have NULL in the new JSON columns after ALTER;
+            # normalize so the API never sees a None where a list is expected.
+            for column in ("work_experience", "languages", "awards"):
+                conn.exec_driver_sql(
+                    f"UPDATE career_profiles SET {column} = '[]' WHERE {column} IS NULL"
+                )

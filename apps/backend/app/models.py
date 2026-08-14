@@ -105,6 +105,9 @@ class Application(Base):
     role: Mapped[str | None] = mapped_column(String, nullable=True)
     applied_at: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Rejection-learning fields (opt-in, powers career insights).
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interview_rounds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
@@ -171,6 +174,74 @@ class ApiKey(Base):
 
     provider: Mapped[str] = mapped_column(String, primary_key=True)
     ciphertext: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class CareerProfile(Base):
+    """The user's single-row career profile (My Profile page).
+
+    ``career_goals`` / ``target_roles`` / ``target_locations`` store JSON lists
+    of free-text strings. Personal info is seeded from the master resume's
+    ``personalInfo`` but is editable here independently.
+    """
+
+    __tablename__ = "career_profiles"
+
+    profile_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    title: Mapped[str | None] = mapped_column(String, nullable=True)
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    website: Mapped[str | None] = mapped_column(String, nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String, nullable=True)
+    github: Mapped[str | None] = mapped_column(String, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    career_goals: Mapped[list] = mapped_column(JSON, default=list)
+    target_roles: Mapped[list] = mapped_column(JSON, default=list)
+    target_locations: Mapped[list] = mapped_column(JSON, default=list)
+    target_salary_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_salary_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    work_experience: Mapped[list] = mapped_column(JSON, default=list)
+    languages: Mapped[list] = mapped_column(JSON, default=list)
+    awards: Mapped[list] = mapped_column(JSON, default=list)
+    source_resume_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_resume_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class CareerSkill(Base):
+    """A skill on the user's career profile.
+
+    ``proficiency`` is 1-5; ``last_used`` is a "YYYY" or "YYYY-MM" string.
+    ``name`` is unique (case-insensitively enforced by the facade) so a skill
+    can't be added twice.
+    """
+
+    __tablename__ = "career_skills"
+
+    skill_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    category: Mapped[str | None] = mapped_column(String, nullable=True)
+    proficiency: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    years_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_used: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class CareerCertification(Base):
+    """A certification listed on the user's career profile."""
+
+    __tablename__ = "career_certifications"
+
+    certification_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    issuer: Mapped[str | None] = mapped_column(String, nullable=True)
+    date_obtained: Mapped[str | None] = mapped_column(String, nullable=True)
+    url: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
 

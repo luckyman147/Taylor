@@ -50,7 +50,9 @@
     "jobTracking": "Job Tracking",
     "resumeBuilder": "Resume Builder",
     "companies": "Company Tracker",
-    "contacts": "Contact Tracker"
+    "contacts": "Contact Tracker",
+    "profile": "My Profile",
+    "chat": "AI Chat"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1124,6 +1126,8 @@
     "title": "Application Tracker",
     "subtitle": "Track where each tailored resume stands in your pipeline.",
     "addApplication": "Add Application",
+    "showOverview": "Overview",
+    "hideOverview": "Hide Overview",
     "columns": {
       "saved": "Saved",
       "applied": "Applied",
@@ -1150,6 +1154,10 @@
       "noJobDescription": "No job description on file.",
       "notes": "Notes",
       "notesPlaceholder": "Add notes about this application…",
+      "rejectionReason": "Rejection reason (for AI career insights)",
+      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
+      "interviewRounds": "Interview rounds",
+      "interviewRoundsPlaceholder": "e.g. 2",
       "saveNotes": "Save notes",
       "resumeUnavailable": "The applied resume is no longer available.",
       "loadFailed": "Could not load this application.",
@@ -1474,5 +1482,188 @@
       "skillGaps": "Skill Gaps",
       "talkingPoints": "Talking Points"
     }
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "header": {
+      "sourceFrom": "From resume"
+    },
+    "currentLocation": {
+      "title": "Current Location",
+      "placeholder": "e.g. Tunis, Tunisia"
+    },
+    "workExperience": {
+      "title": "Work experience",
+      "empty": "No work experience yet. Add entries or import them from a resume.",
+      "add": "Add entry",
+      "edit": "Edit entry",
+      "delete": "Delete entry",
+      "deleteTitle": "Delete this entry?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add work experience",
+      "editTitle": "Edit work experience",
+      "formDescription": "Entries are used by the career advisor and can be imported from a resume.",
+      "role": "Role / title",
+      "company": "Company",
+      "location": "Location",
+      "years": "Years",
+      "description": "Achievements",
+      "descriptionPlaceholder": "One bullet point per line",
+      "roleRequired": "Enter a role or a company.",
+      "save": "Save entry"
+    },
+    "github": {
+      "title": "GitHub repositories",
+      "loading": "Loading GitHub status...",
+      "connectHint": "Connect your GitHub account to view repositories and tailor resumes for open-source contributions.",
+      "connect": "Connect GitHub",
+      "useToken": "Use Personal Access Token",
+      "tokenLabel": "Personal Access Token",
+      "tokenHelpStart": "Create at",
+      "tokenHelpEnd": "with repo + user scopes",
+      "tokenSubmit": "Connect",
+      "connectedAs": "Connected as",
+      "repositories": "repositories",
+      "disconnect": "Disconnect",
+      "noDescription": "No description",
+      "showReadme": "Show README",
+      "hideReadme": "Hide README"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "skillRoi": "Skill ROI"
+    },
+    "overview": {
+      "totalApplications": "Total applications",
+      "rejectionRate": "Rejection rate",
+      "rejectionRateHint": "Rejected ÷ advanced applications",
+      "appliedToInterview": "Applied → Interview",
+      "interviewToAccepted": "Interview → Accepted",
+      "medianDaysToInterview": "Median days to interview",
+      "medianDaysHint": "Across interview-stage applications",
+      "llmInsights": "AI Insights",
+      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
+      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
+    },
+    "languages": {
+      "title": "Languages",
+      "add": "Add",
+      "empty": "No languages yet.",
+      "placeholder": "e.g. English, French"
+    },
+    "awards": {
+      "title": "Honors & Awards",
+      "add": "Add",
+      "empty": "No honors or awards yet.",
+      "placeholder": "e.g. Dean's List"
+    },
+    "form": {
+      "provision": "Automatic setup",
+      "seedHint": "Copy your name, contact info, summary, skills, work experience, languages and awards from your master resume.",
+      "seeded": "Profile imported from the master resume.",
+      "saved": "Profile saved.",
+      "personalInfo": "Personal info",
+      "name": "Full name",
+      "title": "Job title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "summary": "Professional summary",
+      "careerGoals": "Career goals",
+      "targetRoles": "Target roles",
+      "targetLocations": "Target locations",
+      "salaryMin": "Target salary min",
+      "salaryMax": "Target salary max",
+      "seedFromMaster": "Import from master resume",
+      "tagPlaceholder": "Type and press Enter",
+      "uploadDesktop": "Upload from desktop",
+      "uploaded": "Resume uploaded.",
+      "save": "Save profile"
+    },
+    "skills": {
+      "title": "Skills",
+      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
+      "add": "Add skill",
+      "edit": "Edit skill",
+      "delete": "Delete skill",
+      "deleteTitle": "Delete this skill?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add skill",
+      "editTitle": "Edit skill",
+      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
+      "name": "Skill name",
+      "nameRequired": "Skill name is required.",
+      "category": "Category",
+      "proficiency": "Proficiency (1–5)",
+      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
+      "yearsExperience": "Years of experience",
+      "lastUsed": "Last used",
+      "optional": "Optional",
+      "save": "Save skill"
+    },
+    "certifications": {
+      "title": "Certifications",
+      "empty": "No certifications yet.",
+      "add": "Add certification",
+      "edit": "Edit certification",
+      "delete": "Delete certification",
+      "deleteTitle": "Delete this certification?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add certification",
+      "editTitle": "Edit certification",
+      "formDescription": "Certifications strengthen your career advisor memory.",
+      "name": "Certification name",
+      "nameRequired": "Certification name is required.",
+      "issuer": "Issuer",
+      "dateObtained": "Date obtained",
+      "invalidDate": "Use YYYY or YYYY-MM.",
+      "url": "Credential URL",
+      "optional": "Optional",
+      "save": "Save certification"
+    },
+    "roi": {
+      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
+      "refresh": "Refresh",
+      "getAdvice": "Ask AI what to learn",
+      "skill": "Skill",
+      "jobsUnlocked": "Jobs unlocked",
+      "salaryImpact": "Salary impact",
+      "learningEffort": "Learning effort",
+      "roiScore": "ROI score",
+      "noData": "—",
+      "effort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
+      "advice": "AI Recommendation"
+    },
+    "chat": {
+      "title": "Career Advisor",
+      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
+      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
+      "suggestions": {
+        "q1": "Why am I getting rejected?",
+        "q2": "Which skill should I learn next?",
+        "q3": "How can I improve my interview-to-accepted rate?",
+        "q4": "What salary should I target?"
+      }
+    }
   }
 }
+
+
+
+
+
+
+
+
+
+
+

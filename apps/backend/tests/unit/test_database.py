@@ -95,6 +95,94 @@ class TestResumeCrud:
             engine.dispose()
 
 
+class TestCareerProfileColumns:
+    async def test_work_experience_and_source_reference_round_trip(self, db):
+        entry = {
+            "role": "Backend Engineer",
+            "company": "Acme",
+            "location": "Berlin",
+            "years": "2021-2024",
+            "description": ["Built the API platform", "Cut latency 40%"],
+        }
+        await db.update_career_profile(
+            {
+                "work_experience": [entry],
+                "languages": ["English", "French"],
+                "awards": ["Employee of the Year"],
+                "source_resume_id": "r-src-1",
+                "source_resume_title": "CV 2026",
+            }
+        )
+        profile = await db.get_career_profile()
+        assert profile is not None
+        assert profile["work_experience"] == [entry]
+        assert profile["languages"] == ["English", "French"]
+        assert profile["awards"] == ["Employee of the Year"]
+        assert profile["source_resume_id"] == "r-src-1"
+        assert profile["source_resume_title"] == "CV 2026"
+
+    async def test_work_experience_clears_with_empty_list(self, db):
+        await db.update_career_profile({"work_experience": [{"role": "Dev"}]})
+        await db.update_career_profile({"work_experience": []})
+        profile = await db.get_career_profile()
+        assert profile is not None
+        assert profile["work_experience"] == []
+
+    def test_career_profile_migration_is_idempotent(self, tmp_path):
+        engine = make_sync_engine(tmp_path / "old.db")
+        try:
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE career_profiles (
+                        profile_id TEXT PRIMARY KEY,
+                        name TEXT,
+                        target_salary_min INTEGER,
+                        target_salary_max INTEGER
+                    )
+                    """
+                )
+
+            init_models_sync(engine)
+            init_models_sync(engine)
+
+            with engine.begin() as conn:
+                columns = conn.exec_driver_sql(
+                    "PRAGMA table_info(career_profiles)"
+                ).mappings().all()
+            names = [column["name"] for column in columns]
+            assert names.count("work_experience") == 1
+            assert names.count("source_resume_id") == 1
+            assert names.count("source_resume_title") == 1
+            assert names.count("languages") == 1
+            assert names.count("awards") == 1
+
+            # Pre-migration rows keep NULL in the new columns; re-running the
+            # migration must backfill them to an empty JSON array.
+            conn = engine.connect()
+            try:
+                conn.exec_driver_sql(
+                    "INSERT INTO career_profiles "
+                    "(profile_id, target_salary_min) VALUES ('legacy-1', 120000)"
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            init_models_sync(engine)
+            with engine.connect() as conn:
+                row = conn.exec_driver_sql(
+                    "SELECT work_experience, languages, awards, source_resume_id "
+                    "FROM career_profiles WHERE profile_id = 'legacy-1'"
+                ).mappings().first()
+            assert row is not None
+            assert row["work_experience"] == "[]"
+            assert row["languages"] == "[]"
+            assert row["awards"] == "[]"
+            assert row["source_resume_id"] is None
+        finally:
+            engine.dispose()
+
+
 class TestMasterResume:
     async def test_no_master_initially(self, db):
         assert await db.get_master_resume() is None

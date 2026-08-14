@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslations } from '@/lib/i18n';
 import { getApplicationDetail, updateApplication, type ApplicationDetail } from '@/lib/api/tracker';
@@ -37,6 +38,8 @@ export function CardDetailModal({
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [interviewRounds, setInterviewRounds] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
 
@@ -52,6 +55,12 @@ export function CardDetailModal({
         if (cancelled) return;
         setDetail(data);
         setNotes(data.notes ?? '');
+        setRejectionReason(data.rejection_reason ?? '');
+        setInterviewRounds(
+          data.interview_rounds !== null && data.interview_rounds !== undefined
+            ? String(data.interview_rounds)
+            : ''
+        );
         setNotesError(null);
       })
       .catch(() => {
@@ -75,7 +84,11 @@ export function CardDetailModal({
     setSavingNotes(true);
     setNotesError(null);
     try {
-      await updateApplication(applicationId, { notes });
+      await updateApplication(applicationId, {
+        notes,
+        rejection_reason: rejectionReason.trim() || null,
+        interview_rounds: interviewRounds.trim() === '' ? null : Number(interviewRounds),
+      });
       onUpdated();
     } catch {
       // Show a generic message — never echo raw backend error text inline,
@@ -121,6 +134,31 @@ export function CardDetailModal({
               <Label>{t('tracker.modal.jobDescription')}</Label>
               <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl border border-[#e6e3dc] bg-background p-3 text-sm">
                 {detail.job_content || t('tracker.modal.noJobDescription')}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="card-rejection-reason">{t('tracker.modal.rejectionReason')}</Label>
+                <Textarea
+                  id="card-rejection-reason"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  onKeyDown={handleNotesKeyDown}
+                  placeholder={t('tracker.modal.rejectionReasonPlaceholder')}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="card-interview-rounds">{t('tracker.modal.interviewRounds')}</Label>
+                <Input
+                  id="card-interview-rounds"
+                  type="number"
+                  min={0}
+                  value={interviewRounds}
+                  onChange={(e) => setInterviewRounds(e.target.value)}
+                  placeholder={t('tracker.modal.interviewRoundsPlaceholder')}
+                />
               </div>
             </div>
 

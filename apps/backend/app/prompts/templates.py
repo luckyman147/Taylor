@@ -181,6 +181,7 @@ Rules:
 - Normalize date separators: "2020-2021" → "2020 - 2021", "Current"/"Ongoing" → "Present". Do NOT discard months.
 - For ambiguous dates like "3 years experience", infer approximate years from context or use "~YYYY"
 - Flag overlapping dates (concurrent roles) by preserving both, don't merge
+- Split comma-separated or semicolon-separated items in technicalSkills, languages, certificationsTraining, and awards into separate list entries, one per item (e.g. "Angular, React" becomes two entries). Do not split commas inside parentheses (e.g. keep "PHP (Laravel, Symfony)" as one entry).
 
 Resume to parse:
 {resume_text}"""
@@ -604,3 +605,47 @@ Output this exact JSON format, nothing else:
   ],
   "strategy_notes": "brief summary of the tailoring approach"
 }}"""
+
+
+# Career profile / personal career LLM prompts ---------------------------------
+
+CAREER_ADVISOR_SYSTEM_PROMPT = (
+    "You are Taylor's personal career advisor. You are precise, honest, and "
+    "grounded in the provided career memory."
+)
+
+CAREER_ADVISOR_PROMPT = """You are a personal career advisor. The user's complete career memory is provided below; it is the ONLY ground truth about their career. Base every answer strictly on it, and say so when a question cannot be answered from the memory.
+
+CAREER MEMORY (JSON):
+{career_memory}
+
+Answer the question in {output_language}.
+Rules:
+- Ground every claim in the career memory; never invent experience, skills, applications or outcomes.
+- Prefer concrete, actionable advice over generic tips.
+- Answer in Markdown: short sections with bullet points when the answer has multiple parts.
+- When asked about rejections, work from the funnel statistics and rejection reasons in the memory.
+
+QUESTION:
+{question}"""
+
+CAREER_GAP_ANALYSIS_PROMPT = """You are a career analyst reviewing the user's job-search data. Use the career memory below as the only source of truth.
+
+CAREER MEMORY (JSON):
+{career_memory}
+
+FUNNEL STATISTICS (JSON):
+{funnel_stats}
+
+Write a rejection-learning analysis in {output_language} as Markdown with these sections:
+1. "Pattern" - what the funnel numbers say (conversion rates, biggest drop-off point).
+2. "Recurring gaps" - skills or qualifications that appear in rejected applications / job descriptions but are missing or weak in the user's resume or skills list. Name the most concrete recurring gap first.
+3. "Recommendations" - 2-4 specific, actionable next steps ranked by expected impact.
+Keep the whole analysis under 350 words. Never invent data that is not in the memory."""
+
+CAREER_ROI_ADVICE_PROMPT = """You are a career advisor. Below is the ROI table computed over the user's saved job pool: each skill shows the share of their target jobs that mention it (jobs unlocked), the salary impact vs the pool median, learning effort, how much they already know, and a 0-100 ROI score.
+
+ROI TABLE (Markdown):
+{roi_table}
+
+Write a short recommendation in {output_language} (one Markdown paragraph plus one bullet list of 2-3 follow-up skills): which skill the user should learn NEXT, why it wins on ROI, and how it connects to their existing knowledge. Be specific; never invent job-market numbers."""

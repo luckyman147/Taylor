@@ -179,3 +179,65 @@ DELETE /api/v1/companies/{id} # db.delete_company()
 | `company_type` | string enum | `startup \| agency \| enterprise \| nonprofit \| education \| government \| other` |
 | `year_founded` | int | validated 1600–2100 |
 | `email`/`website`/`linkedin_url` | string | stored plain; linked client-side |
+
+## Career Profile (`/profile`)
+
+```
+GET /api/v1/profile
+├── db.get_career_profile()    # auto-creates an empty row on first visit
+├── db.list_career_skills() / db.list_career_certifications()
+└── Return {profile, skills, certifications}
+
+PUT /api/v1/profile            # upsert; creates the row when absent
+└── db.update_career_profile() # editable: contact fields, summary, career_goals,
+                               #   target_roles/locations, target_salary_min/max
+
+POST /api/v1/profile/seed-from-master
+├── db.get_master_resume()     # 404 without a master
+└── db.update_career_profile() # copies name/title/email/phone/location/website/
+                               #   linkedin/github from processed_data.personalInfo
+
+POST /api/v1/profile/skills    # 201; 409 on case-insensitive duplicate name
+└── db.create_career_skill()
+PATCH /api/v1/profile/skills/{id}   # db.update_career_skill(); 409 rename-onto-duplicate; 404 unknown
+DELETE /api/v1/profile/skills/{id}  # db.delete_career_skill() → {message, affected}
+
+POST /api/v1/profile/certifications       # 201; db.create_career_certification()
+PATCH /api/v1/profile/certifications/{id} # db.update_career_certification(); 404 unknown
+DELETE /api/v1/profile/certifications/{id}# db.delete_career_certification() → {message, affected}
+
+GET /api/v1/profile/memory
+├── services/career_profile.build_career_memory()   # no LLM; pure aggregation
+│   ├── master resume (≤6000 chars) + profile + skills + certifications
+│   ├── compute_funnel_stats(applications)          # deterministic
+│   ├── last 20 rejected applications (company/role/reason)
+│   ├── ≤25 non-archived scraped jobs (title/company/location/url)
+│   ├── ≤50 contacts
+│   └── ≤10 GitHub repos via routers.github._get_token()/_github_api()
+└── Return {profile, master_resume, skills, certifications, funnel,
+            rejected_applications, scraped_jobs, contacts, github_repos}
+
+POST /api/v1/profile/ask      # {question, history ≤8}
+├── [503 if no LLM key configured]
+├── CAREER_ADVISOR_PROMPT.format(career_memory ≤35k chars, sanitized question, output_language)
+├── complete(system_prompt=CAREER_ADVISOR_SYSTEM_PROMPT, max_tokens=4096)
+└── Return {answer}           # Markdown
+
+GET /api/v1/profile/insights
+├── build_career_memory() → funnel stats (always)
+├── [LLM off → narrative: null] generate_gap_analysis() → CAREER_GAP_ANALYSIS_PROMPT
+└── Return {stats, narrative}
+
+POST /api/v1/profile/skill-roi  # {skills?, include_advice?} — no LLM required
+├── db.list_scraped_jobs_for_analysis()   # non-archived jobs with descriptions
+├── compute_skill_roi(jobs, profile_skills, skills)   # pure, deterministic
+│   ├── default: catalog skills in the job pool missing from the profile
+│   ├── ROI = 0.35·jobs_unlocked% + 0.25·salary + 0.20·learning ease + 0.20·existing
+│   └── salary impact only when ≥3 matching jobs with parsable salary strings
+├── [include_advice and LLM on] generate_roi_advice(top 10 rows)
+└── Return {results, advice, note}
+```
+
+> **Funnel stats** (drives Overview + insights): `rejection_rate = rejected ÷ (applied+no_response+response+interview+accepted+rejected)`; `applied_to_interview_rate = interviewed ÷ applied`; `interview_to_accepted_rate = accepted ÷ interviewed`; `median_days_to_interview` = median `applied_at→updated_at` across interview-stage cards. Null when a denominator is 0.
+>
+> **Tracker enrichment:** applications carry optional `rejection_reason` (text) and `interview_rounds` (int) — set via `PATCH /applications/{id}` (null clears), consumed by the memory bundle and gap analysis. The columns are added on existing databases by an idempotent `ALTER TABLE` migration in `init_models_sync`.

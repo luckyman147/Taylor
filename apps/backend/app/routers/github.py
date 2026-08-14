@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -30,6 +31,35 @@ _TOKEN_FILE = _token_dir / "github_token.json"
 # https://github.com/settings/developers → OAuth Apps → New
 # Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env
 # Fallback: instructions to create a personal access token
+
+# In-process TTL cache for the repos response (the route fans out to ~200
+# GitHub API calls for 100 repos; repos change rarely, so 10 minutes is safe).
+_repos_cache: tuple[float, GitHubReposResponse] | None = None
+_REPOS_CACHE_TTL = 10 * 60.0
+
+
+def _cached_repos() -> GitHubReposResponse | None:
+    """Return the cached repos response if still fresh, else None."""
+    global _repos_cache
+    if _repos_cache is None:
+        return None
+    stamped, response = _repos_cache
+    if time.monotonic() - stamped > _REPOS_CACHE_TTL:
+        _repos_cache = None
+        return None
+    return response
+
+
+def _store_repos_cache(response: GitHubReposResponse) -> None:
+    """Store the repos response with a fresh timestamp."""
+    global _repos_cache
+    _repos_cache = (time.monotonic(), response)
+
+
+def _invalidate_repos_cache() -> None:
+    """Drop the cached repos response (token changed or expired)."""
+    global _repos_cache
+    _repos_cache = None
 
 
 def _load_token() -> dict | None:
@@ -150,6 +180,7 @@ async def github_callback(request: Request) -> dict:
         try:
             user_data = await _github_api("https://api.github.com/user", token)
             _save_token({"access_token": token, "user": user_data.get("login")})
+            _invalidate_repos_cache()
             return {
                 "authenticated": True,
                 "user": user_data.get("login"),
@@ -197,6 +228,7 @@ async def github_callback(request: Request) -> dict:
 
     user_data = await _github_api("https://api.github.com/user", access_token)
     _save_token({"access_token": access_token, "user": user_data.get("login")})
+    _invalidate_repos_cache()
 
     return {
         "authenticated": True,
@@ -209,6 +241,7 @@ async def github_callback(request: Request) -> dict:
 async def github_disconnect() -> dict:
     """Disconnect GitHub — remove stored token."""
     _delete_token()
+    _invalidate_repos_cache()
     return {"authenticated": False, "message": "Disconnected from GitHub"}
 
 
@@ -248,10 +281,19 @@ def _generate_description(name: str, languages: list[str], topics: list[str]) ->
 
 @router.get("/github/repos", response_model=GitHubReposResponse)
 async def github_repos() -> GitHubReposResponse:
-    """Fetch the authenticated user's GitHub repositories with languages and topics."""
+    """Fetch the authenticated user's GitHub repositories with languages and topics.
+
+    Responses are cached in-process for 10 minutes (the fetch fans out to
+    hundreds of GitHub API calls); the cache is invalidated whenever the
+    token changes or expires.
+    """
     token = await _get_token()
     if not token:
         raise HTTPException(status_code=401, detail="Not connected to GitHub")
+
+    cached = _cached_repos()
+    if cached is not None:
+        return cached
 
     try:
         raw_repos = await _github_api(
@@ -336,9 +378,12 @@ async def github_repos() -> GitHubReposResponse:
                     readme=readme,
                 )
             )
-        return GitHubReposResponse(repos=repos, total=len(repos))
+        response = GitHubReposResponse(repos=repos, total=len(repos))
+        _store_repos_cache(response)
+        return response
     except RuntimeError as exc:
         if "401" in str(exc) or "expired" in str(exc).lower():
             _delete_token()
+            _invalidate_repos_cache()
             raise HTTPException(status_code=401, detail="GitHub token expired")
         raise HTTPException(status_code=500, detail=f"Failed to fetch repos: {exc}")

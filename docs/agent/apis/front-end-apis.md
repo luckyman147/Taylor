@@ -82,13 +82,40 @@ The wizard is an AI-led, one-question-at-a-time flow that builds a general maste
 listApplications() → ApplicationListResponse        // { columns: Record<status, Application[]> }
 createApplication(payload: ManualApplicationCreate) → Application   // manual add from a pasted JD
 getApplicationDetail(id: string) → ApplicationDetail               // embedded JD + applied resume (resume null if deleted)
-updateApplication(id: string, payload: ApplicationUpdate) → Application   // status/position/notes/company/role/applied_at
+updateApplication(id: string, payload: ApplicationUpdate) → Application   // status/position/notes/company/role/applied_at/rejection_reason/interview_rounds
 
 // Bulk
 bulkUpdateStatus(applicationIds: string[], status: ApplicationStatus) → ApplicationActionResponse
 deleteApplication(id: string) → void
 bulkDeleteApplications(applicationIds: string[]) → ApplicationActionResponse
 ```
+
+## Career Profile (`lib/api/profile.ts`)
+
+```typescript
+// My Profile page: career memory, skill ROI and the AI career advisor
+getProfile() → ProfileBundle                // { profile, skills, certifications } (auto-creates)
+updateProfile(payload: ProfileUpdate) → CareerProfile       // PUT upsert; comma-joined list fields client-side
+seedProfileFromMaster() → CareerProfile     // copies name/title/contact from the master resume personalInfo
+
+// Skills (case-insensitive name dedupe server-side → 409)
+createSkill(payload: SkillCreate) → CareerSkill             // 201
+updateSkill(id: string, payload: SkillUpdate) → CareerSkill // 409 on duplicate rename
+deleteSkill(id: string) → void
+
+// Certifications
+createCertification(payload: CertificationCreate) → CareerCertification   // 201
+updateCertification(id: string, payload: CertificationUpdate) → CareerCertification
+deleteCertification(id: string) → void
+
+// Career LLM (needs an LLM key configured; /ask → 503 otherwise)
+getCareerMemory() → CareerMemory            // aggregated bundle (debug/reuse)
+askCareerQuestion({ question, history }) → CareerAskResponse  // history ≤ 8 turns; Markdown answer
+getCareerInsights() → CareerInsightsResponse  // { stats: FunnelStats, narrative: string|null }
+getSkillRoi({ skills?, include_advice? }) → CareerRoiResponse // deterministic table + optional LLM advice
+```
+
+> Skills and certifications validate `YYYY` / `YYYY-MM` for `last_used`/`date_obtained` (422) and salaries 0–9,999,999. The ROI table is computed locally from saved scraped jobs; `advice`/`narrative` are `null` when no LLM key is configured.
 
 ## Company Tracker (`lib/api/companies.ts`)
 

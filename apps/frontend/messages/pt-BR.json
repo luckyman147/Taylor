@@ -50,7 +50,9 @@
     "jobTracking": "Job Tracking",
     "resumeBuilder": "Resume Builder",
     "companies": "Company Tracker",
-    "contacts": "Contact Tracker"
+    "contacts": "Contact Tracker",
+    "profile": "My Profile",
+    "chat": "Chat de IA"
   },
   "dashboard": {
     "title": "Painel",
@@ -1124,6 +1126,8 @@
     "title": "Acompanhamento de candidaturas",
     "subtitle": "Acompanhe em que etapa está cada currículo personalizado.",
     "addApplication": "Adicionar candidatura",
+    "showOverview": "Visão geral",
+    "hideOverview": "Ocultar visão geral",
     "columns": {
       "saved": "Salvo",
       "applied": "Enviado",
@@ -1153,7 +1157,11 @@
       "saveNotes": "Salvar notas",
       "resumeUnavailable": "O currículo enviado não está mais disponível.",
       "loadFailed": "Não foi possível carregar esta candidatura.",
-      "editResume": "Editar currículo"
+      "editResume": "Editar currículo",
+      "rejectionReason": "Rejection reason (for AI career insights)",
+      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
+      "interviewRounds": "Interview rounds",
+      "interviewRoundsPlaceholder": "e.g. 2"
     },
     "bulk": {
       "selected": "{count} selecionada(s)",
@@ -1474,5 +1482,184 @@
       "skillGaps": "Lacunas de habilidades",
       "talkingPoints": "Pontos de conversa"
     }
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "header": {
+      "sourceFrom": "Do currículo"
+    },
+    "currentLocation": {
+      "title": "Localização atual",
+      "placeholder": "ex.: São Paulo, Brasil"
+    },
+    "workExperience": {
+      "title": "Experiência profissional",
+      "empty": "Sem experiência ainda. Adicione cargos ou importe de um currículo.",
+      "add": "Adicionar entrada",
+      "edit": "Editar",
+      "delete": "Excluir",
+      "deleteTitle": "Excluir esta entrada?",
+      "deleteDescription": "Esta ação não pode ser desfeita.",
+      "addTitle": "Adicionar experiência profissional",
+      "editTitle": "Editar experiência profissional",
+      "formDescription": "Essas entradas são usadas pelo conselheiro de carreira e podem ser importadas de um currículo.",
+      "role": "Cargo / função",
+      "company": "Empresa",
+      "location": "Local",
+      "years": "Anos",
+      "description": "Conquistas",
+      "descriptionPlaceholder": "Um tópico por linha",
+      "roleRequired": "Informe um cargo ou uma empresa.",
+      "save": "Salvar entrada"
+    },
+    "github": {
+      "title": "Repositórios do GitHub",
+      "loading": "Carregando status do GitHub…",
+      "connectHint": "Conecte sua conta do GitHub para ver repositórios e adaptar currículos a contribuições open source.",
+      "connect": "Conectar GitHub",
+      "useToken": "Usar token de acesso pessoal",
+      "tokenLabel": "Token de acesso pessoal",
+      "tokenHelpStart": "Crie em",
+      "tokenHelpEnd": "com as permissões repo + user",
+      "tokenSubmit": "Conectar",
+      "connectedAs": "Conectado como",
+      "repositories": "repositórios",
+      "disconnect": "Desconectar",
+      "noDescription": "Sem descrição",
+      "showReadme": "Ver README",
+      "hideReadme": "Ocultar README"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "skillRoi": "Skill ROI"
+    },
+    "overview": {
+      "totalApplications": "Total applications",
+      "rejectionRate": "Rejection rate",
+      "rejectionRateHint": "Rejected ÷ advanced applications",
+      "appliedToInterview": "Applied → Interview",
+      "interviewToAccepted": "Interview → Accepted",
+      "medianDaysToInterview": "Median days to interview",
+      "medianDaysHint": "Across interview-stage applications",
+      "llmInsights": "AI Insights",
+      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
+      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
+    },
+    "languages": {
+      "title": "Idiomas",
+      "add": "Adicionar",
+      "empty": "Nenhum idioma ainda.",
+      "placeholder": "ex.: Português, Inglês"
+    },
+    "awards": {
+      "title": "Honrarias e Prêmios",
+      "add": "Adicionar",
+      "empty": "Nenhuma honraria ou prêmio ainda.",
+      "placeholder": "ex.: Destaque acadêmico"
+    },
+    "form": {
+      "provision": "Automatic setup",
+      "seedHint": "Copie seu nome, contato, resumo, habilidades, experiência profissional, idiomas e honrarias do seu currículo principal.",
+      "seeded": "Perfil importado do currículo principal.",
+      "saved": "Profile saved.",
+      "personalInfo": "Personal info",
+      "name": "Full name",
+      "title": "Job title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "summary": "Professional summary",
+      "careerGoals": "Career goals",
+      "targetRoles": "Target roles",
+      "targetLocations": "Target locations",
+      "salaryMin": "Target salary min",
+      "salaryMax": "Target salary max",
+      "seedFromMaster": "Importar do currículo principal",
+      "tagPlaceholder": "Digite e pressione Enter",
+      "uploadDesktop": "Enviar do computador",
+      "uploaded": "Currículo enviado.",
+      "save": "Save profile"
+    },
+    "skills": {
+      "title": "Skills",
+      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
+      "add": "Add skill",
+      "edit": "Edit skill",
+      "delete": "Delete skill",
+      "deleteTitle": "Delete this skill?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add skill",
+      "editTitle": "Edit skill",
+      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
+      "name": "Skill name",
+      "nameRequired": "Skill name is required.",
+      "category": "Category",
+      "proficiency": "Proficiency (1–5)",
+      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
+      "yearsExperience": "Years of experience",
+      "lastUsed": "Last used",
+      "optional": "Optional",
+      "save": "Save skill"
+    },
+    "certifications": {
+      "title": "Certifications",
+      "empty": "No certifications yet.",
+      "add": "Add certification",
+      "edit": "Edit certification",
+      "delete": "Delete certification",
+      "deleteTitle": "Delete this certification?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add certification",
+      "editTitle": "Edit certification",
+      "formDescription": "Certifications strengthen your career advisor memory.",
+      "name": "Certification name",
+      "nameRequired": "Certification name is required.",
+      "issuer": "Issuer",
+      "dateObtained": "Date obtained",
+      "invalidDate": "Use YYYY or YYYY-MM.",
+      "url": "Credential URL",
+      "optional": "Optional",
+      "save": "Save certification"
+    },
+    "roi": {
+      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
+      "refresh": "Refresh",
+      "getAdvice": "Ask AI what to learn",
+      "skill": "Skill",
+      "jobsUnlocked": "Jobs unlocked",
+      "salaryImpact": "Salary impact",
+      "learningEffort": "Learning effort",
+      "roiScore": "ROI score",
+      "noData": "—",
+      "effort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
+      "advice": "AI Recommendation"
+    },
+    "chat": {
+      "title": "Career Advisor",
+      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
+      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
+      "suggestions": {
+        "q1": "Why am I getting rejected?",
+        "q2": "Which skill should I learn next?",
+        "q3": "How can I improve my interview-to-accepted rate?",
+        "q4": "What salary should I target?"
+      }
+    }
   }
 }
+
+
+
+
+
+
+
