@@ -247,8 +247,11 @@ async def run_turn(
         pass
 
     # Phase 3: Generate answer
+    # Build compact career data for the answer prompt
+    career_data = await _build_career_context()
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
+        career_data=career_data,
         tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str),
         rag_context=rag_context,
         active_memories=_format_memories(memories),
@@ -352,6 +355,39 @@ async def _process_memory_candidates(
             await db.create_chat_memory(statement, thread_id)
             saved.append({"statement": statement})
     return saved
+
+
+async def _build_career_context() -> str:
+    """Build compact career context for the answer prompt."""
+    parts = []
+    profile = await db.get_career_profile() or {}
+    if name := profile.get("name"):
+        parts.append(f"Name: {name}")
+    if title := profile.get("title"):
+        parts.append(f"Current Title: {title}")
+    if targets := profile.get("target_roles"):
+        parts.append(f"Target Roles: {', '.join(targets[:3])}")
+
+    skills = await db.list_career_skills()
+    if skills:
+        skill_names = [s.get("name", "") for s in skills[:25] if s.get("name")]
+        parts.append(f"Skills: {', '.join(skill_names)}")
+
+    work = profile.get("work_experience") or []
+    if work:
+        entries = []
+        for w in work[:3]:
+            role = w.get("role", "")
+            company = w.get("company", "")
+            entries.append(f"{role} at {company}".strip())
+        parts.append(f"Experience: {'; '.join(entries)}")
+
+    certs = await db.list_career_certifications()
+    if certs:
+        cert_names = [c.get("name", "") for c in certs[:5] if c.get("name")]
+        parts.append(f"Certifications: {', '.join(cert_names)}")
+
+    return "\n".join(parts) if parts else "(No career profile loaded)"
 
 
 # ---------------------------------------------------------------------------
