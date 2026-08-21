@@ -7,6 +7,7 @@ import SidebarNav from '@/components/common/SidebarNav';
 import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
 import { ModeSwitcher } from '@/components/chat/mode-switcher';
+import { ModelBadge } from '@/components/chat/model-badge';
 import { FileViewerDialog } from '@/components/chat/file-viewer-dialog';
 import { useTranslations } from '@/lib/i18n';
 import {
@@ -44,6 +45,7 @@ export default function ChatThreadRoute() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [fileViewer, setFileViewer] = useState<{ filename: string; content: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inFlight = useRef(false);
 
   // Load threads and find active one
   useEffect(() => {
@@ -131,7 +133,8 @@ export default function ChatThreadRoute() {
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if ((!trimmed && !selectedFile) || sending) return;
+      if ((!trimmed && !selectedFile) || inFlight.current) return;
+      inFlight.current = true;
 
       let currentThreadId = threadId;
       if (!currentThreadId) {
@@ -143,6 +146,7 @@ export default function ChatThreadRoute() {
           router.push(`/chat/${currentThreadId}`);
         } catch {
           setError('Failed to create thread');
+          inFlight.current = false;
           return;
         }
       }
@@ -168,6 +172,7 @@ export default function ChatThreadRoute() {
             : `I uploaded "${fileName}". Analyze it.`;
         } catch (e) {
           setError(e instanceof Error ? e.message : 'Upload failed');
+          inFlight.current = false;
           return;
         }
       }
@@ -187,10 +192,11 @@ export default function ChatThreadRoute() {
         setMessages((prev) => prev.filter((m) => m !== userMessage));
       } finally {
         setSending(false);
+        inFlight.current = false;
         setRefreshKey((k) => k + 1);
       }
     },
-    [threadId, sending, processResponse, router, selectedFile],
+    [threadId, processResponse, router, selectedFile],
   );
 
   const handleConfirm = useCallback(
@@ -335,12 +341,13 @@ export default function ChatThreadRoute() {
             {/* Composer */}
             <div className="mx-auto w-full max-w-3xl px-5 pb-5">
               {/* Mode toggles above input */}
-              <div className="mb-2.5 flex justify-center">
+              <div className="mb-2.5 flex items-center justify-center gap-3">
                 <ModeSwitcher
                   currentMode={activeThread?.mode || 'ask'}
                   onModeChange={handleModeChange}
                   disabled={!activeThread}
                 />
+                <ModelBadge />
               </div>
 
               {/* Input pill */}

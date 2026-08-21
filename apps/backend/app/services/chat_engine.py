@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
@@ -94,6 +95,84 @@ def _format_memories(memories: list[dict[str, Any]]) -> str:
     if not memories:
         return "(none)"
     return "\n".join(f"- {m.get('statement', '')}" for m in memories)
+
+
+def _build_conversation_context(messages: list[dict[str, Any]]) -> str:
+    """Build compact keyword-focused context from recent messages for the answer LLM.
+
+    Extracts key entities (resume names, scores, skills, questions) so the
+    answer maintains continuity without passing the full history.
+    """
+    recent = messages[-10:]
+    resumes: set[str] = []
+    scores: list[str] = []
+    skills_mentioned: set[str] = set()
+    questions: list[str] = []
+    target_roles: set[str] = set()
+
+    seen_resumes: set[str] = set()
+
+    for m in recent:
+        content = m.get("content") or ""
+        role = m.get("role", "user")
+
+        # Extract resume filenames from "I uploaded" pattern
+        for match in re.finditer(r'uploaded "([^"]+)"', content):
+            name = match.group(1)
+            if name not in seen_resumes:
+                seen_resumes.add(name)
+                resumes.append(name)
+
+        # Extract from envelope cards
+        envelope = m.get("envelope") or {}
+        for card in envelope.get("cards", []):
+            kind = card.get("kind", "")
+            data = card.get("data", {})
+            if kind == "file":
+                fname = data.get("filename", "")
+                if fname and fname not in seen_resumes:
+                    seen_resumes.add(fname)
+                    resumes.append(fname)
+            if kind == "audit":
+                overall = data.get("overall_score") or data.get("Overall Score")
+                if overall is not None:
+                    scores.append(f"ATS:{overall}")
+                for k in ("skills_coverage", "market_alignment", "quantification", "section_completeness", "action_verbs"):
+                    v = data.get(k)
+                    if v is not None:
+                        scores.append(f"{k}:{v}")
+            if kind == "info":
+                sk = data.get("skills") or data.get("Skills")
+                if isinstance(sk, list):
+                    for s in sk[:10]:
+                        name = s.get("name") if isinstance(s, dict) else str(s)
+                        skills_mentioned.add(name)
+                tr = data.get("target_roles") or data.get("Target")
+                if isinstance(tr, list):
+                    for r in tr:
+                        target_roles.add(str(r))
+                elif isinstance(tr, str):
+                    target_roles.add(tr)
+
+        # Track user questions
+        if role == "user":
+            q = content[:120].replace("\n", " ")
+            questions.append(q)
+
+    # Format compact output
+    parts: list[str] = []
+    if resumes:
+        parts.append(f"Resumes: {', '.join(resumes)}")
+    if scores:
+        parts.append(f"Scores: {', '.join(scores)}")
+    if skills_mentioned:
+        parts.append(f"Skills discussed: {', '.join(list(skills_mentioned)[:12])}")
+    if target_roles:
+        parts.append(f"Target roles: {', '.join(target_roles)}")
+    if questions:
+        parts.append(f"User asked: {'; '.join(questions[-5:])}")
+
+    return "\n".join(parts) if parts else "(no prior context)"
 
 
 # ---------------------------------------------------------------------------
@@ -258,8 +337,10 @@ async def run_turn(
     # Build compact career data for the answer prompt
     career_data = await _build_career_context()
     resume_context = f"\nRESUME BEING ANALYZED: {gateway_resume_filename} (id={gateway.resume_id})" if gateway.resume_id else ""
+    conversation_ctx = _build_conversation_context(messages)
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
+        conversation_context=conversation_ctx,
         career_data=career_data,
         tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context,
         rag_context=rag_context,

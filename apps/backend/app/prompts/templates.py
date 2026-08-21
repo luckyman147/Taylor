@@ -1108,6 +1108,9 @@ CHAT_ANSWER_PROMPT = """You are Taylor's career assistant. Generate a helpful, g
 
 USER MESSAGE: {user_message}
 
+CONVERSATION CONTEXT:
+{conversation_context}
+
 YOUR CAREER DATA:
 {career_data}
 
@@ -1130,7 +1133,8 @@ RULES:
 4. For pending actions (write tools), describe what would happen and the user will confirm.
 5. Be concise, specific, and actionable.
 6. Never invent numbers, skills, or experiences not in the data.
-7. ALWAYS reference the career data above when analyzing jobs, resumes, or skills."""
+7. ALWAYS reference the career data above when analyzing jobs, resumes, or skills.
+8. Use conversation context to maintain continuity. When the user says "that CV", "my resume", "these skills", etc., refer to the context above to understand what they mean."""
 
 CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
     "ask": {"allowlist": []},  # empty = all tools
