@@ -119,6 +119,50 @@ async def run_turn(
     # Load context
     messages = await db.list_chat_messages(thread_id, limit=50)
     memories = await db.list_active_chat_memories(limit=20)
+
+    # --- Gateway: fast intent classification (no LLM call) ---
+    from app.services.chat_gateway import classify_intent
+    gateway = await classify_intent(user_message)
+
+    if gateway.needs_selection:
+        # Multiple resumes — return selection card, skip planner entirely
+        await db.add_chat_message(thread_id, "user", user_message)
+        selection_card = {
+            "kind": "resume_selection",
+            "data": {
+                "needs_selection": True,
+                "prompt": "Which resume would you like to audit?",
+                "resumes": gateway.resumes,
+            },
+        }
+        envelope = {
+            "cards": [selection_card],
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "followups": ["Audit my master resume", "Compare all resumes"],
+            "sources": [],
+        }
+        assistant_content = "Which resume would you like me to audit?"
+        await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
+        return {
+            "assistant_content": assistant_content,
+            "cards": envelope["cards"],
+            "actions": envelope["actions"],
+            "stats": None,
+            "pending_action": None,
+            "memory_candidates": [],
+            "followups": envelope["followups"],
+            "sources": [],
+        }
+
+    # If gateway determined a specific resume, inject it into context
+    gateway_context = ""
+    if gateway.resume_id:
+        gateway_context = f"\n[GATEWAY: User wants to audit resume_id={gateway.resume_id}. Call get_ats_audit with resume_id='{gateway.resume_id}'.]"
+
+    # --- End gateway ---
+
     catalog_json = get_tool_catalog_json(mode=mode)
     tool_catalog_text = ", ".join(
         f"{t['name']}{'(' + ', '.join(p for p, s in t['params'].items() if s.get('required')) + ')' if t['params'] else ''}"
@@ -131,7 +175,7 @@ async def run_turn(
         history=_format_history(messages),
         tool_catalog=tool_catalog_text,
         output_language=output_language,
-    )
+    ) + gateway_context
 
     system_prompt = CHAT_PLANNER_SYSTEM_PROMPTS.get(mode, CHAT_PLANNER_SYSTEM_PROMPTS["ask"])
 

@@ -11,6 +11,7 @@ interface ToolCardsProps {
 function formatCardTitle(kind: string): string {
   const titles: Record<string, string> = {
     audit: 'Resume Audit',
+    resume_selection: 'Select Resume',
     stats: 'Career Stats',
     evidence: 'Skill Evidence',
     job: 'Job Match',
