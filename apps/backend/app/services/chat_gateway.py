@@ -27,13 +27,16 @@ _AUDIT_KEYWORDS = re.compile(
     r"check\s*(my\s*)?resume|review\s*(my\s*)?resume|"
     r"resume\s*review|resume\s*check|"
     r"optimize\s*(my\s*)?resume|resume\s*optimization|"
-    r"resume\s*feedback|improve\s*(my\s*)?resume"
+    r"resume\s*feedback|improve\s*(my\s*)?resume|"
+    r"dit\s*(my\s*)?resume|edit\s*(my\s*)?resume|"
+    r"score\s*my\s*cv|cv\s*score|audit\s*my\s*cv|cv\s*audit|"
+    r"review\s*my\s*cv|check\s*my\s*cv"
     r")\b",
     re.IGNORECASE,
 )
 
 _RESUME_ID_PATTERN = re.compile(
-    r"\bresume[_\s]*(?:id)?[:\s]+([a-f0-9-]{20,})\b",
+    r"\b(?:resume|cv)[_\s]*(?:id)?[:\s]+([a-f0-9-]{20,})\b",
     re.IGNORECASE,
 )
 
@@ -95,6 +98,12 @@ async def classify_intent(user_message: str) -> GatewayDecision:
     resumes = await db.list_resumes()
     master_resumes = [r for r in resumes if r.get("is_master", False)]
     if not master_resumes:
+        # No master — if only one resume overall, auto-select it
+        if len(resumes) == 1:
+            return GatewayDecision(
+                intent="resume_audit",
+                resume_id=resumes[0].get("resume_id"),
+            )
         return GatewayDecision(intent="resume_audit")
 
     if len(master_resumes) == 1:
