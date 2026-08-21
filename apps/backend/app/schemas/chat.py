@@ -77,3 +77,12 @@ class ThreadSummary(BaseModel):
     updated_at: str
     message_count: int = 0
     last_preview: str = ""
+
+
+class ThreadMessage(BaseModel):
+    message_id: str
+    thread_id: str
+    role: str  # "user" | "assistant"
+    content: str
+    created_at: str
+    envelope: dict | None = None

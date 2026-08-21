@@ -63,6 +63,22 @@ export interface ConfirmResponse {
   result_card: ToolCard | null;
 }
 
+export interface ThreadMessage {
+  message_id: string;
+  thread_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  envelope: {
+    cards?: ToolCard[];
+    actions?: Action[];
+    stats?: Record<string, unknown> | null;
+    pending_action?: PendingAction | null;
+    followups?: string[];
+    sources?: string[];
+  } | null;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -117,6 +133,19 @@ export async function deleteThread(threadId: string): Promise<void> {
     const data = await res.json().catch(() => ({}));
     throw new Error(extractDetail(data) || 'Failed to delete thread');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Thread messages
+// ---------------------------------------------------------------------------
+
+export async function getThreadMessages(
+  threadId: string,
+): Promise<ThreadMessage[]> {
+  const res = await apiFetch(`/chat/threads/${threadId}/messages`, {
+    credentials: 'include',
+  });
+  return asJson<ThreadMessage[]>(res, 'Failed to load messages');
 }
 
 // ---------------------------------------------------------------------------

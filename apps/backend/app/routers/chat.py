@@ -11,6 +11,7 @@ from app.schemas.chat import (
     ConfirmResponse,
     MemorySaveRequest,
     ThreadCreate,
+    ThreadMessage,
     ThreadSummary,
     ThreadUpdate,
     TurnRequest,
@@ -88,6 +89,27 @@ async def delete_thread(thread_id: str) -> dict:
 
     await db.delete_chat_thread(thread_id)
     return {"ok": True}
+
+
+@router.get("/threads/{thread_id}/messages", response_model=list[ThreadMessage])
+async def get_thread_messages(thread_id: str, limit: int = 100) -> list[ThreadMessage]:
+    """Get all messages for a thread."""
+    thread = await db.get_chat_thread(thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    messages = await db.list_chat_messages(thread_id, limit=limit)
+    return [
+        ThreadMessage(
+            message_id=m["message_id"],
+            thread_id=m["thread_id"],
+            role=m["role"],
+            content=m["content"],
+            created_at=m["created_at"],
+            envelope=m.get("envelope"),
+        )
+        for m in messages
+    ]
 
 
 # ---------------------------------------------------------------------------

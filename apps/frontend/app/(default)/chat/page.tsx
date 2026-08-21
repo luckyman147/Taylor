@@ -59,12 +59,26 @@ export default function ChatRoute() {
   );
 
   const handleSelectThread = useCallback(
-    (threadId: string) => {
+    async (threadId: string) => {
       const thread = threads.find((t) => t.thread_id === threadId);
       if (thread) {
         setActiveThread(thread);
-        // TODO: load thread messages from backend when endpoint exists
         setMessages([]);
+        try {
+          const { getThreadMessages } = await import('@/lib/api/chat');
+          const msgs = await getThreadMessages(threadId);
+          const mapped: ChatMessage[] = msgs.map((m) => ({
+            role: m.role,
+            content: m.content,
+            cards: m.envelope?.cards,
+            actions: m.envelope?.actions,
+            pendingAction: m.envelope?.pending_action ?? null,
+            memoryCandidates: [],
+            followups: m.envelope?.followups,
+            sources: m.envelope?.sources,
+          }));
+          setMessages(mapped);
+        } catch {}
       }
     },
     [threads],
