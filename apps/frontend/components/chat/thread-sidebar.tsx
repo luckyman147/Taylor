@@ -16,6 +16,7 @@ interface ThreadSidebarProps {
   activeThreadId: string | null;
   onSelectThread: (threadId: string) => void;
   onNewThread: (threadId: string) => void;
+  onDeleteThread?: (threadId: string) => void;
   refreshKey?: number;
 }
 
@@ -30,6 +31,7 @@ export function ThreadSidebar({
   activeThreadId,
   onSelectThread,
   onNewThread,
+  onDeleteThread,
   refreshKey,
 }: ThreadSidebarProps) {
   const { t } = useTranslations();
@@ -65,9 +67,7 @@ export function ThreadSidebar({
     try {
       await deleteThread(threadId);
       setThreads((prev) => prev.filter((t) => t.thread_id !== threadId));
-      if (activeThreadId === threadId) {
-        onSelectThread('');
-      }
+      onDeleteThread?.(threadId);
     } catch {}
   };
 
