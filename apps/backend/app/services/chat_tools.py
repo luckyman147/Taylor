@@ -460,8 +460,49 @@ async def _get_market_position() -> dict[str, Any]:
 async def _get_skill_suggestions() -> dict[str, Any]:
     """Get forgotten/missing skill suggestions."""
     from app.services.career_profile import generate_skill_suggestions
+
+    # Try LLM-based suggestions first
     suggestions = await generate_skill_suggestions()
-    return {"suggestions": (suggestions or [])[:10]}
+    if suggestions:
+        return {"suggestions": suggestions[:10], "source": "llm"}
+
+    # Fallback: deterministic comparison against Full-Stack skill set
+    profile_skills = await db.list_career_skills()
+    existing = {s.get("name", "").lower() for s in profile_skills if s.get("name")}
+
+    FULLSTACK_SKILLS = {
+        "React": "Frontend framework — most in-demand UI library",
+        "Next.js": "Full-stack React framework with SSR/SSG",
+        "TypeScript": "Type-safe JavaScript — essential for large codebases",
+        "Node.js": "Server-side JavaScript runtime",
+        "PostgreSQL": "Production-grade relational database",
+        "Docker": "Containerization for consistent deployments",
+        "AWS": "Cloud platform — most demanded in job listings",
+        "GraphQL": "API query language — preferred over REST in many roles",
+        "Redis": "In-memory cache and session store",
+        "Kubernetes": "Container orchestration for scaling",
+        "CI/CD": "Automated testing and deployment pipelines",
+        "Git": "Version control — assumed but worth confirming",
+        "REST API": "Standard API design pattern",
+        "Tailwind CSS": "Utility-first CSS framework",
+        "Prisma": "Type-safe database ORM for Node.js",
+        "Jest": "Testing framework for JavaScript",
+        "Playwright": "End-to-end testing framework",
+        "MongoDB": "NoSQL document database",
+        "Firebase": "Backend-as-a-service for rapid prototyping",
+        "Vercel": "Deployment platform for Next.js apps",
+    }
+
+    missing = []
+    for skill, reason in FULLSTACK_SKILLS.items():
+        if skill.lower() not in existing:
+            missing.append({
+                "name": skill,
+                "reason": reason,
+                "kind": "learn_next",
+            })
+
+    return {"suggestions": missing[:10], "source": "fallback"}
 
 
 async def _get_applications() -> dict[str, Any]:
