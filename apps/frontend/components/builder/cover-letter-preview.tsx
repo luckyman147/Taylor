@@ -34,11 +34,17 @@ export function CoverLetterPreview({
   className,
 }: CoverLetterPreviewProps) {
   const { t, locale } = useTranslations();
-  const today = new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date());
+  // The date is locale/timezone-dependent, so rendering it during SSR would
+  // mismatch hydration. Compute it only after the component is mounted.
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const today = mounted
+    ? new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }).format(new Date())
+    : '';
 
   return (
     <div

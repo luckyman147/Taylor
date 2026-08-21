@@ -9,11 +9,12 @@ import { RetroTabs, type Tab } from '@/components/ui/retro-tabs';
 import { useTranslations } from '@/lib/i18n';
 import {
   getProfile,
-  type CareerCertification,
+  importEducationFromMaster,
   type CareerProfile,
-  type CareerSkill,
   type ProfileBundle,
 } from '@/lib/api/profile';
+import { ExperienceTab } from './experience-tab';
+import { GraphTab } from './graph-tab';
 import { ProfileTab } from './profile-tab';
 import { SkillRoiTab } from './skill-roi-tab';
 
@@ -36,29 +37,37 @@ export function ProfilePage() {
     void refresh();
   }, [refresh]);
 
+  // The Education tab always reflects the latest master resume: every time it
+  // is opened, sync the education entries from the CV (replace-when-present),
+  // then refresh so the tab renders what the import produced.
+  useEffect(() => {
+    if (activeTab !== 'education') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await importEducationFromMaster();
+        if (!cancelled) setBundle(await getProfile());
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
   const tabs: Tab[] = [
     { id: 'profile', label: t('profile.tabs.profile') },
+    { id: 'experience', label: t('profile.tabs.experience') },
+    { id: 'education', label: t('profile.tabs.education') },
+    { id: 'projects', label: t('profile.tabs.projects') },
+    { id: 'achievements', label: t('profile.tabs.achievements') },
     { id: 'skill-roi', label: t('profile.tabs.skillRoi') },
   ];
-
-  const patchBundle = useCallback(
-    (patch: Partial<ProfileBundle>) => setBundle((prev) => (prev ? { ...prev, ...patch } : prev)),
-    []
-  );
 
   const patchProfile = useCallback((profile: CareerProfile) => {
     setBundle((prev) => (prev ? { ...prev, profile } : prev));
   }, []);
-
-  const patchSkills = useCallback(
-    (skills: CareerSkill[]) => patchBundle({ skills }),
-    [patchBundle]
-  );
-
-  const patchCertifications = useCallback(
-    (certifications: CareerCertification[]) => patchBundle({ certifications }),
-    [patchBundle]
-  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-6">
@@ -99,12 +108,19 @@ export function ProfilePage() {
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           {bundle && activeTab === 'profile' && (
-            <ProfileTab
-              bundle={bundle}
-              onProfileSaved={patchProfile}
-              onSkillsChanged={patchSkills}
-              onCertificationsChanged={patchCertifications}
-            />
+            <ProfileTab bundle={bundle} onProfileSaved={patchProfile} />
+          )}
+          {bundle && activeTab === 'experience' && (
+            <ExperienceTab bundle={bundle} onChanged={setBundle} />
+          )}
+          {bundle && activeTab === 'education' && (
+            <GraphTab bundle={bundle} section="education" onChanged={setBundle} />
+          )}
+          {bundle && activeTab === 'projects' && (
+            <GraphTab bundle={bundle} section="projects" onChanged={setBundle} />
+          )}
+          {bundle && activeTab === 'achievements' && (
+            <GraphTab bundle={bundle} section="achievements" onChanged={setBundle} />
           )}
           {bundle && activeTab === 'skill-roi' && <SkillRoiTab />}
         </div>

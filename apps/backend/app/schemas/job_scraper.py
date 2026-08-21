@@ -98,6 +98,10 @@ class JobListing(BaseModel):
     relevance_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Relevance score 0-1")
     easy_apply: bool = Field(default=False, description="Easy Apply available")
     remote: bool = Field(default=False, description="Remote work available")
+    is_stretch: bool = Field(
+        default=False,
+        description="Stretch job: below the match threshold but matches the primary role family",
+    )
     job_type: str | None = Field(default=None, description="Job type (full_time, internship, etc.)")
     experience_level: str | None = Field(default=None, description="Experience level")
     salary: str | None = Field(default=None, description="Salary info if available")
@@ -132,5 +136,9 @@ class JobSearchResponse(BaseModel):
     search_id: str = Field(description="Unique search ID for caching")
     results: list[JobListing] = Field(description="Job listings found")
     total: int = Field(description="Total number of results")
+    total_found: int = Field(
+        default=0,
+        description="Raw jobs found before relevance filtering (X found, Y relevant)",
+    )
     mcp_status: dict[str, dict] = Field(default_factory=dict, description="Per-MCP status")
     cached: bool = Field(default=False, description="Whether results are from cache")

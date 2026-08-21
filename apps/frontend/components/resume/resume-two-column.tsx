@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mail, Phone, MapPin, Globe, Linkedin, Github, ExternalLink } from 'lucide-react';
 import type { ResumeData, ResumeSectionHeadings } from '@/components/dashboard/resume-component';
+import type { SkillGroup, ContactDisplayField } from '@/components/dashboard/resume-component';
 import { getSortedSections, getSectionMeta } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
 import {
@@ -58,6 +59,17 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
     additional?.technicalSkills?.filter(
       (item): item is string => typeof item === 'string' && item.trim() !== ''
     ) ?? [];
+  const skillGroups: SkillGroup[] = (additional?.skillGroups ?? [])
+    .filter(
+      (group) =>
+        typeof group?.name === 'string' &&
+        Array.isArray(group.skills) &&
+        group.skills.some((s) => typeof s === 'string' && s.trim() !== '')
+    )
+    .map((group) => ({
+      name: group.name,
+      skills: group.skills.filter((s): s is string => typeof s === 'string' && s.trim() !== ''),
+    }));
   const languages =
     additional?.languages?.filter(
       (item): item is string => typeof item === 'string' && item.trim() !== ''
@@ -134,7 +146,9 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
       finalHrefPrefix.startsWith('tel:');
 
     let displayText = value;
-    if (isLink && (label === 'LinkedIn' || label === 'GitHub' || label === 'Website')) {
+    if (personalInfo?.contactDisplay?.[label.toLowerCase() as ContactDisplayField] === 'label') {
+      displayText = label;
+    } else if (isLink && (label === 'LinkedIn' || label === 'GitHub' || label === 'Website')) {
       displayText = value.replace(/^https?:\/\//, '').replace(/^www\./, '');
     }
 
@@ -183,7 +197,7 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
 
           {/* Contact - Own line, centered */}
           <div
-            className={`flex flex-wrap justify-center gap-x-1 gap-y-1 ${baseStyles['resume-meta']}`}
+            className={`flex flex-wrap gap-x-1 gap-y-1 ${baseStyles['resume-contact-line']} ${baseStyles['resume-meta']}`}
           >
             {personalInfo.email && renderContactDetail('Email', personalInfo.email, 'mailto:')}
             {personalInfo.phone && (
@@ -358,7 +372,24 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
             )}
 
           {/* Certifications/Training - Main column */}
-          {isSectionVisible('additional') && certificationsTraining.length > 0 && (
+          {isSectionVisible('certifications') && certificationsTraining.length > 0 && (
+            <div className={baseStyles['resume-section']}>
+              <h3 className={baseStyles['resume-section-title']}>
+                {getSectionDisplayName('certifications', headingFallbacks.certifications)}
+              </h3>
+              <ul className={`ml-4 ${baseStyles['resume-list']} ${baseStyles['resume-text-xs']}`}>
+                {certificationsTraining.map((cert, index) => (
+                  <li key={index} className="flex">
+                    <span className="mr-1.5 flex-shrink-0">•&nbsp;</span>
+                    <span>{cert}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {isSectionVisible('additional') &&
+            !isSectionVisible('certifications') &&
+            certificationsTraining.length > 0 && (
             <div className={baseStyles['resume-section']}>
               <h3 className={baseStyles['resume-section-title']}>
                 {headingFallbacks.certifications}
@@ -432,13 +463,25 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
           {isSectionVisible('additional') && technicalSkills.length > 0 && (
             <div className={baseStyles['resume-section']}>
               <h3 className={baseStyles['resume-section-title-sm']}>{headingFallbacks.skills}</h3>
-              <div className={skillsContainerClass}>
-                {technicalSkills.map((skill, index) => (
-                  <span key={index} className={baseStyles['resume-skill-pill']}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
+              {skillGroups.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {skillGroups.map((group) => (
+                    <div key={group.name}>
+                      <span className={baseStyles['resume-text-xs']}>
+                        <strong>{group.name}:</strong> {group.skills.join(' • ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={skillsContainerClass}>
+                  {technicalSkills.map((skill, index) => (
+                    <span key={index} className={baseStyles['resume-skill-pill']}>
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -453,9 +496,11 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
           )}
 
           {/* Awards Section */}
-          {isSectionVisible('additional') && awards.length > 0 && (
+          {isSectionVisible('awards') && awards.length > 0 && (
             <div className={baseStyles['resume-section']}>
-              <h3 className={baseStyles['resume-section-title-sm']}>{headingFallbacks.awards}</h3>
+              <h3 className={baseStyles['resume-section-title-sm']}>
+                {getSectionDisplayName('awards', headingFallbacks.awards)}
+              </h3>
               <ul className={baseStyles['resume-list']}>
                 {awards.map((award, index) => (
                   <li key={index} className={baseStyles['resume-text-xs']}>

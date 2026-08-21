@@ -20,12 +20,16 @@ from app.database import db
 from app.pdf import close_pdf_renderer, init_pdf_renderer
 from app.routers import (
     applications_router,
+    chat_router,
     companies_router,
     config_router,
     contacts_router,
+    email_router,
     enrichment_router,
     github_router,
     health_router,
+    interview_practice_router,
+    job_intel_router,
     jobs_router,
     job_scraper_router,
     mcp_router,
@@ -106,6 +110,10 @@ app.include_router(mcp_router, prefix="/api/v1")
 app.include_router(job_scraper_router, prefix="/api/v1")
 app.include_router(github_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
+app.include_router(job_intel_router, prefix="/api/v1")
+app.include_router(email_router, prefix="/api/v1")
+app.include_router(interview_practice_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
 
 
 @app.get("/")

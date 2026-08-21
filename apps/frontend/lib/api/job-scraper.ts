@@ -27,6 +27,7 @@ export interface JobListing {
   relevance_score: number;
   easy_apply: boolean;
   remote: boolean;
+  is_stretch?: boolean;
   job_type: string | null;
   experience_level: string | null;
   salary: string | null;
@@ -37,6 +38,7 @@ export interface JobSearchResponse {
   search_id: string;
   results: JobListing[];
   total: number;
+  total_found?: number;
   mcp_status: Record<string, { status: string; count?: number; error?: string }>;
   cached: boolean;
 }

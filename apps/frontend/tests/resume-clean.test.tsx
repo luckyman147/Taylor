@@ -28,4 +28,28 @@ describe('ResumeClean', () => {
     expect(screen.getByText('DevRel Engineer')).toBeInTheDocument();
     expect(screen.getByText('Lead client demos.')).toBeInTheDocument();
   });
+
+  it('renders full contact values by default', () => {
+    render(<ResumeClean data={data} />);
+    expect(screen.getByRole('link', { name: 'a@b.com' })).toHaveAttribute('href', 'mailto:a@b.com');
+  });
+
+  it('renders a short hypertext label when contactDisplay is label mode', () => {
+    render(
+      <ResumeClean
+        data={
+          {
+            ...data,
+            personalInfo: {
+              ...data.personalInfo,
+              email: 'a@b.com',
+              contactDisplay: { email: 'label' },
+            },
+          } as ResumeData
+        }
+      />
+    );
+    expect(screen.getByRole('link', { name: 'Email' })).toHaveAttribute('href', 'mailto:a@b.com');
+    expect(screen.queryByRole('link', { name: 'a@b.com' })).not.toBeInTheDocument();
+  });
 });

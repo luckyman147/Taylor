@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import type { ShouldApplyResponse } from '@/lib/api/job-intel';
+import type { RecruiterRecommendation } from '@/lib/api/resume';
 
 export interface PersonalInfo {
   name: string;
@@ -11,6 +13,9 @@ export interface PersonalInfo {
   website?: string;
   linkedin?: string;
   github?: string;
+  contactDisplay?: Partial<
+    Record<'email' | 'phone' | 'website' | 'linkedin' | 'github', 'full' | 'label'>
+  >;
 }
 
 export interface ExperienceEntry {
@@ -40,11 +45,17 @@ export interface ProjectEntry {
   descriptionStyles?: ('bullet' | 'plain')[];
 }
 
+export interface SkillGroup {
+  name: string;
+  skills: string[];
+}
+
 export interface AdditionalInfo {
   technicalSkills: string[];
   languages: string[];
   certificationsTraining: string[];
   awards: string[];
+  skillGroups?: SkillGroup[];
 }
 
 export interface ATSSubScores {
@@ -140,6 +151,9 @@ export interface Data {
   diff_summary?: ResumeDiffSummary;
   detailed_changes?: ResumeFieldDiff[];
   ats_score?: ATSScore;
+  job_analysis?: ShouldApplyResponse;
+  recommendations?: RecruiterRecommendation[];
+  preview_hash?: string;
 }
 
 export interface ImprovedResult {

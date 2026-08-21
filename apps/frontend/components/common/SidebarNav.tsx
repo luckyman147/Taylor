@@ -9,6 +9,8 @@ import {
   Users,
   UserRound,
   Sparkles,
+  Plus,
+  GraduationCap,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -29,6 +31,7 @@ interface SidebarNavProps {
     | 'companies'
     | 'contacts'
     | 'profile'
+    | 'interview-practice'
     | 'chat';
   onNavigate?: (page: string) => void;
 }
@@ -54,17 +57,41 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ currentPage, onNavigate }) => {
     { key: 'companies', label: 'companies', icon: Building2, route: '/companies' },
     { key: 'contacts', label: 'contacts', icon: Users, route: '/contacts' },
     { key: 'profile', label: 'profile', icon: UserRound, route: '/profile' },
+    { key: 'interview-practice', label: 'interviewPractice', icon: GraduationCap, route: '/interview-practice' },
     { key: 'chat', label: 'chat', icon: Sparkles, route: '/chat' },
     { key: 'tailor', label: 'resumeBuilder', icon: FileText, route: '/builder' },
     { key: 'settings', label: 'settings', icon: Settings, route: '/settings' },
   ];
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-16 bg-white border-r border-border min-h-screen p-4 flex flex-col items-center space-y-8">
+    <aside className="fixed left-0 top-0 bottom-0 w-16 bg-white border-r border-border min-h-screen p-4 flex flex-col items-center space-y-6">
       {/* Logo */}
-      <Link href="/" className="flex flex-col items-center mb-8" aria-label="Taylor">
+      <Link href="/" className="flex flex-col items-center mb-4" aria-label="Taylor">
         <Image src="/logo.png" alt="Taylor" width={40} height={40} className="h-10 w-10" />
       </Link>
+
+      {/* Create Resume — primary action */}
+      <div className="group relative w-full flex flex-col items-center">
+        <button
+          onClick={() => {
+            onNavigate?.('/tailor');
+            router.push('/tailor');
+          }}
+          className={cn(
+            'w-full rounded-full bg-primary text-white p-2 flex flex-col items-center gap-1.5 hover:bg-[#17304f] transition-colors',
+            currentPage === 'tailor' && 'ring-2 ring-primary ring-offset-2'
+          )}
+          aria-label={t('nav.createResume')}
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+        <span
+          className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink opacity-0 shadow-sw-md transition-opacity group-hover:opacity-100"
+          role="tooltip"
+        >
+          {t('nav.createResume')}
+        </span>
+      </div>
 
       {/* Nav Buttons */}
       {navLinks.map(({ key, label, icon: Icon, route }) => {

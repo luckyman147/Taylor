@@ -27,7 +27,7 @@ class GitHubRepo(BaseModel):
     is_archived: bool = Field(default=False, description="Whether repo is archived")
     languages: list[str] = Field(default_factory=list, description="Programming languages used")
     topics: list[str] = Field(default_factory=list, description="Repository topics/frameworks")
-    readme: str = Field(default="", description="README content (first 500 chars)")
+    readme: str = Field(default="", description="README content (first 2000 chars)")
 
 
 class GitHubReposResponse(BaseModel):

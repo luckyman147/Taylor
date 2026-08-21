@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslations } from '@/lib/i18n';
 import { getApplicationDetail, updateApplication, type ApplicationDetail } from '@/lib/api/tracker';
+import { fetchShouldApply, type ShouldApplyResponse } from '@/lib/api/job-intel';
 import { STATUS_DOT } from './status-colors';
 
 interface CardDetailModalProps {
@@ -42,6 +43,11 @@ export function CardDetailModal({
   const [interviewRounds, setInterviewRounds] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
+
+  // Job analysis state
+  const [analyzing, setAnalyzing] = useState(false);
+  const [jobAnalysis, setJobAnalysis] = useState<ShouldApplyResponse | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !applicationId) {
@@ -96,6 +102,20 @@ export function CardDetailModal({
       setNotesError(t('common.error'));
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!detail?.job_id || analyzing) return;
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      const result = await fetchShouldApply(detail.job_id);
+      setJobAnalysis(result);
+    } catch {
+      setAnalyzeError(t('common.error'));
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -200,6 +220,30 @@ export function CardDetailModal({
         )}
 
         <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
+          <div className="flex-1">
+            {jobAnalysis && (
+              <div className="flex items-center gap-3 text-xs">
+                <span className={`inline-block px-2 py-0.5 border rounded font-bold uppercase ${
+                  jobAnalysis.verdict === 'yes' ? 'bg-green-100 text-green-700 border-green-300' :
+                  jobAnalysis.verdict === 'conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                  'bg-red-100 text-red-700 border-red-300'
+                }`}>
+                  {jobAnalysis.verdict}
+                </span>
+                <span className="text-ink-soft">{jobAnalysis.match_percent}% match</span>
+                <span className="text-ink-soft">Ghost: {jobAnalysis.ghost_risk_percent}%</span>
+              </div>
+            )}
+            {analyzeError && <span className="text-xs text-destructive">{analyzeError}</span>}
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleAnalyze}
+            disabled={!detail?.job_id || analyzing}
+          >
+            {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {analyzing ? t('common.processing') : t('tailor.jobIntel.shouldApply.analyze')}
+          </Button>
           <Button
             onClick={() => {
               if (detail?.resume_id) router.push(`/builder?id=${detail.resume_id}`);

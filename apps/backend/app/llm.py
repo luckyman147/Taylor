@@ -931,6 +931,73 @@ def _appears_truncated(data: dict, schema_type: str = "resume") -> bool:
             return True
         return False
 
+    if schema_type == "project_bullets":
+        # Matched-project bullets: the "projects" key must exist; an empty
+        # list is valid (no project got usable bullets).
+        if "projects" not in data:
+            logging.warning(
+                "Possible truncation detected: project_bullets missing required key"
+            )
+            return True
+        return False
+
+    if schema_type == "interview_practice":
+        required = {
+            "score",
+            "level",
+            "strengths",
+            "improvements",
+            "recommended_answer_points",
+            "follow_ups",
+        }
+        missing = required - set(data)
+        if missing:
+            logging.warning(
+                "Possible truncation detected: interview_practice missing required keys: %s",
+                ", ".join(sorted(missing)),
+            )
+            return True
+        return False
+
+    if schema_type == "chat_plan":
+        # Planner must have intent + narrative; tool_calls must be a list if present
+        if "intent" not in data or "narrative" not in data:
+            logging.warning(
+                "Possible truncation detected: chat_plan missing intent or narrative"
+            )
+            return True
+        if data["intent"] not in ("query", "stat", "action"):
+            logging.warning(
+                "Possible truncation detected: chat_plan has invalid intent: %s",
+                data["intent"],
+            )
+            return True
+        if "tool_calls" in data and not isinstance(data["tool_calls"], list):
+            logging.warning(
+                "Possible truncation detected: chat_plan tool_calls is not a list"
+            )
+            return True
+        return False
+
+    if schema_type == "resume_audit":
+        # Audit must have issues list
+        if "issues" not in data or not isinstance(data["issues"], list):
+            logging.warning(
+                "Possible truncation detected: resume_audit missing issues list"
+            )
+            return True
+        for issue in data["issues"]:
+            if not isinstance(issue, dict):
+                continue
+            missing = {"priority", "section", "suggested"} - set(issue.keys())
+            if missing:
+                logging.warning(
+                    "Possible truncation detected: resume_audit issue missing keys: %s",
+                    ", ".join(sorted(missing)),
+                )
+                return True
+        return False
+
     # For "diff", "keywords", and unknown schemas: no truncation heuristics.
     # Diff may legitimately return empty changes; keywords may return empty
     # lists when the job description has no actionable terms.

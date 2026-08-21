@@ -4,6 +4,7 @@ import type {
   ResumeData,
   SectionMeta,
   AdditionalSectionLabels,
+  ContactDisplayField,
 } from '@/components/dashboard/resume-component';
 import { getSortedSections } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
@@ -15,7 +16,7 @@ import {
 } from '@/lib/types/template-settings';
 import { arrangeEducationEntry, arrangeWorkEntry, workEntryMeta } from './entry-arrange';
 import { DescriptionList } from './description-list';
-import { ResumeSkillsContent } from './resume-skills';
+import { ResumeSkillsContent, type SkillGroup } from './resume-skills';
 import baseStyles from './styles/_base.module.css';
 import styles from './styles/latex.module.css';
 
@@ -68,7 +69,7 @@ export const ResumeLatex: React.FC<ResumeLatexProps> = ({
 
     let finalHrefPrefix = hrefPrefix;
     if (
-      ['Website', 'Portfolio', 'LinkedIn', 'GitHub'].includes(label) &&
+      ['Website', 'LinkedIn', 'GitHub'].includes(label) &&
       !value.startsWith('http') &&
       !value.startsWith('//')
     ) {
@@ -78,7 +79,10 @@ export const ResumeLatex: React.FC<ResumeLatexProps> = ({
     const href = finalHrefPrefix + value;
     const isLink = href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:');
 
-    const displayText = isLink ? label : value;
+    const displayText =
+      personalInfo?.contactDisplay?.[label.toLowerCase() as ContactDisplayField] === 'label'
+        ? label
+        : value;
 
     return (
       <span className="inline-flex items-center gap-1">
@@ -101,7 +105,7 @@ export const ResumeLatex: React.FC<ResumeLatexProps> = ({
     renderContactDetail('Email', personalInfo?.email, 'mailto:'),
     renderContactDetail('LinkedIn', personalInfo?.linkedin),
     renderContactDetail('GitHub', personalInfo?.github),
-    renderContactDetail('Portfolio', personalInfo?.website),
+    renderContactDetail('Website', personalInfo?.website),
   ].filter(Boolean);
 
   // Role-first entry header: bold role / italic dates, then italic company / italic location.
@@ -262,8 +266,45 @@ export const ResumeLatex: React.FC<ResumeLatexProps> = ({
             labels={additionalSectionLabels}
             skillsLayout={skillsLayout}
             listSeparator={listSeparator}
+            hideCertifications={
+              data.sectionMeta?.some((s) => s.id === 'certifications' && s.isVisible) ?? false
+            }
           />
         );
+
+      case 'certifications': {
+        const certs = (additional?.certificationsTraining ?? []).filter(
+          (item): item is string => typeof item === 'string' && item.trim() !== ''
+        );
+        if (certs.length === 0) return null;
+        return (
+          <div key={section.id} className={baseStyles['resume-section']}>
+            <h3 className={styles.sectionTitle}>{section.displayName}</h3>
+            <div className={`${baseStyles['resume-stack']} ${baseStyles['resume-text-sm']}`}>
+              {certs.map((cert) => (
+                <span key={cert}>{cert}</span>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'awards': {
+        const awards = (additional?.awards ?? []).filter(
+          (item): item is string => typeof item === 'string' && item.trim() !== ''
+        );
+        if (awards.length === 0) return null;
+        return (
+          <div key={section.id} className={baseStyles['resume-section']}>
+            <h3 className={styles.sectionTitle}>{section.displayName}</h3>
+            <div className={`${baseStyles['resume-stack']} ${baseStyles['resume-text-sm']}`}>
+              {awards.map((award) => (
+                <span key={award}>{award}</span>
+              ))}
+            </div>
+          </div>
+        );
+      }
 
       default:
         if (!section.isDefault) {
@@ -290,7 +331,7 @@ export const ResumeLatex: React.FC<ResumeLatexProps> = ({
           )}
           {contactItems.length > 0 && (
             <div
-              className={`flex flex-wrap justify-center items-center gap-x-2 gap-y-1 ${styles.contactRow}`}
+              className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${baseStyles['resume-contact-line']} ${styles.contactRow}`}
             >
               {contactItems.map((item, index) => (
                 <React.Fragment key={index}>
@@ -320,16 +361,31 @@ const AdditionalSection: React.FC<{
   labels?: Partial<AdditionalSectionLabels>;
   skillsLayout?: SkillsLayoutMode;
   listSeparator?: ListSeparator;
-}> = ({ additional, displayName = 'Skills & Awards', labels, skillsLayout = 'comma', listSeparator = ',' }) => {
+  hideCertifications?: boolean;
+}> = ({
+  additional,
+  displayName = 'Skills & Awards',
+  labels,
+  skillsLayout = 'comma',
+  listSeparator = ',',
+  hideCertifications = false,
+}) => {
   if (!additional) return null;
 
   const clean = (items?: string[]) =>
     (items ?? []).filter((item): item is string => typeof item === 'string' && item.trim() !== '');
 
   const technicalSkills = clean(additional.technicalSkills);
+  const skillGroups: SkillGroup[] = (additional.skillGroups ?? [])
+    .filter(
+      (group) =>
+        typeof group?.name === 'string' &&
+        Array.isArray(group.skills) &&
+        group.skills.some((s) => typeof s === 'string' && s.trim() !== '')
+    )
+    .map((group) => ({ name: group.name, skills: clean(group.skills) }));
   const languages = clean(additional.languages);
-  const certificationsTraining = clean(additional.certificationsTraining);
-  const awards = clean(additional.awards);
+  const certificationsTraining = hideCertifications ? [] : clean(additional.certificationsTraining);
 
   const mergedLabels: AdditionalSectionLabels = {
     technicalSkills: labels?.technicalSkills ?? 'Technical Skills:',
@@ -341,8 +397,7 @@ const AdditionalSection: React.FC<{
   const hasContent =
     technicalSkills.length > 0 ||
     languages.length > 0 ||
-    certificationsTraining.length > 0 ||
-    awards.length > 0;
+    certificationsTraining.length > 0;
 
   if (!hasContent) return null;
 
@@ -362,6 +417,7 @@ const AdditionalSection: React.FC<{
             <span className="font-bold">{mergedLabels.technicalSkills}</span>{' '}
             <ResumeSkillsContent
               skills={technicalSkills}
+              skillGroups={skillGroups}
               layout={skillsLayout}
               listSeparator={listSeparator}
             />
@@ -369,7 +425,6 @@ const AdditionalSection: React.FC<{
         )}
         {line(mergedLabels.languages, languages)}
         {line(mergedLabels.certifications, certificationsTraining)}
-        {line(mergedLabels.awards, awards)}
       </div>
     </div>
   );

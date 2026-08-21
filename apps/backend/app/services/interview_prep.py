@@ -102,6 +102,7 @@ async def generate_interview_prep(
     resume_data: dict[str, Any],
     job_description: str,
     language: str = "en",
+    instruction: str | None = None,
 ) -> InterviewPrepData:
     """Generate structured interview preparation for a tailored resume."""
     prompt = INTERVIEW_PREP_PROMPT.format(
@@ -112,6 +113,12 @@ async def generate_interview_prep(
         resume_data=_serialize_resume_data_for_prompt(resume_data),
         output_language=get_language_name(language),
     )
+    if instruction and instruction.strip():
+        prompt = (
+            f"{prompt}\n\n"
+            f"User's additional instructions for this generation "
+            f"(follow them precisely):\n{instruction.strip()}"
+        )
     config = get_llm_config()
     max_tokens = get_safe_max_tokens(get_model_name(config), requested=8192)
 

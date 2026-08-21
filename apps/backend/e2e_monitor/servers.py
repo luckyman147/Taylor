@@ -32,7 +32,7 @@ from e2e_monitor import API_BASE
 from e2e_monitor.bundle import Bundle
 
 BACKEND_HEALTH = f"{API_BASE}/health"
-FRONTEND_URL = "http://127.0.0.1:3000/"
+FRONTEND_URL = "http://127.0.0.1:5173/"
 
 
 def _port_is_free(port: int) -> bool:
@@ -96,8 +96,8 @@ class Servers:
             raise RuntimeError("backend did not become healthy on :8000")
 
         if with_frontend and shutil.which("node") and shutil.which("npm"):
-            if not _port_is_free(3000):
-                # Something is on :3000 — require a 200 from the root before trusting
+            if not _port_is_free(5173):
+                # Something is on :5173 — require a 200 from the root before trusting
                 # it as the frontend (it proxies to our :8000). _wait() accepts any
                 # <500 (incl. 404), so an unrelated HTTP service squatting the port
                 # would be mistaken for a frontend; demand 200. Any failure leaves

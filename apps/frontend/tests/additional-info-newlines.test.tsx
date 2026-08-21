@@ -41,6 +41,47 @@ describe('AdditionalForm newline handling (issue #763)', () => {
   });
 });
 
+describe('AdditionalForm skillGroups sync', () => {
+  it('drops stale skillGroups when the user edits technicalSkills so the flat list renders', () => {
+    const onChange = vi.fn<(data: AdditionalInfo) => void>();
+    const data: AdditionalInfo = {
+      technicalSkills: ['Python', 'React'],
+      skillGroups: [
+        { name: 'Languages', skills: ['Python'] },
+        { name: 'Frontend', skills: ['React'] },
+      ],
+    };
+
+    render(<AdditionalForm data={data} onChange={onChange} />);
+
+    const textarea = screen.getByLabelText('resume.additional.technicalSkills');
+    fireEvent.change(textarea, { target: { value: 'Python\nVue' } });
+
+    const result = onChange.mock.calls[0][0];
+    expect(result.technicalSkills).toEqual(['Python', 'Vue']);
+    expect(result.skillGroups).toBeUndefined();
+  });
+
+  it('keeps skillGroups when editing other fields', () => {
+    const onChange = vi.fn<(data: AdditionalInfo) => void>();
+    const groups = [
+      { name: 'Languages', skills: ['Python'] },
+      { name: 'Frontend', skills: ['React'] },
+    ];
+    const data: AdditionalInfo = {
+      technicalSkills: ['Python', 'React'],
+      skillGroups: groups,
+    };
+
+    render(<AdditionalForm data={data} onChange={onChange} />);
+
+    const textarea = screen.getByLabelText('resume.sections.languages');
+    fireEvent.change(textarea, { target: { value: 'English\nFrench' } });
+
+    expect(onChange.mock.calls[0][0].skillGroups).toEqual(groups);
+  });
+});
+
 describe('ResumeSingleColumn filters blank entries (issue #763)', () => {
   it('does not render empty/whitespace-only additional entries', () => {
     const data: ResumeData = {

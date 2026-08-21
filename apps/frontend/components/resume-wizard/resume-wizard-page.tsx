@@ -68,6 +68,9 @@ function normalizeDraftPersonalInfo(
     website: asString(value.website, fallback.website ?? ''),
     linkedin: asString(value.linkedin, fallback.linkedin ?? ''),
     github: asString(value.github, fallback.github ?? ''),
+    ...(isRecord(value.contactDisplay)
+      ? { contactDisplay: value.contactDisplay as Record<string, string> }
+      : {}),
   };
 }
 

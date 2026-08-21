@@ -124,3 +124,65 @@ class RegenerateResponse(BaseModel):
 
     regenerated_items: list[RegeneratedItem] = Field(default_factory=list)
     errors: list[RegenerateItemError] = Field(default_factory=list)
+
+
+# ============================================
+# Project Bullet Generation Schemas
+# ============================================
+
+
+class GenerateProjectBulletsRequest(BaseModel):
+    """Request to generate resume bullets from a profile project."""
+
+    name: str
+    role: str | None = None
+    years: str | None = None
+    github: str | None = None
+    website: str | None = None
+    description: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+    readme: str | None = Field(default=None, max_length=10000)
+    prompt: str | None = Field(default=None, max_length=2000)
+    output_language: str = "en"
+
+
+class GenerateProjectBulletsResponse(BaseModel):
+    """AI-generated bullet points for a project."""
+
+    bullets: list[str] = Field(default_factory=list)
+
+
+# ============================================
+# Outreach Email Generation Schemas
+# ============================================
+
+
+class GenerateOutreachEmailRequest(BaseModel):
+    """Request to generate an outreach email to a company.
+
+    ``purpose`` is one of ``internship``, ``job``, ``cold``, or ``custom``.
+    When ``custom``, ``custom_purpose`` carries the user's free-text subject.
+    ``resume_id`` optionally selects which resume's profile the email is
+    personalized from; when omitted the master resume is used.
+    """
+
+    company_name: str
+    company_email: str
+    industry: str | None = None
+    company_size: str | None = None
+    company_type: str | None = None
+    website: str | None = None
+    linkedin_url: str | None = None
+    recipient_name: str | None = None
+    purpose: str = "internship"
+    custom_purpose: str | None = Field(default=None, max_length=2000)
+    instruction: str | None = Field(default=None, max_length=2000)
+    output_language: str = "en"
+    resume_id: str | None = None
+
+
+class GenerateOutreachEmailResponse(BaseModel):
+    """AI-generated outreach email (subject + body)."""
+
+    subject: str = ""
+    body: str = ""

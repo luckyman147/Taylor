@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 from app.schemas import (
     ATSScore,
     ATSSubScores,
+    GenerateContentRequest,
     GenerateContentResponse,
     GenerateInterviewPrepResponse,
     ImproveResumeConfirmRequest,
@@ -31,6 +32,9 @@ from app.schemas import (
     ImproveResumeResponse,
     ImproveResumeData,
     InterviewPrepData,
+    ProjectSuggestion,
+    ProjectSuggestionsData,
+    ProjectSuggestionsResponse,
     RefinementStats,
     ResumeDiffSummary,
     ResumeFieldDiff,
@@ -41,6 +45,9 @@ from app.schemas import (
     ResumeSummary,
     ResumeUploadResponse,
     RawResume,
+    SaveAsMasterResponse,
+    TemplateSettingsUpdateRequest,
+    TemplateSettingsUpdateResponse,
     UpdateCoverLetterRequest,
     UpdateOutreachMessageRequest,
     UpdateTitleRequest,
@@ -67,8 +74,16 @@ from app.services.cover_letter import (
     generate_cover_letter,
     generate_outreach_message,
     generate_resume_title,
+    strip_ats_analysis,
 )
 from app.services.interview_prep import generate_interview_prep
+from app.services.matched_projects import (
+    generate_project_bullets,
+    merge_matched_projects,
+    suggest_matched_projects,
+)
+from app.services.skill_presentation import trim_and_group_skills
+from app.services.career_graph import fulfill_profile_from_resume
 from app.prompts import DEFAULT_IMPROVE_PROMPT_ID, IMPROVE_PROMPT_OPTIONS
 
 
@@ -544,7 +559,10 @@ def _validate_confirm_payload(
         raise ValueError(
             f"Improved personalInfo is not a dict: {type(improved_info).__name__}"
         )
-    fields = set(original_info.keys()) | set(improved_info.keys())
+    # contactDisplay is a builder-only display preference the LLM never touches;
+    # stored (LLM-parsed) resumes lack it while the preview echo carries the
+    # schema default `{}`, so exclude it from the identity comparison.
+    fields = (set(original_info.keys()) | set(improved_info.keys())) - {"contactDisplay"}
     mismatches = [
         field
         for field in sorted(fields)
@@ -706,6 +724,15 @@ async def upload_resume(
         await db.update_resume(resume["resume_id"], {"processing_status": "failed"})
         resume["processing_status"] = "failed"
 
+    # Auto-fulfill the career profile from a freshly parsed master resume:
+    # the profile must be ready the moment an import succeeds. Seeding is
+    # best-effort — it must never fail the upload that triggered it.
+    if resume["processing_status"] == "ready" and resume.get("is_master", False):
+        try:
+            await fulfill_profile_from_resume(resume)
+        except Exception as e:
+            logger.error(f"Auto-fulfill from master resume failed: {e}")
+
     # Return accurate status to client (API-001 fix)
     return ResumeUploadResponse(
         message=(
@@ -762,7 +789,7 @@ async def get_resume(resume_id: str = Query(...)) -> ResumeFetchResponse:
             resume_id=resume_id,
             raw_resume=raw_resume,
             processed_resume=processed_resume,
-            cover_letter=resume.get("cover_letter"),
+            cover_letter=strip_ats_analysis(resume.get("cover_letter") or "") or None,
             outreach_message=resume.get("outreach_message"),
             interview_prep=_parse_interview_prep(
                 resume.get("interview_prep"),
@@ -771,7 +798,31 @@ async def get_resume(resume_id: str = Query(...)) -> ResumeFetchResponse:
             parent_id=resume.get("parent_id"),
             title=resume.get("title"),
             is_master=resume.get("is_master", False),
+            template_settings=resume.get("template_settings"),
         ),
+    )
+
+
+@router.patch(
+    "/{resume_id}/template-settings",
+    response_model=TemplateSettingsUpdateResponse,
+)
+async def update_template_settings(
+    resume_id: str, request: TemplateSettingsUpdateRequest
+) -> TemplateSettingsUpdateResponse:
+    """Persist a resume's template/design settings (stored in resume metadata)."""
+    existing = await db.get_resume(resume_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    updated = await db.update_resume(
+        resume_id, {"metadata": {"template_settings": request.template_settings}}
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update template settings")
+
+    return TemplateSettingsUpdateResponse(
+        resume_id=resume_id, template_settings=request.template_settings
     )
 
 
@@ -851,6 +902,146 @@ async def improve_resume_preview_endpoint(
         )
     except Exception as e:
         _raise_improve_error("preview", stage, e, detail)
+
+
+@router.post("/improve/projects-suggestions", response_model=ProjectSuggestionsResponse)
+async def suggest_projects_endpoint(
+    request: ImproveResumeRequest,
+) -> ProjectSuggestionsResponse:
+    """Suggest JD-matched career projects (with drafted bullets) to choose from.
+
+    This is the picker step before tailoring: it returns the top matching
+    career-graph projects for the job, each with drafted Problem -> Solution
+    -> Result bullets, so the user can decide which projects the tailored
+    resume's Projects section will be replaced with (passed back as
+    ``selected_projects`` on the preview/improve requests).
+    """
+    resume = await db.get_resume(request.resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    job = await db.get_job(request.job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job description not found")
+
+    language = get_content_language()
+    try:
+        return await asyncio.wait_for(
+            _suggest_projects_flow(
+                resume=resume,
+                job=job,
+                language=language,
+            ),
+            timeout=settings.request_timeout_seconds,
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            "Project suggestions timed out after %ss for resume %s / job %s",
+            settings.request_timeout_seconds,
+            request.resume_id,
+            request.job_id,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"Project suggestions timed out after {settings.request_timeout_seconds}s. "
+                "Try a shorter job description or check your LLM connection."
+            ),
+        )
+    except Exception as e:
+        logger.error("Project suggestions failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to suggest projects. Please try again.",
+        )
+
+
+async def _suggest_projects_flow(
+    *,
+    resume: dict[str, Any],
+    job: dict[str, Any],
+    language: str,
+) -> ProjectSuggestionsResponse:
+    """Inner flow for improve/projects-suggestions (wrapped in wait_for)."""
+    job_keywords = job.get("job_keywords")
+    job_keywords_hash = job.get("job_keywords_hash")
+    content_hash = _hash_job_content(job["content"])
+    if not job_keywords or job_keywords_hash != content_hash:
+        job_keywords = await extract_job_keywords(job["content"])
+        try:
+            await db.update_job(
+                job["job_id"],
+                {"job_keywords": job_keywords, "job_keywords_hash": content_hash},
+            )
+        except Exception as e:
+            logger.warning("Failed to persist job keywords for suggestions: %s", e)
+
+    original_resume_data = _get_original_resume_data(resume)
+    original_projects = (original_resume_data or {}).get("personalProjects") or []
+    if not isinstance(original_projects, list):
+        original_projects = []
+
+    career_projects = await db.list_career_projects()
+    suggestions = suggest_matched_projects(
+        career_projects, original_projects, job_keywords
+    )
+
+    warnings: list[str] = []
+    suggestions_payload: list[ProjectSuggestion] = []
+    if not suggestions:
+        return ProjectSuggestionsResponse(
+            request_id=str(uuid4()),
+            data=ProjectSuggestionsData(projects=[], warnings=warnings),
+        )
+
+    try:
+        bullets = await generate_project_bullets(
+            [match.project for match, _score in suggestions], job_keywords, language
+        )
+    except Exception as e:
+        logger.warning("Suggestion bullet generation failed: %s", e)
+        bullets = {}
+
+    for match, score in suggestions:
+        project = match.project
+        name = str(project.get("name") or "").strip()
+        if not name:
+            continue
+        entry_bullets = bullets.get(name.casefold())
+        if entry_bullets is None:
+            # No LLM output (off, failed, or malformed): reuse the resume's
+            # existing bullets when the project already ships in it, otherwise
+            # offer it with an empty description the UI can flag.
+            if match.already_in_resume:
+                entry_bullets = [
+                    str(b)
+                    for b in (project.get("description") or [])
+                    if str(b).strip()
+                ]
+            else:
+                entry_bullets = []
+        suggestions_payload.append(
+            ProjectSuggestion(
+                name=name,
+                role=str(project.get("role") or ""),
+                years=str(project.get("years") or ""),
+                github=project.get("github"),
+                website=project.get("website"),
+                score=score,
+                already_in_resume=match.already_in_resume,
+                description=entry_bullets,
+            )
+        )
+        if not entry_bullets and not match.already_in_resume:
+            warnings.append(
+                f"No description could be drafted for '{name}' "
+                "(LLM unavailable) — it will be skipped unless already in your resume."
+            )
+
+    return ProjectSuggestionsResponse(
+        request_id=str(uuid4()),
+        data=ProjectSuggestionsData(projects=suggestions_payload, warnings=warnings),
+    )
 
 
 async def _improve_preview_flow(
@@ -988,6 +1179,7 @@ async def _improve_preview_flow(
             language=language,
             prompt_id=prompt_id,
             original_resume_data=original_resume_data,
+            github_context=github_repos,
         )
 
     # Safety nets (defense in depth — should rarely activate with diff-based flow)
@@ -1003,6 +1195,25 @@ async def _improve_preview_flow(
         improved_data = restore_dates_from_markdown(improved_data, original_markdown)
     improved_data = _preserve_original_skills(original_resume_data, improved_data)
     improved_data = _protect_custom_sections(original_resume_data, improved_data)
+
+    # JD-matched career projects: replace the Projects section with the
+    # career-graph projects matching the job — the user's pick from the
+    # suggestions step, or the auto top-2 when none was made (Problem ->
+    # Solution -> Result descriptions). No-op when nothing matches or the
+    # LLM is unavailable.
+    try:
+        career_projects = await db.list_career_projects()
+        improved_data, matched_warnings = await merge_matched_projects(
+            original_data=original_resume_data,
+            improved_data=improved_data,
+            career_projects=career_projects,
+            job_keywords=job_keywords,
+            language=language,
+            selected_names=request.selected_projects,
+        )
+        response_warnings.extend(matched_warnings)
+    except Exception as e:
+        logger.warning("Matched-project merge failed, continuing without it: %s", e)
 
     # Multi-pass refinement: keyword injection, AI phrase removal, alignment validation
     refinement_stats: RefinementStats | None = None
@@ -1062,6 +1273,12 @@ async def _improve_preview_flow(
         logger.warning("Refinement failed, using unrefined result: %s", e)
         if refinement_attempted:
             response_warnings.append(f"Refinement failed: {str(e)}")
+
+    # Deterministic skill presentation: trim to JD-relevant, evidenced skills
+    # and group them by category (additional.skillGroups). Runs after
+    # refinement so refiner-injected JD skills survive the trim.
+    improved_data, skill_warnings = trim_and_group_skills(improved_data, job_keywords)
+    response_warnings.extend(skill_warnings)
 
     improved_text = json.dumps(improved_data, indent=2)
     preview_hash = _hash_improved_data(improved_data)
@@ -1223,6 +1440,7 @@ async def improve_resume_confirm_endpoint(
         response_warnings.extend(aux_warnings)
 
         stage = "create_resume"
+        base_template_settings = resume.get("template_settings")
         tailored_resume = await db.create_resume(
             content=improved_text,
             content_type="json",
@@ -1235,6 +1453,11 @@ async def improve_resume_confirm_endpoint(
             outreach_message=outreach_message,
             interview_prep=_serialize_interview_prep(interview_prep),
             title=title,
+            metadata=(
+                {"template_settings": base_template_settings}
+                if base_template_settings
+                else None
+            ),
         )
 
         improvements_payload = [imp.model_dump() for imp in request.improvements]
@@ -1371,6 +1594,7 @@ async def improve_resume_endpoint(
                 language=language,
                 prompt_id=prompt_id,
                 original_resume_data=original_resume_data,
+                github_context=github_repos,
             )
 
         # Safety nets (defense in depth)
@@ -1386,6 +1610,25 @@ async def improve_resume_endpoint(
             improved_data = restore_dates_from_markdown(improved_data, original_markdown)
         improved_data = _preserve_original_skills(original_resume_data, improved_data)
         improved_data = _protect_custom_sections(original_resume_data, improved_data)
+
+        # JD-matched career projects: replace the Projects section with the
+        # career-graph projects matching the job — the user's pick from the
+        # suggestions step, or the auto top-2 when none was made (Problem ->
+        # Solution -> Result descriptions). No-op when nothing matches or the
+        # LLM is unavailable.
+        try:
+            career_projects = await db.list_career_projects()
+            improved_data, matched_warnings = await merge_matched_projects(
+                original_data=original_resume_data,
+                improved_data=improved_data,
+                career_projects=career_projects,
+                job_keywords=job_keywords,
+                language=language,
+                selected_names=request.selected_projects,
+            )
+            response_warnings.extend(matched_warnings)
+        except Exception as e:
+            logger.warning("Matched-project merge failed, continuing without it: %s", e)
 
         # Multi-pass refinement: keyword injection, AI phrase removal, alignment validation
         refinement_stats: RefinementStats | None = None
@@ -1446,6 +1689,14 @@ async def improve_resume_endpoint(
             if refinement_attempted:
                 response_warnings.append(f"Refinement failed: {str(e)}")
 
+        # Deterministic skill presentation: trim to JD-relevant, evidenced
+        # skills and group them by category (additional.skillGroups). Runs
+        # after refinement so refiner-injected JD skills survive the trim.
+        improved_data, skill_warnings = trim_and_group_skills(
+            improved_data, job_keywords
+        )
+        response_warnings.extend(skill_warnings)
+
         # Convert improved data to JSON string for storage
         improved_text = json.dumps(improved_data, indent=2)
 
@@ -1478,6 +1729,7 @@ async def improve_resume_endpoint(
         response_warnings.extend(aux_warnings)
 
         # Store the tailored resume with cover letter, outreach message, and title
+        base_template_settings = resume.get("template_settings")
         tailored_resume = await db.create_resume(
             content=improved_text,
             content_type="json",
@@ -1490,6 +1742,11 @@ async def improve_resume_endpoint(
             outreach_message=outreach_message,
             interview_prep=_serialize_interview_prep(interview_prep),
             title=title,
+            metadata=(
+                {"template_settings": base_template_settings}
+                if base_template_settings
+                else None
+            ),
         )
 
         # Store improvement record
@@ -1607,6 +1864,70 @@ async def update_resume_endpoint(
             title=updated.get("title"),
         ),
     )
+
+
+@router.post("/{resume_id}/copy", response_model=SaveAsMasterResponse)
+async def copy_resume_endpoint(resume_id: str) -> SaveAsMasterResponse:
+    """Create a standalone copy of a resume (not a master, no parent link).
+
+    The copy keeps the source's content, processed data, template settings,
+    cover letter/outreach/interview prep, and title (suffixed with
+    " (Copy)"), so it can be edited or tailored independently.
+    """
+    source = await db.get_resume(resume_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    metadata = copy.deepcopy(source.get("metadata_json") or {})
+    processed = copy.deepcopy(source.get("processed_data"))
+    original_markdown = source.get("original_markdown")
+    base_title = (source.get("title") or source.get("filename") or "Resume").strip()
+    copy_title = f"{base_title} (Copy)" if not base_title.lower().endswith("(copy)") else base_title
+
+    created = await db.create_resume(
+        content=source.get("content") or "",
+        content_type=source.get("content_type") or "md",
+        filename=source.get("filename"),
+        is_master=False,
+        parent_id=None,
+        processed_data=processed,
+        processing_status=source.get("processing_status") or "pending",
+        cover_letter=source.get("cover_letter"),
+        outreach_message=source.get("outreach_message"),
+        interview_prep=source.get("interview_prep"),
+        title=copy_title,
+        original_markdown=original_markdown,
+        metadata=metadata,
+    )
+
+    return SaveAsMasterResponse(resume_id=created["resume_id"], is_master=False)
+
+
+@router.post("/{resume_id}/save-as-master", response_model=SaveAsMasterResponse)
+async def save_resume_as_master(resume_id: str) -> SaveAsMasterResponse:
+    """Promote a resume to master (multi-master model: no demotion).
+
+    Mirrors the upload flow: once a resume is a master, the career profile is
+    (best-effort) fulfilled from its content so future tailoring has a base.
+    Idempotent — promoting an already-master resume is a no-op.
+    """
+    existing = await db.get_resume(resume_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    if not existing.get("is_master", False):
+        promoted = await db.set_master_resume(resume_id)
+        if not promoted:
+            raise HTTPException(status_code=500, detail="Failed to promote resume to master")
+
+    resume = await db.get_resume(resume_id)
+    if resume and resume.get("processing_status") == "ready":
+        try:
+            await fulfill_profile_from_resume(resume)
+        except Exception as e:
+            logger.error(f"Auto-fulfill from master resume failed: {e}")
+
+    return SaveAsMasterResponse(resume_id=resume_id, is_master=True)
 
 
 @router.get("/{resume_id}/pdf")
@@ -1913,7 +2234,10 @@ async def update_title(resume_id: str, request: UpdateTitleRequest) -> dict:
 @router.post(
     "/{resume_id}/generate-cover-letter", response_model=GenerateContentResponse
 )
-async def generate_cover_letter_endpoint(resume_id: str) -> GenerateContentResponse:
+async def generate_cover_letter_endpoint(
+    resume_id: str,
+    request: GenerateContentRequest | None = None,
+) -> GenerateContentResponse:
     """Generate a cover letter on-demand for an existing tailored resume.
 
     This endpoint allows users to generate a cover letter after a resume has been
@@ -1965,7 +2289,10 @@ async def generate_cover_letter_endpoint(resume_id: str) -> GenerateContentRespo
     # Generate cover letter
     try:
         cover_letter_content = await generate_cover_letter(
-            resume_data, job["content"], language
+            resume_data,
+            job["content"],
+            language,
+            instruction=request.instruction if request else None,
         )
     except Exception as e:
         logger.error(f"Cover letter generation failed: {e}")
@@ -1984,7 +2311,10 @@ async def generate_cover_letter_endpoint(resume_id: str) -> GenerateContentRespo
 
 
 @router.post("/{resume_id}/generate-outreach", response_model=GenerateContentResponse)
-async def generate_outreach_endpoint(resume_id: str) -> GenerateContentResponse:
+async def generate_outreach_endpoint(
+    resume_id: str,
+    request: GenerateContentRequest | None = None,
+) -> GenerateContentResponse:
     """Generate an outreach message on-demand for an existing tailored resume.
 
     This endpoint allows users to generate a cold outreach message after a resume
@@ -2036,7 +2366,10 @@ async def generate_outreach_endpoint(resume_id: str) -> GenerateContentResponse:
     # Generate outreach message
     try:
         outreach_content = await generate_outreach_message(
-            resume_data, job["content"], language
+            resume_data,
+            job["content"],
+            language,
+            instruction=request.instruction if request else None,
         )
     except Exception as e:
         logger.error(f"Outreach message generation failed: {e}")
@@ -2060,6 +2393,7 @@ async def generate_outreach_endpoint(resume_id: str) -> GenerateContentResponse:
 )
 async def generate_interview_prep_endpoint(
     resume_id: str,
+    request: GenerateContentRequest | None = None,
 ) -> GenerateInterviewPrepResponse:
     """Generate interview preparation on-demand for an existing tailored resume."""
     resume = await db.get_resume(resume_id)
@@ -2102,6 +2436,7 @@ async def generate_interview_prep_endpoint(
             resume_data,
             job["content"],
             language,
+            instruction=request.instruction if request else None,
         )
     except Exception as e:
         logger.exception("Interview preparation generation failed: %s", e)

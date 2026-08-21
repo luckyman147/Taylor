@@ -40,6 +40,7 @@ export interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel?: () => void;
   showCancelButton?: boolean;
+  children?: React.ReactNode;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -56,6 +57,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
   showCancelButton = true,
+  children,
 }) => {
   const { t } = useTranslations();
   const finalConfirmLabel = confirmLabel ?? t('common.confirm');
@@ -126,6 +128,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             </div>
           </div>
         )}
+        {children && <div className="px-6 pb-4">{children}</div>}
         <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
           {showCancelButton && (
             <Button variant="outline" onClick={handleCancel} className="rounded-full">

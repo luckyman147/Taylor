@@ -12,6 +12,8 @@ import { SummaryForm } from './forms/summary-form';
 import { ExperienceForm } from './forms/experience-form';
 import { EducationForm } from './forms/education-form';
 import { ProjectsForm } from './forms/projects-form';
+import { CertificationsForm } from './forms/certifications-form';
+import { AwardsForm } from './forms/awards-form';
 import { AdditionalForm } from './forms/additional-form';
 import { SectionHeader } from './section-header';
 import { GenericTextForm } from './forms/generic-text-form';
@@ -28,9 +30,10 @@ import { useTranslations } from '@/lib/i18n';
 interface ResumeFormProps {
   resumeData: ResumeData;
   onUpdate: (data: ResumeData) => void;
+  outputLanguage: string;
 }
 
-export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate }) => {
+export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate, outputLanguage }) => {
   const { t } = useTranslations();
 
   // Use getAllSections for form - shows ALL sections including hidden ones
@@ -118,6 +121,33 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate }) 
             <ProjectsForm
               data={resumeData.personalProjects || []}
               onChange={(data) => onUpdate({ ...resumeData, personalProjects: data })}
+              outputLanguage={outputLanguage}
+            />
+          );
+
+        case 'certifications':
+          return (
+            <CertificationsForm
+              data={resumeData.additional?.certificationsTraining ?? []}
+              onChange={(data) =>
+                onUpdate({
+                  ...resumeData,
+                  additional: { ...(resumeData.additional ?? {}), certificationsTraining: data },
+                })
+              }
+            />
+          );
+
+        case 'awards':
+          return (
+            <AwardsForm
+              data={resumeData.additional?.awards ?? []}
+              onChange={(data) =>
+                onUpdate({
+                  ...resumeData,
+                  additional: { ...(resumeData.additional ?? {}), awards: data },
+                })
+              }
             />
           );
 
@@ -236,7 +266,11 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate }) 
           ? renderDefaultSection(section)
           : renderCustomSection(section);
 
-        return sectionContent;
+        return (
+          <div key={section.id}>
+            {sectionContent}
+          </div>
+        );
       })}
     </div>
   );

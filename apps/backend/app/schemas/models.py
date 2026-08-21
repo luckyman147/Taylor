@@ -189,6 +189,7 @@ class PersonalInfo(BaseModel):
     website: str | None = None
     linkedin: str | None = None
     github: str | None = None
+    contactDisplay: dict[str, Literal["full", "label"]] = Field(default_factory=dict)
 
 
 class Experience(BaseModel):
@@ -269,6 +270,18 @@ class Project(BaseModel):
         return self
 
 
+class SkillGroup(BaseModel):
+    """A category of technical skills (e.g. "Frontend" -> ["React", "Next.js"]).
+
+    Written by the tailoring pipeline's deterministic skill-presentation
+    step; empty (default) means the resume is presented as the flat
+    ``technicalSkills`` list.
+    """
+
+    name: str
+    skills: list[str] = Field(default_factory=list)
+
+
 class AdditionalInfo(BaseModel):
     """Additional information section."""
 
@@ -276,6 +289,7 @@ class AdditionalInfo(BaseModel):
     languages: list[str] = Field(default_factory=list)
     certificationsTraining: list[str] = Field(default_factory=list)
     awards: list[str] = Field(default_factory=list)
+    skillGroups: list[SkillGroup] = Field(default_factory=list)
 
     @field_validator(
         "technicalSkills",
@@ -453,6 +467,22 @@ def normalize_resume_data(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+def _assign_unique_ids(items: list[Any]) -> None:
+    """Renumber zero/duplicate entry ``id`` values to unique positives (in place).
+
+    Keeps already-unique positive ids untouched; zeros, negatives and
+    duplicates get the first missing positive integer, in order.
+    """
+    seen: set[int] = set()
+    next_id = 1
+    for item in items:
+        if item.id in seen or item.id <= 0:
+            while next_id in seen:
+                next_id += 1
+            item.id = next_id
+        seen.add(item.id)
+
+
 class ResumeData(BaseModel):
     """Complete structured resume data."""
 
@@ -472,6 +502,24 @@ class ResumeData(BaseModel):
     @classmethod
     def _normalize_summary(cls, value: Any) -> str:
         return _coerce_text(value)
+
+    @model_validator(mode="after")
+    def _assign_unique_entry_ids(self) -> "ResumeData":
+        """Give every list entry a unique positive ``id`` (in place).
+
+        The LLM omits ``id`` (entries default to ``id=0``) and several
+        services build entries with hardcoded ``id=0``; the frontend builder
+        targets entries by ``item.id``, so duplicate ids would make an edit
+        apply to every entry sharing that id. Already-unique positive ids are
+        preserved; zeros/duplicates are renumbered deterministically by
+        position (first missing positive integer).
+        """
+        for items in (self.workExperience, self.education, self.personalProjects):
+            _assign_unique_ids(items)
+        for section in self.customSections.values():
+            if section and section.sectionType == SectionType.ITEM_LIST:
+                _assign_unique_ids(section.items or [])
+        return self
 
 
 # API Response Models
@@ -533,6 +581,7 @@ class ResumeFetchData(BaseModel):
     parent_id: str | None = None  # For determining if resume is tailored
     title: str | None = None
     is_master: bool = False
+    template_settings: dict[str, Any] | None = None
 
 
 class ResumeFetchResponse(BaseModel):
@@ -540,6 +589,13 @@ class ResumeFetchResponse(BaseModel):
 
     request_id: str
     data: ResumeFetchData
+
+
+class SaveAsMasterResponse(BaseModel):
+    """Response after promoting a resume to master."""
+
+    resume_id: str
+    is_master: bool = True
 
 
 class ResumeSummary(BaseModel):
@@ -563,11 +619,50 @@ class ResumeListResponse(BaseModel):
 
 
 # Job Description Models
-class JobUploadRequest(BaseModel):
-    """Request to upload job descriptions."""
+class MobileJobInput(BaseModel):
+    """A structured job pushed from the mobile app.
 
-    job_descriptions: list[str]
+    ``description`` is stored as the job's raw ``content`` so the existing
+    improve/tailor pipeline works on mobile jobs unchanged; the remaining
+    fields round-trip through ``metadata_json`` as top-level keys.
+    """
+
+    title: str | None = Field(default=None, max_length=500)
+    company: str | None = Field(default=None, max_length=300)
+    location: str | None = Field(default=None, max_length=300)
+    description: str = Field(min_length=1)
+    url: str | None = Field(default=None, max_length=2000)
+    web_url: str | None = Field(default=None, max_length=2000)
+    source: str | None = Field(default=None, max_length=50)
+    posted_at: str | None = None
+
+
+class JobUploadRequest(BaseModel):
+    """Request to upload job descriptions.
+
+    Two mutually compatible modes: the legacy plain-text list
+    (``job_descriptions``) and the structured mobile payload (``jobs``).
+    At least one of them must be non-empty.
+    """
+
+    job_descriptions: list[str] = Field(default_factory=list)
+    jobs: list[MobileJobInput] | None = None
     resume_id: str | None = None
+
+
+class MobileJobSummary(BaseModel):
+    """A list-entry job for the PC frontend table (newest first)."""
+
+    job_id: str
+    title: str | None = None
+    company: str | None = None
+    location: str | None = None
+    url: str | None = None
+    web_url: str | None = None
+    source: str | None = None
+    posted_at: str | None = None
+    created_at: str
+    content_preview: str
 
 
 class JobUploadResponse(BaseModel):
@@ -585,6 +680,52 @@ class ImproveResumeRequest(BaseModel):
     resume_id: str
     job_id: str
     prompt_id: str | None = None
+    selected_projects: list[str] | None = Field(
+        default=None,
+        description=(
+            "Career project names the user picked from the suggestions step. "
+            "When provided, the Projects section is replaced with exactly "
+            "these projects instead of the auto-selected top matches."
+        ),
+    )
+
+
+class ProjectSuggestion(BaseModel):
+    """A single JD-matched career project offered to the user before tailoring."""
+
+    name: str
+    role: str = ""
+    years: str = ""
+    github: str | None = None
+    website: str | None = None
+    score: int = Field(
+        default=0, ge=0, description="Deterministic keyword match score"
+    )
+    already_in_resume: bool = Field(
+        default=False,
+        description="True when the project already ships in the resume",
+    )
+    description: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Generated Problem -> Solution -> Result bullets (empty when the "
+            "LLM is unavailable and the project is not yet in the resume)"
+        ),
+    )
+
+
+class ProjectSuggestionsData(BaseModel):
+    """Data payload for the project suggestions endpoint."""
+
+    projects: list[ProjectSuggestion]
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ProjectSuggestionsResponse(BaseModel):
+    """Response for the project suggestions endpoint."""
+
+    request_id: str
+    data: ProjectSuggestionsData
 
 
 class ImprovementSuggestion(BaseModel):
@@ -845,6 +986,7 @@ class FeaturePromptsRequest(BaseModel):
 
     cover_letter_prompt: str | None = None
     outreach_message_prompt: str | None = None
+    outreach_email_prompt: str | None = None
 
 
 class FeaturePromptsResponse(BaseModel):
@@ -857,8 +999,10 @@ class FeaturePromptsResponse(BaseModel):
 
     cover_letter_prompt: str
     outreach_message_prompt: str
+    outreach_email_prompt: str
     cover_letter_default: str
     outreach_message_default: str
+    outreach_email_default: str
 
 
 # API Key Management Models
@@ -898,6 +1042,60 @@ class ApiKeysUpdateResponse(BaseModel):
     updated_providers: list[str]
 
 
+class EmailConfigRequest(BaseModel):
+    """Request to update the SMTP email sender settings.
+
+    ``None`` means "don't change this field". For ``password``: ``None`` = keep
+    unchanged, empty string = clear it, any value = set it (stored encrypted).
+    """
+
+    smtp_host: str | None = None
+    smtp_port: int | None = Field(default=None, ge=1, le=65535)
+    sender_email: str | None = None
+    sender_name: str | None = None
+    use_tls: bool | None = None
+    password: str | None = None
+
+
+class EmailConfigResponse(BaseModel):
+    """Current SMTP email sender settings (password is masked)."""
+
+    smtp_host: str = ""
+    smtp_port: int = 587
+    sender_email: str = ""
+    sender_name: str = ""
+    use_tls: bool = True
+    has_password: bool = False
+
+
+class SendEmailResponse(BaseModel):
+    """Result of a send-email request."""
+
+    success: bool = True
+    message: str = ""
+
+
+class SentEmailAttachment(BaseModel):
+    """Metadata about an attachment on a sent email (no file payload)."""
+
+    name: str
+    content_type: str | None = None
+    size: int = 0
+
+
+class SentEmailResponse(BaseModel):
+    """One historical sent-email entry for a company."""
+
+    log_id: str
+    company_id: str | None = None
+    company_name: str = ""
+    recipient_email: str
+    subject: str
+    body: str
+    attachments: list[SentEmailAttachment] = []
+    sent_at: str
+
+
 # Update Cover Letter/Outreach Models
 class UpdateCoverLetterRequest(BaseModel):
     """Request to update cover letter content."""
@@ -917,10 +1115,29 @@ class UpdateTitleRequest(BaseModel):
     title: str
 
 
+class TemplateSettingsUpdateRequest(BaseModel):
+    """Request to persist a resume's template/design settings."""
+
+    template_settings: dict[str, Any]
+
+
+class TemplateSettingsUpdateResponse(BaseModel):
+    """Response after persisting a resume's template/design settings."""
+
+    resume_id: str
+    template_settings: dict[str, Any]
+
+
 class ResetDatabaseRequest(BaseModel):
     """Request to reset database with confirmation."""
 
     confirm: str | None = None
+
+
+class GenerateContentRequest(BaseModel):
+    """Request for on-demand content generation with optional user guidance."""
+
+    instruction: str | None = None
 
 
 class GenerateContentResponse(BaseModel):

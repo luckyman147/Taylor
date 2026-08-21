@@ -70,6 +70,31 @@ class TestResumeCrud:
         fetched = await db.get_resume(created["resume_id"])
         assert fetched["interview_prep"] == '{"role_fit_analysis":["fit"]}'
 
+    async def test_metadata_round_trips_as_top_level_keys(self, db):
+        created = await db.create_resume(
+            content="x",
+            metadata={"template_settings": {"template": "modern"}},
+        )
+        fetched = await db.get_resume(created["resume_id"])
+        assert fetched["template_settings"] == {"template": "modern"}
+
+    async def test_update_merges_metadata_without_clobbering(self, db):
+        created = await db.create_resume(
+            content="x",
+            metadata={"template_settings": {"template": "modern"}},
+        )
+        await db.update_resume(created["resume_id"], {"metadata": {"custom_key": "v"}})
+        fetched = await db.get_resume(created["resume_id"])
+        assert fetched["template_settings"] == {"template": "modern"}
+        assert fetched["custom_key"] == "v"
+        # Core columns still set directly alongside metadata merges.
+        updated = await db.update_resume(
+            created["resume_id"], {"title": "T", "metadata": {"another": 1}}
+        )
+        assert updated["title"] == "T"
+        assert updated["another"] == 1
+        assert updated["template_settings"] == {"template": "modern"}
+
     def test_interview_prep_migration_is_idempotent(self, tmp_path):
         engine = make_sync_engine(tmp_path / "old.db")
         try:

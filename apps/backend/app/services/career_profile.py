@@ -16,18 +16,20 @@ import json
 import logging
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from app.config_cache import get_content_language
 from app.database import APPLICATION_STATUSES, db
-from app.llm import complete, get_llm_config
+from app.llm import complete, complete_json, get_llm_config
 from app.prompts import get_language_name
 from app.prompts.templates import (
     CAREER_ADVISOR_PROMPT,
     CAREER_ADVISOR_SYSTEM_PROMPT,
     CAREER_GAP_ANALYSIS_PROMPT,
     CAREER_ROI_ADVICE_PROMPT,
+    SKILL_RESOURCES_PROMPT,
+    SKILL_SUGGESTIONS_PROMPT,
 )
 from app.services.improver import _sanitize_user_input
 
@@ -40,8 +42,19 @@ _MAX_REJECTED_APPS = 20
 _MAX_JOBS_IN_MEMORY = 25
 _MAX_CONTACTS_IN_MEMORY = 50
 _MAX_GITHUB_REPOS = 10
+_MAX_EDUCATION_IN_MEMORY = 8
+_MAX_PROJECTS_IN_MEMORY = 10
+_MAX_ACHIEVEMENTS_IN_MEMORY = 15
+_MAX_ENTRY_DESC_CHARS = 400
 _MAX_ROI_ROWS = 25
 _MAX_ROI_TABLE_ROWS_FOR_ADVICE = 10
+_MAX_GAP_SKILLS = 15
+_MAX_STRENGTHEN_SKILLS = 10
+_MAX_GAP_RESOURCE_SKILLS = 10
+_MAX_SKILL_SUGGESTIONS = 8
+# Below this existing-knowledge share (proficiency < 3/5), an in-demand
+# profile skill is flagged as worth strengthening.
+_STRENGTHEN_PROFICIENCY_PCT = 60
 
 # Canonical skill catalog for ROI: aliases (word-boundary matched against job
 # descriptions) and a coarse learning-effort heuristic. Skills not listed get a
@@ -260,6 +273,51 @@ def _matches_description(description: str, terms: list[str]) -> bool:
     )
 
 
+def missing_catalog_skills(
+    jobs: list[dict[str, Any]],
+    profile_skills: list[dict[str, Any]],
+) -> list[str]:
+    """Catalog skills absent from the profile that appear in at least one job.
+
+    Pure function shared by the ROI engine and the skills-to-learn section:
+    a skill is "missing" when it is not in the profile's own skills, yet at
+    least one saved job description mentions it (canonical name or alias).
+    """
+    profile_names = {skill.get("name", "").lower() for skill in profile_skills}
+    pool = [job for job in jobs if job.get("description")]
+    result: list[str] = []
+    for name in _SKILL_CATALOG:
+        if name.lower() in profile_names:
+            continue
+        if any(
+            _matches_description(job["description"], _skill_search_terms(name))
+            for job in pool
+        ):
+            result.append(name)
+    return result
+
+
+def partition_roi_rows(
+    rows: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split ROI rows into (gaps, strengthen, rest) — the job-focused view.
+
+    ``gaps`` are skills missing from the profile (learn); ``strengthen`` are
+    in-demand profile skills the user is weak at; ``rest`` is everything else
+    (already strong, or not in demand). Sections are ranked by leverage —
+    demand first, weakness second — so "what helps me get a job" comes top.
+    """
+    gaps = [row for row in rows if row["action"] == "learn"]
+    strengthen = [row for row in rows if row["action"] == "strengthen"]
+    rest = [row for row in rows if row["action"] != "learn" and row["action"] != "strengthen"]
+
+    gaps.sort(key=lambda row: (-row["matching_jobs"], -row["roi_score"]))
+    strengthen.sort(
+        key=lambda row: (-row["matching_jobs"], row["existing_knowledge"])
+    )
+    return gaps[:_MAX_GAP_SKILLS], strengthen[:_MAX_STRENGTHEN_SKILLS], rest
+
+
 def compute_skill_roi(
     jobs: list[dict[str, Any]],
     profile_skills: list[dict[str, Any]],
@@ -294,15 +352,8 @@ def compute_skill_roi(
                 candidates.append(name)
                 seen.add(key)
         # Then catalog skills missing from the profile that appear in jobs.
-        for name in _SKILL_CATALOG:
-            if (
-                name.lower() not in seen
-                and name.lower() not in profile_names
-                and any(
-                    _matches_description(job["description"], _skill_search_terms(name))
-                    for job in pool
-                )
-            ):
+        for name in missing_catalog_skills(jobs, profile_skills):
+            if name.lower() not in seen:
                 candidates.append(name)
                 seen.add(name.lower())
 
@@ -326,6 +377,13 @@ def compute_skill_roi(
         existing_knowledge = int(
             min(proficiency.get(skill.lower(), 0), 5) / 5.0 * 100.0
         )
+        in_profile = skill.lower() in profile_names
+        if not in_profile:
+            action = "learn"
+        elif matching and existing_knowledge < _STRENGTHEN_PROFICIENCY_PCT:
+            action = "strengthen"
+        else:
+            action = "monitor"
 
         # Weighted ROI: 35% demand, 25% salary, 20% learning ease, 20% existing.
         salary_term = (
@@ -350,11 +408,13 @@ def compute_skill_roi(
                 "learning_effort": effort,
                 "existing_knowledge": existing_knowledge,
                 "roi_score": roi,
+                "action": action,
+                "in_profile": in_profile,
             }
         )
 
     rows.sort(key=lambda row: row["roi_score"], reverse=True)
-    return rows[:_MAX_ROI_ROWS], None
+    return rows, None
 
 
 def _roi_table_markdown(rows: list[dict[str, Any]]) -> str:
@@ -563,10 +623,52 @@ async def _build_career_memory_uncached() -> dict[str, Any]:
         for job in await db.list_scraped_jobs_for_analysis()
     ][:_MAX_JOBS_IN_MEMORY]
 
+    education = [
+        {
+            "institution": entry.get("institution"),
+            "degree": entry.get("degree"),
+            "years": entry.get("years"),
+            "description": (entry.get("description") or "")[
+                :_MAX_ENTRY_DESC_CHARS
+            ],
+        }
+        for entry in await db.list_career_education()
+    ][:_MAX_EDUCATION_IN_MEMORY]
+
+    projects = [
+        {
+            "name": project.get("name"),
+            "role": project.get("role"),
+            "years": project.get("years"),
+            "github": project.get("github"),
+            "website": project.get("website"),
+            "description": [
+                bullet[:_MAX_ENTRY_DESC_CHARS]
+                for bullet in project.get("description") or []
+            ],
+            "skills": await _entry_skill_names("project", project["project_id"]),
+        }
+        for project in await db.list_career_projects()
+    ][:_MAX_PROJECTS_IN_MEMORY]
+
+    achievements = [
+        {
+            "title": achievement.get("title"),
+            "date": achievement.get("date"),
+            "description": (achievement.get("description") or "")[
+                :_MAX_ENTRY_DESC_CHARS
+            ],
+        }
+        for achievement in await db.list_career_achievements()
+    ][:_MAX_ACHIEVEMENTS_IN_MEMORY]
+
     return {
         "profile": profile,
         "skills": skills,
         "certifications": certifications,
+        "education": education,
+        "projects": projects,
+        "achievements": achievements,
         "master_resume": master,
         "funnel": funnel,
         "rejected_applications": rejected,
@@ -574,6 +676,14 @@ async def _build_career_memory_uncached() -> dict[str, Any]:
         "scraped_jobs": jobs,
         "github_repos": await _github_repo_summaries(),
     }
+
+
+async def _entry_skill_names(entry_type: str, entry_key: str) -> list[str]:
+    """Skill names linked to a career-graph entry, in insertion order."""
+    return [
+        edge["skill_name"]
+        for edge in await db.list_career_entry_skills(entry_type, entry_key)
+    ]
 
 
 def _format_history(history: list[dict[str, str]]) -> str:
@@ -657,3 +767,148 @@ async def generate_roi_advice(rows: list[dict[str, Any]]) -> str | None:
         output_language=_output_language(),
     )
     return await complete(prompt, max_tokens=512)
+
+
+def _normalize_resource_response(
+    raw: dict[str, Any],
+) -> dict[str, list[dict[str, str]]]:
+    """Defensively normalize the LLM resource JSON to {skill: [resources]}.
+
+    Drops entries without a title or URL, truncates fields, and caps each
+    skill to 4 resources so a misbehaving model cannot bloat the payload.
+    """
+    result: dict[str, list[dict[str, str]]] = {}
+    for skill, entries in raw.items():
+        if not isinstance(entries, list):
+            continue
+        cleaned: list[dict[str, str]] = []
+        for entry in entries:
+            if len(cleaned) >= 4:
+                break
+            if not isinstance(entry, dict):
+                continue
+            title = str(entry.get("title") or "").strip()
+            url = str(entry.get("url") or "").strip()
+            source = str(entry.get("source") or "").strip()
+            if not title or not url:
+                continue
+            cleaned.append(
+                {
+                    "title": title[:200],
+                    "url": url[:500],
+                    "source": source[:40],
+                }
+            )
+        if cleaned:
+            result[str(skill).strip()] = cleaned
+    return result
+
+
+async def generate_skill_resources(
+    skills: list[str],
+) -> dict[str, list[dict[str, str]]]:
+    """LLM-proposed learning resources per skill (empty when LLM is off).
+
+    The router verifies every URL before anything is shown to the user; this
+    function only proposes. Batches all skills into one call to keep costs low.
+    """
+    if not _llm_configured() or not skills:
+        return {}
+    prompt = SKILL_RESOURCES_PROMPT.format(
+        skills=json.dumps(skills, ensure_ascii=False),
+        output_language=_output_language(),
+    )
+    raw = await complete_json(prompt, max_tokens=2048)
+    return _normalize_resource_response(raw)
+
+
+def _normalize_skill_suggestions(
+    raw: dict[str, Any],
+    existing_names: set[str],
+) -> list[dict[str, str]]:
+    """Defensively normalize the LLM suggestion JSON to [{name, reason, kind}].
+
+    Drops unnamed entries, exact duplicates (case-insensitive) and skills
+    already in the profile; coerces ``kind`` to remembered/learn_next;
+    truncates the reason and caps the list so a misbehaving model cannot
+    bloat the payload.
+    """
+    entries = raw.get("skills") if isinstance(raw, dict) else None
+    if not isinstance(entries, list):
+        return []
+    seen: set[str] = set()
+    existing = {name.lower() for name in existing_names}
+    result: list[dict[str, str]] = []
+    for entry in entries:
+        if len(result) >= _MAX_SKILL_SUGGESTIONS:
+            break
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if len(name) < 2 or name.lower() in existing or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        kind = str(entry.get("kind") or "").strip().lower()
+        if kind not in ("remembered", "learn_next"):
+            kind = "remembered"
+        result.append(
+            {
+                "name": name[:100],
+                "reason": str(entry.get("reason") or "").strip()[:200],
+                "kind": kind,
+            }
+        )
+    return result
+
+
+async def generate_skill_suggestions() -> list[dict[str, str]] | None:
+    """LLM skill recommendations over the local career data.
+
+    Builds a compact profile snapshot (skills, work roles, projects with
+    languages, certifications) and asks the LLM for two groups: skills the
+    user probably has but forgot to list ("remembered") and skills worth
+    learning in the current year ("learn_next"), anchored to a curated list
+    of in-demand 2026 skills/concepts. Returns None when the LLM is not
+    configured; the router surfaces a note in that case.
+    """
+    if not _llm_configured():
+        return None
+    profile = await db.get_career_profile()
+    skills = [
+        {
+            "name": skill.get("name"),
+            "category": skill.get("category"),
+        }
+        for skill in await db.list_career_skills()
+    ]
+    work_roles = [
+        str(entry.get("role") or "").strip()
+        for entry in (profile or {}).get("work_experience") or []
+        if entry.get("role")
+    ]
+    projects = [
+        {
+            "name": project.get("name"),
+            "languages": project.get("languages"),
+        }
+        for project in await db.list_career_projects()
+    ]
+    certifications = [
+        cert.get("name")
+        for cert in await db.list_career_certifications()
+        if cert.get("name")
+    ]
+    context = {
+        "skills": skills[:40],
+        "work_roles": work_roles[:10],
+        "projects": projects[:10],
+        "certifications": certifications[:10],
+    }
+    prompt = SKILL_SUGGESTIONS_PROMPT.format(
+        profile=json.dumps(context, ensure_ascii=False),
+        output_language=_output_language(),
+        current_year=str(datetime.now(timezone.utc).year),
+    )
+    raw = await complete_json(prompt, max_tokens=1024)
+    existing = {s["name"].lower() for s in skills if s.get("name")}
+    return _normalize_skill_suggestions(raw, existing)

@@ -70,6 +70,7 @@ export function CompanyDetailsDialog({
     href?: string;
     external?: boolean;
     icon?: 'mail' | 'phone' | 'globe' | 'linkedin';
+    full?: boolean;
   }[] = [
     {
       label: t('companies.form.email'),
@@ -86,6 +87,7 @@ export function CompanyDetailsDialog({
     {
       label: t('companies.form.address'),
       value: company.address ?? '—',
+      full: true,
     },
     {
       label: t('companies.form.website'),
@@ -172,11 +174,15 @@ export function CompanyDetailsDialog({
         <div className="max-h-[55vh] overflow-y-auto p-6">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
             {rows.map((row) => (
-              <div key={row.label} className="min-w-0">
+              <div key={row.label} className={`min-w-0 ${row.full ? 'col-span-2' : ''}`}>
                 <dt className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                   {row.label}
                 </dt>
-                <dd className="mt-1 truncate text-sm text-ink">
+                <dd
+                  className={`mt-1 text-sm text-ink ${
+                    row.href ? '' : 'whitespace-pre-wrap break-words'
+                  } ${row.full ? '' : 'truncate'}`}
+                >
                   {row.href ? (
                     <a
                       href={row.href}

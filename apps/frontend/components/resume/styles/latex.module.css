@@ -82,7 +82,8 @@
   color: var(--resume-text-body);
   white-space: nowrap;
   flex-shrink: 0;
-  text-align: right;
+  flex: 1 1 0%;
+  text-align: var(--date-align, right);
 }
 
 .entrySecondary {

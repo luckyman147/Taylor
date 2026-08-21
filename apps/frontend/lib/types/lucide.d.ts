@@ -9,6 +9,7 @@ declare module 'lucide-react/dist/esm/icons' {
   export const ArrowLeft: LucideIcon;
   export const Archive: LucideIcon;
   export const Briefcase: LucideIcon;
+  export const ChevronDown: LucideIcon;
   export const Clock: LucideIcon;
   export const ExternalLink: LucideIcon;
   export const Loader: LucideIcon;
@@ -16,6 +17,8 @@ declare module 'lucide-react/dist/esm/icons' {
   export const RefreshCw: LucideIcon;
   export const Save: LucideIcon;
   export const Search: LucideIcon;
+  export const Smartphone: LucideIcon;
+  export const Sparkles: LucideIcon;
   export const Trash2: LucideIcon;
   export const X: LucideIcon;
 }

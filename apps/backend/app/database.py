@@ -12,6 +12,7 @@ Two engines back one SQLite file:
 
 import asyncio
 import hashlib
+import json
 import logging
 import shutil
 from datetime import datetime, timezone
@@ -29,14 +30,24 @@ from app.db_engine import init_models_sync, make_async_engine, make_sync_engine
 from app.models import (
     ApiKey,
     Application,
+    CareerAchievement,
     CareerCertification,
+    CareerEducation,
+    CareerEntrySkill,
     CareerProfile,
+    CareerProject,
     CareerSkill,
     Company,
     Contact,
+    ChatMemory,
+    ChatMessage,
+    ChatThread,
     Improvement,
     Job,
+    PracticeSession,
     Resume,
+    SentEmail,
+    SkillResource,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,6 +157,12 @@ class Database:
         # Preserve TinyDB absence semantics: omit the key entirely when None.
         if row.original_markdown is not None:
             doc["original_markdown"] = row.original_markdown
+        # Flatten dynamic fields from metadata_json (mirrors _job_to_dict),
+        # never overriding first-class columns.
+        meta = row.metadata_json or {}
+        if isinstance(meta, dict):
+            for key, value in meta.items():
+                doc.setdefault(key, value)
         return doc
 
     @staticmethod
@@ -226,6 +243,42 @@ class Database:
         }
 
     @staticmethod
+    def _sent_email_to_dict(row: SentEmail) -> dict[str, Any]:
+        try:
+            attachments = json.loads(row.attachments_json or "[]")
+        except (json.JSONDecodeError, TypeError):
+            attachments = []
+        return {
+            "log_id": row.log_id,
+            "company_id": row.company_id,
+            "company_name": row.company_name,
+            "recipient_email": row.recipient_email,
+            "subject": row.subject,
+            "body": row.body,
+            "attachments": attachments,
+            "sent_at": row.sent_at,
+        }
+
+    @staticmethod
+    def _practice_session_to_dict(row: PracticeSession) -> dict[str, Any]:
+        try:
+            feedback = json.loads(row.feedback_json or "{}")
+        except (json.JSONDecodeError, TypeError):
+            feedback = {}
+        return {
+            "session_id": row.session_id,
+            "scenario_id": row.scenario_id,
+            "scenario_title": row.scenario_title,
+            "scenario_description": row.scenario_description,
+            "duration_minutes": row.duration_minutes,
+            "answer": row.answer,
+            "score": row.score,
+            "level": row.level,
+            "feedback": feedback,
+            "created_at": row.created_at,
+        }
+
+    @staticmethod
     def _career_profile_to_dict(row: CareerProfile) -> dict[str, Any]:
         return {
             "profile_id": row.profile_id,
@@ -277,6 +330,55 @@ class Database:
             "updated_at": row.updated_at,
         }
 
+    @staticmethod
+    def _career_education_to_dict(row: CareerEducation) -> dict[str, Any]:
+        return {
+            "education_id": row.education_id,
+            "institution": row.institution,
+            "degree": row.degree,
+            "years": row.years,
+            "description": row.description,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _career_project_to_dict(row: CareerProject) -> dict[str, Any]:
+        return {
+            "project_id": row.project_id,
+            "name": row.name,
+            "role": row.role,
+            "years": row.years,
+            "github": row.github,
+            "website": row.website,
+            "description": row.description or [],
+            "languages": row.languages or [],
+            "readme": row.readme,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _career_achievement_to_dict(row: CareerAchievement) -> dict[str, Any]:
+        return {
+            "achievement_id": row.achievement_id,
+            "title": row.title,
+            "description": row.description,
+            "date": row.date,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _career_entry_skill_to_dict(row: CareerEntrySkill) -> dict[str, Any]:
+        return {
+            "entry_id": row.entry_id,
+            "entry_type": row.entry_type,
+            "entry_key": row.entry_key,
+            "skill_name": row.skill_name,
+            "created_at": row.created_at,
+        }
+
     # -- Resume operations --------------------------------------------------
 
     async def create_resume(
@@ -293,10 +395,13 @@ class Database:
         title: str | None = None,
         original_markdown: str | None = None,
         interview_prep: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Create a new resume entry.
 
         processing_status: "pending", "processing", "ready", "failed"
+        ``metadata`` holds dynamic per-resume fields (e.g. ``template_settings``)
+        and is flattened to top-level keys on read.
         """
         resume_id = str(uuid4())
         now = _now()
@@ -316,6 +421,7 @@ class Database:
                     interview_prep=interview_prep,
                     title=title,
                     original_markdown=original_markdown,
+                    metadata_json=metadata or {},
                     created_at=now,
                     updated_at=now,
                 )
@@ -355,6 +461,7 @@ class Database:
         title: str | None = None,
         interview_prep: str | None = None,
         as_master: bool = False,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Create a new resume with atomic master assignment.
 
@@ -397,6 +504,7 @@ class Database:
                 interview_prep=interview_prep,
                 original_markdown=original_markdown,
                 title=title,
+                metadata=metadata,
             )
 
     async def get_resume(self, resume_id: str) -> dict[str, Any] | None:
@@ -417,6 +525,10 @@ class Database:
     async def update_resume(self, resume_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         """Update resume by ID.
 
+        ``metadata`` / ``metadata_json`` dicts are merged into the existing
+        metadata map (never replaced wholesale) so dynamic per-resume fields
+        like ``template_settings`` round-trip through ``get_resume``.
+
         Raises:
             ValueError: If resume not found.
         """
@@ -425,7 +537,11 @@ class Database:
             if row is None:
                 raise ValueError(f"Resume not found: {resume_id}")
             for key, value in updates.items():
-                if hasattr(row, key):
+                if key in ("metadata", "metadata_json") and isinstance(value, dict):
+                    meta = dict(row.metadata_json or {})
+                    meta.update(value)
+                    row.metadata_json = meta
+                elif hasattr(row, key):
                     setattr(row, key, value)
                 else:
                     logger.warning("Ignoring unknown resume field on update: %s", key)
@@ -467,13 +583,28 @@ class Database:
 
     # -- Job operations -----------------------------------------------------
 
-    async def create_job(self, content: str, resume_id: str | None = None) -> dict[str, Any]:
-        """Create a new job description entry."""
+    async def create_job(
+        self,
+        content: str,
+        resume_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a new job description entry.
+
+        Structured fields (title, company, location, url, source, ...) are
+        stored in ``metadata_json`` and flatten to top-level keys on read.
+        """
         job_id = str(uuid4())
         now = _now()
         async with self._session() as session:
             session.add(
-                Job(job_id=job_id, content=content, resume_id=resume_id, created_at=now, metadata_json={})
+                Job(
+                    job_id=job_id,
+                    content=content,
+                    resume_id=resume_id,
+                    created_at=now,
+                    metadata_json=dict(metadata or {}),
+                )
             )
             await session.commit()
         return {
@@ -482,6 +613,24 @@ class Database:
             "resume_id": resume_id,
             "created_at": now,
         }
+
+    async def list_jobs(
+        self,
+        source: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List jobs newest-first with structured fields flattened.
+
+        ``limit`` is capped at 200. ``source`` filters on the flattened
+        ``metadata_json.source`` value (JSON attributes filter).
+        """
+        limit = max(1, min(int(limit), 200))
+        async with self._session() as session:
+            stmt = select(Job).order_by(Job.created_at.desc()).limit(limit)
+            if source:
+                stmt = stmt.where(Job.metadata_json["source"].as_string() == source)
+            result = await session.execute(stmt)
+            return [self._job_to_dict(row) for row in result.scalars().all()]
 
     async def get_job(self, job_id: str) -> dict[str, Any] | None:
         """Get job by ID (dynamic fields flattened to top level)."""
@@ -1083,7 +1232,366 @@ class Database:
             await session.commit()
         return deleted
 
-    # -- Career profile operations ------------------------------------------
+    # -- Sent email history --------------------------------------------------
+
+    async def create_sent_email(
+        self,
+        company_id: str | None,
+        company_name: str,
+        recipient_email: str,
+        subject: str,
+        body: str,
+        attachments: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Persist a historical record of a sent outreach email."""
+        log_id = str(uuid4())
+        now = _now()
+        async with self._session() as session:
+            session.add(
+                SentEmail(
+                    log_id=log_id,
+                    company_id=company_id,
+                    company_name=company_name,
+                    recipient_email=recipient_email,
+                    subject=subject,
+                    body=body,
+                    attachments_json=json.dumps(attachments or [], ensure_ascii=False),
+                    sent_at=now,
+                )
+            )
+            await session.commit()
+        return {
+            "log_id": log_id,
+            "company_id": company_id,
+            "company_name": company_name,
+            "recipient_email": recipient_email,
+            "subject": subject,
+            "body": body,
+            "attachments": attachments or [],
+            "sent_at": now,
+        }
+
+    async def list_sent_emails(
+        self, company_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """List sent emails, newest first, optionally filtered by company."""
+        async with self._session() as session:
+            stmt = select(SentEmail).order_by(SentEmail.sent_at.desc())
+            if company_id:
+                stmt = stmt.where(SentEmail.company_id == company_id)
+            result = await session.execute(stmt)
+            return [self._sent_email_to_dict(row) for row in result.scalars().all()]
+
+    # -- Practice session history ---------------------------------------------
+
+    async def create_practice_session(
+        self,
+        scenario_id: str | None,
+        scenario_title: str,
+        scenario_description: str | None,
+        duration_minutes: int | None,
+        answer: str,
+        score: int | None,
+        level: str | None,
+        feedback: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Persist a recorded interview-practice session with its feedback."""
+        session_id = str(uuid4())
+        now = _now()
+        async with self._session() as session:
+            session.add(
+                PracticeSession(
+                    session_id=session_id,
+                    scenario_id=scenario_id,
+                    scenario_title=scenario_title,
+                    scenario_description=scenario_description,
+                    duration_minutes=duration_minutes,
+                    answer=answer,
+                    score=score,
+                    level=level,
+                    feedback_json=json.dumps(feedback or {}, ensure_ascii=False),
+                    created_at=now,
+                )
+            )
+            await session.commit()
+        return {
+            "session_id": session_id,
+            "scenario_id": scenario_id,
+            "scenario_title": scenario_title,
+            "scenario_description": scenario_description,
+            "duration_minutes": duration_minutes,
+            "answer": answer,
+            "score": score,
+            "level": level,
+            "feedback": feedback or {},
+            "created_at": now,
+        }
+
+    async def list_practice_sessions(
+        self, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        """List practice sessions, newest first."""
+        limit = max(1, min(int(limit), 200))
+        async with self._session() as session:
+            stmt = select(PracticeSession).order_by(
+                PracticeSession.created_at.desc()
+            ).limit(limit)
+            result = await session.execute(stmt)
+            return [self._practice_session_to_dict(row) for row in result.scalars().all()]
+
+    # -- Chat thread/message/memory operations -------------------------------
+
+    @staticmethod
+    def _chat_thread_to_dict(row: ChatThread) -> dict[str, Any]:
+        return {
+            "thread_id": row.thread_id,
+            "title": row.title,
+            "mode": row.mode,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def _chat_message_to_dict(row: ChatMessage) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "message_id": row.message_id,
+            "thread_id": row.thread_id,
+            "role": row.role,
+            "content": row.content,
+            "created_at": row.created_at,
+        }
+        if row.envelope_json:
+            try:
+                result["envelope"] = json.loads(row.envelope_json)
+            except (json.JSONDecodeError, TypeError):
+                result["envelope"] = None
+        else:
+            result["envelope"] = None
+        return result
+
+    @staticmethod
+    def _chat_memory_to_dict(row: ChatMemory) -> dict[str, Any]:
+        return {
+            "memory_id": row.memory_id,
+            "statement": row.statement,
+            "source_thread_id": row.source_thread_id,
+            "active": row.active,
+            "created_at": row.created_at,
+        }
+
+    async def create_chat_thread(
+        self, title: str = "New Chat", mode: str = "ask"
+    ) -> dict[str, Any]:
+        """Create a new chat thread."""
+        thread_id = str(uuid4())
+        now = _now()
+        async with self._session() as session:
+            session.add(
+                ChatThread(
+                    thread_id=thread_id,
+                    title=title,
+                    mode=mode,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+        return {"thread_id": thread_id, "title": title, "mode": mode, "created_at": now, "updated_at": now}
+
+    async def list_chat_threads(self) -> list[dict[str, Any]]:
+        """List chat threads with message counts, newest first."""
+        async with self._session() as session:
+            # Get threads
+            stmt = select(ChatThread).order_by(ChatThread.updated_at.desc())
+            result = await session.execute(stmt)
+            threads = [self._chat_thread_to_dict(row) for row in result.scalars().all()]
+            # Attach last message preview + count per thread
+            for thread in threads:
+                tid = thread["thread_id"]
+                count_stmt = (
+                    select(func.count())
+                    .select_from(ChatMessage)
+                    .where(ChatMessage.thread_id == tid)
+                )
+                count_result = await session.execute(count_stmt)
+                thread["message_count"] = count_result.scalar() or 0
+                # Last message preview
+                preview_stmt = (
+                    select(ChatMessage)
+                    .where(ChatMessage.thread_id == tid)
+                    .order_by(ChatMessage.created_at.desc())
+                    .limit(1)
+                )
+                preview_result = await session.execute(preview_stmt)
+                last_msg = preview_result.scalars().first()
+                thread["last_preview"] = (last_msg.content[:80] if last_msg else "")
+            return threads
+
+    async def get_chat_thread(self, thread_id: str) -> dict[str, Any] | None:
+        """Get a single chat thread."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(ChatThread).where(ChatThread.thread_id == thread_id)
+            )
+            row = result.scalars().first()
+            return self._chat_thread_to_dict(row) if row else None
+
+    async def update_chat_thread(
+        self, thread_id: str, title: str | None = None, mode: str | None = None
+    ) -> dict[str, Any] | None:
+        """Update thread title and/or mode. Returns the updated thread."""
+        now = _now()
+        async with self._session() as session:
+            result = await session.execute(
+                select(ChatThread).where(ChatThread.thread_id == thread_id)
+            )
+            row = result.scalars().first()
+            if row is None:
+                return None
+            if title is not None:
+                row.title = title
+            if mode is not None:
+                row.mode = mode
+            row.updated_at = now
+            await session.commit()
+            return self._chat_thread_to_dict(row)
+
+    async def delete_chat_thread(self, thread_id: str) -> bool:
+        """Delete a thread and all its messages. Returns True if deleted."""
+        async with self._session() as session:
+            # Delete messages first
+            await session.execute(
+                delete(ChatMessage).where(ChatMessage.thread_id == thread_id)
+            )
+            result = await session.execute(
+                delete(ChatThread).where(ChatThread.thread_id == thread_id)
+            )
+            await session.commit()
+            return result.rowcount > 0
+
+    async def list_chat_messages(
+        self, thread_id: str, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        """List messages in a thread, oldest first."""
+        limit = max(1, min(int(limit), 100))
+        async with self._session() as session:
+            stmt = (
+                select(ChatMessage)
+                .where(ChatMessage.thread_id == thread_id)
+                .order_by(ChatMessage.created_at.asc())
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            return [self._chat_message_to_dict(row) for row in result.scalars().all()]
+
+    async def add_chat_message(
+        self,
+        thread_id: str,
+        role: str,
+        content: str,
+        envelope: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Persist a single chat message."""
+        message_id = str(uuid4())
+        now = _now()
+        async with self._session() as session:
+            session.add(
+                ChatMessage(
+                    message_id=message_id,
+                    thread_id=thread_id,
+                    role=role,
+                    content=content,
+                    envelope_json=json.dumps(envelope, ensure_ascii=False) if envelope else None,
+                    created_at=now,
+                )
+            )
+            # Also bump thread.updated_at
+            thread_result = await session.execute(
+                select(ChatThread).where(ChatThread.thread_id == thread_id)
+            )
+            thread_row = thread_result.scalars().first()
+            if thread_row is not None:
+                thread_row.updated_at = now
+            await session.commit()
+        return {
+            "message_id": message_id,
+            "thread_id": thread_id,
+            "role": role,
+            "content": content,
+            "envelope": envelope,
+            "created_at": now,
+        }
+
+    # -- Chat memory operations ----------------------------------------------
+
+    async def list_active_chat_memories(self, limit: int = 20) -> list[dict[str, Any]]:
+        """List active memories, newest first."""
+        limit = max(1, min(int(limit), 50))
+        async with self._session() as session:
+            stmt = (
+                select(ChatMemory)
+                .where(ChatMemory.active == True)  # noqa: E712
+                .order_by(ChatMemory.created_at.desc())
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            return [self._chat_memory_to_dict(row) for row in result.scalars().all()]
+
+    async def create_chat_memory(
+        self, statement: str, source_thread_id: str | None = None
+    ) -> dict[str, Any] | None:
+        """Save a memory statement. Returns None if already exists (dedup)."""
+        memory_id = str(uuid4())
+        now = _now()
+        async with self._session() as session:
+            # Check for existing (case-insensitive)
+            existing = await session.execute(
+                select(ChatMemory).where(
+                    func.lower(ChatMemory.statement) == statement.strip().lower()
+                )
+            )
+            if existing.scalars().first() is not None:
+                return None
+            session.add(
+                ChatMemory(
+                    memory_id=memory_id,
+                    statement=statement.strip(),
+                    source_thread_id=source_thread_id,
+                    active=True,
+                    created_at=now,
+                )
+            )
+            await session.commit()
+        return {
+            "memory_id": memory_id,
+            "statement": statement.strip(),
+            "source_thread_id": source_thread_id,
+            "active": True,
+            "created_at": now,
+        }
+
+    async def dismiss_chat_memory(self, memory_id: str) -> bool:
+        """Deactivate a memory. Returns True if found."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(ChatMemory).where(ChatMemory.memory_id == memory_id)
+            )
+            row = result.scalars().first()
+            if row is None:
+                return False
+            row.active = False
+            await session.commit()
+            return True
+
+    async def memory_statement_exists(self, statement: str) -> bool:
+        """Check if a memory statement already exists (case-insensitive)."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(func.count())
+                .select_from(ChatMemory)
+                .where(func.lower(ChatMemory.statement) == statement.strip().lower())
+            )
+            return (result.scalar() or 0) > 0
 
     async def get_career_profile(self) -> dict[str, Any] | None:
         """Get the single career profile row, if any."""
@@ -1330,6 +1838,266 @@ class Database:
             await session.commit()
             return True
 
+    # -- Career graph nodes (education / projects / achievements) -----------
+
+    async def list_career_education(self) -> list[dict[str, Any]]:
+        """List education entries in insertion order (chronology matters)."""
+        async with self._session() as session:
+            result = await session.execute(select(CareerEducation))
+            return [self._career_education_to_dict(row) for row in result.scalars().all()]
+
+    async def create_career_education(
+        self,
+        institution: str,
+        degree: str | None = None,
+        years: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        """Create an education entry."""
+        now = _now()
+        async with self._session() as session:
+            row = CareerEducation(
+                education_id=str(uuid4()),
+                institution=institution,
+                degree=degree,
+                years=years,
+                description=description,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._career_education_to_dict(row)
+
+    async def update_career_education(
+        self, education_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update an education entry. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerEducation, education_id)
+            if row is None:
+                return None
+            for key in ("institution", "degree", "years", "description"):
+                if key in updates:
+                    setattr(row, key, updates[key])
+            row.updated_at = _now()
+            await session.commit()
+            return self._career_education_to_dict(row)
+
+    async def delete_career_education(self, education_id: str) -> bool:
+        """Delete an education entry. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerEducation, education_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    async def list_career_projects(self) -> list[dict[str, Any]]:
+        """List project nodes in insertion order (chronology matters)."""
+        async with self._session() as session:
+            result = await session.execute(select(CareerProject))
+            return [self._career_project_to_dict(row) for row in result.scalars().all()]
+
+    async def create_career_project(
+        self,
+        name: str,
+        role: str | None = None,
+        years: str | None = None,
+        github: str | None = None,
+        website: str | None = None,
+        description: list[str] | None = None,
+        languages: list[str] | None = None,
+        readme: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a project node."""
+        now = _now()
+        async with self._session() as session:
+            row = CareerProject(
+                project_id=str(uuid4()),
+                name=name,
+                role=role,
+                years=years,
+                github=github,
+                website=website,
+                description=description or [],
+                languages=languages or [],
+                readme=readme,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._career_project_to_dict(row)
+
+    async def update_career_project(
+        self, project_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a project node. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerProject, project_id)
+            if row is None:
+                return None
+            for key in (
+                "name",
+                "role",
+                "years",
+                "github",
+                "website",
+                "description",
+                "languages",
+                "readme",
+            ):
+                if key in updates:
+                    setattr(row, key, updates[key])
+            row.updated_at = _now()
+            await session.commit()
+            return self._career_project_to_dict(row)
+
+    async def delete_career_project(self, project_id: str) -> bool:
+        """Delete a project node and its skill edges. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerProject, project_id)
+            if row is None:
+                return False
+            await session.execute(
+                delete(CareerEntrySkill).where(
+                    CareerEntrySkill.entry_type == "project",
+                    CareerEntrySkill.entry_key == project_id,
+                )
+            )
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    async def list_career_achievements(self) -> list[dict[str, Any]]:
+        """List achievement nodes in insertion order."""
+        async with self._session() as session:
+            result = await session.execute(select(CareerAchievement))
+            return [
+                self._career_achievement_to_dict(row) for row in result.scalars().all()
+            ]
+
+    async def create_career_achievement(
+        self,
+        title: str,
+        description: str | None = None,
+        date: str | None = None,
+    ) -> dict[str, Any]:
+        """Create an achievement node."""
+        now = _now()
+        async with self._session() as session:
+            row = CareerAchievement(
+                achievement_id=str(uuid4()),
+                title=title,
+                description=description,
+                date=date,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._career_achievement_to_dict(row)
+
+    async def update_career_achievement(
+        self, achievement_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update an achievement node. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerAchievement, achievement_id)
+            if row is None:
+                return None
+            for key in ("title", "description", "date"):
+                if key in updates:
+                    setattr(row, key, updates[key])
+            row.updated_at = _now()
+            await session.commit()
+            return self._career_achievement_to_dict(row)
+
+    async def delete_career_achievement(self, achievement_id: str) -> bool:
+        """Delete an achievement node. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(CareerAchievement, achievement_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    # -- Career entry-skill edges -------------------------------------------
+
+    async def list_career_entry_skills(
+        self,
+        entry_type: str | None = None,
+        entry_key: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List skill edges, optionally filtered by entry type/key."""
+        async with self._session() as session:
+            statement = select(CareerEntrySkill)
+            if entry_type is not None:
+                statement = statement.where(
+                    CareerEntrySkill.entry_type == entry_type
+                )
+            if entry_key is not None:
+                statement = statement.where(
+                    CareerEntrySkill.entry_key == entry_key
+                )
+            result = await session.execute(statement)
+            return [
+                self._career_entry_skill_to_dict(row) for row in result.scalars().all()
+            ]
+
+    async def set_career_entry_skills(
+        self, entry_type: str, entry_key: str, skill_names: list[str]
+    ) -> None:
+        """Replace the skill edges for one entry (deduped, case-insensitive).
+
+        Edges for the entry that are not in ``skill_names`` are removed, so
+        callers can safely pass the complete desired list.
+        """
+        names = list(dict.fromkeys(name.strip() for name in skill_names if name.strip()))
+        async with self._session() as session:
+            await session.execute(
+                delete(CareerEntrySkill).where(
+                    CareerEntrySkill.entry_type == entry_type,
+                    CareerEntrySkill.entry_key == entry_key,
+                )
+            )
+            for name in names:
+                session.add(
+                    CareerEntrySkill(
+                        entry_id=str(uuid4()),
+                        entry_type=entry_type,
+                        entry_key=entry_key,
+                        skill_name=name,
+                        created_at=_now(),
+                    )
+                )
+            await session.commit()
+
+    async def prune_career_experience_edges(self, valid_indices: set[int]) -> None:
+        """Drop skill edges whose experience index no longer exists.
+
+        ``valid_indices`` are the surviving indices into the profile's
+        ``work_experience`` list; anything else is an orphan from a deleted
+        or reordered row and must not keep pointing at a shifted position.
+        """
+        async with self._session() as session:
+            result = await session.execute(
+                select(CareerEntrySkill).where(
+                    CareerEntrySkill.entry_type == "experience"
+                )
+            )
+            for row in result.scalars().all():
+                try:
+                    index = int(row.entry_key)
+                except ValueError:
+                    continue
+                if index not in valid_indices:
+                    await session.delete(row)
+            await session.commit()
+
     # -- Encrypted API key store (sync; read on the LLM hot path) -----------
 
     def get_api_key_ciphertexts(self) -> dict[str, str]:
@@ -1381,6 +2149,51 @@ class Database:
                     )
             session.commit()
 
+    # -- Skill resources (UI cache for learning links) -----------------------
+
+    async def get_skill_resources(self, skill: str) -> dict[str, Any] | None:
+        """Get cached learning resources for a skill (case-insensitive)."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(SkillResource).where(
+                    func.lower(SkillResource.skill) == skill.lower()
+                )
+            )
+            row = result.scalars().first()
+            if row is None:
+                return None
+            return {
+                "skill": row.skill,
+                "resources": row.resources or [],
+                "retrieved_at": row.retrieved_at,
+            }
+
+    async def save_skill_resources(
+        self, skill: str, resources: list[dict[str, Any]]
+    ) -> None:
+        """Upsert verified learning resources for a skill."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(SkillResource).where(
+                    func.lower(SkillResource.skill) == skill.lower()
+                )
+            )
+            row = result.scalars().first()
+            now = _now()
+            if row is None:
+                session.add(
+                    SkillResource(
+                        skill_id=str(uuid4()),
+                        skill=skill,
+                        resources=resources,
+                        retrieved_at=now,
+                    )
+                )
+            else:
+                row.resources = resources
+                row.retrieved_at = now
+            await session.commit()
+
     # -- Stats / maintenance ------------------------------------------------
 
     async def get_stats(self) -> dict[str, Any]:
@@ -1419,6 +2232,11 @@ class Database:
             await session.execute(delete(CareerProfile))
             await session.execute(delete(CareerSkill))
             await session.execute(delete(CareerCertification))
+            await session.execute(delete(CareerEducation))
+            await session.execute(delete(CareerProject))
+            await session.execute(delete(CareerAchievement))
+            await session.execute(delete(CareerEntrySkill))
+            await session.execute(delete(SkillResource))
             await session.commit()
 
         uploads_dir = settings.data_dir / "uploads"
@@ -1431,8 +2249,14 @@ class Database:
     async def save_scraped_jobs(
         self, search_id: str, resume_id: str, jobs: list[dict[str, Any]]
     ) -> int:
-        """Bulk-save scraped job listings. Returns count saved."""
+        """Bulk-save scraped job listings. Returns count saved.
+
+        Each job gets deterministic TAYLOR metadata (role family, seniority,
+        required/preferred skills) extracted from its description at save
+        time; the LLM upgrade can run on-demand via job-intel.
+        """
         from app.models import ScrapedJob
+        from app.services.skill_ontology import extract_requirements
 
         saved = 0
         async with self._session() as session:
@@ -1446,6 +2270,14 @@ class Database:
                 if existing.first():
                     continue
 
+                description = job_data.get("description")
+                metadata: dict[str, Any] = {}
+                if description:
+                    try:
+                        metadata = extract_requirements(str(description))
+                    except Exception:
+                        metadata = {}
+
                 job = ScrapedJob(
                     job_id=str(uuid4()),
                     search_id=search_id,
@@ -1455,7 +2287,7 @@ class Database:
                     location=job_data.get("location", ""),
                     url=job_data.get("url", ""),
                     source=job_data.get("source", ""),
-                    description=job_data.get("description"),
+                    description=description,
                     posted_date=job_data.get("posted_date"),
                     relevance_score=job_data.get("relevance_score", 0.0),
                     remote=job_data.get("remote", False),
@@ -1464,11 +2296,28 @@ class Database:
                     experience_level=job_data.get("experience_level"),
                     salary=job_data.get("salary"),
                     languages=job_data.get("languages", []),
+                    metadata_json=json.dumps(metadata) if metadata else None,
                 )
                 session.add(job)
                 saved += 1
             await session.commit()
         return saved
+
+    async def get_scraped_job(self, job_id: str) -> dict[str, Any] | None:
+        """Get a single scraped job draft by ID."""
+        from app.models import ScrapedJob
+
+        async with self._session() as session:
+            row = await session.get(ScrapedJob, job_id)
+            if row is None:
+                return None
+            return {
+                "job_id": row.job_id,
+                "title": row.title,
+                "company": row.company,
+                "description": row.description,
+                "experience_level": row.experience_level,
+            }
 
     async def get_scraped_jobs(
         self, resume_id: str, limit: int = 100
@@ -1505,6 +2354,9 @@ class Database:
                     "applied": row.applied,
                     "applied_resume_id": row.applied_resume_id,
                     "archived": row.archived,
+                    "metadata": (
+                        json.loads(row.metadata_json) if row.metadata_json else None
+                    ),
                     "created_at": row.created_at,
                 }
                 for row in rows
@@ -1609,8 +2461,12 @@ class Database:
         from app.models import (  # local import: avoids module-cycle surprises
             ApiKey,
             Application,
+            CareerAchievement,
             CareerCertification,
+            CareerEducation,
+            CareerEntrySkill,
             CareerProfile,
+            CareerProject,
             CareerSkill,
             Contact,
             Resume,
@@ -1623,6 +2479,10 @@ class Database:
             ("career_profiles", CareerProfile, "updated_at"),
             ("career_skills", CareerSkill, "updated_at"),
             ("career_certifications", CareerCertification, "updated_at"),
+            ("career_education", CareerEducation, "updated_at"),
+            ("career_projects", CareerProject, "updated_at"),
+            ("career_achievements", CareerAchievement, "updated_at"),
+            ("career_entry_skills", CareerEntrySkill, "created_at"),
             ("contacts", Contact, "updated_at"),
             ("resumes", Resume, "updated_at"),
             ("api_keys", ApiKey, "updated_at"),

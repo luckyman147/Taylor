@@ -21,6 +21,7 @@ from app.services.resume_wizard import (
     build_initial_wizard_state,
     run_ai_turn,
 )
+from app.services.career_graph import fulfill_profile_from_resume
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,12 @@ async def finalize_resume_wizard(
             title=title,
             as_master=True,
         )
+        # Auto-fulfill the career profile from the wizard's master resume
+        # (same code path as upload; never fails the finalize).
+        try:
+            await fulfill_profile_from_resume(resume)
+        except Exception as e:
+            logger.error("Auto-fulfill from wizard master resume failed: %s", e)
         return ResumeWizardFinalizeResponse(
             message="Master resume created.",
             request_id=str(uuid4()),

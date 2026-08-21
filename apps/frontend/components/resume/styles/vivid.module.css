@@ -132,6 +132,10 @@
   font-size: calc(var(--size-minor-copy) * 0.95);
   font-weight: 700;
   color: var(--resume-text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  flex: 1 1 0%;
+  text-align: var(--date-align, right);
 }
 
 @media print {

@@ -5,6 +5,8 @@ import type {
   SectionMeta,
   ResumeSectionHeadings,
   ResumeFallbackLabels,
+  SkillGroup,
+  ContactDisplayField,
 } from '@/components/dashboard/resume-component';
 import { getSortedSections, getSectionMeta } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
@@ -54,6 +56,14 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
     (items ?? []).filter((item): item is string => typeof item === 'string' && item.trim() !== '');
 
   const technicalSkills = clean(additional?.technicalSkills);
+  const skillGroups: SkillGroup[] = (additional?.skillGroups ?? [])
+    .filter(
+      (group) =>
+        typeof group?.name === 'string' &&
+        Array.isArray(group.skills) &&
+        group.skills.some((s) => typeof s === 'string' && s.trim() !== '')
+    )
+    .map((group) => ({ name: group.name, skills: clean(group.skills) }));
   const languages = clean(additional?.languages);
   const certificationsTraining = clean(additional?.certificationsTraining);
   const awards = clean(additional?.awards);
@@ -121,7 +131,9 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
       finalHrefPrefix.startsWith('tel:');
 
     let displayText = value;
-    if (isLink && (label === 'LinkedIn' || label === 'GitHub' || label === 'Website')) {
+    if (personalInfo?.contactDisplay?.[label.toLowerCase() as ContactDisplayField] === 'label') {
+      displayText = label;
+    } else if (isLink && (label === 'LinkedIn' || label === 'GitHub' || label === 'Website')) {
       displayText = value.replace(/^https?:\/\//, '').replace(/^www\./, '');
     }
 
@@ -167,7 +179,7 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
         </h1>
         {personalInfo?.title && <div className={styles.titleLine}>{personalInfo.title}</div>}
         {personalInfo && (
-          <div className={`flex flex-wrap gap-x-4 gap-y-1 mt-2 ${styles.contactRow}`}>
+          <div className={`flex flex-wrap gap-x-4 gap-y-1 mt-2 ${baseStyles['resume-contact-line']} ${styles.contactRow}`}>
             {renderContactDetail('Website', personalInfo.website)}
             {renderContactDetail('LinkedIn', personalInfo.linkedin)}
             {renderContactDetail('GitHub', personalInfo.github)}
@@ -311,7 +323,17 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
               </div>
             )}
 
-          {isSectionVisible('additional') && certificationsTraining.length > 0 && (
+          {isSectionVisible('certifications') && certificationsTraining.length > 0 && (
+            <div className={baseStyles['resume-section']}>
+              <h3 className={styles.sectionTitle}>
+                {getSectionDisplayName('certifications', headingFallbacks.certifications)}
+              </h3>
+              {renderArrowBullets(certificationsTraining)}
+            </div>
+          )}
+          {isSectionVisible('additional') &&
+            !isSectionVisible('certifications') &&
+            certificationsTraining.length > 0 && (
             <div className={baseStyles['resume-section']}>
               <h3 className={styles.sectionTitle}>{headingFallbacks.certifications}</h3>
               {renderArrowBullets(certificationsTraining)}
@@ -333,10 +355,17 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
           {isSectionVisible('additional') && technicalSkills.length > 0 && (
             <div className={baseStyles['resume-section']}>
               <h3 className={styles.sectionTitleSm}>{headingFallbacks.skills}</h3>
-              {skillsLayout === 'comma' && (
+              {skillGroups.length > 0 ? (
+                <div className="flex flex-col gap-0.5">
+                  {skillGroups.map((group) => (
+                    <p key={group.name} className={baseStyles['resume-text-xs']}>
+                      <strong>{group.name}:</strong> {group.skills.join(' • ')}
+                    </p>
+                  ))}
+                </div>
+              ) : skillsLayout === 'comma' ? (
                 <p className={baseStyles['resume-text-xs']}>{technicalSkills.join(' • ')}</p>
-              )}
-              {skillsLayout === 'list' && (
+              ) : skillsLayout === 'list' ? (
                 <div className="flex flex-col gap-0.5">
                   {technicalSkills.map((skill, index) => (
                     <p key={index} className={baseStyles['resume-text-xs']}>
@@ -344,8 +373,7 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
                     </p>
                   ))}
                 </div>
-              )}
-              {skillsLayout === 'columns' && (
+              ) : (
                 <div className="grid grid-cols-2 gap-0.5">
                   {technicalSkills.map((skill, index) => (
                     <p key={index} className={baseStyles['resume-text-xs']}>
@@ -406,9 +434,11 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
             </div>
           )}
 
-          {isSectionVisible('additional') && awards.length > 0 && (
+          {isSectionVisible('awards') && awards.length > 0 && (
             <div className={baseStyles['resume-section']}>
-              <h3 className={styles.sectionTitleSm}>{headingFallbacks.awards}</h3>
+              <h3 className={styles.sectionTitleSm}>
+                {getSectionDisplayName('awards', headingFallbacks.awards)}
+              </h3>
               <ul className={baseStyles['resume-list']}>
                 {awards.map((award, index) => (
                   <li key={index} className={baseStyles['resume-text-xs']}>

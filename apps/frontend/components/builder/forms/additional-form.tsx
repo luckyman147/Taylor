@@ -20,10 +20,15 @@ export const AdditionalForm: React.FC<AdditionalFormProps> = ({ data, onChange }
     // so pressing Enter creates a new line (issue #763); consumers filter empty
     // entries at render time, and the backend drops them on save.
     const items = value.split('\n');
-    onChange({
-      ...data,
-      [field]: items,
-    });
+    const next: AdditionalInfo = { ...data, [field]: items };
+    // skillGroups are derived from the previous technicalSkills list (written by
+    // the tailor pipeline) and take render priority over technicalSkills in every
+    // template. Once the user hand-edits skills, the flat list is the source of
+    // truth: drop the stale groups so the preview/PDF reflect the editor.
+    if (field === 'technicalSkills' && next.skillGroups?.length) {
+      delete next.skillGroups;
+    }
+    onChange(next);
   };
 
   const formatArray = (arr?: string[]) => {
@@ -90,22 +95,6 @@ export const AdditionalForm: React.FC<AdditionalFormProps> = ({ data, onChange }
             onChange={(e) => handleArrayChange('certificationsTraining', e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('builder.additionalForm.placeholders.certifications')}
-            className="min-h-[120px] text-black rounded-lg border-ink bg-white focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label
-            htmlFor="awards"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
-            {t('resume.sections.awards')}
-          </Label>
-          <Textarea
-            id="awards"
-            value={formatArray(data.awards)}
-            onChange={(e) => handleArrayChange('awards', e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('builder.additionalForm.placeholders.awards')}
             className="min-h-[120px] text-black rounded-lg border-ink bg-white focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
           />
         </div>

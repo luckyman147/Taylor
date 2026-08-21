@@ -58,10 +58,46 @@ export interface CareerCertification {
   updated_at: string;
 }
 
+export interface CareerEducation {
+  education_id: string;
+  institution: string;
+  degree: string | null;
+  years: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CareerProject {
+  project_id: string;
+  name: string;
+  role: string | null;
+  years: string | null;
+  github: string | null;
+  website: string | null;
+  description: string[];
+  languages: string[];
+  readme: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CareerAchievement {
+  achievement_id: string;
+  title: string;
+  description: string | null;
+  date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ProfileBundle {
   profile: CareerProfile;
   skills: CareerSkill[];
   certifications: CareerCertification[];
+  education: CareerEducation[];
+  projects: CareerProject[];
+  achievements: CareerAchievement[];
 }
 
 export interface ProfileUpdate {
@@ -138,6 +174,26 @@ export interface CareerMemory {
   master_resume: { resume_id: string; title: string | null; content: string } | null;
   skills: CareerSkill[];
   certifications: CareerCertification[];
+  education: Array<{
+    institution: string | null;
+    degree: string | null;
+    years: string | null;
+    description: string | null;
+  }>;
+  projects: Array<{
+    name: string | null;
+    role: string | null;
+    years: string | null;
+    github: string | null;
+    website: string | null;
+    description: string[];
+    skills: string[];
+  }>;
+  achievements: Array<{
+    title: string | null;
+    date: string | null;
+    description: string | null;
+  }>;
   funnel: FunnelStats;
   rejected_applications: Array<{
     company: string | null;
@@ -191,6 +247,8 @@ export interface SkillRoiRow {
   learning_effort: 'low' | 'medium' | 'high';
   existing_knowledge: number;
   roi_score: number;
+  action: 'learn' | 'strengthen' | 'monitor';
+  in_profile: boolean;
 }
 
 export interface CareerRoiRequest {
@@ -201,6 +259,56 @@ export interface CareerRoiRequest {
 export interface CareerRoiResponse {
   results: SkillRoiRow[];
   advice: string | null;
+  note: string | null;
+  gaps: SkillRoiRow[];
+  strengthen: SkillRoiRow[];
+  rest: SkillRoiRow[];
+}
+
+export interface SkillResource {
+  title: string;
+  url: string;
+  source: string;
+}
+
+export interface SkillResourcesRequest {
+  skills: string[];
+  refresh?: boolean;
+}
+
+export interface SkillResourcesResponse {
+  resources: Record<string, SkillResource[]>;
+  note: string | null;
+}
+
+export interface SkillPosition {
+  skill: string;
+  percentile: number;
+  level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+}
+
+export interface DomainPosition {
+  domain: string;
+  percentile: number;
+  seniority: 'junior' | 'mid' | 'senior';
+  readiness: 'strong' | 'adequate' | 'underqualified';
+}
+
+export interface RolePosition {
+  role: string;
+  domain: string;
+  seniority: 'junior' | 'mid' | 'senior';
+  match_score: number;
+  reason: string;
+}
+
+export interface MarketPositionResponse {
+  skills: SkillPosition[];
+  domains: DomainPosition[];
+  current_role: string | null;
+  specialization: string[];
+  recommended_roles: RolePosition[];
+  verdict: string;
   note: string | null;
 }
 
@@ -297,6 +405,130 @@ export async function deleteCertification(certificationId: string): Promise<void
 }
 
 // ---------------------------------------------------------------------------
+// Career graph: education / projects / achievements
+// ---------------------------------------------------------------------------
+
+export interface EducationCreate {
+  institution: string;
+  degree?: string | null;
+  years?: string | null;
+  description?: string | null;
+}
+
+export interface EducationUpdate {
+  institution?: string;
+  degree?: string | null;
+  years?: string | null;
+  description?: string | null;
+}
+
+export async function createEducation(payload: EducationCreate): Promise<CareerEducation> {
+  const res = await apiPost('/profile/education', payload);
+  return asJson<CareerEducation>(res, 'Failed to add education');
+}
+
+export async function importEducationFromMaster(): Promise<CareerEducation[]> {
+  const res = await apiPost('/profile/education/import-from-master', {});
+  return asJson<CareerEducation[]>(res, 'Failed to import education from resume');
+}
+
+export async function updateEducation(
+  educationId: string,
+  payload: EducationUpdate
+): Promise<CareerEducation> {
+  const res = await apiPatch(`/profile/education/${educationId}`, payload);
+  return asJson<CareerEducation>(res, 'Failed to update education');
+}
+
+export async function deleteEducation(educationId: string): Promise<void> {
+  const res = await apiDelete(`/profile/education/${educationId}`);
+  await asJson<CareerActionResponse>(res, 'Failed to delete education');
+}
+
+export interface ProjectCreate {
+  name: string;
+  role?: string | null;
+  years?: string | null;
+  github?: string | null;
+  website?: string | null;
+  description?: string[];
+  languages?: string[];
+  readme?: string | null;
+}
+
+export interface ProjectUpdate {
+  name?: string;
+  role?: string | null;
+  years?: string | null;
+  github?: string | null;
+  website?: string | null;
+  description?: string[];
+  languages?: string[];
+  readme?: string | null;
+}
+
+export interface GitHubImportResult {
+  imported: number;
+  updated: number;
+  total: number;
+}
+
+export async function createProject(payload: ProjectCreate): Promise<CareerProject> {
+  const res = await apiPost('/profile/projects', payload);
+  return asJson<CareerProject>(res, 'Failed to add project');
+}
+
+export async function updateProject(
+  projectId: string,
+  payload: ProjectUpdate
+): Promise<CareerProject> {
+  const res = await apiPatch(`/profile/projects/${projectId}`, payload);
+  return asJson<CareerProject>(res, 'Failed to update project');
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const res = await apiDelete(`/profile/projects/${projectId}`);
+  await asJson<CareerActionResponse>(res, 'Failed to delete project');
+}
+
+export async function importProjectsFromGithub(
+  payload: { repo_urls?: string[] } = {}
+): Promise<GitHubImportResult> {
+  const res = await apiPost('/profile/projects/import-from-github', payload);
+  return asJson<GitHubImportResult>(res, 'Failed to import projects from GitHub');
+}
+
+export interface AchievementCreate {
+  title: string;
+  description?: string | null;
+  date?: string | null;
+}
+
+export interface AchievementUpdate {
+  title?: string;
+  description?: string | null;
+  date?: string | null;
+}
+
+export async function createAchievement(payload: AchievementCreate): Promise<CareerAchievement> {
+  const res = await apiPost('/profile/achievements', payload);
+  return asJson<CareerAchievement>(res, 'Failed to add achievement');
+}
+
+export async function updateAchievement(
+  achievementId: string,
+  payload: AchievementUpdate
+): Promise<CareerAchievement> {
+  const res = await apiPatch(`/profile/achievements/${achievementId}`, payload);
+  return asJson<CareerAchievement>(res, 'Failed to update achievement');
+}
+
+export async function deleteAchievement(achievementId: string): Promise<void> {
+  const res = await apiDelete(`/profile/achievements/${achievementId}`);
+  await asJson<CareerActionResponse>(res, 'Failed to delete achievement');
+}
+
+// ---------------------------------------------------------------------------
 // Career LLM
 // ---------------------------------------------------------------------------
 
@@ -318,6 +550,34 @@ export async function getCareerInsights(): Promise<CareerInsightsResponse> {
 export async function getSkillRoi(payload: CareerRoiRequest): Promise<CareerRoiResponse> {
   const res = await apiPost('/profile/skill-roi', payload, 300_000);
   return asJson<CareerRoiResponse>(res, 'Failed to compute skill ROI');
+}
+
+export async function getSkillResources(
+  payload: SkillResourcesRequest
+): Promise<SkillResourcesResponse> {
+  const res = await apiPost('/profile/skill-resources', payload, 300_000);
+  return asJson<SkillResourcesResponse>(res, 'Failed to load learning resources');
+}
+
+export async function getMarketPosition(): Promise<MarketPositionResponse> {
+  const res = await apiPost('/profile/market-position', {});
+  return asJson<MarketPositionResponse>(res, 'Failed to compute market position');
+}
+
+export interface SkillSuggestion {
+  name: string;
+  reason: string;
+  kind: 'remembered' | 'learn_next';
+}
+
+export interface SkillSuggestionsResponse {
+  skills: SkillSuggestion[];
+  note: string | null;
+}
+
+export async function getSkillSuggestions(): Promise<SkillSuggestionsResponse> {
+  const res = await apiPost('/profile/skill-suggestions', {}, 300_000);
+  return asJson<SkillSuggestionsResponse>(res, 'Failed to load skill suggestions');
 }
 
 export type ProfileSuggestionField = 'career_goals' | 'target_roles' | 'target_locations';

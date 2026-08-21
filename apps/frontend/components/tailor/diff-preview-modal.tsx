@@ -9,6 +9,8 @@ import type {
   ResumeDiffSummary,
   ResumeFieldDiff,
 } from '@/components/common/resume_previewer_context';
+import type { RecruiterRecommendation } from '@/lib/api/resume';
+import type { ShouldApplyResponse } from '@/lib/api/job-intel';
 
 interface DiffPreviewModalProps {
   isOpen: boolean;
@@ -19,6 +21,12 @@ interface DiffPreviewModalProps {
   diffSummary?: ResumeDiffSummary;
   detailedChanges?: ResumeFieldDiff[];
   errorMessage?: string;
+  shouldApply?: ShouldApplyResponse;
+  recommendations?: RecruiterRecommendation[];
+  isGeneratingRecommendations?: boolean;
+  recommendationsError?: string | null;
+  onRecommendationAction?: (id: string, action: 'accept' | 'reject' | 'apply') => void;
+  onRegenerateRecommendations?: (rejectedIds: string[]) => void;
 }
 
 export function DiffPreviewModal({
@@ -30,11 +38,29 @@ export function DiffPreviewModal({
   diffSummary,
   detailedChanges,
   errorMessage,
+  shouldApply,
+  recommendations,
+  isGeneratingRecommendations = false,
+  recommendationsError,
+  onRecommendationAction,
+  onRegenerateRecommendations,
 }: DiffPreviewModalProps) {
   const { t } = useTranslations();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['summary', 'skills', 'descriptions', 'experience'])
   );
+
+  // Recommendation action states
+  const [recStatuses, setRecStatuses] = useState<Record<string, 'accepted' | 'rejected' | 'applied'>>({});
+
+  const handleRecAction = (id: string, action: 'accept' | 'reject' | 'apply') => {
+    setRecStatuses((prev) => ({ ...prev, [id]: action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'applied' }));
+    onRecommendationAction?.(id, action);
+  };
+
+  const rejectedIds = Object.entries(recStatuses)
+    .filter(([, s]) => s === 'rejected')
+    .map(([id]) => id);
 
   // Elapsed timer while confirming
   const [elapsed, setElapsed] = useState(0);
@@ -193,11 +219,153 @@ export function DiffPreviewModal({
           )}
         </div>
 
+        {/* Should I Apply? compact bar */}
+        {shouldApply && (
+          <div className="border border-[#e6e3dc] bg-white p-3 mt-3 flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                {t('tailor.jobIntel.shouldApply.title')}
+              </span>
+              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 border rounded ${
+                shouldApply.verdict === 'yes' ? 'bg-green-100 text-green-700 border-green-300' :
+                shouldApply.verdict === 'conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                'bg-red-100 text-red-700 border-red-300'
+              }`}>
+                {shouldApply.verdict === 'yes' ? t('tailor.jobIntel.shouldApply.verdictYes') :
+                 shouldApply.verdict === 'conditional' ? t('tailor.jobIntel.shouldApply.verdictConditional') :
+                 t('tailor.jobIntel.shouldApply.verdictNo')}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="font-bold">{shouldApply.match_percent}% {t('tailor.jobIntel.shouldApply.matchPercent')}</span>
+              <span className="text-ink-soft">{shouldApply.verdict_reason}</span>
+            </div>
+            {shouldApply.ghost_risk_percent >= 30 && (
+              <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 border rounded ${
+                shouldApply.ghost_risk_percent >= 60 ? 'bg-red-100 text-red-700 border-red-300' : 'bg-yellow-100 text-yellow-700 border-yellow-300'
+              }`}>
+                {shouldApply.ghost_risk_percent}% {t('tailor.jobIntel.redFlags.ghostRisk')}
+              </span>
+            )}
+          </div>
+        )}
+
         {errorMessage && (
           <div className="mt-4 border-2 border-red-600 bg-[#fdf3f2] p-3  text-xs text-red-700">
             {errorMessage}
           </div>
         )}
+
+        {/* Recruiter Recommendations */}
+        {(recommendations && recommendations.length > 0) || isGeneratingRecommendations || recommendationsError ? (
+          <ChangeSection
+            title={t('tailor.jobIntel.recommendations.title')}
+            count={recommendations?.length ?? 0}
+            isExpanded={expandedSections.has('recommendations')}
+            onToggle={() => toggleSection('recommendations')}
+          >
+            {isGeneratingRecommendations ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-3 border border-[#e6e3dc] animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-2/3 mb-1" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : recommendationsError ? (
+              <div className="p-3 border border-red-200 bg-red-50 text-xs text-red-700">
+                {recommendationsError}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recommendations?.map((rec) => {
+                  const status = recStatuses[rec.id];
+                  return (
+                    <div
+                      key={rec.id}
+                      className={`p-3 border border-[#e6e3dc] ${
+                        status === 'accepted'
+                          ? 'bg-green-50 border-green-200'
+                          : status === 'rejected'
+                            ? 'opacity-50 line-through'
+                            : status === 'applied'
+                              ? 'bg-blue-50 border-blue-200'
+                              : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-xs font-bold">{rec.title}</p>
+                          <p className="text-[10px] text-ink-soft mt-0.5">{rec.detail}</p>
+                          <p className="text-[10px] text-primary mt-0.5">{rec.impact}</p>
+                          {rec.change && (
+                            <div className="mt-1.5 p-2 bg-gray-50 border border-[#e6e3dc] text-[10px] text-ink-soft">
+                              <span className="font-mono">{rec.change.path}</span>
+                              {rec.change.before && (
+                                <span className="ml-2 line-through text-red-600">{rec.change.before}</span>
+                              )}
+                              {rec.change.after && (
+                                <span className="ml-2 text-green-700">{rec.change.after}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {status && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              status === 'accepted' ? 'bg-green-100 text-green-700' :
+                              status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {status === 'accepted' ? t('tailor.jobIntel.recommendations.accepted') :
+                               status === 'rejected' ? t('tailor.jobIntel.recommendations.rejected') :
+                               t('tailor.jobIntel.recommendations.applied')}
+                            </span>
+                          )}
+                          {!status && (
+                            <>
+                              <button
+                                onClick={() => handleRecAction(rec.id, 'accept')}
+                                className="p-1 bg-green-100 text-green-700 hover:bg-green-200 rounded text-[10px] font-bold"
+                                title={t('tailor.jobIntel.recommendations.accept')}
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => handleRecAction(rec.id, 'reject')}
+                                className="p-1 bg-red-100 text-red-700 hover:bg-red-200 rounded text-[10px] font-bold"
+                                title={t('tailor.jobIntel.recommendations.reject')}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => handleRecAction(rec.id, 'apply')}
+                                className="p-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded text-[10px] font-bold"
+                                title={t('tailor.jobIntel.recommendations.apply')}
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {rejectedIds.length > 0 && onRegenerateRecommendations && (
+                  <button
+                    onClick={() => onRegenerateRecommendations(rejectedIds)}
+                    className="w-full p-2 border border-[#e6e3dc] bg-paper-tint text-xs font-bold uppercase tracking-wider text-ink-soft hover:bg-gray-100"
+                  >
+                    {t('tailor.jobIntel.recommendations.regenerate')}
+                  </button>
+                )}
+              </div>
+            )}
+          </ChangeSection>
+        ) : null}
 
         {/* Detailed changes list */}
         <div className="flex-1 min-h-0 overflow-y-auto mt-4 space-y-4">

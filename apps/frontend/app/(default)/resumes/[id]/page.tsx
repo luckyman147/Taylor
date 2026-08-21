@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import SidebarNav from '@/components/common/SidebarNav';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import Resume, { ResumeData } from '@/components/dashboard/resume-component';
-import { type TemplateSettings, DEFAULT_TEMPLATE_SETTINGS } from '@/lib/types/template-settings';
+import {
+  type TemplateSettings,
+  DEFAULT_TEMPLATE_SETTINGS,
+  normalizeTemplateSettings,
+} from '@/lib/types/template-settings';
 import {
   fetchResume,
   downloadResumePdf,
@@ -102,6 +106,13 @@ export default function ResumeViewerPage() {
         setResumeTitle(data.title ?? null);
         setIsTailoredResume(Boolean(data.parent_id));
         setIsMasterResume(Boolean(data.is_master));
+        // Per-resume template/design settings take precedence over the global
+        // localStorage defaults loaded above.
+        if (data.template_settings) {
+          setTemplateSettings(
+            normalizeTemplateSettings(data.template_settings as Partial<TemplateSettings>)
+          );
+        }
 
         // Fetch job description if this is a tailored resume
         if (data.parent_id) {

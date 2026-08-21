@@ -175,3 +175,41 @@ export async function applyRegeneratedItems(
 
   return res.json();
 }
+
+// ============================================
+// Project Bullet Generation Types
+// ============================================
+
+export interface GenerateProjectBulletsRequest {
+  name: string;
+  role?: string | null;
+  years?: string | null;
+  github?: string | null;
+  website?: string | null;
+  description?: string[];
+  languages?: string[];
+  readme?: string | null;
+  prompt?: string;
+  output_language?: string;
+}
+
+export interface GenerateProjectBulletsResponse {
+  bullets: string[];
+}
+
+/**
+ * Generate resume bullet points for a project from its README/description,
+ * optionally guided by a user mini-prompt.
+ */
+export async function generateProjectBullets(
+  request: GenerateProjectBulletsRequest
+): Promise<GenerateProjectBulletsResponse> {
+  const res = await apiPost('/enrichment/generate-project-bullets', request);
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `Failed to generate project bullets (status ${res.status}).`);
+  }
+
+  return res.json();
+}

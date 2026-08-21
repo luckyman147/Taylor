@@ -18,6 +18,9 @@ import {
 import { formatDateRangeWithFormat } from '@/lib/utils/date-format';
 import baseStyles from '@/components/resume/styles/_base.module.css';
 
+export type ContactDisplayMode = 'full' | 'label';
+export type ContactDisplayField = 'email' | 'phone' | 'website' | 'linkedin' | 'github';
+
 export interface PersonalInfo {
   name?: string;
   title?: string;
@@ -27,6 +30,9 @@ export interface PersonalInfo {
   website?: string;
   linkedin?: string;
   github?: string;
+  /** Per-field contact display mode: 'label' renders a short hypertext label
+   *  (e.g. "Email", "LinkedIn"), 'full' renders the raw value. Absent = default. */
+  contactDisplay?: Partial<Record<ContactDisplayField, ContactDisplayMode>>;
 }
 
 export interface Experience {
@@ -58,11 +64,17 @@ export interface Project {
   descriptionStyles?: ('bullet' | 'plain')[];
 }
 
+export interface SkillGroup {
+  name: string;
+  skills: string[];
+}
+
 export interface AdditionalInfo {
   technicalSkills?: string[];
   languages?: string[];
   certificationsTraining?: string[];
   awards?: string[];
+  skillGroups?: SkillGroup[];
 }
 
 export interface AdditionalSectionLabels {
@@ -163,9 +175,7 @@ function applyDateFormat(data: ResumeData, format: DateRangeFormat): ResumeData 
     ? Object.fromEntries(
         Object.entries(data.customSections).map(([key, section]) => [
           key,
-          section && section.items
-            ? { ...section, items: mapItems(section.items) }
-            : section,
+          section && section.items ? { ...section, items: mapItems(section.items) } : section,
         ])
       )
     : undefined;

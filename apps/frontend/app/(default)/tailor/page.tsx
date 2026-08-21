@@ -13,6 +13,8 @@ import {
   previewImproveResume,
   confirmImproveResume,
   fetchResumeList,
+  fetchProjectsSuggestions,
+  type ProjectSuggestion,
   type ResumeListItem,
 } from '@/lib/api/resume';
 import { fetchPromptConfig, type PromptOption } from '@/lib/api/config';
@@ -25,8 +27,10 @@ import Settings from 'lucide-react/dist/esm/icons/settings';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import { useTranslations } from '@/lib/i18n';
 import { DiffPreviewModal } from '@/components/tailor/diff-preview-modal';
+import { ProjectsPickerModal } from '@/components/tailor/projects-picker-modal';
 import { ATSScoreCard } from '@/components/tailor/ats-score-card';
 import { AIConnectionCard } from '@/components/tailor/ai-connection-card';
+import { fetchShouldApply, type ShouldApplyResponse } from '@/lib/api/job-intel';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import SidebarNav from '@/components/common/SidebarNav';
 
@@ -55,6 +59,19 @@ export default function TailorPage() {
   const [missingDiffError, setMissingDiffError] = useState<string | null>(null);
   const [pendingScrapedJobId, setPendingScrapedJobId] = useState<string | null>(null);
 
+  // Job Intel: track the uploaded job ID for intel panel
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [modalShouldApply, setModalShouldApply] = useState<ShouldApplyResponse | null>(null);
+
+  // Project suggestions step (choose which career projects replace the
+  // Projects section before tailoring).
+  const [showProjectsPicker, setShowProjectsPicker] = useState(false);
+  const [pickerSuggestions, setPickerSuggestions] = useState<ProjectSuggestion[]>([]);
+  const [pickerFetching, setPickerFetching] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+  const [pickerTailoring, setPickerTailoring] = useState(false);
+  const pendingJobIdRef = useRef<string | null>(null);
+
   // Elapsed timer for long operations
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -76,6 +93,23 @@ export default function TailorPage() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Fetch should-apply analysis when diff modal opens
+  useEffect(() => {
+    if (!showDiffModal || !selectedJobId) {
+      setModalShouldApply(null);
+      return;
+    }
+    let cancelled = false;
+    fetchShouldApply(selectedJobId)
+      .then((data) => {
+        if (!cancelled) setModalShouldApply(data);
+      })
+      .catch(() => {
+        // Silently ignore — modal still works without it
+      });
+    return () => { cancelled = true; };
+  }, [showDiffModal, selectedJobId]);
 
   const router = useRouter();
   const { setImprovedData } = useResumePreview();
@@ -235,15 +269,14 @@ export default function TailorPage() {
     return null;
   };
 
-  const runGenerate = async (resumeId: string, description: string) => {
+  const runPreview = async (jobId: string, selectedProjects?: string[]) => {
     try {
-      // 1. Upload Job Description
-      // The API expects an array of strings
-      const jobId = await uploadJobDescriptions([description], resumeId);
-      incrementJobs(); // Update cached counter
-
-      // 2. Preview Resume
-      const result = await previewImproveResume(resumeId, jobId, selectedPromptId);
+      const result = await previewImproveResume(
+        masterResumeId ?? '',
+        jobId,
+        selectedPromptId,
+        selectedProjects
+      );
 
       if (!result?.data?.diff_summary || !result?.data?.detailed_changes) {
         console.warn('Diff data missing for tailor preview; requesting user confirmation.');
@@ -256,7 +289,7 @@ export default function TailorPage() {
         return;
       }
 
-      // 3. Show diff preview modal
+      // Show diff preview modal
       setDiffConfirmError(null);
       setMissingDiffError(null);
       setPendingResult(result);
@@ -286,6 +319,93 @@ export default function TailorPage() {
         setError(t('tailor.errors.failedToPreview'));
       }
     }
+  };
+
+  const runGenerate = async (resumeId: string, description: string) => {
+    try {
+      // 1. Upload Job Description
+      // The API expects an array of strings
+      const jobId = await uploadJobDescriptions([description], resumeId);
+      incrementJobs(); // Update cached counter
+      setSelectedJobId(jobId);
+
+      // 2. Suggest JD-matched career projects to choose from before tailoring
+      pendingJobIdRef.current = jobId;
+      setPickerSuggestions([]);
+      setPickerError(null);
+      setPickerFetching(true);
+      setShowProjectsPicker(true);
+      let suggestions: ProjectSuggestion[] = [];
+      try {
+        const data = await fetchProjectsSuggestions(resumeId, jobId);
+        suggestions = data.projects ?? [];
+      } catch (suggestErr) {
+        // Suggestions are optional — fall through to a plain preview.
+        console.error('Failed to fetch project suggestions:', suggestErr);
+      } finally {
+        setPickerFetching(false);
+      }
+
+      if (suggestions.length > 0) {
+        setPickerSuggestions(suggestions);
+        return;
+      }
+
+      // 3. No suggestions (or fetch failed): preview directly
+      setShowProjectsPicker(false);
+      setPickerSuggestions([]);
+      pendingJobIdRef.current = null;
+      await runPreview(jobId);
+    } catch (err) {
+      console.error(err);
+      setError(t('tailor.errors.failedToGenerate'));
+    }
+  };
+
+  const runPreviewWithLoading = async (jobId: string, selectedProjects?: string[]) => {
+    setIsLoading(true);
+    setError(null);
+    startTimer();
+    try {
+      await runPreview(jobId, selectedProjects);
+    } finally {
+      setIsLoading(false);
+      stopTimer();
+    }
+  };
+
+  const handleTailorWithSelection = async (selectedNames: string[]) => {
+    const jobId = pendingJobIdRef.current;
+    if (!jobId || pickerTailoring) return;
+    setPickerTailoring(true);
+    setPickerError(null);
+    try {
+      setShowProjectsPicker(false);
+      await runPreviewWithLoading(jobId, selectedNames);
+    } catch (err) {
+      console.error(err);
+      setPickerError(t('tailor.errors.failedToPreview'));
+    } finally {
+      setPickerTailoring(false);
+      pendingJobIdRef.current = null;
+    }
+  };
+
+  const handleSkipProjects = () => {
+    const jobId = pendingJobIdRef.current;
+    setShowProjectsPicker(false);
+    setPickerSuggestions([]);
+    pendingJobIdRef.current = null;
+    if (jobId) {
+      void runPreviewWithLoading(jobId);
+    }
+  };
+
+  const handleCloseProjectsPicker = () => {
+    if (pickerTailoring) return;
+    setShowProjectsPicker(false);
+    setPickerSuggestions([]);
+    pendingJobIdRef.current = null;
   };
 
   const handleGenerate = async () => {
@@ -394,10 +514,7 @@ export default function TailorPage() {
 
   return (
     <div className="min-h-screen bg-white pl-16">
-      <SidebarNav
-        currentPage="tailor"
-        onNavigate={(page) => router.push(page)}
-      />
+      <SidebarNav currentPage="tailor" onNavigate={(page) => router.push(page)} />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <Link
           href="/dashboard"
@@ -585,9 +702,23 @@ export default function TailorPage() {
           onConfirm={handleConfirmChanges}
           diffSummary={pendingResult?.data?.diff_summary}
           detailedChanges={pendingResult?.data?.detailed_changes}
+          shouldApply={modalShouldApply ?? undefined}
           errorMessage={diffConfirmError ?? undefined}
         />
       )}
+
+      {/* JD-matched career projects picker (before tailoring) */}
+      <ProjectsPickerModal
+        isOpen={showProjectsPicker}
+        isFetching={pickerFetching}
+        isTailoring={pickerTailoring}
+        suggestions={pickerSuggestions}
+        errorMessage={pickerError}
+        jobId={selectedJobId}
+        onClose={handleCloseProjectsPicker}
+        onTailor={handleTailorWithSelection}
+        onSkip={handleSkipProjects}
+      />
 
       <ConfirmDialog
         open={showRegenerateDialog}

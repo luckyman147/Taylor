@@ -7,8 +7,13 @@ import {
   deleteSkill,
   getCareerInsights,
   getCareerMemory,
+  getMarketPosition,
   getProfile,
+  getSkillResources,
   getSkillRoi,
+  getSkillSuggestions,
+  importEducationFromMaster,
+  importProjectsFromGithub,
   seedProfileFromMaster,
   updateCertification,
   updateProfile,
@@ -119,6 +124,33 @@ describe('profile API client', () => {
     expect(options.method).toBe('PATCH');
   });
 
+  it('importEducationFromMaster POSTs to /profile/education/import-from-master', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify([{ education_id: 'e1' }]), { status: 200 })
+    );
+    const entries = await importEducationFromMaster();
+    const { url, options } = lastCall();
+    expect(url).toContain('/profile/education/import-from-master');
+    expect(options.method).toBe('POST');
+    expect(entries).toEqual([{ education_id: 'e1' }]);
+  });
+
+  it('importProjectsFromGithub POSTs selected repo URLs', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ imported: 2, updated: 1, total: 3 }), { status: 200 })
+    );
+    const result = await importProjectsFromGithub({
+      repo_urls: ['https://github.com/jane/a', 'https://github.com/jane/b'],
+    });
+    const { url, options } = lastCall();
+    expect(url).toContain('/profile/projects/import-from-github');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(String(options.body))).toEqual({
+      repo_urls: ['https://github.com/jane/a', 'https://github.com/jane/b'],
+    });
+    expect(result).toEqual({ imported: 2, updated: 1, total: 3 });
+  });
+
   it('deleteCertification DELETEs /profile/certifications/{id}', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ affected: 1 }), { status: 200 }));
     await deleteCertification('c1');
@@ -172,10 +204,103 @@ describe('profile API client', () => {
     expect(JSON.parse(String(options.body))).toEqual({ include_advice: true });
   });
 
+  it('getSkillResources POSTs skills and returns verified resources', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          resources: {
+            Kubernetes: [{ title: 'K8s Docs', url: 'https://kubernetes.io/docs', source: 'docs' }],
+          },
+          note: null,
+        }),
+        { status: 200 }
+      )
+    );
+    const res = await getSkillResources({ skills: ['Kubernetes'] });
+    const { url, options } = lastCall();
+    expect(url).toContain('/profile/skill-resources');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(String(options.body))).toEqual({ skills: ['Kubernetes'] });
+    expect(res.resources.Kubernetes[0].title).toBe('K8s Docs');
+  });
+
+  it('getSkillResources forwards the refresh flag', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ resources: {}, note: null }), { status: 200 })
+    );
+    await getSkillResources({ skills: ['Go'], refresh: true });
+    const { options } = lastCall();
+    expect(JSON.parse(String(options.body))).toEqual({ skills: ['Go'], refresh: true });
+  });
+
+  it('getMarketPosition POSTs to /profile/market-position and returns the model', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          skills: [{ skill: 'Python', percentile: 78, level: 'advanced' }],
+          domains: [
+            {
+              domain: 'Backend',
+              percentile: 68,
+              seniority: 'mid',
+              readiness: 'adequate',
+            },
+          ],
+          current_role: 'Mid Backend Engineer',
+          specialization: ['Python'],
+          recommended_roles: [
+            {
+              role: 'Python Developer',
+              domain: 'Backend',
+              seniority: 'mid',
+              match_score: 76,
+              reason: 'Matches your Python',
+            },
+          ],
+          verdict: "You're a Mid Backend Engineer specializing in Python.",
+          note: null,
+        }),
+        { status: 200 }
+      )
+    );
+    const res = await getMarketPosition();
+    const { url, options } = lastCall();
+    expect(url).toContain('/profile/market-position');
+    expect(options.method).toBe('POST');
+    expect(res.skills[0].percentile).toBe(78);
+    expect(res.domains[0].readiness).toBe('adequate');
+    expect(res.current_role).toBe('Mid Backend Engineer');
+    expect(res.specialization).toEqual(['Python']);
+    expect(res.recommended_roles[0].match_score).toBe(76);
+    expect(res.verdict).toContain('Backend');
+  });
+
   it('surfaces the backend detail message on errors', async () => {
     fetchMock.mockResolvedValue(responseFrom('A skill with this name already exists.'));
     await expect(createSkill({ name: 'Python' })).rejects.toThrow(
       'A skill with this name already exists.'
     );
+  });
+
+  it('getSkillSuggestions POSTs to /profile/skill-suggestions and returns the list', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          skills: [{ name: 'Docker', reason: 'Your projects run in containers.' }],
+          note: null,
+        }),
+        { status: 200 }
+      )
+    );
+    const res = await getSkillSuggestions();
+    const { url, options } = lastCall();
+    expect(url).toContain('/profile/skill-suggestions');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(String(options.body))).toEqual({});
+    expect(res.skills[0]).toEqual({
+      name: 'Docker',
+      reason: 'Your projects run in containers.',
+    });
+    expect(res.note).toBeNull();
   });
 });

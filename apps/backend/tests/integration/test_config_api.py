@@ -276,6 +276,7 @@ class TestFeaturePrompts:
         mock_load.return_value = {
             "cover_letter_prompt": "Custom cover prompt",
             "outreach_message_prompt": "",
+            "outreach_email_prompt": "Custom email prompt",
         }
         async with client:
             resp = await client.get("/api/v1/config/feature-prompts")
@@ -284,12 +285,16 @@ class TestFeaturePrompts:
         data = resp.json()
         assert data["cover_letter_prompt"] == "Custom cover prompt"
         assert data["outreach_message_prompt"] == ""
+        assert data["outreach_email_prompt"] == "Custom email prompt"
         assert "{job_description}" in data["cover_letter_default"]
         assert "{resume_data}" in data["cover_letter_default"]
         assert "{output_language}" in data["cover_letter_default"]
         assert "{job_description}" in data["outreach_message_default"]
         assert "{resume_data}" in data["outreach_message_default"]
         assert "{output_language}" in data["outreach_message_default"]
+        assert "{company_name}" in data["outreach_email_default"]
+        assert "{sender_info}" in data["outreach_email_default"]
+        assert "{purpose}" in data["outreach_email_default"]
 
     @patch("app.routers.config._load_config")
     async def test_put_feature_prompts_rejects_missing_placeholders(self, mock_load, client):
@@ -306,6 +311,23 @@ class TestFeaturePrompts:
             "missing": ["{resume_data}", "{output_language}"],
         }
 
+    @patch("app.routers.config._load_config")
+    async def test_put_feature_prompts_rejects_email_prompt_missing_placeholders(
+        self, mock_load, client
+    ):
+        mock_load.return_value = {}
+        async with client:
+            resp = await client.put("/api/v1/config/feature-prompts", json={
+                "outreach_email_prompt": "Write to {company_name} only",
+            })
+
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == {
+            "code": "missing_placeholders",
+            "field": "outreach_email_prompt",
+            "missing": ["{output_language}", "{sender_info}", "{purpose}"],
+        }
+
     @patch("app.routers.config._save_config")
     @patch("app.routers.config._load_config")
     async def test_put_feature_prompts_strips_and_clears_values(
@@ -314,11 +336,13 @@ class TestFeaturePrompts:
         mock_load.return_value = {
             "cover_letter_prompt": "Old cover prompt",
             "outreach_message_prompt": "Old outreach prompt",
+            "outreach_email_prompt": "Old email prompt",
         }
         async with client:
             resp = await client.put("/api/v1/config/feature-prompts", json={
                 "cover_letter_prompt": "  {job_description}\n{resume_data}\n{output_language}\n  ",
                 "outreach_message_prompt": "   ",
+                "outreach_email_prompt": "{output_language}\n{company_name}\n{sender_info}\n{purpose}",
             })
 
         assert resp.status_code == 200
@@ -327,11 +351,17 @@ class TestFeaturePrompts:
             "{job_description}\n{resume_data}\n{output_language}"
         )
         assert saved_config["outreach_message_prompt"] == ""
+        assert saved_config["outreach_email_prompt"] == (
+            "{output_language}\n{company_name}\n{sender_info}\n{purpose}"
+        )
         data = resp.json()
         assert data["cover_letter_prompt"] == (
             "{job_description}\n{resume_data}\n{output_language}"
         )
         assert data["outreach_message_prompt"] == ""
+        assert data["outreach_email_prompt"] == (
+            "{output_language}\n{company_name}\n{sender_info}\n{purpose}"
+        )
 
 
 class TestLanguageConfig:

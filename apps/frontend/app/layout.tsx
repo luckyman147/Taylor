@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Space_Grotesk, Newsreader } from 'next/font/google';
+import { ToastProvider } from '@/components/ui/toast';
 import './(default)/css/globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${newsreader.variable} antialiased bg-background text-ink-soft min-h-full`}
       >
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

@@ -47,6 +47,7 @@ import {
 import { downloadCsv } from '@/lib/utils/csv';
 import { ColumnsDropdown } from './columns-dropdown';
 import { CompanyDetailsDialog } from './company-details-dialog';
+import { CompanyEmailDialog } from './company-email-dialog';
 import { CompanyFormDialog } from './company-form-dialog';
 import { InlineSelectEditor, InlineTextEditor } from './inline-edit';
 
@@ -70,7 +71,7 @@ type GroupBy = 'none' | 'size' | 'type' | 'industry' | 'status';
 
 /** Fields editable inline (click a cell). */
 type EditableField =
-  'phone' | 'industry' | 'company_size' | 'company_type' | 'status' | 'year_founded';
+  'phone' | 'industry' | 'address' | 'company_size' | 'company_type' | 'status' | 'year_founded';
 
 interface EditingCell {
   companyId: string;
@@ -79,11 +80,12 @@ interface EditingCell {
 
 /** Table columns that can be hidden via the columns toggle. */
 type ColumnKey =
-  'phone' | 'industry' | 'size' | 'type' | 'status' | 'year_founded' | 'links' | 'actions';
+  'phone' | 'industry' | 'address' | 'size' | 'type' | 'status' | 'year_founded' | 'links' | 'actions';
 
 const ALL_COLUMNS: ColumnKey[] = [
   'phone',
   'industry',
+  'address',
   'size',
   'type',
   'status',
@@ -162,6 +164,7 @@ export function CompaniesTable() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
   const [details, setDetails] = useState<Company | null>(null);
+  const [emailing, setEmailing] = useState<Company | null>(null);
   const [deleting, setDeleting] = useState<Company | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
@@ -175,7 +178,13 @@ export function CompaniesTable() {
   const [typeFilter, setTypeFilter] = useState<CompanyType | ''>('');
   const [statusFilter, setStatusFilter] = useState<CompanyStatus | ''>('');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
-  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(loadColumnPrefs);
+  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
+
+  // Load saved column prefs after hydration (a lazy useState initializer would
+  // read localStorage during hydration and mismatch the SSR'd defaults).
+  useEffect(() => {
+    setVisibleColumns(loadColumnPrefs());
+  }, []);
 
   useEffect(() => {
     try {
@@ -249,6 +258,8 @@ export function CompaniesTable() {
         return company.phone ?? '';
       case 'industry':
         return company.industry ?? '';
+      case 'address':
+        return company.address ?? '';
       case 'company_size':
         return company.company_size ?? '';
       case 'company_type':
@@ -302,6 +313,7 @@ export function CompaniesTable() {
       return (
         company.name.toLowerCase().includes(query) ||
         (company.industry ?? '').toLowerCase().includes(query) ||
+        (company.address ?? '').toLowerCase().includes(query) ||
         (company.email ?? '').toLowerCase().includes(query)
       );
     });
@@ -479,6 +491,7 @@ export function CompaniesTable() {
   const columnOptions: { id: ColumnKey; label: string }[] = [
     { id: 'phone', label: t('companies.table.phone') },
     { id: 'industry', label: t('companies.table.industry') },
+    { id: 'address', label: t('companies.table.address') },
     { id: 'size', label: t('companies.table.size') },
     { id: 'type', label: t('companies.table.type') },
     { id: 'status', label: t('companies.table.status') },
@@ -705,6 +718,9 @@ export function CompaniesTable() {
                   {visibleColumns.industry && (
                     <th className="px-4 py-3">{t('companies.table.industry')}</th>
                   )}
+                  {visibleColumns.address && (
+                    <th className="px-4 py-3">{t('companies.table.address')}</th>
+                  )}
                   {visibleColumns.size && (
                     <th className="px-4 py-3">{t('companies.table.size')}</th>
                   )}
@@ -754,6 +770,7 @@ export function CompaniesTable() {
                               setDeleteError(null);
                               setDeleting(c);
                             }}
+                            onEmail={setEmailing}
                             editingCell={editingCell}
                             onStartEdit={(companyId, field) => setEditingCell({ companyId, field })}
                             onCommit={handleCellCommit}
@@ -787,6 +804,7 @@ export function CompaniesTable() {
                           setDeleteError(null);
                           setDeleting(c);
                         }}
+                        onEmail={setEmailing}
                         editingCell={editingCell}
                         onStartEdit={(companyId, field) => setEditingCell({ companyId, field })}
                         onCommit={handleCellCommit}
@@ -881,6 +899,15 @@ export function CompaniesTable() {
         sizeLabel={sizeLabel}
         typeLabel={typeLabel}
         statusLabel={statusLabel}
+      />
+
+      <CompanyEmailDialog
+        open={emailing !== null}
+        onOpenChange={(open) => {
+          if (!open) setEmailing(null);
+        }}
+        company={emailing}
+        onSent={() => void load()}
       />
 
       <ConfirmDialog
@@ -1056,6 +1083,7 @@ interface CompanyRowProps {
   onToggleSelect: () => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
+  onEmail: (company: Company) => void;
   editingCell: EditingCell | null;
   onStartEdit: (companyId: string, field: EditableField) => void;
   onCommit: (companyId: string, field: EditableField, value: string) => void;
@@ -1079,6 +1107,7 @@ function CompanyRow({
   onToggleSelect,
   onEdit,
   onDelete,
+  onEmail,
   editingCell,
   onStartEdit,
   onCommit,
@@ -1199,6 +1228,26 @@ function CompanyRow({
           )}
         </td>
       )}
+      {visibleColumns.address && (
+        <td className="max-w-56 px-4 py-3">
+          {isEditing('address') ? (
+            <InlineTextEditor
+              initialValue={company.address ?? ''}
+              ariaLabel={fieldLabel('address')}
+              onCommit={commit('address')}
+              onCancel={onCancelEdit}
+            />
+          ) : (
+            <span
+              {...editableCellProps('address')}
+              className="block cursor-text truncate text-ink-soft hover:text-primary"
+              title={company.address ?? undefined}
+            >
+              {company.address || '—'}
+            </span>
+          )}
+        </td>
+      )}
       {visibleColumns.size && (
         <td className="px-4 py-3">
           {isEditing('company_size') ? (
@@ -1307,6 +1356,16 @@ function CompanyRow({
       {visibleColumns.actions && (
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              aria-label={t('companies.table.email')}
+              onClick={() => onEmail(company)}
+              disabled={!company.email}
+              title={company.email ? t('companies.table.email') : t('companies.emailDialog.errors.noEmail')}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e6e3dc] text-ink-soft transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Mail className="h-4 w-4" />
+            </button>
             <button
               type="button"
               aria-label={t('companies.table.edit')}

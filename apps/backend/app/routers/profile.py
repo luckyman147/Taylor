@@ -5,13 +5,17 @@ chat Q&A, rejection-learning insights and the skill-ROI engine.
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
 
 from app.database import db
-from app.schemas.models import _split_list_entries
+from app.routers.github import _get_token, github_repos
 from app.schemas.profile import (
+    AchievementCreate,
+    AchievementResponse,
+    AchievementUpdate,
     CareerActionResponse,
     CareerAskRequest,
     CareerAskResponse,
@@ -22,132 +26,102 @@ from app.schemas.profile import (
     CertificationCreate,
     CertificationResponse,
     CertificationUpdate,
+    EducationCreate,
+    EducationResponse,
+    EducationUpdate,
+    GitHubImportRequest,
+    MarketPositionResponse,
     ProfileBundleResponse,
     ProfileResponse,
     ProfileSuggestionsResponse,
     ProfileUpdate,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
     SeedFromResumeRequest,
     SkillCreate,
+    SkillResource,
+    SkillResourcesRequest,
+    SkillResourcesResponse,
     SkillResponse,
+    SkillSuggestion,
+    SkillSuggestionsResponse,
     SkillUpdate,
+)
+from app.services.career_graph import (
+    fulfill_profile_from_resume,
+    import_education_from_master as import_education_from_master_service,
 )
 from app.services.career_profile import (
     _llm_configured,
+    _MAX_ROI_ROWS,
     answer_career_question,
     build_career_memory,
     build_profile_suggestions,
     compute_skill_roi,
     generate_roi_advice,
+    generate_skill_resources,
+    generate_skill_suggestions,
     get_career_insights as get_cached_career_insights,
+    partition_roi_rows,
 )
+from app.services.link_verifier import verify_resource_links
+from app.services.market_position import compute_market_position
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/profile", tags=["Career Profile"])
+# Cached learning-resource rows are considered fresh for 7 days; older ones
+# are regenerated (LLM + URL verification) on the next request.
+_RESOURCE_FRESHNESS_SECONDS = 7 * 24 * 60 * 60
 
-# Personal-info keys seedable from the master resume's personalInfo.
-_SEEDABLE_FIELDS = (
-    "name",
-    "title",
-    "email",
-    "phone",
-    "location",
-    "website",
-    "linkedin",
-    "github",
-)
+router = APIRouter(prefix="/profile", tags=["Career Profile"])
 
 
 @router.get("", response_model=ProfileBundleResponse)
 async def get_profile() -> ProfileBundleResponse:
-    """Get the career profile plus skills and certifications (auto-creates)."""
+    """Get the career profile plus skills, certifications and career-graph nodes."""
     profile = await db.get_career_profile()
     if profile is None:
         profile = await db.create_career_profile()
     skills = await db.list_career_skills()
     certifications = await db.list_career_certifications()
+    education = await db.list_career_education()
+    projects = await db.list_career_projects()
+    achievements = await db.list_career_achievements()
     return ProfileBundleResponse(
         profile=ProfileResponse(**profile),
         skills=[SkillResponse(**skill) for skill in skills],
         certifications=[
             CertificationResponse(**certification) for certification in certifications
         ],
+        education=[EducationResponse(**entry) for entry in education],
+        projects=[ProjectResponse(**project) for project in projects],
+        achievements=[
+            AchievementResponse(**achievement) for achievement in achievements
+        ],
     )
 
 
 @router.put("", response_model=ProfileResponse)
 async def update_profile(request: ProfileUpdate) -> ProfileResponse:
-    """Upsert the career profile (created on first write)."""
+    """Upsert the career profile (created on first write).
+
+    When ``work_experience`` changes, skill edges pointing at removed
+    experience entries are pruned so no orphan edge survives.
+    """
     updates = request.model_dump(exclude_unset=True, exclude_none=True)
+    if "work_experience" in updates:
+        valid = {
+            index
+            for index, entry in enumerate(updates["work_experience"])
+            if isinstance(entry, dict)
+        }
+        await db.prune_career_experience_edges(valid)
     try:
         updated = await db.update_career_profile(updates)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     return ProfileResponse(**updated)
-
-
-def _work_experience_from_resume(processed: dict[str, Any]) -> list[dict[str, Any]]:
-    """Map the resume's ``workExperience`` section to profile work entries."""
-    items: list[dict[str, Any]] = []
-    for entry in processed.get("workExperience") or []:
-        if not isinstance(entry, dict):
-            continue
-        role = str(entry.get("title") or "").strip()
-        company = str(entry.get("company") or "").strip()
-        if not role and not company:
-            continue
-        items.append(
-            {
-                "role": role,
-                "company": company or None,
-                "location": str(entry.get("location") or "").strip() or None,
-                "years": str(entry.get("years") or "").strip() or None,
-                "description": [
-                    bullet.strip()
-                    for bullet in (entry.get("description") or [])
-                    if str(bullet).strip()
-                ],
-            }
-        )
-    return items
-
-
-def _string_list_from_resume(
-    processed: dict[str, Any], key: str
-) -> list[str]:
-    """Pull a free-text list (languages/awards) from the resume's additional block.
-
-    Entries are split on commas/semicolons so merged strings like
-    "English, French" become separate items (defense for resumes parsed
-    before comma-splitting was normalized at parse time).
-    """
-    additional = processed.get("additional") or {}
-    raw = additional.get(key) or []
-    items = [str(item).strip() for item in raw if str(item).strip()]
-    entries: list[str] = []
-    for item in items:
-        entries.extend(_split_list_entries(item))
-    return entries
-
-
-async def _merge_resume_skills(processed: dict[str, Any]) -> None:
-    """Add the resume's technical skills to the profile (merge, never replace)."""
-    additional = processed.get("additional") or {}
-    names = [str(name).strip() for name in additional.get("technicalSkills") or []]
-    names = [
-        split
-        for name in names
-        for split in _split_list_entries(name)
-        if split
-    ]
-    names = list(dict.fromkeys(names))
-    if not names:
-        return
-    existing = {skill["name"].lower() for skill in await db.list_career_skills()}
-    for name in names:
-        if name.lower() not in existing:
-            await db.create_career_skill(name=name)
-            existing.add(name.lower())
 
 
 @router.post("/seed-from-master", response_model=ProfileResponse)
@@ -156,10 +130,9 @@ async def seed_profile_from_master(
 ) -> ProfileResponse:
     """Seed the profile from a resume (default: the master resume).
 
-    Copies personal info, professional summary, technical skills (merged into
-    the existing skill list), work experience, languages and honors/awards
-    (replacing the profile's lists), and records the source resume as the
-    profile's reference (shown in the profile header).
+    Delegates to :func:`fulfill_profile_from_resume` — the exact same code
+    path that auto-fulfills after a master-resume upload, so the manual and
+    automatic flows can never drift apart.
     """
     payload = request or SeedFromResumeRequest()
     if payload.resume_id is not None:
@@ -172,30 +145,7 @@ async def seed_profile_from_master(
             raise HTTPException(
                 status_code=404, detail="No master resume found. Upload one first."
             )
-    processed = resume.get("processed_data") or {}
-    personal_info = processed.get("personalInfo") or {}
-    updates: dict[str, Any] = {
-        key: value
-        for key, value in personal_info.items()
-        if key in _SEEDABLE_FIELDS and isinstance(value, str) and value.strip()
-    }
-    summary = str(processed.get("summary") or "").strip()
-    if summary:
-        updates["summary"] = summary
-    experience = _work_experience_from_resume(processed)
-    if experience:
-        updates["work_experience"] = experience
-    # Languages/awards replace the profile lists when the resume has them.
-    languages = _string_list_from_resume(processed, "languages")
-    if languages:
-        updates["languages"] = languages
-    awards = _string_list_from_resume(processed, "awards")
-    if awards:
-        updates["awards"] = awards
-    updates["source_resume_id"] = resume["resume_id"]
-    updates["source_resume_title"] = resume.get("title") or resume.get("filename") or "Resume"
-    updated = await db.update_career_profile(updates)
-    await _merge_resume_skills(processed)
+    updated = await fulfill_profile_from_resume(resume)
     return ProfileResponse(**updated)
 
 
@@ -274,6 +224,196 @@ async def delete_certification(certification_id: str) -> CareerActionResponse:
     )
 
 
+@router.get("/education", response_model=list[EducationResponse])
+async def list_education() -> list[EducationResponse]:
+    """List the career-graph education entries (insertion order)."""
+    return [EducationResponse(**entry) for entry in await db.list_career_education()]
+
+
+@router.post("/education/import-from-master", response_model=list[EducationResponse])
+async def import_education_from_master() -> list[EducationResponse]:
+    """Sync education from the master resume (replace-when-present).
+
+    Called by the Education tab on load so it always reflects the latest CV;
+    no-op when there is no master resume or it has no education section.
+    """
+    await import_education_from_master_service()
+    return [EducationResponse(**entry) for entry in await db.list_career_education()]
+
+
+@router.post("/education", response_model=EducationResponse, status_code=201)
+async def create_education(request: EducationCreate) -> EducationResponse:
+    """Add an education entry."""
+    created = await db.create_career_education(
+        institution=request.institution,
+        degree=request.degree,
+        years=request.years,
+        description=request.description,
+    )
+    return EducationResponse(**created)
+
+
+@router.patch("/education/{education_id}", response_model=EducationResponse)
+async def update_education(
+    education_id: str, request: EducationUpdate
+) -> EducationResponse:
+    """Update an education entry's editable fields."""
+    updates = request.model_dump(exclude_unset=True, exclude_none=True)
+    updated = await db.update_career_education(education_id, updates)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Education entry not found.")
+    return EducationResponse(**updated)
+
+
+@router.delete("/education/{education_id}", response_model=CareerActionResponse)
+async def delete_education(education_id: str) -> CareerActionResponse:
+    """Delete an education entry."""
+    deleted = await db.delete_career_education(education_id)
+    return CareerActionResponse(
+        message="Education entry deleted." if deleted else "Education entry not found.",
+        affected=1 if deleted else 0,
+    )
+
+
+@router.get("/projects", response_model=list[ProjectResponse])
+async def list_projects() -> list[ProjectResponse]:
+    """List the career-graph project nodes (insertion order)."""
+    return [ProjectResponse(**project) for project in await db.list_career_projects()]
+
+
+@router.post("/projects", response_model=ProjectResponse, status_code=201)
+async def create_project(request: ProjectCreate) -> ProjectResponse:
+    """Add a project node."""
+    created = await db.create_career_project(
+        name=request.name,
+        role=request.role,
+        years=request.years,
+        github=request.github,
+        website=request.website,
+        description=request.description,
+        languages=request.languages,
+        readme=request.readme,
+    )
+    return ProjectResponse(**created)
+
+
+@router.patch("/projects/{project_id}", response_model=ProjectResponse)
+async def update_project(
+    project_id: str, request: ProjectUpdate
+) -> ProjectResponse:
+    """Update a project node's editable fields."""
+    updates = request.model_dump(exclude_unset=True, exclude_none=True)
+    updated = await db.update_career_project(project_id, updates)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    return ProjectResponse(**updated)
+
+
+@router.delete("/projects/{project_id}", response_model=CareerActionResponse)
+async def delete_project(project_id: str) -> CareerActionResponse:
+    """Delete a project node (its skill edges are removed with it)."""
+    deleted = await db.delete_career_project(project_id)
+    return CareerActionResponse(
+        message="Project deleted." if deleted else "Project not found.",
+        affected=1 if deleted else 0,
+    )
+
+
+@router.post("/projects/import-from-github")
+async def import_projects_from_github(
+    request: GitHubImportRequest | None = None,
+) -> dict:
+    """Import the user's GitHub repos as project nodes.
+
+    Repos are fetched through ``github_repos`` (which serves a 10-minute
+    in-process cache, so repeated imports do not hit the GitHub API), then
+    upserted into the career graph keyed by repo URL: an existing project
+    with the same ``github`` link is updated in place, everything else is
+    created. Captured per repo: name, description, languages and README.
+    ``repo_urls`` limits the import to a selection.
+    """
+    token = await _get_token()
+    if not token:
+        raise HTTPException(status_code=401, detail="Not connected to GitHub")
+
+    response = await github_repos()
+    selected = set(request.repo_urls) if request else set()
+    repos = [repo for repo in response.repos if not selected or repo.url in selected]
+
+    existing = {
+        project["github"]: project
+        for project in await db.list_career_projects()
+        if project.get("github")
+    }
+
+    imported = 0
+    updated = 0
+    for repo in repos:
+        url = repo.url
+        updates: dict[str, Any] = {
+            "name": repo.name,
+            "github": url,
+            "website": None,
+            "description": [repo.description] if repo.description else [],
+            "languages": repo.languages,
+            "readme": repo.readme or None,
+        }
+        if url in existing:
+            await db.update_career_project(existing[url]["project_id"], updates)
+            updated += 1
+        else:
+            await db.create_career_project(**updates)
+            imported += 1
+
+    return {
+        "imported": imported,
+        "updated": updated,
+        "total": imported + updated,
+    }
+
+
+@router.get("/achievements", response_model=list[AchievementResponse])
+async def list_achievements() -> list[AchievementResponse]:
+    """List the career-graph achievements (insertion order)."""
+    return [
+        AchievementResponse(**achievement)
+        for achievement in await db.list_career_achievements()
+    ]
+
+
+@router.post("/achievements", response_model=AchievementResponse, status_code=201)
+async def create_achievement(request: AchievementCreate) -> AchievementResponse:
+    """Add an achievement."""
+    created = await db.create_career_achievement(
+        title=request.title,
+        description=request.description,
+        date=request.date,
+    )
+    return AchievementResponse(**created)
+
+
+@router.patch("/achievements/{achievement_id}", response_model=AchievementResponse)
+async def update_achievement(
+    achievement_id: str, request: AchievementUpdate
+) -> AchievementResponse:
+    """Update an achievement's editable fields."""
+    updates = request.model_dump(exclude_unset=True, exclude_none=True)
+    updated = await db.update_career_achievement(achievement_id, updates)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Achievement not found.")
+    return AchievementResponse(**updated)
+
+
+@router.delete("/achievements/{achievement_id}", response_model=CareerActionResponse)
+async def delete_achievement(achievement_id: str) -> CareerActionResponse:
+    """Delete an achievement."""
+    deleted = await db.delete_career_achievement(achievement_id)
+    return CareerActionResponse(
+        message="Achievement deleted." if deleted else "Achievement not found.",
+        affected=1 if deleted else 0,
+    )
+
+
 @router.get("/memory", response_model=CareerMemoryResponse)
 async def get_career_memory() -> CareerMemoryResponse:
     """Get the aggregated career-memory bundle (debug / reuse endpoint)."""
@@ -313,10 +453,15 @@ async def get_career_insights() -> CareerInsightsResponse:
 
 @router.post("/skill-roi", response_model=CareerRoiResponse)
 async def compute_roi(request: CareerRoiRequest) -> CareerRoiResponse:
-    """Compute the skill-ROI table; optionally add the 'learn next' advice."""
+    """Compute the skill-ROI table; optionally add the 'learn next' advice.
+
+    The response also carries the job-focused sections (gaps to learn,
+    skills to strengthen, everything else) derived from the same rows.
+    """
     jobs = await db.list_scraped_jobs_for_analysis()
     profile_skills = await db.list_career_skills()
     results, note = compute_skill_roi(jobs, profile_skills, request.skills)
+    gaps, strengthen, rest = partition_roi_rows(results)
 
     advice = None
     if request.include_advice:
@@ -324,7 +469,117 @@ async def compute_roi(request: CareerRoiRequest) -> CareerRoiResponse:
             advice = await generate_roi_advice(results)
         except Exception as e:
             logger.error("ROI advice failed: %s", e)
-    return CareerRoiResponse(results=results, advice=advice, note=note)
+    return CareerRoiResponse(
+        results=results[:_MAX_ROI_ROWS],
+        gaps=gaps,
+        strengthen=strengthen,
+        rest=rest,
+        advice=advice,
+        note=note,
+    )
+
+
+@router.post("/market-position", response_model=MarketPositionResponse)
+async def get_market_position() -> MarketPositionResponse:
+    """Deterministic market-position model (role, percentiles + verdict).
+
+    Pure function over tracked skills, certifications, work experience and
+    projects — no LLM and no external data: percentiles are mapped from a
+    modeled candidate distribution, the current role and best-fit role picks
+    are derived from the same evidence, and the verdict is a template
+    sentence.
+    """
+    skills = await db.list_career_skills()
+    certifications = await db.list_career_certifications()
+    profile = await db.get_career_profile()
+    work_experience = (profile or {}).get("work_experience") or []
+    projects = await db.list_career_projects()
+    return MarketPositionResponse(
+        **compute_market_position(skills, certifications, work_experience, projects)
+    )
+
+
+def _resource_cache_fresh(retrieved_at: str) -> bool:
+    """Whether a cached resource row is within the freshness window."""
+    try:
+        parsed = datetime.fromisoformat(retrieved_at)
+        age = (datetime.now(timezone.utc) - parsed).total_seconds()
+        return 0 <= age < _RESOURCE_FRESHNESS_SECONDS
+    except (TypeError, ValueError):
+        return False
+
+
+@router.post("/skill-resources", response_model=SkillResourcesResponse)
+async def get_skill_resources_endpoint(
+    request: SkillResourcesRequest,
+) -> SkillResourcesResponse:
+    """Verified learning resources per skill (cached; LLM-proposed + URL-checked).
+
+    Serves cached resources (fresh up to 7 days) and generates the rest in a
+    single LLM call; every proposed URL is verified to actually resolve before
+    it is cached or returned. Returns cached data plus a note when the LLM is
+    not configured.
+    """
+    skills = [name.strip() for name in request.skills if name.strip()]
+    resources: dict[str, list[dict[str, Any]]] = {}
+    missing: list[str] = []
+    for skill in skills:
+        cached = await db.get_skill_resources(skill)
+        if (
+            cached is not None
+            and not request.refresh
+            and _resource_cache_fresh(cached["retrieved_at"])
+        ):
+            resources[skill] = cached["resources"]
+        else:
+            missing.append(skill)
+
+    note: str | None = None
+    if missing:
+        if not _llm_configured():
+            note = "Learning resources are only available when an LLM is configured."
+        else:
+            try:
+                proposed = await generate_skill_resources(missing)
+                for skill in missing:
+                    verified = await verify_resource_links(proposed.get(skill, []))
+                    resources[skill] = verified
+                    await db.save_skill_resources(skill, verified)
+            except Exception as e:
+                logger.error("Skill resources generation failed: %s", e)
+                note = "Learning resources could not be generated right now. Please try again."
+    return SkillResourcesResponse(
+        resources={
+            skill: [SkillResource(**item) for item in entries]
+            for skill, entries in resources.items()
+        },
+        note=note,
+    )
+
+
+@router.post("/skill-suggestions", response_model=SkillSuggestionsResponse)
+async def get_skill_suggestions_endpoint() -> SkillSuggestionsResponse:
+    """AI 'forgotten skills' suggestions over the local career data.
+
+    LLM-optional: returns an empty list with a note when no LLM is
+    configured, and a generic note when generation fails.
+    """
+    note: str | None = None
+    skills: list[dict[str, Any]] = []
+    if not _llm_configured():
+        note = "Skill suggestions are only available when an LLM is configured."
+    else:
+        try:
+            skills = await generate_skill_suggestions() or []
+        except Exception as e:
+            logger.error("Skill suggestions generation failed: %s", e)
+            note = "Skill suggestions could not be generated right now. Please try again."
+    if not skills and note is None:
+        note = "No skill suggestions right now. Try again once your profile has more details."
+    return SkillSuggestionsResponse(
+        skills=[SkillSuggestion(**item) for item in skills],
+        note=note,
+    )
 
 
 @router.get("/suggestions", response_model=ProfileSuggestionsResponse)

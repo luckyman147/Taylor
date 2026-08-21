@@ -3,6 +3,7 @@ import type { ResumeData, SectionMeta } from '@/components/dashboard/resume-comp
 import {
   DEFAULT_SECTION_META,
   createCustomSection,
+  ensureUniqueEntryIds,
   generateCustomSectionId,
   getAllSections,
   getSectionMeta,
@@ -31,14 +32,35 @@ function resume(sectionMeta?: SectionMeta[]): ResumeData {
 }
 
 describe('getSectionMeta', () => {
-  it('returns the resume sectionMeta when present', () => {
-    const sm = [meta({ id: 'a' })];
-    expect(getSectionMeta(resume(sm))).toBe(sm);
+  it('keeps stored sections and appends missing defaults hidden', () => {
+    const sm = [meta({ id: 'a', isDefault: true })];
+    const result = getSectionMeta(resume(sm));
+    expect(result.slice(0, 1)).toEqual(sm);
+    expect(result.map((s) => s.id)).toEqual([
+      'a',
+      'personalInfo',
+      'summary',
+      'workExperience',
+      'education',
+      'certifications',
+      'awards',
+      'personalProjects',
+      'additional',
+    ]);
+    expect(result.find((s) => s.id === 'certifications')).toMatchObject({
+      isVisible: false,
+      isDefault: true,
+    });
+    expect(result.find((s) => s.id === 'awards')).toMatchObject({
+      isVisible: false,
+      isDefault: true,
+    });
   });
 
-  it('falls back to DEFAULT_SECTION_META when missing or empty', () => {
-    expect(getSectionMeta(resume(undefined))).toBe(DEFAULT_SECTION_META);
-    expect(getSectionMeta(resume([]))).toBe(DEFAULT_SECTION_META);
+  it('falls back to all DEFAULT_SECTION_META entries when missing or empty', () => {
+    const expectedIds = DEFAULT_SECTION_META.map((s) => s.id);
+    expect(getSectionMeta(resume(undefined)).map((s) => s.id)).toEqual(expectedIds);
+    expect(getSectionMeta(resume([])).map((s) => s.id)).toEqual(expectedIds);
   });
 });
 
@@ -54,12 +76,23 @@ describe('getSortedSections', () => {
 });
 
 describe('getAllSections', () => {
-  it('includes hidden sections, sorted by order', () => {
+  it('includes hidden sections, sorted by order, with missing defaults appended', () => {
     const sm = [
       meta({ id: 'b', order: 1, isVisible: false }),
       meta({ id: 'a', order: 0, isVisible: true }),
     ];
-    expect(getAllSections(resume(sm)).map((s) => s.id)).toEqual(['a', 'b']);
+    expect(getAllSections(resume(sm)).map((s) => s.id)).toEqual([
+      'a',
+      'b',
+      'personalInfo',
+      'summary',
+      'workExperience',
+      'education',
+      'certifications',
+      'awards',
+      'personalProjects',
+      'additional',
+    ]);
   });
 });
 
@@ -124,5 +157,25 @@ describe('withLocalizedDefaultSections', () => {
     expect(out.sectionMeta).toHaveLength(DEFAULT_SECTION_META.length);
     const summary = out.sectionMeta!.find((s) => s.id === 'summary');
     expect(summary!.displayName).toBe('t:resume.sections.summary');
+  });
+});
+
+describe('ensureUniqueEntryIds', () => {
+  it('renumbers entries without ids by position', () => {
+    const entries: { id?: number; title: string }[] = [{ title: 'A' }, { title: 'B' }];
+    const out = ensureUniqueEntryIds(entries);
+    expect(out.map((e) => e.id)).toEqual([1, 2]);
+  });
+
+  it('rewrites duplicate ids so one edit cannot hit every entry', () => {
+    const out = ensureUniqueEntryIds([
+      { id: 0, title: 'A' },
+      { id: 0, title: 'B' },
+    ]);
+    expect(out.map((e) => e.id)).toEqual([1, 2]);
+  });
+
+  it('returns an empty array for undefined', () => {
+    expect(ensureUniqueEntryIds(undefined)).toEqual([]);
   });
 });

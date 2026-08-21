@@ -2,7 +2,30 @@
 
 import json
 import logging
+import re
 from typing import Any
+
+# Matches a trailing "ATS Match Analysis"-style section some models append
+# after the letter's signature (optionally preceded by a `---` separator
+# and/or a markdown heading, possibly bold). Anchored to a line start so a
+# mid-letter mention like "ATS-friendly" is never touched.
+_ATS_SECTION_RE = re.compile(
+    r"(?:^|\n)\s*(?:[-=–—_*]{2,}\s*)?(?:#{1,6}\s*)?\*{0,2}\s*"
+    r"ats(?:\s*(?:match|score|compatibility|keyword|analysis)){1,2}"
+    r"[\s\S]*?$",
+    re.IGNORECASE,
+)
+
+
+def strip_ats_analysis(text: str) -> str:
+    """Remove an appended 'ATS Match Analysis' section from cover letter text.
+
+    Some LLM outputs add a meta-analysis section after the signature
+    (estimated ATS score, matching/missing skills, selling points). This
+    never belongs in a letter a candidate sends, so it is stripped at
+    generation time and again at serve time for legacy stored letters.
+    """
+    return _ATS_SECTION_RE.sub("", text).strip()
 
 from app.config import load_config_file
 from app.llm import complete
@@ -37,6 +60,7 @@ async def generate_cover_letter(
     resume_data: dict[str, Any],
     job_description: str,
     language: str = "en",
+    instruction: str | None = None,
 ) -> str:
     """Generate a cover letter based on resume and job description.
 
@@ -44,6 +68,7 @@ async def generate_cover_letter(
         resume_data: Structured resume data (ResumeData format)
         job_description: Target job description text
         language: Output language code (en, es, zh, ja)
+        instruction: Optional user-supplied guidance appended to the prompt
 
     Returns:
         Generated cover letter as plain text
@@ -78,19 +103,27 @@ async def generate_cover_letter(
             output_language=output_language,
         )
 
+    if instruction and instruction.strip():
+        prompt = (
+            f"{prompt}\n\n"
+            f"User's additional instructions for this generation "
+            f"(follow them precisely):\n{instruction.strip()}"
+        )
+
     result = await complete(
         prompt=prompt,
         system_prompt="You are a professional career coach and resume writer. Write compelling, personalized cover letters.",
         max_tokens=2048,
     )
 
-    return result.strip()
+    return strip_ats_analysis(result)
 
 
 async def generate_outreach_message(
     resume_data: dict[str, Any],
     job_description: str,
     language: str = "en",
+    instruction: str | None = None,
 ) -> str:
     """Generate a cold outreach message for networking.
 
@@ -98,6 +131,7 @@ async def generate_outreach_message(
         resume_data: Structured resume data (ResumeData format)
         job_description: Target job description text
         language: Output language code (en, es, zh, ja)
+        instruction: Optional user-supplied guidance appended to the prompt
 
     Returns:
         Generated outreach message as plain text
@@ -125,6 +159,13 @@ async def generate_outreach_message(
             job_description=job_description,
             resume_data=json.dumps(resume_data),
             output_language=output_language,
+        )
+
+    if instruction and instruction.strip():
+        prompt = (
+            f"{prompt}\n\n"
+            f"User's additional instructions for this generation "
+            f"(follow them precisely):\n{instruction.strip()}"
         )
 
     result = await complete(

@@ -193,3 +193,92 @@ RULES:
 - Group similar technologies if appropriate
 - Prioritize most relevant skills based on feedback
 - Only include skills that already exist in CURRENT SKILLS or are explicitly provided in USER'S FEEDBACK"""
+
+
+# ============================================
+# Project Bullet Generation
+# ============================================
+
+
+GENERATE_PROJECT_BULLETS_PROMPT = """You are a professional resume writer. Write resume bullet points for a personal project section.
+
+IMPORTANT: Generate ALL output text in {output_language}.
+
+PROJECT INFORMATION:
+Name: {name}
+Role: {role}
+Years: {years}
+GitHub: {github}
+Website: {website}
+Description: {description}
+Languages: {languages}
+
+PROJECT SOURCE MATERIAL (the primary source of facts about this project):
+{source_material}
+
+{user_instruction}
+TASK:
+Write bullet points for this project's resume entry. The bullets should:
+1. Be action-oriented with strong verbs
+2. Highlight quantifiable impact ONLY when the source material supports it (never invent numbers)
+3. Be technically specific with the tools, technologies, and architecture described
+4. Show ownership, scope, and what was built or delivered
+5. Be concise (1-2 lines each)
+
+OUTPUT FORMAT (JSON only):
+{{
+  "bullets": [
+    "Bullet point 1",
+    "Bullet point 2",
+    "Bullet point 3"
+  ]
+}}
+
+RULES:
+- Generate 3-5 bullets
+- Base every bullet ONLY on the PROJECT SOURCE MATERIAL and PROJECT INFORMATION above
+- Do NOT invent features, metrics, or outcomes that are not present in the source material
+- Do NOT mention or reference the source document (e.g. "README")
+- If the source material is thin, write honest bullets about the project scope, technologies, and role without fabricating details"""
+
+
+# ============================================
+# Outreach Email Generation Prompt
+# ============================================
+
+
+GENERATE_OUTREACH_EMAIL_PROMPT = """You are a professional career coach writing a cold outreach email on behalf of the sender to a company.
+
+IMPORTANT: Generate ALL output text in {output_language}.
+
+COMPANY INFORMATION:
+- Company name: {company_name}
+- Company email: {company_email}
+- Industry: {industry}
+- Company size: {company_size}
+- Company type: {company_type}
+- Website: {website}
+- LinkedIn: {linkedin_url}
+- Recipient name (if known): {recipient_name}
+
+PURPOSE:
+{purpose}
+
+SENDER INFORMATION (from the sender's resume — use this to personalize the email):
+{sender_info}
+
+OUTPUT FORMAT (JSON only):
+{{
+  "subject": "A concise, attention-grabbing subject line (under 60 characters)",
+  "body": "The full email body, 120-200 words, plain text with blank lines between paragraphs"
+}}
+
+RULES:
+- Address the recipient by name if provided, otherwise use a neutral greeting such as "Hello" or "Hi there".
+- Keep the tone professional, warm, and concise. Make exactly one clear ask at the end.
+- Personalize the email with the SENDER INFORMATION: mention relevant skills, background, or interest that fits the company's industry.
+- Do NOT invent facts about the company beyond what is listed above.
+- Do NOT invent contact details, links, or claims about the sender that are not in SENDER INFORMATION.
+- The body must be plain text (no markdown, no bullet symbols, no bold). Use short paragraphs separated by blank lines.
+- Do NOT use placeholders like [Your Name]. If the sender's name is available, sign the email with it; otherwise sign "Sincerely" only.
+- The email must not be a full resume — it is a short, focused outreach message."""

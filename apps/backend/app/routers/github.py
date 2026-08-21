@@ -321,8 +321,10 @@ async def github_repos() -> GitHubReposResponse:
                     data = await _github_api(url, token)
                     import base64
                     content = base64.b64decode(data.get("content", "")).decode("utf-8", errors="replace")
-                    # Truncate to first 500 chars for context
-                    return content[:500]
+                    # Truncate to first 2000 chars — enough for a useful
+                    # README snapshot when importing repos into the career
+                    # graph, still bounded for LLM context.
+                    return content[:2000]
                 except Exception:
                     return ""
 

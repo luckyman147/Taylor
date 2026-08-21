@@ -25,12 +25,16 @@ from app.schemas import (
     ApiKeysUpdateRequest,
     ApiKeysUpdateResponse,
     ResetDatabaseRequest,
+    EmailConfigRequest,
+    EmailConfigResponse,
 )
 from app.prompts import (
     DEFAULT_IMPROVE_PROMPT_ID,
     IMPROVE_PROMPT_OPTIONS,
+    REQUIRED_OUTREACH_EMAIL_PLACEHOLDERS,
     validate_prompt_placeholders,
 )
+from app.prompts.enrichment import GENERATE_OUTREACH_EMAIL_PROMPT
 from app.prompts.templates import COVER_LETTER_PROMPT, OUTREACH_MESSAGE_PROMPT
 from app.config import (
     get_api_keys_from_config,
@@ -359,7 +363,7 @@ async def update_prompt_config(
 
 @router.get("/feature-prompts", response_model=FeaturePromptsResponse)
 async def get_feature_prompts() -> FeaturePromptsResponse:
-    """Get custom feature prompts (cover letter, outreach message).
+    """Get custom feature prompts (cover letter, outreach message, outreach email).
 
     Empty strings mean "use default". The ``*_default`` fields expose the
     built-in prompts so the UI can show them as placeholder text without
@@ -369,8 +373,10 @@ async def get_feature_prompts() -> FeaturePromptsResponse:
     return FeaturePromptsResponse(
         cover_letter_prompt=stored.get("cover_letter_prompt", "") or "",
         outreach_message_prompt=stored.get("outreach_message_prompt", "") or "",
+        outreach_email_prompt=stored.get("outreach_email_prompt", "") or "",
         cover_letter_default=COVER_LETTER_PROMPT,
         outreach_message_default=OUTREACH_MESSAGE_PROMPT,
+        outreach_email_default=GENERATE_OUTREACH_EMAIL_PROMPT,
     )
 
 
@@ -380,12 +386,14 @@ async def update_feature_prompts(
 ) -> FeaturePromptsResponse:
     """Update custom feature prompts.
 
-    Non-empty prompts are validated for the three required placeholders
-    (``{job_description}``, ``{resume_data}``, ``{output_language}``).
-    Missing placeholders return a 422 with a structured detail so the UI
-    can list exactly which ones are absent. Empty strings clear the
-    override — persisted as ``""`` so runtime resolution falls back to the
-    built-in default.
+    Non-empty cover-letter / outreach-message prompts are validated for the
+    three required placeholders (``{job_description}``, ``{resume_data}``,
+    ``{output_language}``); the composer outreach-email prompt is validated
+    for ``{output_language}``, ``{company_name}``, ``{sender_info}``,
+    ``{purpose}``. Missing placeholders return a 422 with a structured
+    detail so the UI can list exactly which ones are absent. Empty strings
+    clear the override — persisted as ``""`` so runtime resolution falls
+    back to the built-in default.
     """
     stored = _load_config()
 
@@ -419,13 +427,32 @@ async def update_feature_prompts(
                 )
         stored["outreach_message_prompt"] = prompt
 
+    if request.outreach_email_prompt is not None:
+        prompt = request.outreach_email_prompt.strip()
+        if prompt:
+            missing = validate_prompt_placeholders(
+                prompt, REQUIRED_OUTREACH_EMAIL_PLACEHOLDERS
+            )
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "missing_placeholders",
+                        "field": "outreach_email_prompt",
+                        "missing": missing,
+                    },
+                )
+        stored["outreach_email_prompt"] = prompt
+
     _save_config(stored)
 
     return FeaturePromptsResponse(
         cover_letter_prompt=stored.get("cover_letter_prompt", "") or "",
         outreach_message_prompt=stored.get("outreach_message_prompt", "") or "",
+        outreach_email_prompt=stored.get("outreach_email_prompt", "") or "",
         cover_letter_default=COVER_LETTER_PROMPT,
         outreach_message_default=OUTREACH_MESSAGE_PROMPT,
+        outreach_email_default=GENERATE_OUTREACH_EMAIL_PROMPT,
     )
 
 
@@ -635,3 +662,60 @@ async def reset_database_endpoint(request: ResetDatabaseRequest) -> dict:
         )
     await db.reset_database()
     return {"message": "Database and all data have been reset successfully"}
+
+
+# ============================================
+# SMTP Email Sender Settings
+# ============================================
+
+
+def _email_config_response(stored: dict) -> EmailConfigResponse:
+    """Build the EmailConfigResponse from config + encrypted key store."""
+    keys = get_api_keys_from_config()
+    return EmailConfigResponse(
+        smtp_host=str(stored.get("smtp_host", "") or ""),
+        smtp_port=int(stored.get("smtp_port", 587) or 587),
+        sender_email=str(stored.get("sender_email", "") or ""),
+        sender_name=str(stored.get("sender_name", "") or ""),
+        use_tls=bool(stored.get("use_tls", True)),
+        has_password=bool(keys.get("smtp")),
+    )
+
+
+@router.get("/email", response_model=EmailConfigResponse)
+async def get_email_config() -> EmailConfigResponse:
+    """Get the current SMTP email sender settings (password is masked)."""
+    return _email_config_response(_load_config())
+
+
+@router.put("/email", response_model=EmailConfigResponse)
+async def update_email_config(request: EmailConfigRequest) -> EmailConfigResponse:
+    """Update SMTP email sender settings.
+
+    The app password is stored encrypted in the api_keys store under the
+    ``smtp`` provider. ``None`` = unchanged, empty string = clear, value = set.
+    """
+    stored = _load_config()
+
+    if request.smtp_host is not None:
+        stored["smtp_host"] = request.smtp_host.strip()
+    if request.smtp_port is not None:
+        stored["smtp_port"] = request.smtp_port
+    if request.sender_email is not None:
+        stored["sender_email"] = request.sender_email.strip()
+    if request.sender_name is not None:
+        stored["sender_name"] = request.sender_name.strip()
+    if request.use_tls is not None:
+        stored["use_tls"] = request.use_tls
+
+    if request.password is not None:
+        keys = get_api_keys_from_config()
+        trimmed = request.password.strip()
+        if trimmed:
+            keys["smtp"] = trimmed
+        elif "smtp" in keys:
+            del keys["smtp"]
+        save_api_keys_to_config(keys)
+
+    _save_config(stored)
+    return _email_config_response(stored)

@@ -110,7 +110,16 @@
   color: var(--resume-text-tertiary);
 }
 
-/* Date formatting - ensures dates never wrap; alignment follows the date-align setting */
+/* Header contact line (email | phone | location) — flex rows ignore
+   text-align, so the whole third line follows the Header Alignment
+   setting via justify-content. */
+.resume-contact-line {
+  justify-content: var(--section-header-align, center);
+}
+
+/* Date formatting - ensures dates never wrap; alignment follows the date-align
+   setting. flex:1 makes the span fill the row's remaining width, so
+   text-align is actually observable inside justify-between flex rows. */
 .resume-date {
   font-family: var(--resume-font-mono);
   font-size: var(--size-minor-copy);
@@ -118,6 +127,7 @@
   color: var(--resume-text-tertiary);
   white-space: nowrap;
   flex-shrink: 0;
+  flex: 1 1 0%;
   text-align: var(--date-align, right);
 }
 
@@ -140,6 +150,20 @@
   display: block;
   column-count: 2;
   column-gap: 1.5em;
+}
+
+/* Grouped skills: one line per category (bold label + comma-joined skills) */
+.resume-skills-grouped {
+  display: block;
+}
+
+.resume-skills-group {
+  display: block;
+  margin-bottom: 0.15em;
+}
+
+.resume-skills-group-label {
+  font-weight: 700;
 }
 
 .resume-text {

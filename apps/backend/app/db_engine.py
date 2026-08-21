@@ -73,6 +73,8 @@ def init_models_sync(engine: Engine) -> None:
         columns = conn.exec_driver_sql("PRAGMA table_info(resumes)").mappings().all()
         if columns and "interview_prep" not in {column["name"] for column in columns}:
             conn.exec_driver_sql("ALTER TABLE resumes ADD COLUMN interview_prep TEXT")
+        if columns and "metadata_json" not in {column["name"] for column in columns}:
+            conn.exec_driver_sql("ALTER TABLE resumes ADD COLUMN metadata_json JSON")
 
         # Add applied columns to scraped_jobs table
         scraped_columns = conn.exec_driver_sql("PRAGMA table_info(scraped_jobs)").mappings().all()
@@ -84,6 +86,8 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN applied_resume_id TEXT")
             if "archived" not in scraped_col_names:
                 conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN archived BOOLEAN DEFAULT 0")
+            if "metadata_json" not in scraped_col_names:
+                conn.exec_driver_sql("ALTER TABLE scraped_jobs ADD COLUMN metadata_json TEXT")
 
         # Add contact columns to companies table
         company_columns = conn.exec_driver_sql("PRAGMA table_info(companies)").mappings().all()
@@ -124,4 +128,17 @@ def init_models_sync(engine: Engine) -> None:
             for column in ("work_experience", "languages", "awards"):
                 conn.exec_driver_sql(
                     f"UPDATE career_profiles SET {column} = '[]' WHERE {column} IS NULL"
+                )
+
+        # GitHub-imported projects: languages (JSON list) + README snapshot.
+        project_columns = conn.exec_driver_sql("PRAGMA table_info(career_projects)").mappings().all()
+        if project_columns:
+            project_col_names = {column["name"] for column in project_columns}
+            if "languages" not in project_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_projects ADD COLUMN languages TEXT")
+            if "readme" not in project_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_projects ADD COLUMN readme TEXT")
+            for column in ("languages",):
+                conn.exec_driver_sql(
+                    f"UPDATE career_projects SET {column} = '[]' WHERE {column} IS NULL"
                 )

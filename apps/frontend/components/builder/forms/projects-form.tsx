@@ -20,14 +20,21 @@ import { Project } from '@/components/dashboard/resume-component';
 import { AlignLeft, List, Plus, Trash2, Github, Globe } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { alignDescriptionStyles, toggleDescriptionStyle } from '@/lib/utils/description-styles';
+import { AddProjectDialog } from '@/components/builder/add-project-dialog';
 
 interface ProjectsFormProps {
   data: Project[];
   onChange: (data: Project[]) => void;
+  outputLanguage: string;
 }
 
-export const ProjectsForm: React.FC<ProjectsFormProps> = ({ data, onChange }) => {
+export const ProjectsForm: React.FC<ProjectsFormProps> = ({
+  data,
+  onChange,
+  outputLanguage,
+}) => {
   const { t } = useTranslations();
+  const [dialogOpen, setDialogOpen] = React.useState(false);
 
   const handleAdd = () => {
     const newId = Math.max(...data.map((d) => d.id), 0) + 1;
@@ -44,6 +51,11 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({ data, onChange }) =>
         descriptionStyles: ['bullet'],
       },
     ]);
+  };
+
+  const handleAddFromDialog = (entry: Project) => {
+    const newId = Math.max(...data.map((d) => d.id), 0) + 1;
+    onChange([...data, { ...entry, id: newId }]);
   };
 
   const handleRemove = (id: number) => {
@@ -128,7 +140,7 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({ data, onChange }) =>
         <Button
           variant="outline"
           size="sm"
-          onClick={handleAdd}
+          onClick={() => setDialogOpen(true)}
           className="rounded-lg border-ink hover:bg-primary hover:text-white transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" /> {t('builder.forms.projects.addProject')}
@@ -276,7 +288,7 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({ data, onChange }) =>
             <Button
               variant="outline"
               size="sm"
-              onClick={handleAdd}
+              onClick={() => setDialogOpen(true)}
               className="rounded-full border-[#e6e3dc]"
             >
               <Plus className="w-4 h-4 mr-2" /> {t('builder.forms.projects.addFirstProject')}
@@ -284,6 +296,14 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({ data, onChange }) =>
           </div>
         )}
       </div>
+
+      <AddProjectDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onAdd={handleAddFromDialog}
+        outputLanguage={outputLanguage}
+        existingNames={data.map((d) => d.name || '')}
+      />
     </div>
   );
 };

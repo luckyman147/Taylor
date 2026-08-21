@@ -410,6 +410,21 @@ def apply_diffs(
     return result, applied, rejected
 
 
+def _flatten_text(data: dict[str, Any]) -> str:
+    """All free-text values in a resume dict, joined for metric evidence."""
+    parts: list[str] = []
+    for key, value in data.items():
+        if isinstance(value, str):
+            parts.append(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    parts.append(_flatten_text(item))
+    return " ".join(parts)
+
+
 def _count_description_words(data: dict[str, Any]) -> int:
     """Count total words in all description and summary fields."""
     total = 0
@@ -487,17 +502,20 @@ def verify_diff_result(
         )
 
     # Check 5: Invented metrics (covers both replace and append)
+    # A metric is only "invented" when it appears nowhere in the original
+    # resume — the whole document is the evidence base, so a summary may
+    # cite a percentage proven in the work experience section.
+    evidence_metrics = set(
+        _METRIC_RE.findall(_flatten_text(original))
+    )
     for change in applied_changes:
         if change.action in ("replace", "append") and isinstance(change.value, str):
             new_metrics = set(_METRIC_RE.findall(change.value))
-            # For append, original is None — any metric is potentially invented
-            original_text = change.original or ""
-            old_metrics = set(_METRIC_RE.findall(original_text))
-            invented = new_metrics - old_metrics
+            invented = new_metrics - evidence_metrics
             if invented:
                 warnings.append(
                     f"Possible invented metric in {change.path}: "
-                    f"{', '.join(invented)} (not in original)"
+                    f"{', '.join(sorted(invented))} (not in original)"
                 )
 
     return warnings
@@ -917,6 +935,7 @@ async def improve_resume(
     language: str = "en",
     prompt_id: str | None = None,
     original_resume_data: dict[str, Any] | None = None,
+    github_context: str = "",
 ) -> dict[str, Any]:
     """Improve resume to better match job description.
 
@@ -928,6 +947,7 @@ async def improve_resume(
         prompt_id: Which tailor prompt to use
         original_resume_data: Structured resume JSON; used instead of
             markdown when available for higher-fidelity LLM input
+        github_context: GitHub repo context for the tailoring prompt
 
     Returns:
         Improved resume data matching ResumeData schema
@@ -976,6 +996,7 @@ async def improve_resume(
         schema=IMPROVE_SCHEMA_EXAMPLE,
         output_language=output_language,
         critical_truthfulness_rules=truthfulness_rules,
+        github_context=github_context or "No GitHub repositories available.",
     )
 
     result = await complete_json(

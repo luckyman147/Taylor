@@ -43,6 +43,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dropdown } from '@/components/ui/dropdown';
+import { EmailSettings } from '@/components/settings/email-settings';
 import {
   Save,
   Key,
@@ -60,6 +61,7 @@ import {
   Clock,
   Settings2,
   Globe,
+  Mail,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
@@ -158,8 +160,10 @@ export default function SettingsPage() {
   // actual default text for placeholder display.
   const [coverLetterPrompt, setCoverLetterPrompt] = useState('');
   const [outreachPrompt, setOutreachPrompt] = useState('');
+  const [outreachEmailPrompt, setOutreachEmailPrompt] = useState('');
   const [coverLetterDefault, setCoverLetterDefault] = useState('');
   const [outreachDefault, setOutreachDefault] = useState('');
+  const [outreachEmailDefault, setOutreachEmailDefault] = useState('');
   const [featurePromptSaving, setFeaturePromptSaving] = useState<string | null>(null);
   const [featurePromptError, setFeaturePromptError] = useState<{
     field: string;
@@ -178,8 +182,14 @@ export default function SettingsPage() {
 
   // Active settings section (sidebar navigation)
   const [activeSection, setActiveSection] = useState<
-    'system' | 'ai' | 'content' | 'language' | 'github' | 'danger'
+    'system' | 'ai' | 'content' | 'language' | 'email' | 'danger'
   >('system');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const section = params.get('section');
+    if (section === 'email') setActiveSection('email');
+  }, []);
 
   // Language settings
   const {
@@ -199,6 +209,7 @@ export default function SettingsPage() {
     { id: 'ai', label: t('settings.llmConfigurationTitle'), icon: Sparkles },
     { id: 'content', label: t('settings.contentGeneration.title'), icon: Settings2 },
     { id: 'language', label: t('settings.uiLanguage'), icon: Globe },
+    { id: 'email', label: t('settings.email.title'), icon: Mail },
     { id: 'danger', label: t('settings.dangerZone'), icon: AlertTriangle },
   ] as const;
   const providerInfo = PROVIDER_INFO[provider] ?? PROVIDER_INFO['openai'];
@@ -345,8 +356,10 @@ export default function SettingsPage() {
         if (featurePrompts) {
           setCoverLetterPrompt(featurePrompts.cover_letter_prompt);
           setOutreachPrompt(featurePrompts.outreach_message_prompt);
+          setOutreachEmailPrompt(featurePrompts.outreach_email_prompt);
           setCoverLetterDefault(featurePrompts.cover_letter_default);
           setOutreachDefault(featurePrompts.outreach_message_default);
+          setOutreachEmailDefault(featurePrompts.outreach_email_default);
         }
 
         setStatus('idle');
@@ -545,7 +558,7 @@ export default function SettingsPage() {
   };
 
   const handleFeaturePromptSave = async (
-    field: 'cover_letter_prompt' | 'outreach_message_prompt',
+    field: 'cover_letter_prompt' | 'outreach_message_prompt' | 'outreach_email_prompt',
     value: string
   ) => {
     setFeaturePromptSaving(field);
@@ -557,6 +570,7 @@ export default function SettingsPage() {
       const fresh = await updateFeaturePrompts(update);
       setCoverLetterPrompt(fresh.cover_letter_prompt);
       setOutreachPrompt(fresh.outreach_message_prompt);
+      setOutreachEmailPrompt(fresh.outreach_email_prompt);
     } catch (err) {
       if (err instanceof FeaturePromptsError) {
         setFeaturePromptError({ field: err.detail.field, missing: err.detail.missing });
@@ -1344,6 +1358,51 @@ export default function SettingsPage() {
                           </div>
                         </div>
                       )}
+                      <div className="pl-6 space-y-2">
+                        <Label htmlFor="outreachEmailPrompt">
+                          {t('settings.contentGeneration.outreachEmail.label')}
+                        </Label>
+                        <textarea
+                          id="outreachEmailPrompt"
+                          rows={8}
+                          value={outreachEmailPrompt}
+                          onChange={(e) => setOutreachEmailPrompt(e.target.value)}
+                          placeholder={outreachEmailDefault}
+                          className="w-full rounded-2xl border border-[#e6e3dc] bg-white p-3 text-xs break-words shadow-sw-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <p className="text-xs text-steel-grey ">
+                          {t('settings.contentGeneration.outreachEmail.help')}
+                        </p>
+                        {featurePromptError?.field === 'outreach_email_prompt' && (
+                          <p className="text-xs text-red-600  break-words">
+                            {t('settings.contentGeneration.customPromptErrorMissing', {
+                              missing: featurePromptError.missing.join(', '),
+                            })}
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              handleFeaturePromptSave('outreach_email_prompt', outreachEmailPrompt)
+                            }
+                            disabled={featurePromptSaving === 'outreach_email_prompt'}
+                          >
+                            {featurePromptSaving === 'outreach_email_prompt' ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              t('common.save')
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleFeaturePromptSave('outreach_email_prompt', '')}
+                            disabled={featurePromptSaving === 'outreach_email_prompt'}
+                          >
+                            {t('settings.contentGeneration.customPromptResetButton')}
+                          </Button>
+                        </div>
+                      </div>
                       <ToggleSwitch
                         checked={enableInterviewPrep}
                         onCheckedChange={(checked) => {
@@ -1439,6 +1498,9 @@ export default function SettingsPage() {
                   </div>
                 </section>
               )}
+
+              {/* Email Settings */}
+              {activeSection === 'email' && <EmailSettings />}
 
               {/* Danger Zone */}
               {activeSection === 'danger' && (

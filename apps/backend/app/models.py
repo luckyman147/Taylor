@@ -44,6 +44,9 @@ class Resume(Base):
     outreach_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     interview_prep: Mapped[str | None] = mapped_column(Text, nullable=True)
     title: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Dynamic per-resume fields (e.g. ``template_settings``) live here; the
+    # facade flattens the map to top-level keys on read, mirroring ``Job``.
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     # original_markdown has *absence* semantics in the TinyDB era: the key was
     # omitted entirely when None. The facade reproduces that by only emitting
     # the key when this column is non-null.
@@ -138,6 +141,100 @@ class Company(Base):
     year_founded: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class SentEmail(Base):
+    """A historical record of an outreach email sent to a company.
+
+    Stores the message snapshot (subject/body/recipient/attachments metadata)
+    so the user can review what was sent. Attachments are not stored as
+    binaries — only name/type/size metadata.
+    """
+
+    __tablename__ = "sent_emails"
+
+    log_id: Mapped[str] = mapped_column(String, primary_key=True)
+    company_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
+    company_name: Mapped[str] = mapped_column(String, default="")
+    recipient_email: Mapped[str] = mapped_column(String)
+    subject: Mapped[str] = mapped_column(String)
+    body: Mapped[str] = mapped_column(Text)
+    attachments_json: Mapped[str] = mapped_column(Text, default="[]")
+    sent_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class ChatThread(Base):
+    """A persistent chat conversation thread.
+
+    ``mode`` stores the active persona (ask, coach, recruiter, resume_analyst).
+    ``title`` is auto-generated from the first user message and can be renamed.
+    """
+
+    __tablename__ = "chat_threads"
+
+    thread_id: Mapped[str] = mapped_column(String, primary_key=True)
+    title: Mapped[str] = mapped_column(String, default="New Chat")
+    mode: Mapped[str] = mapped_column(String, default="ask")
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class ChatMessage(Base):
+    """A single message in a chat thread.
+
+    ``envelope_json`` stores the structured payload (cards, actions, stats,
+    pending_action, memory_candidates, followups, sources) for assistant
+    messages; null for user messages.
+    """
+
+    __tablename__ = "chat_messages"
+
+    message_id: Mapped[str] = mapped_column(String, primary_key=True)
+    thread_id: Mapped[str] = mapped_column(String, index=True)
+    role: Mapped[str] = mapped_column(String)  # "user" | "assistant"
+    content: Mapped[str] = mapped_column(Text)
+    envelope_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class ChatMemory(Base):
+    """A durable career preference extracted from a chat conversation.
+
+    Active memories are injected into the planner prompt so future turns
+    remember the user's stated preferences. Dismissed memories are kept
+    for deduplication but not shown.
+    """
+
+    __tablename__ = "chat_memories"
+
+    memory_id: Mapped[str] = mapped_column(String, primary_key=True)
+    statement: Mapped[str] = mapped_column(String, unique=True, index=True)
+    source_thread_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class PracticeSession(Base):
+    """A recorded interview-practice session (answer + AI feedback).
+
+    Stores the scenario snapshot, the user's spoken/written answer, and the
+    AI feedback (score, level, strengths, improvements, recommended points,
+    follow-ups) so practice history can be reviewed later. ``scenario_id`` is
+    None for ad-hoc sessions started from the "Have an idea?" custom input.
+    """
+
+    __tablename__ = "practice_sessions"
+
+    session_id: Mapped[str] = mapped_column(String, primary_key=True)
+    scenario_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
+    scenario_title: Mapped[str] = mapped_column(String)
+    scenario_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    answer: Mapped[str] = mapped_column(Text)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    level: Mapped[str | None] = mapped_column(String, nullable=True)
+    feedback_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
 
 class Contact(Base):
@@ -245,6 +342,97 @@ class CareerCertification(Base):
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
 
+class CareerEducation(Base):
+    """An education entry on the user's career graph."""
+
+    __tablename__ = "career_education"
+
+    education_id: Mapped[str] = mapped_column(String, primary_key=True)
+    institution: Mapped[str] = mapped_column(String)
+    degree: Mapped[str | None] = mapped_column(String, nullable=True)
+    years: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class CareerProject(Base):
+    """A personal project node on the user's career graph.
+
+    ``languages`` and ``readme`` are populated when a project is imported
+    from GitHub (repo languages + README snapshot) and survive edits to the
+    core fields.
+    """
+
+    __tablename__ = "career_projects"
+
+    project_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    role: Mapped[str | None] = mapped_column(String, nullable=True)
+    years: Mapped[str | None] = mapped_column(String, nullable=True)
+    github: Mapped[str | None] = mapped_column(String, nullable=True)
+    website: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[list] = mapped_column(JSON, default=list)
+    languages: Mapped[list] = mapped_column(JSON, default=list)
+    readme: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class CareerAchievement(Base):
+    """An achievement / award node on the user's career graph."""
+
+    __tablename__ = "career_achievements"
+
+    achievement_id: Mapped[str] = mapped_column(String, primary_key=True)
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    date: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class CareerEntrySkill(Base):
+    """A skill linked to a graph entry (work experience or project).
+
+    ``entry_type`` is ``"experience"`` (``entry_key`` = index into the
+    profile's ``work_experience`` list) or ``"project"`` (``entry_key`` =
+    the project's stable ``project_id``). Edges for experience indices are
+    pruned whenever the work-experience list is rewritten, so a deleted row
+    never leaves an orphan edge pointing at a shifted index.
+    """
+
+    __tablename__ = "career_entry_skills"
+    __table_args__ = (
+        UniqueConstraint(
+            "entry_type", "entry_key", "skill_name", name="uq_career_entry_skill"
+        ),
+    )
+
+    entry_id: Mapped[str] = mapped_column(String, primary_key=True)
+    entry_type: Mapped[str] = mapped_column(String)
+    entry_key: Mapped[str] = mapped_column(String)
+    skill_name: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class SkillResource(Base):
+    """Cached learning resources for a skill (UI-only, not in career memory).
+
+    ``resources`` is a JSON list of ``{title, url, source}`` — LLM-proposed
+    and server-side verified before caching (see ``services/link_verifier``).
+    Deliberately excluded from ``career_data_fingerprint``: refreshing links
+    must not bust the chat-memory cache, and the bundle never reads it.
+    """
+
+    __tablename__ = "skill_resources"
+
+    skill_id: Mapped[str] = mapped_column(String, primary_key=True)
+    skill: Mapped[str] = mapped_column(String, unique=True, index=True)
+    resources: Mapped[list] = mapped_column(JSON, default=list)
+    retrieved_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
 class ScrapedJob(Base):
     """A scraped job listing saved as a draft."""
 
@@ -270,4 +458,5 @@ class ScrapedJob(Base):
     applied: Mapped[bool] = mapped_column(Boolean, default=False)
     applied_resume_id: Mapped[str | None] = mapped_column(String, nullable=True)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)

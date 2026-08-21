@@ -18,6 +18,9 @@ interface ProcessedResume {
     website?: string | null;
     linkedin?: string | null;
     github?: string | null;
+    contactDisplay?: Partial<
+      Record<'email' | 'phone' | 'website' | 'linkedin' | 'github', 'full' | 'label'>
+    >;
   };
   summary?: string;
   workExperience?: Array<{
@@ -51,6 +54,7 @@ interface ProcessedResume {
     languages?: string[];
     certificationsTraining?: string[];
     awards?: string[];
+    skillGroups?: { name: string; skills: string[] }[];
   };
 }
 
@@ -72,6 +76,7 @@ interface ResumeResponse {
     parent_id?: string | null; // For determining if resume is tailored
     title?: string | null;
     is_master?: boolean;
+    template_settings?: Record<string, unknown> | null;
   };
 }
 
@@ -157,16 +162,55 @@ export async function uploadJobDescriptions(
   return data.job_id[0];
 }
 
+/** A JD-matched career project offered before tailoring (pick from these). */
+export interface ProjectSuggestion {
+  name: string;
+  role: string;
+  years: string;
+  github: string | null;
+  website: string | null;
+  score: number;
+  already_in_resume: boolean;
+  description: string[];
+}
+
+export interface ProjectSuggestionsData {
+  projects: ProjectSuggestion[];
+  warnings: string[];
+}
+
+/**
+ * Fetches JD-matched career projects (with drafted bullets) so the user can
+ * choose which projects replace the resume's Projects section before tailoring.
+ */
+export async function fetchProjectsSuggestions(
+  resumeId: string,
+  jobId: string
+): Promise<ProjectSuggestionsData> {
+  const res = await apiPost(
+    '/resumes/improve/projects-suggestions',
+    { resume_id: resumeId, job_id: jobId },
+    DEFAULT_TIMEOUT_MS
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch project suggestions (status ${res.status})`);
+  }
+  const payload = (await res.json()) as { request_id: string; data: ProjectSuggestionsData };
+  return payload.data;
+}
+
 /** Improves the resume and returns the full preview object */
 export async function improveResume(
   resumeId: string,
   jobId: string,
-  promptId?: string
+  promptId?: string,
+  selectedProjects?: string[]
 ): Promise<ImprovedResult> {
   return postImprove('/resumes/improve', {
     resume_id: resumeId,
     job_id: jobId,
     prompt_id: promptId ?? null,
+    selected_projects: selectedProjects ?? null,
   });
 }
 
@@ -174,12 +218,14 @@ export async function improveResume(
 export async function previewImproveResume(
   resumeId: string,
   jobId: string,
-  promptId?: string
+  promptId?: string,
+  selectedProjects?: string[]
 ): Promise<ImprovedResult> {
   return postImprove('/resumes/improve/preview', {
     resume_id: resumeId,
     job_id: jobId,
     prompt_id: promptId ?? null,
+    selected_projects: selectedProjects ?? null,
   });
 }
 
@@ -222,6 +268,34 @@ export async function updateResume(
   }
   const payload = (await res.json()) as ResumeResponse;
   return payload.data;
+}
+
+/** Promotes a resume to master (base for future tailoring). */
+export async function saveResumeAsMaster(
+  resumeId: string
+): Promise<{ resume_id: string; is_master: boolean }> {
+  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/save-as-master`, {});
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.detail ?? `Failed to save as master (status ${res.status}).`);
+  }
+  const payload = (await res.json()) as { resume_id: string; is_master: boolean };
+  return payload;
+}
+
+/** Persists a resume's template/design settings (stored per-resume). */
+export async function updateResumeTemplateSettings(
+  resumeId: string,
+  templateSettings: Record<string, unknown>
+): Promise<{ resume_id: string; template_settings: Record<string, unknown> }> {
+  const res = await apiPatch(`/resumes/${encodeURIComponent(resumeId)}/template-settings`, {
+    template_settings: templateSettings,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.detail ?? `Failed to save template settings (status ${res.status}).`);
+  }
+  return (await res.json()) as { resume_id: string; template_settings: Record<string, unknown> };
 }
 
 export function getResumePdfUrl(
@@ -328,6 +402,18 @@ export async function deleteResume(resumeId: string): Promise<void> {
   }
 }
 
+/** Creates a standalone copy of a resume */
+export async function copyResume(
+  resumeId: string
+): Promise<{ resume_id: string; is_master: boolean }> {
+  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/copy`, {});
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to copy resume (status ${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
 /** Updates the cover letter for a resume */
 export async function updateCoverLetter(resumeId: string, content: string): Promise<void> {
   const res = await apiPatch(`/resumes/${encodeURIComponent(resumeId)}/cover-letter`, { content });
@@ -386,8 +472,10 @@ export async function downloadCoverLetterPdf(
 }
 
 /** Generates a cover letter on-demand for a tailored resume */
-export async function generateCoverLetter(resumeId: string): Promise<string> {
-  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-cover-letter`, {});
+export async function generateCoverLetter(resumeId: string, instruction?: string): Promise<string> {
+  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-cover-letter`, {
+    instruction,
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to generate cover letter (status ${res.status}): ${text}`);
@@ -397,8 +485,13 @@ export async function generateCoverLetter(resumeId: string): Promise<string> {
 }
 
 /** Generates an outreach message on-demand for a tailored resume */
-export async function generateOutreachMessage(resumeId: string): Promise<string> {
-  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-outreach`, {});
+export async function generateOutreachMessage(
+  resumeId: string,
+  instruction?: string
+): Promise<string> {
+  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-outreach`, {
+    instruction,
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to generate outreach message (status ${res.status}): ${text}`);
@@ -408,8 +501,13 @@ export async function generateOutreachMessage(resumeId: string): Promise<string>
 }
 
 /** Generates interview preparation on-demand for a tailored resume */
-export async function generateInterviewPrep(resumeId: string): Promise<InterviewPrepData> {
-  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-interview-prep`, {});
+export async function generateInterviewPrep(
+  resumeId: string,
+  instruction?: string
+): Promise<InterviewPrepData> {
+  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-interview-prep`, {
+    instruction,
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to generate interview preparation (status ${res.status}): ${text}`);
@@ -436,6 +534,97 @@ export async function fetchJobDescription(
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to fetch job description (status ${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+// --- Recruiter Recommendations (feedback loop) ---
+
+export interface RecruiterRecommendation {
+  id: string;
+  title: string;
+  detail: string;
+  impact: string;
+  change: {
+    path: string;
+    action: 'update' | 'add' | 'remove';
+    before?: string;
+    after?: string;
+  };
+}
+
+export interface RecommendationsResponse {
+  recommendations: RecruiterRecommendation[];
+  preview_hash: string;
+}
+
+export interface RegenerateResponse {
+  recommendations: RecruiterRecommendation[];
+  rejected_ids: string[];
+}
+
+export interface ApplyRecommendationResponse {
+  preview_hash: string;
+  diff_summary: import('@/components/common/resume_previewer_context').ResumeDiffSummary;
+  detailed_changes: import('@/components/common/resume_previewer_context').ResumeFieldDiff[];
+  ats_score?: import('@/components/common/resume_previewer_context').ATSScore;
+}
+
+export async function fetchRecruiterRecommendations(
+  resumeId: string,
+  jobId: string,
+  promptId: string,
+  previewHash: string
+): Promise<RecommendationsResponse> {
+  const res = await apiPost('/resumes/improve/recommendations', {
+    resume_id: resumeId,
+    job_id: jobId,
+    prompt_id: promptId,
+    preview_hash: previewHash,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch recommendations (status ${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export async function regenerateRecommendations(
+  resumeId: string,
+  jobId: string,
+  promptId: string,
+  previewHash: string,
+  rejectedIds: string[]
+): Promise<RegenerateResponse> {
+  const res = await apiPost('/resumes/improve/regenerate', {
+    resume_id: resumeId,
+    job_id: jobId,
+    prompt_id: promptId,
+    preview_hash: previewHash,
+    rejected_ids: rejectedIds,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to regenerate recommendations (status ${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export async function applyRecommendation(
+  resumeId: string,
+  jobId: string,
+  recommendationId: string,
+  previewHash: string
+): Promise<ApplyRecommendationResponse> {
+  const res = await apiPost('/resumes/improve/apply', {
+    resume_id: resumeId,
+    job_id: jobId,
+    recommendation_id: recommendationId,
+    preview_hash: previewHash,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to apply recommendation (status ${res.status}): ${text}`);
   }
   return res.json();
 }

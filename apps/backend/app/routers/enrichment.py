@@ -15,10 +15,13 @@ from app.llm import complete_json
 from app.prompts.enrichment import (
     ANALYZE_RESUME_PROMPT,
     ENHANCE_DESCRIPTION_PROMPT,
+    GENERATE_OUTREACH_EMAIL_PROMPT,
+    GENERATE_PROJECT_BULLETS_PROMPT,
     REGENERATE_ITEM_PROMPT,
     REGENERATE_SKILLS_PROMPT,
 )
 from app.prompts.templates import get_language_name
+from app.services.cover_letter import _resolve_feature_prompt
 from app.schemas.enrichment import (
     AnalysisResponse,
     AnswerInput,
@@ -28,6 +31,10 @@ from app.schemas.enrichment import (
     EnhancementPreview,
     EnrichmentItem,
     EnrichmentQuestion,
+    GenerateOutreachEmailRequest,
+    GenerateOutreachEmailResponse,
+    GenerateProjectBulletsRequest,
+    GenerateProjectBulletsResponse,
     RegenerateItemError,
     RegenerateItemInput,
     RegenerateRequest,
@@ -807,3 +814,201 @@ async def apply_regenerated_items(
         "message": "Changes applied successfully",
         "updated_items": len(regenerated_items),
     }
+
+
+# ============================================
+# Project Bullet Generation Endpoint
+# ============================================
+
+
+def _clean_project_bullets(raw: object) -> list[str]:
+    """Normalize LLM bullet output: strip list markers, drop empties/dupes, cap at 5."""
+    if not isinstance(raw, list):
+        return []
+    bullets: list[str] = []
+    seen: set[str] = set()
+    for entry in raw:
+        text = re.sub(r"^[-*•]\s*", "", str(entry).strip())
+        if text and text not in seen:
+            seen.add(text)
+            bullets.append(text)
+    return bullets[:5]
+
+
+@router.post("/generate-project-bullets", response_model=GenerateProjectBulletsResponse)
+async def generate_project_bullets(
+    request: GenerateProjectBulletsRequest,
+) -> GenerateProjectBulletsResponse:
+    """Generate resume bullet points for a project from its README/description.
+
+    If the project has a README, the README is the primary source of facts.
+    Otherwise the project description and languages are used, combined with an
+    optional user mini-prompt that is expanded into polished bullets.
+    """
+    output_language = get_language_name(request.output_language)
+
+    readme = (request.readme or "").strip()
+    if readme:
+        readme = readme[:2500]
+
+    description_text = (
+        "\n".join(f"- {d}" for d in request.description)
+        if request.description
+        else "(No description)"
+    )
+    languages_text = ", ".join(request.languages) if request.languages else "(none listed)"
+
+    source_material = readme or description_text
+    if not source_material:
+        source_material = "(No project source material provided)"
+
+    if request.prompt and request.prompt.strip():
+        user_instruction = (
+            "USER'S FOCUS/INSTRUCTION (expand this idea into polished bullets; "
+            "keep every detail the user mentioned):\n"
+            f"{request.prompt.strip()}\n"
+        )
+    else:
+        user_instruction = "(No additional user instruction)"
+
+    prompt = GENERATE_PROJECT_BULLETS_PROMPT.format(
+        output_language=output_language,
+        name=request.name,
+        role=request.role or "",
+        years=request.years or "",
+        github=request.github or "",
+        website=request.website or "",
+        description=description_text,
+        languages=languages_text,
+        source_material=source_material,
+        user_instruction=user_instruction,
+    )
+
+    result = await complete_json(prompt, max_tokens=4096, schema_type="diff")
+
+    return GenerateProjectBulletsResponse(bullets=_clean_project_bullets(result.get("bullets")))
+
+
+# ============================================
+# Outreach Email Generation Endpoint
+# ============================================
+
+_PURPOSE_LABELS: dict[str, str] = {
+    "internship": "Applying for an internship opportunity",
+    "job": "Applying for an open role at the company",
+    "cold": "General introduction and interest in the company",
+}
+
+
+def _build_sender_info(processed: dict | None) -> str:
+    """Extract a compact sender profile from a resume for the prompt."""
+    if not processed:
+        return "(No sender information available)"
+    personal = processed.get("personalInfo") or {}
+    lines: list[str] = []
+    if personal.get("name"):
+        lines.append(f"Name: {personal['name']}")
+    if personal.get("email"):
+        lines.append(f"Email: {personal['email']}")
+    if personal.get("phone"):
+        lines.append(f"Phone: {personal['phone']}")
+    if personal.get("location"):
+        lines.append(f"Location: {personal['location']}")
+    summary = str(processed.get("summary") or "").strip()
+    if summary:
+        lines.append(f"Summary: {summary[:600]}")
+    additional = processed.get("additional") or {}
+    if isinstance(additional, dict):
+        skills = [
+            s
+            for s in (additional.get("technicalSkills") or [])
+            if isinstance(s, str) and s.strip()
+        ][:10]
+        if skills:
+            lines.append("Top skills: " + ", ".join(skills))
+        languages = [
+            s
+            for s in (additional.get("languages") or [])
+            if isinstance(s, str) and s.strip()
+        ][:5]
+        if languages:
+            lines.append("Languages: " + ", ".join(languages))
+    return "\n".join(lines) or "(No sender information available)"
+
+
+@router.post("/generate-outreach-email", response_model=GenerateOutreachEmailResponse)
+async def generate_outreach_email(
+    request: GenerateOutreachEmailRequest,
+) -> GenerateOutreachEmailResponse:
+    """Generate a personalized outreach email to a company.
+
+    The email is personalized with the sender's resume (name, summary, skills)
+    and the company's stored information. ``resume_id`` selects which resume to
+    base the profile on; when omitted (or not found) the master resume is used.
+    ``purpose`` selects the outreach angle; ``custom_purpose`` overrides it
+    when ``purpose=custom``.
+    """
+    output_language = get_language_name(request.output_language)
+
+    if request.purpose == "custom":
+        purpose_text = request.custom_purpose.strip() if request.custom_purpose else "General outreach"
+    else:
+        purpose_text = _PURPOSE_LABELS.get(request.purpose, _PURPOSE_LABELS["cold"])
+
+    resume: dict | None = None
+    if request.resume_id:
+        resume = await db.get_resume(request.resume_id)
+    if not resume:
+        resume = await db.get_master_resume()
+    sender_info = _build_sender_info(resume.get("processed_data") if resume else None)
+
+    template, is_custom = _resolve_feature_prompt(
+        "outreach_email_prompt", GENERATE_OUTREACH_EMAIL_PROMPT
+    )
+    try:
+        prompt = template.format(
+            output_language=output_language,
+            company_name=request.company_name or "(Company)",
+            company_email=request.company_email or "(unknown)",
+            industry=request.industry or "not specified",
+            company_size=request.company_size or "not specified",
+            company_type=request.company_type or "not specified",
+            website=request.website or "not specified",
+            linkedin_url=request.linkedin_url or "not specified",
+            recipient_name=request.recipient_name or "not provided",
+            purpose=purpose_text,
+            sender_info=sender_info,
+        )
+    except (KeyError, IndexError, ValueError) as e:
+        if not is_custom:
+            raise
+        logger.warning(
+            "Custom outreach email prompt failed to format (%s); falling back to default",
+            e,
+        )
+        prompt = GENERATE_OUTREACH_EMAIL_PROMPT.format(
+            output_language=output_language,
+            company_name=request.company_name or "(Company)",
+            company_email=request.company_email or "(unknown)",
+            industry=request.industry or "not specified",
+            company_size=request.company_size or "not specified",
+            company_type=request.company_type or "not specified",
+            website=request.website or "not specified",
+            linkedin_url=request.linkedin_url or "not specified",
+            recipient_name=request.recipient_name or "not provided",
+            purpose=purpose_text,
+            sender_info=sender_info,
+        )
+
+    if request.instruction and request.instruction.strip():
+        prompt = (
+            f"{prompt}\n\n"
+            f"User's additional instructions for this generation "
+            f"(follow them precisely):\n{request.instruction.strip()}"
+        )
+
+    result = await complete_json(prompt, max_tokens=4096, schema_type="diff")
+
+    subject = str(result.get("subject") or "").strip()
+    body = str(result.get("body") or "").strip()
+    return GenerateOutreachEmailResponse(subject=subject[:200], body=body[:10000])

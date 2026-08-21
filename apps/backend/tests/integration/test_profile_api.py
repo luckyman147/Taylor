@@ -433,6 +433,9 @@ class TestMemory:
             "master_resume",
             "skills",
             "certifications",
+            "education",
+            "projects",
+            "achievements",
             "funnel",
             "rejected_applications",
             "scraped_jobs",
@@ -628,6 +631,8 @@ class TestSkillRoi:
             "learning_effort",
             "existing_knowledge",
             "roi_score",
+            "action",
+            "in_profile",
         }
         assert top["matching_jobs"] >= 0
         assert 0 <= top["roi_score"] <= 100
@@ -750,3 +755,68 @@ class TestSuggestions:
         async with _client() as client:
             resp = await client.get("/api/v1/profile/suggestions?field=bogus")
         assert resp.status_code == 422
+
+
+class TestMarketPosition:
+    async def test_market_position_empty_returns_note_and_verdict(self, isolated_db):
+        async with _client() as client:
+            resp = await client.post("/api/v1/profile/market-position", json={})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["skills"] == []
+        assert body["domains"] == []
+        assert body["current_role"] is None
+        assert body["specialization"] == []
+        assert body["recommended_roles"] == []
+        assert body["note"]
+        assert body["verdict"]
+
+    async def test_market_position_scores_skills_and_domains(self, isolated_db):
+        await isolated_db.create_career_skill(
+            "Python", proficiency=4, years_experience=3, last_used="2026"
+        )
+        await isolated_db.create_career_skill("Kubernetes", proficiency=1)
+        await isolated_db.create_career_certification(
+            name="AWS Certified Solutions Architect", issuer="AWS"
+        )
+        await isolated_db.update_career_profile(
+            {"work_experience": [{"role": "Backend Engineer", "years": "2019 - 2023"}]}
+        )
+        async with _client() as client:
+            resp = await client.post("/api/v1/profile/market-position", json={})
+        assert resp.status_code == 200
+        body = resp.json()
+
+        skills = {row["skill"]: row for row in body["skills"]}
+        assert "Python" in skills
+        assert 0 <= skills["Python"]["percentile"] <= 100
+        assert skills["Python"]["level"] in {"beginner", "intermediate", "advanced", "expert"}
+        assert "Kubernetes" in skills
+        assert body["note"] is None
+
+        domains = {row["domain"]: row for row in body["domains"]}
+        assert "Backend" in domains
+        backend = domains["Backend"]
+        assert backend["percentile"] > 40
+        assert backend["readiness"] in {"strong", "adequate", "underqualified"}
+        assert backend["seniority"] in {"junior", "mid", "senior"}
+
+        assert body["current_role"] == "Mid Backend Engineer"
+        assert body["specialization"] == ["Python"]
+        assert body["recommended_roles"]
+        assert body["recommended_roles"][0]["role"] == "Python Developer"
+        assert "Best next picks" in body["verdict"]
+
+    async def test_market_position_uses_projects_as_evidence(self, isolated_db):
+        await isolated_db.create_career_project(
+            name="React dashboard",
+            description=["A TypeScript UI for metrics"],
+            languages=["React", "TypeScript"],
+        )
+        async with _client() as client:
+            resp = await client.post("/api/v1/profile/market-position", json={})
+        assert resp.status_code == 200
+        body = resp.json()
+        domains = {row["domain"]: row for row in body["domains"]}
+        assert "Frontend" in domains, "Projects alone should surface the Frontend domain"
+        assert body["current_role"] == "Junior Frontend Developer"

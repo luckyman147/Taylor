@@ -207,10 +207,13 @@ async def isolated_db(tmp_path, monkeypatch):
         "config",
         "health",
         "applications",
+        "chat",
         "companies",
         "contacts",
         "resume_wizard",
         "profile",
+        "email",
+        "interview_practice",
     ):
         try:
             module = importlib.import_module(f"app.routers.{router_name}")
@@ -218,6 +221,29 @@ async def isolated_db(tmp_path, monkeypatch):
             continue
         if hasattr(module, "db"):
             monkeypatch.setattr(module, "db", test_db)
+    # The career-graph service binds its own ``db`` at import time; seed flows
+    # from any router end up here, so it must share the isolated DB too.
+    import app.services.career_graph as career_graph_module
+
+    monkeypatch.setattr(career_graph_module, "db", test_db)
+    # Same for the career-profile service (skill ROI / advice / suggestions).
+    import app.services.career_profile as career_profile_module
+
+    monkeypatch.setattr(career_profile_module, "db", test_db)
+    # Same for the job-scraper service (profile-driven search engine).
+    import app.services.job_scraper as job_scraper_module
+
+    monkeypatch.setattr(job_scraper_module, "db", test_db)
+    # Chat services import db directly
+    import app.services.chat_tools as chat_tools_module
+
+    monkeypatch.setattr(chat_tools_module, "db", test_db)
+    import app.services.chat_engine as chat_engine_module
+
+    monkeypatch.setattr(chat_engine_module, "db", test_db)
+    import app.services.chat_audit as chat_audit_module
+
+    monkeypatch.setattr(chat_audit_module, "db", test_db)
     try:
         yield test_db
     finally:
@@ -228,13 +254,16 @@ async def isolated_db(tmp_path, monkeypatch):
 async def isolated_career_db(isolated_db, monkeypatch):
     """Point the career service at the isolated DB and drop its caches.
 
-    ``app.services.career_profile`` binds its own ``db`` reference at import
-    time, and its memory/insights caches are keyed on a fingerprint of the
-    database rows, so without this the service would keep reading (and
-    caching) cross-test data from a previous isolation scope.
+    ``app.services.career_profile`` and ``app.services.career_graph`` bind
+    their own ``db`` references at import time, and the memory/insights
+    caches are keyed on a fingerprint of the database rows, so without this
+    the services would keep reading (and caching) cross-test data from a
+    previous isolation scope.
     """
+    import app.services.career_graph as career_graph_module
     import app.services.career_profile as career_profile_module
 
+    monkeypatch.setattr(career_graph_module, "db", isolated_db)
     monkeypatch.setattr(career_profile_module, "db", isolated_db)
     career_profile_module._career_memory_cache = None
     career_profile_module._career_memory_stamp = None

@@ -413,11 +413,13 @@ class TestTailoringPipeline:
         assert stored_tailored["parent_id"] == resume_id
         assert stored_tailored["processing_status"] == "ready"
         assert stored_tailored["processed_data"]["summary"] == improved["summary"]
-        # personalInfo preserved from the master (the confirm invariant).
-        assert (
-            stored_tailored["processed_data"]["personalInfo"]
-            == sample_resume["personalInfo"]
-        )
+        # personalInfo preserved from the master (the confirm invariant). Stored
+        # processed_data is Pydantic-normalized (defaults materialized, e.g.
+        # contactDisplay: {}), so compare against the canonicalized fixture.
+        expected_personal_info = ResumeData.model_validate(
+            {"personalInfo": sample_resume["personalInfo"]}
+        ).model_dump()["personalInfo"]
+        assert stored_tailored["processed_data"]["personalInfo"] == expected_personal_info
 
         # An improvements record links original -> tailored for this job.
         improvement = await isolated_db.get_improvement_by_tailored_resume(tailored_id)

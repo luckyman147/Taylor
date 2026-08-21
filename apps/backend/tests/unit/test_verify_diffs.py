@@ -4,7 +4,7 @@ import copy
 import pytest
 
 from app.schemas.models import ResumeChange
-from app.services.improver import verify_diff_result
+from app.services.improver import _flatten_text, verify_diff_result
 
 
 class TestVerifyNoWarnings:
@@ -139,14 +139,33 @@ class TestVerifyInventedMetrics:
                 path="workExperience[0].description[0]",
                 action="replace",
                 original="Built REST APIs",
-                value="Built REST APIs improving throughput by 40%",
+                value="Built REST APIs improving throughput by 4x",
                 reason="Added metric",
             )
         ]
         result = copy.deepcopy(sample_resume)
-        result["workExperience"][0]["description"][0] = "Built REST APIs improving throughput by 40%"
+        result["workExperience"][0]["description"][0] = "Built REST APIs improving throughput by 4x"
         warnings = verify_diff_result(sample_resume, result, applied, sample_job_keywords)
-        assert any("metric" in w.lower() or "40%" in w for w in warnings)
+        assert any("metric" in w.lower() or "4x" in w for w in warnings)
+
+    def test_metric_elsewhere_in_resume_is_not_invented(self, sample_resume, sample_job_keywords):
+        """A metric proven anywhere in the original resume (e.g. another
+        section) is evidence — a summary may cite it without a warning."""
+        assert "40%" in _flatten_text(sample_resume)
+        applied = [
+            ResumeChange(
+                path="summary",
+                action="replace",
+                original="Software engineer",
+                value="Software engineer who raised test coverage to 40%",
+                reason="Cited proven metric",
+            )
+        ]
+        result = copy.deepcopy(sample_resume)
+        result["summary"] = applied[0].value
+        warnings = verify_diff_result(sample_resume, result, applied, sample_job_keywords)
+        metric_warnings = [w for w in warnings if "metric" in w.lower()]
+        assert len(metric_warnings) == 0
 
     def test_no_warning_on_preserved_metric(self, sample_resume, sample_job_keywords):
         """If the original already had the metric, no warning."""

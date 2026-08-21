@@ -214,7 +214,10 @@ class TestGenerateInterviewPrep:
         mock_generate.return_value = InterviewPrepData.model_validate(SAMPLE_INTERVIEW_PREP)
 
         async with client:
-            resp = await client.post("/api/v1/resumes/res-123/generate-interview-prep")
+            resp = await client.post(
+                "/api/v1/resumes/res-123/generate-interview-prep",
+                json={"instruction": "Focus on behavioral questions"},
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -222,7 +225,9 @@ class TestGenerateInterviewPrep:
         assert data["interview_prep"]["role_fit_analysis"] == SAMPLE_INTERVIEW_PREP[
             "role_fit_analysis"
         ]
-        mock_generate.assert_awaited_once_with(sample_resume, "Need FastAPI", "en")
+        mock_generate.assert_awaited_once_with(
+            sample_resume, "Need FastAPI", "en", instruction="Focus on behavioral questions"
+        )
         update_payload = mock_db.update_resume.await_args.args[1]
         saved_payload = json.loads(update_payload["interview_prep"])
         assert saved_payload == SAMPLE_INTERVIEW_PREP
@@ -287,6 +292,93 @@ class TestGenerateInterviewPrep:
         assert "Failed to generate interview preparation" in resp.json()["detail"]
 
 
+class TestGenerateContentInstruction:
+    """POST /generate-cover-letter and /generate-outreach forward the optional instruction."""
+
+    @patch("app.routers.resumes.generate_cover_letter", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_cover_letter_passes_instruction(
+        self, mock_db, mock_generate, client, mock_resume_record, sample_resume
+    ):
+        mock_db.get_resume.return_value = {
+            **mock_resume_record,
+            "parent_id": "master-1",
+            "processed_data": sample_resume,
+        }
+        mock_db.get_improvement_by_tailored_resume.return_value = {"job_id": "job-1"}
+        mock_db.get_job.return_value = {"job_id": "job-1", "content": "Need FastAPI"}
+        mock_generate.return_value = "Dear hiring manager..."
+
+        async with client:
+            resp = await client.post(
+                "/api/v1/resumes/res-123/generate-cover-letter",
+                json={"instruction": "Mention my Python backend experience"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "Dear hiring manager..."
+        mock_generate.assert_awaited_once_with(
+            sample_resume,
+            "Need FastAPI",
+            "en",
+            instruction="Mention my Python backend experience",
+        )
+        mock_db.update_resume.assert_awaited_once_with(
+            "res-123", {"cover_letter": "Dear hiring manager..."}
+        )
+
+    @patch("app.routers.resumes.generate_cover_letter", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_cover_letter_without_body_uses_none_instruction(
+        self, mock_db, mock_generate, client, mock_resume_record, sample_resume
+    ):
+        mock_db.get_resume.return_value = {
+            **mock_resume_record,
+            "parent_id": "master-1",
+            "processed_data": sample_resume,
+        }
+        mock_db.get_improvement_by_tailored_resume.return_value = {"job_id": "job-1"}
+        mock_db.get_job.return_value = {"job_id": "job-1", "content": "Need FastAPI"}
+        mock_generate.return_value = "Dear hiring manager..."
+
+        async with client:
+            resp = await client.post("/api/v1/resumes/res-123/generate-cover-letter")
+
+        assert resp.status_code == 200
+        mock_generate.assert_awaited_once_with(
+            sample_resume, "Need FastAPI", "en", instruction=None
+        )
+
+    @patch("app.routers.resumes.generate_outreach_message", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_outreach_passes_instruction(
+        self, mock_db, mock_generate, client, mock_resume_record, sample_resume
+    ):
+        mock_db.get_resume.return_value = {
+            **mock_resume_record,
+            "parent_id": "master-1",
+            "processed_data": sample_resume,
+        }
+        mock_db.get_improvement_by_tailored_resume.return_value = {"job_id": "job-1"}
+        mock_db.get_job.return_value = {"job_id": "job-1", "content": "Need FastAPI"}
+        mock_generate.return_value = "Hi, I saw your posting..."
+
+        async with client:
+            resp = await client.post(
+                "/api/v1/resumes/res-123/generate-outreach",
+                json={"instruction": "Keep it short"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "Hi, I saw your posting..."
+        mock_generate.assert_awaited_once_with(
+            sample_resume, "Need FastAPI", "en", instruction="Keep it short"
+        )
+        mock_db.update_resume.assert_awaited_once_with(
+            "res-123", {"outreach_message": "Hi, I saw your posting..."}
+        )
+
+
 class TestRetryProcessing:
     """POST /api/v1/resumes/{resume_id}/retry-processing"""
 
@@ -310,3 +402,165 @@ class TestRetryProcessing:
         async with client:
             resp = await client.post("/api/v1/resumes/res-123/retry-processing")
         assert resp.status_code == 400
+
+
+class TestSaveAsMaster:
+    """POST /api/v1/resumes/{resume_id}/save-as-master"""
+
+    @patch("app.routers.resumes.fulfill_profile_from_resume", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_promotes_non_master(
+        self, mock_db, mock_fulfill, client, mock_resume_record
+    ):
+        non_master = {**mock_resume_record, "is_master": False}
+        master = {**mock_resume_record, "is_master": True}
+        mock_db.get_resume.side_effect = [non_master, master]
+        mock_db.set_master_resume.return_value = True
+
+        async with client:
+            resp = await client.post("/api/v1/resumes/res-123/save-as-master")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["resume_id"] == "res-123"
+        assert data["is_master"] is True
+        mock_db.set_master_resume.assert_awaited_once_with("res-123")
+        # Ready masters trigger the same best-effort profile fulfillment as uploads.
+        mock_fulfill.assert_awaited_once()
+
+    @patch("app.routers.resumes.fulfill_profile_from_resume", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_already_master_is_idempotent(
+        self, mock_db, mock_fulfill, client, mock_resume_record
+    ):
+        mock_db.get_resume.return_value = mock_resume_record
+
+        async with client:
+            resp = await client.post("/api/v1/resumes/res-123/save-as-master")
+
+        assert resp.status_code == 200
+        assert resp.json()["is_master"] is True
+        mock_db.set_master_resume.assert_not_called()
+        mock_fulfill.assert_awaited_once()
+
+    @patch("app.routers.resumes.fulfill_profile_from_resume", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_unknown_resume_returns_404(
+        self, mock_db, mock_fulfill, client
+    ):
+        mock_db.get_resume.return_value = None
+
+        async with client:
+            resp = await client.post("/api/v1/resumes/nonexistent/save-as-master")
+
+        assert resp.status_code == 404
+        mock_db.set_master_resume.assert_not_called()
+        mock_fulfill.assert_not_called()
+
+
+class TestCopyResume:
+    """POST /api/v1/resumes/{resume_id}/copy"""
+
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_copy_creates_standalone_resume(
+        self, mock_db, client, mock_resume_record
+    ):
+        source = {
+            **mock_resume_record,
+            "is_master": True,
+            "title": "Full Stack Engineer",
+            "metadata_json": {"template_settings": {"font": "clean"}},
+            "outreach_message": "Hi there",
+            "interview_prep": "Q1",
+            "original_markdown": "# Resume",
+        }
+        mock_db.get_resume.return_value = source
+        mock_db.create_resume.return_value = {
+            **source,
+            "resume_id": "copy-456",
+            "is_master": False,
+            "title": "Full Stack Engineer (Copy)",
+        }
+
+        async with client:
+            resp = await client.post("/api/v1/resumes/res-123/copy")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["resume_id"] == "copy-456"
+        assert data["is_master"] is False
+        _, kwargs = mock_db.create_resume.await_args
+        assert kwargs["is_master"] is False
+        assert kwargs["parent_id"] is None
+        assert kwargs["title"] == "Full Stack Engineer (Copy)"
+        assert kwargs["processed_data"] is not None
+        assert kwargs["metadata"] == {"template_settings": {"font": "clean"}}
+        assert kwargs["outreach_message"] == "Hi there"
+        assert kwargs["interview_prep"] == "Q1"
+        assert kwargs["original_markdown"] == "# Resume"
+
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_copy_unknown_resume_returns_404(self, mock_db, client):
+        mock_db.get_resume.return_value = None
+
+        async with client:
+            resp = await client.post("/api/v1/resumes/nonexistent/copy")
+
+        assert resp.status_code == 404
+        mock_db.create_resume.assert_not_called()
+
+
+class TestTemplateSettings:
+    """PATCH /api/v1/resumes/{resume_id}/template-settings + GET exposure"""
+
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_persists_settings(self, mock_db, client, mock_resume_record):
+        mock_db.get_resume.return_value = mock_resume_record
+        mock_db.update_resume.return_value = {
+            **mock_resume_record,
+            "template_settings": {"template": "modern"},
+        }
+
+        async with client:
+            resp = await client.patch(
+                "/api/v1/resumes/res-123/template-settings",
+                json={"template_settings": {"template": "modern", "pageSize": "A4"}},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["resume_id"] == "res-123"
+        assert data["template_settings"] == {"template": "modern", "pageSize": "A4"}
+        mock_db.update_resume.assert_awaited_once_with(
+            "res-123",
+            {"metadata": {"template_settings": {"template": "modern", "pageSize": "A4"}}},
+        )
+
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_unknown_resume_returns_404(self, mock_db, client):
+        mock_db.get_resume.return_value = None
+
+        async with client:
+            resp = await client.patch(
+                "/api/v1/resumes/nonexistent/template-settings",
+                json={"template_settings": {}},
+            )
+
+        assert resp.status_code == 404
+        mock_db.update_resume.assert_not_called()
+
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_fetch_includes_template_settings(self, mock_db, client, mock_resume_record):
+        mock_db.get_resume.return_value = {
+            **mock_resume_record,
+            "template_settings": {"template": "modern", "accentColor": "green"},
+        }
+
+        async with client:
+            resp = await client.get("/api/v1/resumes", params={"resume_id": "res-123"})
+
+        assert resp.status_code == 200
+        assert resp.json()["data"]["template_settings"] == {
+            "template": "modern",
+            "accentColor": "green",
+        }

@@ -17,6 +17,7 @@ export type TranslationFunction = (key: string, params?: Record<string, string |
 /**
  * Default section metadata for backward compatibility.
  * Used when a resume doesn't have sectionMeta defined.
+ * Certifications and Awards are hidden by default: users opt in when they have entries.
  */
 export const DEFAULT_SECTION_META: SectionMeta[] = [
   {
@@ -56,13 +57,31 @@ export const DEFAULT_SECTION_META: SectionMeta[] = [
     order: 3,
   },
   {
+    id: 'certifications',
+    key: 'certifications',
+    displayName: 'Certifications',
+    sectionType: 'itemList',
+    isDefault: true,
+    isVisible: false,
+    order: 4,
+  },
+  {
+    id: 'awards',
+    key: 'awards',
+    displayName: 'Awards',
+    sectionType: 'itemList',
+    isDefault: true,
+    isVisible: false,
+    order: 5,
+  },
+  {
     id: 'personalProjects',
     key: 'personalProjects',
     displayName: 'Projects',
     sectionType: 'itemList',
     isDefault: true,
     isVisible: true,
-    order: 4,
+    order: 6,
   },
   {
     id: 'additional',
@@ -71,7 +90,7 @@ export const DEFAULT_SECTION_META: SectionMeta[] = [
     sectionType: 'stringList',
     isDefault: true,
     isVisible: true,
-    order: 5,
+    order: 7,
   },
 ];
 
@@ -84,6 +103,8 @@ const DEFAULT_SECTION_I18N_KEY_BY_ID: Readonly<Record<string, string>> = Object.
   summary: 'resume.sections.summary',
   workExperience: 'resume.sections.experience',
   education: 'resume.sections.education',
+  certifications: 'resume.sections.certifications',
+  awards: 'resume.sections.awards',
   personalProjects: 'resume.sections.projects',
   additional: 'resume.sections.skills',
 });
@@ -131,9 +152,22 @@ export function withLocalizedDefaultSections(
 
 /**
  * Get section metadata from resume data, falling back to defaults.
+ * Default sections missing from stored metadata are appended hidden, so
+ * new optional sections (e.g. Certifications) become available on older
+ * resumes without changing existing visibility or order.
  */
 export function getSectionMeta(resumeData: ResumeData): SectionMeta[] {
-  return resumeData.sectionMeta?.length ? resumeData.sectionMeta : DEFAULT_SECTION_META;
+  const stored = resumeData.sectionMeta?.length ? resumeData.sectionMeta : DEFAULT_SECTION_META;
+  const byId = new Map(stored.map((s) => [s.id, s]));
+  let maxOrder = stored.reduce((max, s) => Math.max(max, s.order), 0);
+  const merged = [...stored];
+  for (const def of DEFAULT_SECTION_META) {
+    if (!byId.has(def.id)) {
+      merged.push({ ...def, order: maxOrder + 1, isVisible: false });
+      maxOrder += 1;
+    }
+  }
+  return merged;
 }
 
 /**
@@ -297,6 +331,17 @@ export function deleteSection(
     sectionMeta: meta.filter((s) => s.id !== sectionId),
     customSections,
   };
+}
+
+/**
+ * Renumber list entry ids by position (1-based).
+ *
+ * The builder targets entries by `item.id` (e.g. `data.map(... item.id === id)`),
+ * so entries without ids (old drafts, pre-fix payloads) would all share `id=0`
+ * and one edit would apply to every entry. Deterministic by position.
+ */
+export function ensureUniqueEntryIds<T extends { id?: number }>(items: T[] | undefined): T[] {
+  return (items ?? []).map((item, index) => ({ ...item, id: index + 1 }));
 }
 
 /**

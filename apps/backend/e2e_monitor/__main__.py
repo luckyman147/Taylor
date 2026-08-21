@@ -111,7 +111,7 @@ def cmd_sweep(_: argparse.Namespace) -> int:
     servers = Servers(bundle=bundle)
     variations: list[dict[str, Any]] = []
     try:
-        _say("  ▶ boot          spawning backend :8000 + frontend :3000 …")
+        _say("  ▶ boot          spawning backend :8000 + frontend :5173 …")
         boot = servers.boot()
         steps.append({"stage": "boot", "ok": True, "ms": 0, "detail": boot})
         _say("  ✓ boot          backend up" + (" + frontend up" if boot.get("frontend_up") else " (frontend off — renders degrade to header+size)"))

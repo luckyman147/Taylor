@@ -1,5 +1,7 @@
 """Pydantic schemas for the career profile (My Profile page)."""
 
+from __future__ import annotations
+
 import re
 from typing import Any, Literal
 
@@ -206,11 +208,170 @@ class CertificationUpdate(BaseModel):
 
 
 class ProfileBundleResponse(BaseModel):
-    """Profile plus its skills and certifications."""
+    """Profile plus its skills, certifications and career-graph nodes."""
 
     profile: ProfileResponse
     skills: list[SkillResponse]
     certifications: list[CertificationResponse]
+    education: list[EducationResponse] = Field(default_factory=list)
+    projects: list[ProjectResponse] = Field(default_factory=list)
+    achievements: list[AchievementResponse] = Field(default_factory=list)
+
+
+class EducationResponse(BaseModel):
+    """An education entry on the career graph."""
+
+    education_id: str
+    institution: str
+    degree: str | None = None
+    years: str | None = None
+    description: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class EducationCreate(BaseModel):
+    """Create an education entry — only ``institution`` is required."""
+
+    institution: str = Field(min_length=1, max_length=200)
+    degree: str | None = Field(default=None, max_length=200)
+    years: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=2000)
+
+
+class EducationUpdate(BaseModel):
+    """Partial update — every field optional."""
+
+    institution: str | None = Field(default=None, min_length=1, max_length=200)
+    degree: str | None = Field(default=None, max_length=200)
+    years: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=2000)
+
+
+class ProjectResponse(BaseModel):
+    """A personal project node on the career graph."""
+
+    project_id: str
+    name: str
+    role: str | None = None
+    years: str | None = None
+    github: str | None = None
+    website: str | None = None
+    description: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+    readme: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class ProjectCreate(BaseModel):
+    """Create a project node — only ``name`` is required."""
+
+    name: str = Field(min_length=1, max_length=200)
+    role: str | None = Field(default=None, max_length=200)
+    years: str | None = Field(default=None, max_length=100)
+    github: str | None = Field(default=None, max_length=500)
+    website: str | None = Field(default=None, max_length=500)
+    description: list[str] = Field(default_factory=list, max_length=100)
+    languages: list[str] = Field(default_factory=list, max_length=50)
+    readme: str | None = Field(default=None, max_length=10000)
+
+    @field_validator("description", "languages")
+    @classmethod
+    def _validate_list(cls, value: list[str]) -> list[str]:
+        cleaned = [item.strip() for item in value if item.strip()]
+        # De-duplicate case-insensitively, keeping first occurrence order.
+        seen: set[str] = set()
+        result: list[str] = []
+        for item in cleaned:
+            key = item.lower()
+            if key not in seen:
+                seen.add(key)
+                result.append(item)
+        return result
+
+
+class ProjectUpdate(BaseModel):
+    """Partial update — every field optional."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    role: str | None = Field(default=None, max_length=200)
+    years: str | None = Field(default=None, max_length=100)
+    github: str | None = Field(default=None, max_length=500)
+    website: str | None = Field(default=None, max_length=500)
+    description: list[str] | None = Field(default=None, max_length=100)
+    languages: list[str] | None = Field(default=None, max_length=50)
+    readme: str | None = Field(default=None, max_length=10000)
+
+    @field_validator("description", "languages")
+    @classmethod
+    def _validate_list(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        cleaned = [item.strip() for item in value if item.strip()]
+        seen: set[str] = set()
+        result: list[str] = []
+        for item in cleaned:
+            key = item.lower()
+            if key not in seen:
+                seen.add(key)
+                result.append(item)
+        return result
+
+
+class GitHubImportRequest(BaseModel):
+    """Select which GitHub repos to import as projects.
+
+    ``repo_urls`` is optional — an empty list means "import everything the
+    GitHub adapter returned".
+    """
+
+    repo_urls: list[str] = Field(default_factory=list)
+
+
+class AchievementResponse(BaseModel):
+    """An achievement node on the career graph."""
+
+    achievement_id: str
+    title: str
+    description: str | None = None
+    date: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class AchievementCreate(BaseModel):
+    """Create an achievement — only ``title`` is required."""
+
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    date: str | None = None
+
+    @field_validator("date")
+    @classmethod
+    def _validate_date(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        if not _YEAR_MONTH_RE.match(value.strip()):
+            raise ValueError("date must be 'YYYY' or 'YYYY-MM'")
+        return value.strip()
+
+
+class AchievementUpdate(BaseModel):
+    """Partial update — every field optional."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    date: str | None = None
+
+    @field_validator("date")
+    @classmethod
+    def _validate_date(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        if not _YEAR_MONTH_RE.match(value.strip()):
+            raise ValueError("date must be 'YYYY' or 'YYYY-MM'")
+        return value.strip()
 
 
 class CareerActionResponse(BaseModel):
@@ -237,11 +398,19 @@ class FunnelStats(BaseModel):
 
 
 class CareerMemoryResponse(BaseModel):
-    """The aggregated career-memory bundle served to the chat / insights LLM."""
+    """The aggregated career-memory bundle served to the chat / insights LLM.
+
+    Graph nodes are plain dicts (not full response models): the builder caps
+    and reshapes them (e.g. adds linked ``skills`` to projects), so the
+    schema only pins the top-level shape.
+    """
 
     profile: ProfileResponse
     skills: list[SkillResponse]
     certifications: list[CertificationResponse]
+    education: list[dict[str, Any]] = Field(default_factory=list)
+    projects: list[dict[str, Any]] = Field(default_factory=list)
+    achievements: list[dict[str, Any]] = Field(default_factory=list)
     master_resume: dict[str, Any] | None = None
     funnel: FunnelStats
     rejected_applications: list[dict[str, Any]] = Field(default_factory=list)
@@ -278,7 +447,12 @@ class CareerInsightsResponse(BaseModel):
 
 
 class SkillRoiRow(BaseModel):
-    """One skill's ROI score over the user's saved job pool."""
+    """One skill's ROI score over the user's saved job pool.
+
+    ``action`` classifies the row for the job-focused view: ``"learn"``
+    (missing from the profile), ``"strengthen"`` (in profile, in demand,
+    weak) or ``"monitor"`` (everything else).
+    """
 
     skill: str
     jobs_unlocked_pct: float
@@ -287,6 +461,8 @@ class SkillRoiRow(BaseModel):
     learning_effort: str
     existing_knowledge: int
     roi_score: int
+    action: Literal["learn", "strengthen", "monitor"] = "monitor"
+    in_profile: bool = False
 
 
 class CareerRoiRequest(BaseModel):
@@ -297,10 +473,102 @@ class CareerRoiRequest(BaseModel):
 
 
 class CareerRoiResponse(BaseModel):
-    """Sorted ROI table plus an optional LLM 'learn next' recommendation."""
+    """Sorted ROI table plus the job-focused sections and optional LLM advice.
+
+    ``gaps`` (skills to learn) and ``strengthen`` (skills to improve) are the
+    actionable view; ``rest`` holds everything else (already strong or not in
+    demand). ``results`` keeps the full table for the advisor and legacy
+    consumers.
+    """
 
     results: list[SkillRoiRow]
     advice: str | None = None
+    note: str | None = None
+    gaps: list[SkillRoiRow] = Field(default_factory=list)
+    strengthen: list[SkillRoiRow] = Field(default_factory=list)
+    rest: list[SkillRoiRow] = Field(default_factory=list)
+
+
+class SkillResource(BaseModel):
+    """A server-verified learning resource for a skill."""
+
+    title: str
+    url: str
+    source: str = ""
+
+
+class SkillResourcesRequest(BaseModel):
+    """Request verified learning resources for specific skills."""
+
+    skills: list[str] = Field(min_length=1, max_length=12)
+    refresh: bool = False
+
+
+class SkillResourcesResponse(BaseModel):
+    """Verified learning resources per skill (skill name -> resources)."""
+
+    resources: dict[str, list[SkillResource]]
+    note: str | None = None
+
+
+class SkillSuggestion(BaseModel):
+    """One AI-suggested skill: remembered (forgot to list) or learn_next (2026)."""
+
+    name: str
+    reason: str = ""
+    kind: Literal["remembered", "learn_next"] = "remembered"
+
+
+class SkillSuggestionsResponse(BaseModel):
+    """AI 'forgotten skills' suggestions (LLM-optional; note when unavailable)."""
+
+    skills: list[SkillSuggestion] = Field(default_factory=list)
+    note: str | None = None
+
+
+class SkillPosition(BaseModel):
+    """One tracked skill's modeled market percentile."""
+
+    skill: str
+    percentile: int
+    level: Literal["beginner", "intermediate", "advanced", "expert"]
+
+
+class DomainPosition(BaseModel):
+    """One job domain's aggregated market position."""
+
+    domain: str
+    percentile: int
+    seniority: Literal["junior", "mid", "senior"]
+    readiness: Literal["strong", "adequate", "underqualified"]
+
+
+class RolePosition(BaseModel):
+    """A recommended role title with its evidence-based match score."""
+
+    role: str
+    domain: str
+    seniority: Literal["junior", "mid", "senior"]
+    match_score: int
+    reason: str
+
+
+class MarketPositionResponse(BaseModel):
+    """Deterministic market-position model over local profile data.
+
+    Percentiles are 0-100 integers mapped from a modeled candidate
+    distribution; ``current_role`` names the exact position (e.g.
+    "Mid Backend Engineer"), ``specialization`` the top skills of that
+    domain, ``recommended_roles`` the best-fit roles to pick, and
+    ``verdict`` template sentences. Never requires an LLM.
+    """
+
+    skills: list[SkillPosition] = Field(default_factory=list)
+    domains: list[DomainPosition] = Field(default_factory=list)
+    current_role: str | None = None
+    specialization: list[str] = Field(default_factory=list)
+    recommended_roles: list[RolePosition] = Field(default_factory=list)
+    verdict: str
     note: str | None = None
 
 

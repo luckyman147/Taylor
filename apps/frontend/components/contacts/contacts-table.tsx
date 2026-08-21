@@ -166,7 +166,13 @@ export function ContactsTable() {
   const [statusFilter, setStatusFilter] = useState<ContactStatus | ''>('');
   const [relationshipFilter, setRelationshipFilter] = useState<ContactRelationship | ''>('');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
-  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(loadColumnPrefs);
+  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
+
+  // Load saved column prefs after hydration (a lazy useState initializer would
+  // read localStorage during hydration and mismatch the SSR'd defaults).
+  useEffect(() => {
+    setVisibleColumns(loadColumnPrefs());
+  }, []);
 
   useEffect(() => {
     try {

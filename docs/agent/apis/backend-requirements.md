@@ -39,12 +39,21 @@ POST /resumes/upload       ← multipart/form-data {file}
 GET /resumes?resume_id=    → Resume object
 GET /resumes/list          → [{resume_id, filename, is_master, created_at}]
 PATCH /resumes/{id}        ← ResumeData
+PATCH /resumes/{id}/template-settings
+                           ← {template_settings} (per-resume design, stored in resume metadata)
+                           → {resume_id, template_settings}
 DELETE /resumes/{id}       → {message}
+POST /resumes/{id}/save-as-master
+                           → {resume_id, is_master: true}   (promote-only; multi-master)
 GET /resumes/{id}/pdf      → application/pdf
 POST /resumes/improve      ← {resume_id, job_id}
                            → {data, cover_letter?, outreach_message?, interview_prep?}
+POST /resumes/{id}/generate-cover-letter
+                           ← {instruction?}   → {content, message}
+POST /resumes/{id}/generate-outreach
+                           ← {instruction?}   → {content, message}
 POST /resumes/{id}/generate-interview-prep
-                           → {interview_prep, message}
+                           ← {instruction?}   → {interview_prep, message}
 ```
 
 ### Jobs

@@ -22,18 +22,22 @@ import Building2 from 'lucide-react/dist/esm/icons/building-2';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Copy from 'lucide-react/dist/esm/icons/copy';
 import UserRound from 'lucide-react/dist/esm/icons/user-round';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone';
 
 import {
   fetchResume,
   fetchResumeList,
   deleteResume,
   retryProcessing,
+  copyResume,
   fetchJobDescription,
   type ResumeListItem,
 } from '@/lib/api/resume';
+import { fetchJobs, type MobileJob } from '@/lib/api/jobs';
 import { useStatusCache } from '@/lib/context/status-cache';
 
 type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'loading';
@@ -46,7 +50,10 @@ export default function DashboardPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [tailoredResumes, setTailoredResumes] = useState<ResumeListItem[]>([]);
+  const [phoneJobs, setPhoneJobs] = useState<MobileJob[]>([]);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+  const tailoredSectionRef = useRef<HTMLDivElement>(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isMasterChoiceDialogOpen, setIsMasterChoiceDialogOpen] = useState(false);
   const router = useRouter();
@@ -163,11 +170,27 @@ export default function DashboardPage() {
     loadTailoredResumes();
   }, [loadTailoredResumes]);
 
+  const loadPhoneJobs = useCallback(async () => {
+    try {
+      const jobs = await fetchJobs({ limit: 50 });
+      setPhoneJobs(jobs);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
-    const handleFocus = () => loadTailoredResumes();
+    loadPhoneJobs();
+  }, [loadPhoneJobs]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      loadTailoredResumes();
+      loadPhoneJobs();
+    };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [loadTailoredResumes, checkResumeStatus]);
+  }, [loadTailoredResumes, loadPhoneJobs, checkResumeStatus]);
 
   const handleUploadComplete = (resumeId: string) => {
     localStorage.setItem('master_resume_id', resumeId);
@@ -242,6 +265,20 @@ export default function DashboardPage() {
       console.error('Failed to delete resume:', err);
     } finally {
       setDeleteTargetId(null);
+    }
+  };
+
+  const handleCopyMaster = async (e: React.MouseEvent, resumeId: string) => {
+    e.stopPropagation();
+    setCopyingId(resumeId);
+    try {
+      await copyResume(resumeId);
+      await loadTailoredResumes();
+      tailoredSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      console.error('Failed to copy resume:', err);
+    } finally {
+      setCopyingId(null);
     }
   };
 
@@ -467,6 +504,27 @@ export default function DashboardPage() {
                       <ChevronRight className="w-4 h-4 text-ink-soft" />
                     </div>
                   </div>
+                  {master.processing_status === 'ready' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 w-full border-ink text-xs uppercase"
+                      onClick={(e) => handleCopyMaster(e, master.resume_id)}
+                      disabled={copyingId !== null}
+                    >
+                      {copyingId === master.resume_id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                          Copying...
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                          Make a copy
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -526,8 +584,48 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Phone Jobs */}
+        {phoneJobs.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft">
+                From your phone ({phoneJobs.length})
+              </h2>
+              <Link
+                href="/job-scraper"
+                className=" text-xs text-primary hover:text-blue-800 uppercase tracking-wide flex items-center gap-1"
+              >
+                Job Scraper
+                <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {phoneJobs.slice(0, 6).map((job) => (
+                <div
+                  key={job.job_id}
+                  className="border border-ink p-4 hover:shadow-sw-sm transition-shadow rounded-xl"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 border border-ink bg-paper-tint flex items-center justify-center shrink-0 rounded-xl">
+                      <Smartphone className="w-4 h-4 text-ink-soft" />
+                    </div>
+                  </div>
+                  <p className=" text-sm font-bold truncate">{job.title ?? t('common.unknown')}</p>
+                  <p className=" text-xs text-ink-soft mt-1 truncate">
+                    {job.company ?? 'Unknown company'}
+                    {job.location && ` · ${job.location}`}
+                  </p>
+                  <p className=" text-xs text-steel-grey mt-1">
+                    {t('dashboard.edited', { date: formatDate(job.created_at) })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tailored Resumes */}
-        <div>
+        <div ref={tailoredSectionRef}>
           <div className="flex items-center justify-between mb-4">
             <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft">
               Tailored Resumes ({tailoredResumes.length})

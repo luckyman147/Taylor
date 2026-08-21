@@ -244,7 +244,7 @@ class Settings(BaseSettings):
     port: int = 8000
     reload: bool = False
     log_level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"] = "INFO"
-    frontend_base_url: str = "http://localhost:3000"
+    frontend_base_url: str = "http://localhost:5173"
 
     # Hard timeout (seconds) for a single resume tailoring/improve request — the
     # backend wraps the improve flow in asyncio.wait_for(timeout=this). It MUST be
@@ -279,7 +279,7 @@ class Settings(BaseSettings):
     # GitHub OAuth
     github_client_id: str = ""
     github_client_secret: str = ""
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "http://localhost:5173"
 
     @field_validator("reasoning_effort", mode="before")
     @classmethod

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -53,6 +54,7 @@ class ScrapedJobResponse(BaseModel):
     applied: bool = False
     applied_resume_id: str | None = None
     archived: bool = False
+    metadata: dict[str, Any] | None = None
     created_at: str
 
 
@@ -68,57 +70,89 @@ class UpdateArchiveRequest(BaseModel):
 
 @router.get("/profile-keywords/{resume_id}", response_model=ProfileKeywordsResponse)
 async def get_profile_keywords(resume_id: str) -> ProfileKeywordsResponse:
-    """Extract search keywords from a resume for job matching."""
+    """Generate search keywords for job matching.
+
+    When the user has tracked career skills and/or work experience, the
+    TAYLOR engine builds a profile snapshot (skills + experience + seniority)
+    and returns the generated search queries — this decides *what* gets
+    fetched. Resume-parsed technical skills are only a fallback.
+    """
     from app.database import db
+    from app.services.job_scraper import _generated_keywords
+    from app.services.skill_ontology import build_search_queries
 
     try:
         resume = await db.get_resume(resume_id)
         if not resume:
             raise HTTPException(status_code=404, detail="Resume not found")
 
-        processed = resume.get("processed_data", {})
-        skills = processed.get("additional", {}).get("technicalSkills", [])
+        processed = resume.get("processed_data") or {}
+        resume_skills = processed.get("additional", {}).get("technicalSkills", [])
         titles = [
             exp.get("title", "")
             for exp in processed.get("workExperience", [])
             if exp.get("title")
         ]
 
-        # Build smart suggested keywords
-        priority = [
-            "JavaScript", "TypeScript", "Python", "React", "Node.js",
-            "Angular", ".NET", "ASP.NET", "Docker", "Kubernetes",
-            "FastAPI", "NestJS", "Spring Boot", "Full-Stack", "Backend",
-        ]
-        suggested = []
-        for skill in skills:
-            for p in priority:
-                if p.lower() in skill.lower() and p not in suggested:
-                    suggested.append(p)
-                    break
+        career_skills = await db.list_career_skills()
+        if career_skills:
+            # Rank tracked skills: proficiency first, then years of
+            # experience, then name (stable, deterministic).
+            ranked = sorted(
+                career_skills,
+                key=lambda s: (
+                    -(s.get("proficiency") or 0),
+                    -(s.get("years_experience") or 0),
+                    s.get("name", "").lower(),
+                ),
+            )
+            skills = [s["name"] for s in ranked]
+        else:
+            # Fallback: normalize resume-parsed skills through the priority
+            # list so verbose names (e.g. "Python (Advanced)") collapse to
+            # clean search keywords.
+            priority = [
+                "JavaScript", "TypeScript", "Python", "React", "Node.js",
+                "Angular", ".NET", "ASP.NET", "Docker", "Kubernetes",
+                "FastAPI", "NestJS", "Spring Boot", "Full-Stack", "Backend",
+            ]
+            skills = []
+            for skill in resume_skills:
+                for p in priority:
+                    if p.lower() in skill.lower() and p not in skills:
+                        skills.append(p)
+                        break
+            if not skills:
+                skills = resume_skills[:5]
 
-        for title in titles:
-            tl = title.lower()
-            if "full" in tl or "backend" in tl:
-                if "Full-Stack" not in suggested:
-                    suggested.append("Full-Stack")
-            if "software" in tl:
-                if "Software Engineer" not in suggested:
-                    suggested.append("Software Engineer")
-
-        if not suggested:
-            suggested = skills[:5]
+        # Profile-driven query when the snapshot exists (skills + experience
+        # decide what to fetch); otherwise title-derived keywords.
+        keywords, bundle = await _generated_keywords(resume_id)
+        if bundle is None:
+            suggested = list(skills[:8])
+            for title in titles:
+                tl = title.lower()
+                if "full" in tl or "backend" in tl:
+                    if "Full-Stack" not in suggested:
+                        suggested.append("Full-Stack")
+                if "software" in tl:
+                    if "Software Engineer" not in suggested:
+                        suggested.append("Software Engineer")
+            suggested_keywords = " ".join(suggested[:8])
+        else:
+            queries = build_search_queries(bundle["snapshot"], bundle["skills"])
+            suggested_keywords = keywords or (queries[0] if queries else " ".join(skills[:8]))
 
         return ProfileKeywordsResponse(
-            skills=skills[:15],
-            titles=titles,
-            suggested_keywords=" ".join(suggested[:8]),
+            skills=skills[:20],
+            titles=titles[:10],
+            suggested_keywords=suggested_keywords,
         )
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Failed to extract profile keywords: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to extract keywords")
+        logger.error("Failed to build profile keywords for %s: %s", resume_id, exc)
+        raise HTTPException(status_code=500, detail="Failed to build profile keywords")
 
 
 @router.post("/search", response_model=JobSearchResponse)

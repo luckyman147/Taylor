@@ -432,8 +432,8 @@ def test_assign_entry_ids_renumbers_all_three_lists() -> None:
             "personalProjects": [{"name": "Alpha"}, {"name": "Beta"}],
         }
     )
-    # All default to id=0 before assignment.
-    assert [e.id for e in data.workExperience] == [0, 0]
+    # The ResumeData validator renumbers default id=0 entries to unique ids.
+    assert [e.id for e in data.workExperience] == [1, 2]
 
     _assign_entry_ids(data)
 
