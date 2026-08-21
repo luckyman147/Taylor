@@ -339,7 +339,9 @@ async def _get_funnel_stats() -> dict[str, Any]:
 async def _get_skill_roi() -> dict[str, Any]:
     """Get skill ROI analysis."""
     from app.services.career_profile import compute_skill_roi
-    rows = compute_skill_roi()
+    jobs = await db.list_scraped_jobs_for_analysis()
+    profile_skills = await db.list_career_skills()
+    rows, _note = compute_skill_roi(jobs, profile_skills)
     return {"roi_table": rows[:15]}
 
 

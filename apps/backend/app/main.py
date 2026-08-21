@@ -66,6 +66,21 @@ async def lifespan(app: FastAPI):
 
     migrate_legacy_keys()
 
+    # Auto-migrate: add embedding columns if missing (idempotent)
+    try:
+        import sqlite3 as _sqlite3
+        _db_path = str(settings.data_dir / "resume_matcher.db")
+        _conn = _sqlite3.connect(_db_path)
+        for _table in ("resumes", "scraped_jobs", "chat_memories"):
+            _cols = {row[1] for row in _conn.execute(f"PRAGMA table_info({_table})").fetchall()}
+            if "embedding" not in _cols:
+                _conn.execute(f"ALTER TABLE {_table} ADD COLUMN embedding TEXT")
+                logger.info("Added embedding column to %s", _table)
+        _conn.commit()
+        _conn.close()
+    except Exception as e:
+        logger.warning("Embedding column migration failed: %s", e)
+
     # Build RAG index (embed any unembedded records)
     if settings.rag_enabled:
         try:
