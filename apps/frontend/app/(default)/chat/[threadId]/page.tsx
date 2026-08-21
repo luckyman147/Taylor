@@ -37,6 +37,8 @@ export default function ChatThreadRoute() {
   const [activeThread, setActiveThread] = useState<ThreadSummary | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [uploadNotes, setUploadNotes] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -230,7 +232,7 @@ export default function ChatThreadRoute() {
   );
 
   const handleUploadResume = useCallback(
-    async (file: File) => {
+    async (file: File, notes?: string) => {
       try {
         const { getUploadUrl } = await import('@/lib/api/client');
         const formData = new FormData();
@@ -238,7 +240,13 @@ export default function ChatThreadRoute() {
         const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
         if (!res.ok) throw new Error(`Upload failed (${res.status})`);
         setRefreshKey((k) => k + 1);
-        void send(`I just uploaded a new resume: ${file.name}. List my resumes.`);
+        const noteText = notes?.trim();
+        const msg = noteText
+          ? `I just uploaded a new resume: ${file.name}. Notes: ${noteText}`
+          : `I just uploaded a new resume: ${file.name}.`;
+        setSelectedFile(null);
+        setUploadNotes('');
+        void send(msg);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Upload failed');
       }
@@ -317,6 +325,38 @@ export default function ChatThreadRoute() {
                 />
               </div>
 
+              {/* Upload notes bar */}
+              {selectedFile && (
+                <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#e6e3dc] bg-[#faf9f7] px-3 py-2">
+                  <span className="truncate text-xs text-ink-soft">{selectedFile.name}</span>
+                  <input
+                    type="text"
+                    value={uploadNotes}
+                    onChange={(e) => setUploadNotes(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleUploadResume(selectedFile, uploadNotes);
+                      }
+                    }}
+                    placeholder="Add notes (optional)..."
+                    className="flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-ink-muted"
+                  />
+                  <button
+                    onClick={() => void handleUploadResume(selectedFile, uploadNotes)}
+                    className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-[#17304f]"
+                  >
+                    Upload
+                  </button>
+                  <button
+                    onClick={() => { setSelectedFile(null); setUploadNotes(''); }}
+                    className="text-xs text-ink-muted hover:text-ink"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
               {/* Input pill */}
               <div className="flex items-end rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
                 <label className="flex h-9 w-9 shrink-0 items-center justify-center m-2 cursor-pointer rounded-full text-ink-muted transition-colors hover:bg-[#e6e3dc] hover:text-ink-soft">
@@ -327,7 +367,7 @@ export default function ChatThreadRoute() {
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) void handleUploadResume(file);
+                      if (file) setSelectedFile(file);
                       e.target.value = '';
                     }}
                   />
