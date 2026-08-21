@@ -1100,7 +1100,7 @@ RULES:
 4. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
 5. If no tool is needed, set tool_calls=[].
 6. Never fabricate data. Only use tools that exist in the catalog.
-7. For resume audits: the gateway handles resume selection. Do not call get_ats_audit directly.
+7. For resume audits: the gateway provides the resume_id in [GATEWAY: ...] context. Call get_ats_audit with that resume_id. Do not omit the resume_id.
 
 Return JSON only (no markdown fences):"""
 

@@ -41,7 +41,7 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "get_ats_audit": ToolSpec(
         name="get_ats_audit",
-        description="Run a resume ATS audit. IMPORTANT: Do NOT pass resume_id unless the user explicitly names a specific resume. Omit resume_id to let the user choose from their uploaded resumes.",
+        description="Run a resume ATS audit. Pass resume_id to audit a specific resume. The gateway provides the resume_id in the prompt context.",
         params={
             "resume_id": {"type": "str", "required": False, "max_len": 100},
         },
