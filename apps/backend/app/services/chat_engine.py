@@ -362,7 +362,6 @@ def _tool_to_card_kind(tool_name: str) -> str:
         "get_job_verdict": "job",
         "search_jobs": "job",
         "get_career_summary": "info",
-        "list_resumes": "info",
         "get_applications": "info",
         "get_rejections": "info",
         "get_contacts": "info",

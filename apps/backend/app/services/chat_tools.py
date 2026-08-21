@@ -41,16 +41,10 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "get_ats_audit": ToolSpec(
         name="get_ats_audit",
-        description="Run a deterministic resume audit with structural scores. Pass resume_id to audit a specific resume, or omit to see available resumes.",
+        description="Run a resume ATS audit. IMPORTANT: Do NOT pass resume_id unless the user explicitly names a specific resume. Omit resume_id to let the user choose from their uploaded resumes.",
         params={
             "resume_id": {"type": "str", "required": False, "max_len": 100},
         },
-        write=False,
-    ),
-    "list_resumes": ToolSpec(
-        name="list_resumes",
-        description="List all uploaded resumes with their IDs, titles, and master status.",
-        params={},
         write=False,
     ),
     "get_funnel_stats": ToolSpec(
@@ -67,7 +61,7 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "get_market_position": ToolSpec(
         name="get_market_position",
-        description="Get the user's market position percentile based on their skills and experience.",
+        description="Get market position analysis: how the user's profile compares to job market demand.",
         params={},
         write=False,
     ),
@@ -260,8 +254,6 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return await _get_career_summary()
         elif name == "get_ats_audit":
             return await _get_ats_audit(args.get("resume_id"))
-        elif name == "list_resumes":
-            return await _list_resumes()
         elif name == "get_funnel_stats":
             return await _get_funnel_stats()
         elif name == "get_skill_roi":
@@ -370,27 +362,6 @@ async def _get_ats_audit(resume_id: str | None = None) -> dict[str, Any]:
                 "title": r.get("title") or r.get("filename") or "Untitled",
                 "is_master": r.get("is_master", False),
                 "has_data": bool(r.get("processed_data")),
-            }
-            for r in resumes
-        ],
-    }
-
-
-async def _list_resumes() -> dict[str, Any]:
-    """List all uploaded resumes."""
-    resumes = await db.list_resumes()
-    master = await db.get_master_resume()
-    master_id = master.get("resume_id") if master else None
-    return {
-        "total": len(resumes),
-        "master_id": master_id,
-        "resumes": [
-            {
-                "resume_id": r.get("resume_id"),
-                "title": r.get("title") or r.get("filename") or "Untitled",
-                "is_master": r.get("is_master", False),
-                "has_data": bool(r.get("processed_data")),
-                "created_at": r.get("created_at"),
             }
             for r in resumes
         ],

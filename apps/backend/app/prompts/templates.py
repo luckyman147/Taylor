@@ -1099,6 +1099,7 @@ RULES:
 4. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
 5. If no tool is needed, set tool_calls=[].
 6. Never fabricate data. Only use tools that exist in the catalog.
+7. For resume audits: call get_ats_audit() WITHOUT resume_id. The tool shows available resumes for selection. Do NOT call list_resumes separately.
 
 Return JSON only (no markdown fences):"""
 
@@ -1151,7 +1152,6 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
         "allowlist": [
             "get_career_summary",
             "get_ats_audit",
-            "list_resumes",
             "get_evidence",
             "get_applications",
             "get_rejections",
@@ -1162,7 +1162,6 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
         "allowlist": [
             "get_career_summary",
             "get_ats_audit",
-            "list_resumes",
             "get_evidence",
             "get_skill_suggestions",
             "get_market_position",
