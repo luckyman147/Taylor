@@ -79,10 +79,11 @@ export function MessageList({
           />
         ))}
 
-        {/* Loading indicator — spinner below the last message */}
+        {/* Loading indicator — thinking animation below the last message */}
         {loading && (
-          <div className="flex justify-start pl-6">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <div className="flex items-center gap-2 pl-6 text-sm text-ink-muted">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Thinking...</span>
           </div>
         )}
       </div>

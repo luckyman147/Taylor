@@ -1136,6 +1136,38 @@ RULES:
 7. ALWAYS reference the career data above when analyzing jobs, resumes, or skills.
 8. Use conversation context to maintain continuity. When the user says "that CV", "my resume", "these skills", etc., refer to the context above to understand what they mean."""
 
+CHAT_THINKING_PROMPT = """You are Taylor's career assistant. Before answering, think step by step about the user's request.
+
+USER MESSAGE: {user_message}
+
+CONVERSATION CONTEXT:
+{conversation_context}
+
+YOUR CAREER DATA:
+{career_data}
+
+TOOL RESULTS:
+{tool_stats}
+
+RELEVANT CONTEXT:
+{rag_context}
+
+ACTIVE MEMORIES (user preferences):
+{active_memories}
+
+MODE: {mode}
+OUTPUT LANGUAGE: {output_language}
+
+Think through this carefully:
+1. What exactly is the user asking? What is their real intent?
+2. What data do I have available to answer this?
+3. What are the key insights from the data that are most relevant?
+4. What specific, actionable advice can I give based on the evidence?
+5. Are there any gaps in the data I should acknowledge?
+6. How does this connect to what we discussed earlier in this conversation?
+
+Write your detailed analysis and reasoning below. Be thorough — explore the data deeply, identify patterns, and form concrete recommendations. This thinking will be used to generate the final answer."""
+
 CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
     "ask": {"allowlist": []},  # empty = all tools
     "coach": {

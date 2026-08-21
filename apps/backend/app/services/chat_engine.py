@@ -20,6 +20,7 @@ from app.prompts import (
     CHAT_ANSWER_PROMPT,
     CHAT_PLANNER_PROMPT,
     CHAT_PLANNER_SYSTEM_PROMPTS,
+    CHAT_THINKING_PROMPT,
     get_language_name,
 )
 from app.services.chat_tools import (
@@ -333,11 +334,31 @@ async def run_turn(
     except Exception:
         pass
 
-    # Phase 3: Generate answer
+    # Phase 3: Generate answer (two-pass: think → answer)
     # Build compact career data for the answer prompt
     career_data = await _build_career_context()
     resume_context = f"\nRESUME BEING ANALYZED: {gateway_resume_filename} (id={gateway.resume_id})" if gateway.resume_id else ""
     conversation_ctx = _build_conversation_context(messages)
+
+    # Pass 1: Think deeply about the request
+    thinking_prompt = CHAT_THINKING_PROMPT.format(
+        user_message=user_message,
+        conversation_context=conversation_ctx,
+        career_data=career_data,
+        tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context,
+        rag_context=rag_context,
+        active_memories=_format_memories(memories),
+        mode=mode,
+        output_language=output_language,
+    )
+    thinking = await complete(
+        prompt=thinking_prompt,
+        system_prompt=system_prompt,
+        max_tokens=2048,
+        temperature=0.5,
+    )
+
+    # Pass 2: Generate polished answer using the thinking
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
@@ -348,9 +369,10 @@ async def run_turn(
         mode=mode,
         output_language=output_language,
     )
+    answer_with_thinking = f"{answer_prompt}\n\nYOUR DETAILED ANALYSIS:\n{thinking}\n\nNow generate the final polished answer based on your analysis above. Be thorough, specific, and actionable."
 
     assistant_content = await complete(
-        prompt=answer_prompt,
+        prompt=answer_with_thinking,
         system_prompt=system_prompt,
     )
 
