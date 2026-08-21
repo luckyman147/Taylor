@@ -1068,16 +1068,13 @@ CHAT_PLANNER_SYSTEM_PROMPTS: dict[str, str] = {
 
 CHAT_PLANNER_PROMPT = """You are a career assistant. Given the user's career memory and conversation history, plan how to handle their message.
 
-CAREER MEMORY:
-{career_memory}
-
 ACTIVE MEMORIES (user preferences):
 {active_memories}
 
 CONVERSATION HISTORY:
 {history}
 
-AVAILABLE TOOLS (JSON):
+AVAILABLE TOOLS:
 {tool_catalog}
 
 Answer in {output_language}.
@@ -1102,14 +1099,11 @@ CHAT_ANSWER_PROMPT = """You are Taylor's career assistant. Generate a helpful, g
 
 USER MESSAGE: {user_message}
 
-PLAN:
-{plan_json}
-
 TOOL RESULTS:
 {tool_stats}
 
-STATS (if any):
-{stats_json}
+RELEVANT CONTEXT:
+{rag_context}
 
 ACTIVE MEMORIES (user preferences):
 {active_memories}

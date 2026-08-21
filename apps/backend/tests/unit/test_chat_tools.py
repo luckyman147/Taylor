@@ -124,5 +124,5 @@ class TestExecuteTool:
         """get_career_summary should work with empty DB."""
         result = await execute_tool("get_career_summary", {})
         assert isinstance(result, dict)
-        assert "profile" in result
+        assert "name" in result
         assert "skills" in result

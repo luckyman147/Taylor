@@ -2448,6 +2448,97 @@ class Database:
             await session.commit()
             return True
 
+    # ------------------------------------------------------------------
+    # RAG embedding helpers
+    # ------------------------------------------------------------------
+
+    async def get_unembedded_resumes(self) -> list[dict[str, Any]]:
+        """Return resumes with no embedding stored."""
+        from app.models import Resume as ResumeModel
+        async with self._session() as session:
+            result = await session.execute(
+                select(ResumeModel).where(ResumeModel.embedding.is_(None))
+            )
+            return [self._resume_to_dict(row) for row in result.scalars().all()]
+
+    async def get_unembedded_jobs(self) -> list[dict[str, Any]]:
+        """Return scraped jobs with no embedding stored."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(ScrapedJob).where(ScrapedJob.embedding.is_(None))
+            )
+            return [self._scraped_job_to_dict(row) for row in result.scalars().all()]
+
+    async def get_unembedded_memories(self) -> list[dict[str, Any]]:
+        """Return active chat memories with no embedding stored."""
+        from app.models import ChatMemory
+        async with self._session() as session:
+            result = await session.execute(
+                select(ChatMemory).where(
+                    ChatMemory.active == True,  # noqa: E712
+                    ChatMemory.embedding.is_(None),
+                )
+            )
+            return [self._chat_memory_to_dict(row) for row in result.scalars().all()]
+
+    async def get_unembedded_skills(self) -> list[dict[str, Any]]:
+        """Return career skills with no embedding stored."""
+        from app.models import CareerSkill
+        async with self._session() as session:
+            result = await session.execute(
+                select(CareerSkill).where(CareerSkill.embedding.is_(None))
+            )
+            return [self._career_skill_to_dict(row) for row in result.scalars().all()]
+
+    async def update_resume_embedding(self, resume_id: str, embedding_json: str) -> None:
+        """Store a JSON-serialized embedding vector on a resume."""
+        from app.models import Resume as ResumeModel
+        async with self._session() as session:
+            row = await session.get(ResumeModel, resume_id)
+            if row:
+                row.embedding = embedding_json
+                row.updated_at = _now()
+                await session.commit()
+
+    async def update_job_embedding(self, job_id: str, embedding_json: str) -> None:
+        """Store a JSON-serialized embedding vector on a scraped job."""
+        async with self._session() as session:
+            row = await session.get(ScrapedJob, job_id)
+            if row:
+                row.embedding = embedding_json
+                await session.commit()
+
+    async def update_memory_embedding(self, memory_id: str, embedding_json: str) -> None:
+        """Store a JSON-serialized embedding vector on a chat memory."""
+        from app.models import ChatMemory
+        async with self._session() as session:
+            row = await session.get(ChatMemory, memory_id)
+            if row:
+                row.embedding = embedding_json
+                await session.commit()
+
+    async def update_skill_embedding(self, skill_id: str, embedding_json: str) -> None:
+        """Store a JSON-serialized embedding vector on a career skill."""
+        from app.models import CareerSkill
+        async with self._session() as session:
+            row = await session.get(CareerSkill, skill_id)
+            if row:
+                row.embedding = embedding_json
+                row.updated_at = _now()
+                await session.commit()
+
+    async def get_stale_resumes(self) -> list[dict[str, Any]]:
+        """Return resumes where updated_at > embedded_at (content changed)."""
+        from app.models import Resume as ResumeModel
+        async with self._session() as session:
+            result = await session.execute(
+                select(ResumeModel).where(
+                    ResumeModel.embedding.isnot(None),
+                    ResumeModel.updated_at > ResumeModel.created_at,
+                )
+            )
+            return [self._resume_to_dict(row) for row in result.scalars().all()]
+
     async def career_data_fingerprint(self) -> str:
         """Fingerprint of every table feeding the career-memory bundle.
 

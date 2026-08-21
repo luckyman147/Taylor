@@ -65,6 +65,15 @@ async def lifespan(app: FastAPI):
     from app.config import migrate_legacy_keys
 
     migrate_legacy_keys()
+
+    # Build RAG index (embed any unembedded records)
+    if settings.rag_enabled:
+        try:
+            from app.services.rag import startup_index
+            await startup_index()
+        except Exception as e:
+            logger.warning("RAG startup indexing failed: %s", e)
+
     # PDF renderer uses lazy initialization - will initialize on first use
     # await init_pdf_renderer()
     yield

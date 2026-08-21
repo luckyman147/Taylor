@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -106,6 +107,14 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         description="Get a job quality verdict with ghost-job risk score.",
         params={
             "job_id": {"type": "str", "required": True, "max_len": 100},
+        },
+        write=False,
+    ),
+    "get_resume_for_audit": ToolSpec(
+        name="get_resume_for_audit",
+        description="Load a specific resume for ATS analysis. Pass 'master' for the master resume or a resume_id.",
+        params={
+            "resume_id": {"type": "str", "required": True, "max_len": 100},
         },
         write=False,
     ),
@@ -266,6 +275,8 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         elif name == "get_evidence":
             from app.services.chat_audit import get_evidence
             return await get_evidence(args["skill"])
+        elif name == "get_resume_for_audit":
+            return await _get_resume_for_audit(args["resume_id"])
         else:
             return {"error": f"Unknown read tool: {name}"}
     except Exception as e:
@@ -274,24 +285,33 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _get_career_summary() -> dict[str, Any]:
-    """Aggregate career summary from profile, skills, education, projects."""
+    """RAG-powered career summary — retrieves relevant chunks, not full dump."""
+    from app.services.rag import rag_index
     profile = await db.get_career_profile() or {}
     skills = await db.list_career_skills()
-    education = await db.list_career_education()
-    projects = await db.list_career_projects()
-    certifications = await db.list_career_certifications()
+
+    # Use RAG to retrieve relevant resume chunks
+    try:
+        results = await rag_index.query(
+            "career profile skills experience",
+            include_jobs=False,
+            include_memories=False,
+            top_k=5,
+            rerank=False,
+        )
+        resume_chunks = [c.text for c, _ in results.get("resumes", [])]
+        skill_chunks = [c.text for c, _ in results.get("skills", [])]
+    except Exception:
+        resume_chunks = []
+        skill_chunks = []
+
     return {
-        "profile": {
-            "name": profile.get("name"),
-            "title": profile.get("title"),
-            "summary": profile.get("summary"),
-            "career_goals": profile.get("career_goals", []),
-            "target_roles": profile.get("target_roles", []),
-        },
-        "skills": [{"name": s.get("name"), "category": s.get("category")} for s in skills],
-        "education": [{"institution": e.get("institution"), "degree": e.get("degree")} for e in education],
-        "projects": [{"name": p.get("name"), "description": p.get("description", [])} for p in projects],
-        "certifications": [{"name": c.get("name"), "issuer": c.get("issuer")} for c in certifications],
+        "name": profile.get("name"),
+        "title": profile.get("title"),
+        "skills": [s.get("name") for s in skills[:20]],
+        "target_roles": profile.get("target_roles", []),
+        "resume_highlights": resume_chunks[:3],
+        "skill_details": skill_chunks[:3],
     }
 
 
@@ -419,28 +439,52 @@ async def _get_companies() -> dict[str, Any]:
 
 
 async def _search_jobs(query: str, limit: int = 5) -> dict[str, Any]:
-    """Search stored scraped jobs by query."""
-    jobs = await db.list_scraped_jobs_for_analysis()
-    query_lower = query.lower()
-    matches = [
-        j for j in jobs
-        if query_lower in (j.get("title") or "").lower()
-        or query_lower in (j.get("company") or "").lower()
-        or query_lower in (j.get("description") or "").lower()
-    ]
-    return {
-        "total": len(matches),
-        "jobs": [
-            {
-                "job_id": j.get("job_id"),
-                "title": j.get("title"),
-                "company": j.get("company"),
-                "location": j.get("location"),
-                "relevance_score": j.get("relevance_score"),
-            }
-            for j in matches[:limit]
-        ],
-    }
+    """RAG-powered job search — hybrid vector + keyword search."""
+    from app.services.rag import rag_index
+    try:
+        results = await rag_index.query(
+            query,
+            include_resumes=False,
+            include_memories=False,
+            include_skills=False,
+            top_k=limit,
+            rerank=True,
+        )
+        jobs = results.get("jobs", [])
+        return {
+            "total": len(jobs),
+            "jobs": [
+                {
+                    "job_id": chunk.source_id,
+                    "title": chunk.metadata.get("title", ""),
+                    "company": chunk.metadata.get("company", ""),
+                    "score": round(score, 3),
+                }
+                for chunk, score in jobs
+            ],
+        }
+    except Exception:
+        # Fallback to keyword search
+        all_jobs = await db.list_scraped_jobs_for_analysis()
+        query_lower = query.lower()
+        matches = [
+            j for j in all_jobs
+            if query_lower in (j.get("title") or "").lower()
+            or query_lower in (j.get("company") or "").lower()
+            or query_lower in (j.get("description") or "").lower()
+        ]
+        return {
+            "total": len(matches),
+            "jobs": [
+                {
+                    "job_id": j.get("job_id"),
+                    "title": j.get("title"),
+                    "company": j.get("company"),
+                    "location": j.get("location"),
+                }
+                for j in matches[:limit]
+            ],
+        }
 
 
 async def _get_job_verdict(job_id: str) -> dict[str, Any]:
@@ -451,3 +495,35 @@ async def _get_job_verdict(job_id: str) -> dict[str, Any]:
     if not master_id:
         return {"error": "No master resume found"}
     return await analyze_job(job_id, master_id)
+
+
+async def _get_resume_for_audit(resume_id: str) -> dict[str, Any]:
+    """Load a specific resume for ATS analysis."""
+    if resume_id == "master":
+        resume = await db.get_master_resume()
+    else:
+        resume = await db.get_resume(resume_id)
+    if not resume:
+        return {"error": f"Resume not found: {resume_id}"}
+    processed = resume.get("processed_data") or {}
+    return {
+        "resume_id": resume.get("resume_id"),
+        "title": resume.get("title"),
+        "is_master": resume.get("is_master"),
+        "sections": {
+            "personalInfo": processed.get("personalInfo"),
+            "summary": processed.get("summary"),
+            "workExperience": [
+                {"company": w.get("company"), "title": w.get("title"), "bullets": len(w.get("description", []))}
+                for w in processed.get("workExperience", [])
+            ],
+            "education": [
+                {"institution": e.get("institution"), "degree": e.get("degree")}
+                for e in processed.get("education", [])
+            ],
+            "projects": [
+                {"name": p.get("name"), "bullets": len(p.get("description", []))}
+                for p in processed.get("personalProjects", [])
+            ],
+        },
+    }

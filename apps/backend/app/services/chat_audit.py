@@ -120,7 +120,8 @@ async def compute_resume_audit(resume_data: dict[str, Any]) -> dict[str, Any]:
 
     Returns structural subscores + market alignment + overall score.
     """
-    skills_coverage = _compute_skills_coverage(resume_data)
+    skills = await db.list_career_skills()
+    skills_coverage = _compute_skills_coverage(resume_data, skills)
     section_completeness = _compute_section_completeness(resume_data)
     quantification = _compute_quantification(resume_data)
     action_verbs = _compute_action_verbs(resume_data)
@@ -150,11 +151,19 @@ async def compute_resume_audit(resume_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _compute_skills_coverage(resume_data: dict[str, Any]) -> float:
+def _compute_skills_coverage(
+    resume_data: dict[str, Any],
+    skills: list[dict[str, Any]] | None = None,
+) -> float:
     """What fraction of career skills appear in the resume text."""
-    # This is a placeholder — actual career skills need DB access (async).
-    # The async wrapper calls this after fetching skills.
-    return 0.0  # computed in compute_resume_audit
+    if not skills:
+        return 0.0
+    resume_text = _extract_all_text(resume_data).lower()
+    found = sum(
+        1 for s in skills
+        if (s.get("name") or "").lower() in resume_text
+    )
+    return round((found / len(skills)) * 100, 1)
 
 
 async def _compute_market_alignment(resume_data: dict[str, Any]) -> float:
@@ -192,31 +201,46 @@ async def _compute_market_alignment(resume_data: dict[str, Any]) -> float:
 
 
 async def get_evidence(skill: str) -> dict[str, Any]:
-    """Get evidence counters for a skill: resume mentions + job dataset %."""
+    """RAG-powered evidence: resume mentions + job dataset % + best location."""
     try:
-        master = await db.get_master_resume()
-        if not master:
-            return {"resume_mentions": 0, "job_mention_pct": 0, "best_location": None}
+        from app.services.rag import rag_index
+        # Use RAG to find skill mentions in resume chunks
+        results = await rag_index.query(
+            skill,
+            include_memories=False,
+            include_skills=False,
+            top_k=5,
+            rerank=True,
+        )
+        resume_chunks = results.get("resumes", [])
+        job_chunks = results.get("jobs", [])
 
-        resume_text = _extract_all_text(master.get("processed_data") or master.get("content") or "")
-        mentions = _count_resume_mentions(resume_text, skill)
+        # Count mentions across retrieved resume chunks
+        mentions = sum(
+            _count_resume_mentions(chunk.text, skill)
+            for chunk, _ in resume_chunks
+        )
 
-        jobs = await db.list_scraped_jobs_for_analysis()
-        jobs_with_skill = 0
-        for job in jobs:
-            desc = (job.get("description") or "").lower()
-            if skill.lower() in desc:
-                jobs_with_skill += 1
-        pct = round((jobs_with_skill / len(jobs)) * 100, 1) if jobs else 0.0
+        # Job demand from retrieved chunks
+        total_jobs = len(job_chunks)
+        jobs_with_skill = sum(
+            1 for chunk, _ in job_chunks
+            if skill.lower() in chunk.text.lower()
+        )
+        pct = round((jobs_with_skill / total_jobs) * 100, 1) if total_jobs else 0.0
 
-        # Find best evidence location
-        best_location = _find_best_evidence(master.get("processed_data") or {}, skill)
+        # Best location from resume chunks
+        best_location = None
+        for chunk, _ in resume_chunks:
+            if skill.lower() in chunk.text.lower():
+                best_location = chunk.metadata.get("section")
+                break
 
         return {
             "resume_mentions": mentions,
             "job_mention_pct": pct,
             "best_location": best_location,
-            "total_jobs": len(jobs),
+            "total_jobs": total_jobs,
         }
     except Exception:
         logger.warning("Evidence computation failed for skill: %s", skill, exc_info=True)

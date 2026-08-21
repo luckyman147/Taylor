@@ -120,14 +120,16 @@ async def run_turn(
     messages = await db.list_chat_messages(thread_id, limit=50)
     memories = await db.list_active_chat_memories(limit=20)
     catalog_json = get_tool_catalog_json(mode=mode)
-    career_memory = _build_career_memory_snapshot()
+    tool_catalog_text = ", ".join(
+        f"{t['name']}{'(' + ', '.join(p for p, s in t['params'].items() if s.get('required')) + ')' if t['params'] else ''}"
+        for t in catalog_json
+    )
 
     # Phase 1: Plan
     planner_prompt = CHAT_PLANNER_PROMPT.format(
-        career_memory=career_memory,
         active_memories=_format_memories(memories),
         history=_format_history(messages),
-        tool_catalog=json.dumps(catalog_json, ensure_ascii=False),
+        tool_catalog=tool_catalog_text,
         output_language=output_language,
     )
 
@@ -173,12 +175,29 @@ async def run_turn(
             logger.warning("Tool %s failed: %s", tool_name, e)
             tool_results[tool_name] = {"error": str(e)}
 
+    # Phase 2.5: Retrieve RAG context for the answer
+    rag_context = ""
+    try:
+        from app.services.rag import rag_index
+        from app.services.rag import build_context_block
+        rag_results = await rag_index.query(
+            user_message,
+            top_k=3,
+            rerank=True,
+        )
+        # Convert to (Chunk, score) tuples for context builder
+        rag_input = {}
+        for source_type, items in rag_results.items():
+            rag_input[source_type] = items
+        rag_context = build_context_block(rag_input)
+    except Exception:
+        pass
+
     # Phase 3: Generate answer
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
-        plan_json=json.dumps(plan, ensure_ascii=False),
         tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str),
-        stats_json=json.dumps(stats, ensure_ascii=False) if stats else "(none)",
+        rag_context=rag_context,
         active_memories=_format_memories(memories),
         mode=mode,
         output_language=output_language,
@@ -285,10 +304,6 @@ async def _process_memory_candidates(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _build_career_memory_snapshot() -> str:
-    """Build a compact career memory snapshot for the planner."""
-    return "(career memory loaded from database at turn time)"
 
 
 def _is_stats_tool(tool_name: str) -> bool:

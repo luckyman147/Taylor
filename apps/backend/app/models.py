@@ -40,6 +40,7 @@ class Resume(Base):
     parent_id: Mapped[str | None] = mapped_column(String, nullable=True)
     processed_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     processing_status: Mapped[str] = mapped_column(String, default="pending")
+    embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_letter: Mapped[str | None] = mapped_column(Text, nullable=True)
     outreach_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     interview_prep: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -211,6 +212,7 @@ class ChatMemory(Base):
     statement: Mapped[str] = mapped_column(String, unique=True, index=True)
     source_thread_id: Mapped[str | None] = mapped_column(String, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
 
@@ -458,5 +460,6 @@ class ScrapedJob(Base):
     applied: Mapped[bool] = mapped_column(Boolean, default=False)
     applied_resume_id: Mapped[str | None] = mapped_column(String, nullable=True)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
