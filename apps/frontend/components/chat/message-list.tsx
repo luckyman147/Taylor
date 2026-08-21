@@ -20,6 +20,7 @@ export interface ChatMessage {
   followups?: string[];
   sources?: string[];
   modelInfo?: { provider: string; model: string } | null;
+  attachment?: { filename: string; resumeId: string } | null;
 }
 
 interface MessageListProps {
@@ -68,6 +69,7 @@ export function MessageList({
             memoryCandidates={msg.memoryCandidates}
             followups={msg.followups}
             modelInfo={msg.modelInfo}
+            attachment={msg.attachment}
             onConfirm={onConfirm}
             onCancel={onCancel}
             onDismissMemory={onDismissMemory}

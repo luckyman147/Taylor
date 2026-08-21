@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageCircle, Target, Briefcase, BarChart3 } from 'lucide-react';
+import { MessageCircle, Target, Briefcase, BarChart3, FileText, Eye } from 'lucide-react';
 import { MarkdownContent } from '@/components/common/markdown-content';
 import { ToolCards } from './tool-cards';
 import { ConfirmCard } from './confirm-card';
@@ -24,12 +24,13 @@ interface MessageCardProps {
   memoryCandidates?: MemoryCandidate[];
   followups?: string[];
   modelInfo?: { provider: string; model: string } | null;
+  attachment?: { filename: string; resumeId: string } | null;
   onConfirm?: (token: string) => void;
   onCancel?: (token: string) => void;
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
   onSelectResume?: (resumeId: string) => void;
-  onViewFile?: (filename: string, content: string) => void;
+  onViewFile?: (filename: string, resumeId: string) => void;
 }
 
 export function MessageCard({
@@ -42,6 +43,7 @@ export function MessageCard({
   memoryCandidates = [],
   followups = [],
   modelInfo,
+  attachment,
   onConfirm,
   onCancel,
   onDismissMemory,
@@ -54,8 +56,22 @@ export function MessageCard({
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[78%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-[15px] leading-relaxed text-white">
-          <span className="whitespace-pre-wrap">{content}</span>
+        <div className="max-w-[78%] space-y-1.5">
+          {attachment && (
+            <div className="flex items-center gap-2 rounded-2xl rounded-br-sm bg-primary/90 px-3 py-2">
+              <FileText className="h-4 w-4 shrink-0 text-white/80" />
+              <span className="truncate text-sm font-medium text-white">{attachment.filename}</span>
+              <button
+                onClick={() => onViewFile?.(attachment.filename, attachment.resumeId)}
+                className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+              >
+                <Eye className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-[15px] leading-relaxed text-white">
+            <span className="whitespace-pre-wrap">{content}</span>
+          </div>
         </div>
       </div>
     );

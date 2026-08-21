@@ -149,6 +149,7 @@ export default function ChatThreadRoute() {
 
       // Upload file first if attached
       let message = trimmed;
+      let attachment: { filename: string; resumeId: string } | null = null;
       if (selectedFile) {
         try {
           const { getUploadUrl } = await import('@/lib/api/client');
@@ -156,8 +157,11 @@ export default function ChatThreadRoute() {
           formData.append('file', selectedFile);
           const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
           if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+          const data = await res.json();
           setRefreshKey((k) => k + 1);
           const fileName = selectedFile.name;
+          const resumeId = data.resume_id;
+          attachment = { filename: fileName, resumeId };
           setSelectedFile(null);
           message = trimmed
             ? `I uploaded "${fileName}". ${trimmed}`
@@ -168,7 +172,7 @@ export default function ChatThreadRoute() {
         }
       }
 
-      const userMessage: ChatMessage = { role: 'user', content: message };
+      const userMessage: ChatMessage = { role: 'user', content: message, attachment };
       setMessages((prev) => [...prev, userMessage]);
       setInput('');
       setSending(true);
