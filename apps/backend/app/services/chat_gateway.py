@@ -86,12 +86,29 @@ async def classify_intent(user_message: str) -> GatewayDecision:
     if not _AUDIT_KEYWORDS.search(msg):
         return GatewayDecision(intent="general")
 
-    # Audit intent detected — always use master resume
-    master = await db.get_master_resume()
-    if not master:
+    # Audit intent detected — check available resumes
+    resumes = await db.list_resumes()
+    if not resumes:
         return GatewayDecision(intent="resume_audit")
 
+    if len(resumes) == 1:
+        # Only one resume — auto-select it
+        return GatewayDecision(
+            intent="resume_audit",
+            resume_id=resumes[0].get("resume_id"),
+        )
+
+    # Multiple resumes — show selection card
     return GatewayDecision(
         intent="resume_audit",
-        resume_id=master.get("resume_id"),
+        needs_selection=True,
+        resumes=[
+            {
+                "resume_id": r.get("resume_id"),
+                "title": r.get("title") or r.get("filename") or "Untitled",
+                "is_master": r.get("is_master", False),
+                "has_data": bool(r.get("processed_data")),
+            }
+            for r in resumes
+        ],
     )

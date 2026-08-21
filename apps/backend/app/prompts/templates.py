@@ -1100,7 +1100,7 @@ RULES:
 4. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
 5. If no tool is needed, set tool_calls=[].
 6. Never fabricate data. Only use tools that exist in the catalog.
-7. For resume audits: call get_ats_audit() with resume_id='master'. The gateway handles resume selection.
+7. For resume audits: the gateway handles resume selection. Do not call get_ats_audit directly.
 
 Return JSON only (no markdown fences):"""
 
@@ -1152,7 +1152,7 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
     "recruiter": {
         "system": "You are Taylor's career strategist. You help users manage applications, "
         "track outreach, and prepare for interviews. Be concise and actionable. "
-        "When the user asks for an ATS audit, call get_ats_audit() with resume_id='master'.",
+        "When the user asks for an ATS audit, the gateway handles resume selection.",
         "allowlist": [
             "get_ats_audit",
             "get_evidence",
@@ -1165,8 +1165,7 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
         "system": "You are Taylor's resume analyst. You provide data-driven "
         "analysis of the user's resume structure, content, and market "
         "alignment. Always back up observations with concrete evidence "
-        "from the career data. When the user asks for an audit, call "
-        "get_ats_audit() with resume_id='master'.",
+        "from the career data. When the user asks for an audit, the gateway handles resume selection.",
         "allowlist": [
             "get_ats_audit",
             "get_evidence",
