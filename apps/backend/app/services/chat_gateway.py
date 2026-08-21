@@ -91,23 +91,28 @@ async def classify_intent(user_message: str) -> GatewayDecision:
     if not _AUDIT_KEYWORDS.search(msg):
         return GatewayDecision(intent="general")
 
-    # Audit intent detected — fetch master resume, fallback to most recent
-    master = await db.get_master_resume()
-    if master:
-        logger.info("Gateway: using master resume_id=%s", master.get("resume_id"))
-        return GatewayDecision(
-            intent="resume_audit",
-            resume_id=master.get("resume_id"),
-        )
-
-    # No master — fallback to most recent resume
+    # Audit intent detected — check available resumes
     resumes = await db.list_resumes()
-    if resumes:
-        logger.info("Gateway: no master, using most recent resume_id=%s", resumes[-1].get("resume_id"))
+    if not resumes:
+        return GatewayDecision(intent="resume_audit")
+
+    if len(resumes) == 1:
         return GatewayDecision(
             intent="resume_audit",
-            resume_id=resumes[-1].get("resume_id"),
+            resume_id=resumes[0].get("resume_id"),
         )
 
-    logger.warning("Gateway: audit intent but no resumes found")
-    return GatewayDecision(intent="resume_audit")
+    # Multiple resumes — show selection card, skip planner
+    return GatewayDecision(
+        intent="resume_audit",
+        needs_selection=True,
+        resumes=[
+            {
+                "resume_id": r.get("resume_id"),
+                "title": r.get("title") or r.get("filename") or "Untitled",
+                "is_master": r.get("is_master", False),
+                "has_data": bool(r.get("processed_data")),
+            }
+            for r in resumes
+        ],
+    )
