@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, Loader2, Sparkles } from 'lucide-react';
+import { Send, Loader2, Sparkles, Upload } from 'lucide-react';
 import SidebarNav from '@/components/common/SidebarNav';
 import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
@@ -192,6 +192,30 @@ export default function ChatRoute() {
     [send],
   );
 
+  const handleSelectResume = useCallback(
+    (resumeId: string) => {
+      void send(`audit resume ${resumeId}`);
+    },
+    [send],
+  );
+
+  const handleUploadResume = useCallback(
+    async (file: File) => {
+      try {
+        const { getUploadUrl } = await import('@/lib/api/client');
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
+        if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+        setRefreshKey((k) => k + 1);
+        void send(`I just uploaded a new resume: ${file.name}. List my resumes.`);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Upload failed');
+      }
+    },
+    [send],
+  );
+
   const isEmpty = messages.length === 0;
 
   return (
@@ -242,6 +266,7 @@ export default function ChatRoute() {
                 onCancel={handleCancel}
                 onDismissMemory={handleDismissMemory}
                 onFollowup={handleFollowup}
+                onSelectResume={handleSelectResume}
               />
             )}
 
@@ -263,6 +288,19 @@ export default function ChatRoute() {
 
               {/* Input pill */}
               <div className="flex items-end rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
+                <label className="flex h-9 w-9 shrink-0 items-center justify-center m-2 cursor-pointer rounded-full text-ink-muted transition-colors hover:bg-[#e6e3dc] hover:text-ink-soft">
+                  <Upload className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.md,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleUploadResume(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
                 <textarea
                   ref={textareaRef}
                   rows={1}

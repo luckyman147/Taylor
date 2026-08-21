@@ -41,7 +41,15 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "get_ats_audit": ToolSpec(
         name="get_ats_audit",
-        description="Run a deterministic resume audit with structural scores.",
+        description="Run a deterministic resume audit with structural scores. Pass resume_id to audit a specific resume, or omit to see available resumes.",
+        params={
+            "resume_id": {"type": "str", "required": False, "max_len": 100},
+        },
+        write=False,
+    ),
+    "list_resumes": ToolSpec(
+        name="list_resumes",
+        description="List all uploaded resumes with their IDs, titles, and master status.",
         params={},
         write=False,
     ),
@@ -251,7 +259,9 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         if name == "get_career_summary":
             return await _get_career_summary()
         elif name == "get_ats_audit":
-            return await _get_ats_audit()
+            return await _get_ats_audit(args.get("resume_id"))
+        elif name == "list_resumes":
+            return await _list_resumes()
         elif name == "get_funnel_stats":
             return await _get_funnel_stats()
         elif name == "get_skill_roi":
@@ -315,16 +325,76 @@ async def _get_career_summary() -> dict[str, Any]:
     }
 
 
-async def _get_ats_audit() -> dict[str, Any]:
-    """Run deterministic resume audit."""
+async def _get_ats_audit(resume_id: str | None = None) -> dict[str, Any]:
+    """Run deterministic resume audit. If no resume_id, return available resumes for selection."""
     from app.services.chat_audit import compute_resume_audit
+
+    if resume_id:
+        # Audit specific resume
+        if resume_id == "master":
+            resume = await db.get_master_resume()
+        else:
+            resume = await db.get_resume(resume_id)
+        if not resume:
+            return {"error": f"Resume not found: {resume_id}"}
+        resume_data = resume.get("processed_data") or {}
+        if not resume_data:
+            return {"error": f"Resume has no processed data: {resume_id}"}
+        result = await compute_resume_audit(resume_data)
+        result["resume_id"] = resume.get("resume_id")
+        result["resume_title"] = resume.get("title") or resume.get("filename") or "Untitled"
+        return result
+
+    # No resume_id — return list for user to pick
+    resumes = await db.list_resumes()
     master = await db.get_master_resume()
-    if not master:
-        return {"error": "No master resume found"}
-    resume_data = master.get("processed_data") or {}
-    if not resume_data:
-        return {"error": "Master resume has no processed data"}
-    return await compute_resume_audit(resume_data)
+    if not resumes:
+        return {"error": "No resumes found. Upload a resume first."}
+    if len(resumes) == 1:
+        # Only one resume — audit it directly
+        resume_data = resumes[0].get("processed_data") or {}
+        if resume_data:
+            result = await compute_resume_audit(resume_data)
+            result["resume_id"] = resumes[0].get("resume_id")
+            result["resume_title"] = resumes[0].get("title") or resumes[0].get("filename") or "Untitled"
+            return result
+        return {"error": "Resume has no processed data"}
+
+    # Multiple resumes — present selection
+    return {
+        "needs_selection": True,
+        "prompt": "Which resume would you like to audit?",
+        "resumes": [
+            {
+                "resume_id": r.get("resume_id"),
+                "title": r.get("title") or r.get("filename") or "Untitled",
+                "is_master": r.get("is_master", False),
+                "has_data": bool(r.get("processed_data")),
+            }
+            for r in resumes
+        ],
+    }
+
+
+async def _list_resumes() -> dict[str, Any]:
+    """List all uploaded resumes."""
+    resumes = await db.list_resumes()
+    master = await db.get_master_resume()
+    master_id = master.get("resume_id") if master else None
+    return {
+        "total": len(resumes),
+        "master_id": master_id,
+        "resumes": [
+            {
+                "resume_id": r.get("resume_id"),
+                "title": r.get("title") or r.get("filename") or "Untitled",
+                "is_master": r.get("is_master", False),
+                "has_data": bool(r.get("processed_data")),
+                "created_at": r.get("created_at"),
+            }
+            for r in resumes
+        ],
+    }
 
 
 async def _get_funnel_stats() -> dict[str, Any]:

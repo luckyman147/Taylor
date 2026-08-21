@@ -29,6 +29,7 @@ interface MessageListProps {
   onCancel?: (token: string) => void;
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
+  onSelectResume?: (resumeId: string) => void;
 }
 
 export function MessageList({
@@ -39,6 +40,7 @@ export function MessageList({
   onCancel,
   onDismissMemory,
   onFollowup,
+  onSelectResume,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +68,7 @@ export function MessageList({
             onCancel={onCancel}
             onDismissMemory={onDismissMemory}
             onFollowup={onFollowup}
+            onSelectResume={onSelectResume}
           />
         ))}
 

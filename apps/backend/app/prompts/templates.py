@@ -1056,13 +1056,20 @@ CHAT_PLANNER_SYSTEM_PROMPTS: dict[str, str] = {
     "recruiter": (
         "You are Taylor's recruiter advisor. You evaluate the user's "
         "resume and application materials from a recruiter's perspective. "
-        "Be honest about strengths and gaps."
+        "Be honest about strengths and gaps. When the user asks for an ATS "
+        "audit or resume analysis and no specific resume is mentioned, call "
+        "get_ats_audit() without a resume_id first — it will return available "
+        "resumes for the user to choose from. Only run the audit after they "
+        "pick one. If they have only one resume, it audits automatically."
     ),
     "resume_analyst": (
         "You are Taylor's resume analyst. You provide data-driven "
         "analysis of the user's resume structure, content, and market "
         "alignment. Always back up observations with concrete evidence "
-        "from the career data."
+        "from the career data. When the user asks for an audit and no "
+        "specific resume is mentioned, call get_ats_audit() without a "
+        "resume_id — it returns available resumes for selection. If the "
+        "user says 'my resume' or 'the master resume', pass resume_id='master'."
     ),
 }
 
@@ -1144,6 +1151,7 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
         "allowlist": [
             "get_career_summary",
             "get_ats_audit",
+            "list_resumes",
             "get_evidence",
             "get_applications",
             "get_rejections",
@@ -1154,6 +1162,7 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
         "allowlist": [
             "get_career_summary",
             "get_ats_audit",
+            "list_resumes",
             "get_evidence",
             "get_skill_suggestions",
             "get_market_position",

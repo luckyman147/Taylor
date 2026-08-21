@@ -27,6 +27,7 @@ interface MessageCardProps {
   onCancel?: (token: string) => void;
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
+  onSelectResume?: (resumeId: string) => void;
 }
 
 export function MessageCard({
@@ -42,6 +43,7 @@ export function MessageCard({
   onCancel,
   onDismissMemory,
   onFollowup,
+  onSelectResume,
 }: MessageCardProps) {
   const isUser = role === 'user';
 
@@ -81,7 +83,7 @@ export function MessageCard({
 
         {/* Tool result cards */}
         {cards.length > 0 && (
-          <ToolCards cards={cards} />
+          <ToolCards cards={cards} onSelectResume={onSelectResume} />
         )}
 
         {/* Pending action confirmation */}
