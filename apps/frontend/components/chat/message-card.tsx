@@ -1,16 +1,17 @@
 'use client';
 
+import { MessageCircle, Target, Briefcase, BarChart3 } from 'lucide-react';
 import { MarkdownContent } from '@/components/common/markdown-content';
 import { ToolCards } from './tool-cards';
 import { ConfirmCard } from './confirm-card';
 import { MemoryCard } from './memory-card';
 import type { ToolCard, Action, PendingAction, MemoryCandidate } from '@/lib/api/chat';
 
-const MODE_LABELS: Record<string, string> = {
-  ask: '💬 Ask',
-  coach: '🎯 Coach',
-  recruiter: '👔 Recruiter',
-  resume_analyst: '📊 Resume',
+const MODE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
+  ask: { icon: MessageCircle, label: 'Ask' },
+  coach: { icon: Target, label: 'Coach' },
+  recruiter: { icon: Briefcase, label: 'Recruiter' },
+  resume_analyst: { icon: BarChart3, label: 'Resume' },
 };
 
 interface MessageCardProps {
@@ -60,9 +61,14 @@ export function MessageCard({
       <div className="w-full max-w-3xl space-y-3">
         {/* Header: mode icon + label */}
         <div className="flex items-center gap-2">
-          <span className="text-sm">{MODE_LABELS[mode]?.split(' ')[0] || '💬'}</span>
+          {(() => {
+            const config = MODE_CONFIG[mode];
+            if (!config) return null;
+            const Icon = config.icon;
+            return <Icon className="h-4 w-4 text-primary" />;
+          })()}
           <span className="text-xs font-semibold text-ink-soft">
-            Taylor · {MODE_LABELS[mode]?.split(' ')[1] || mode}
+            Taylor · {MODE_CONFIG[mode]?.label || mode}
           </span>
         </div>
 

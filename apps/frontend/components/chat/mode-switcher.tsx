@@ -1,5 +1,6 @@
 'use client';
 
+import { MessageCircle, Target, Briefcase, BarChart3 } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -10,10 +11,10 @@ interface ModeSwitcherProps {
 }
 
 const MODES = [
-  { id: 'ask', icon: '💬', labelKey: 'chat.mode.ask' },
-  { id: 'coach', icon: '🎯', labelKey: 'chat.mode.coach' },
-  { id: 'recruiter', icon: '👔', labelKey: 'chat.mode.recruiter' },
-  { id: 'resume_analyst', icon: '📊', labelKey: 'chat.mode.resumeAnalyst' },
+  { id: 'ask', icon: MessageCircle, labelKey: 'chat.mode.ask' },
+  { id: 'coach', icon: Target, labelKey: 'chat.mode.coach' },
+  { id: 'recruiter', icon: Briefcase, labelKey: 'chat.mode.recruiter' },
+  { id: 'resume_analyst', icon: BarChart3, labelKey: 'chat.mode.resumeAnalyst' },
 ];
 
 export function ModeSwitcher({
@@ -39,7 +40,7 @@ export function ModeSwitcher({
           )}
           title={t(mode.labelKey)}
         >
-          <span className="text-sm">{mode.icon}</span>
+          <mode.icon className="h-3.5 w-3.5" />
           <span>{t(mode.labelKey)}</span>
         </button>
       ))}
