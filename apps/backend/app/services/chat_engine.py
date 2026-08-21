@@ -160,6 +160,7 @@ async def run_turn(
     gateway_context = ""
     if gateway.resume_id:
         gateway_context = f"\n[GATEWAY: User wants to audit resume_id={gateway.resume_id}. Call get_ats_audit with resume_id='{gateway.resume_id}'.]"
+        logger.info("Gateway context injected: resume_id=%s", gateway.resume_id)
 
     # --- End gateway ---
 

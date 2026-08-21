@@ -6,10 +6,13 @@ Returns a routing decision that the orchestrator uses to skip or augment the pla
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 from app.database import db
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -76,22 +79,35 @@ async def classify_intent(user_message: str) -> GatewayDecision:
     # Check for explicit resume ID in message
     id_match = _RESUME_ID_PATTERN.search(msg)
     if id_match:
+        logger.info("Gateway: explicit resume_id=%s", id_match.group(1))
         return GatewayDecision(intent="resume_audit", resume_id=id_match.group(1))
 
     # Check for master resume reference
     if _MASTER_PATTERN.search(msg):
+        logger.info("Gateway: master resume reference detected")
         return GatewayDecision(intent="resume_audit", resume_id="master")
 
     # Check if this is a resume audit intent
     if not _AUDIT_KEYWORDS.search(msg):
         return GatewayDecision(intent="general")
 
-    # Audit intent detected — always use master resume
+    # Audit intent detected — fetch master resume, fallback to most recent
     master = await db.get_master_resume()
-    if not master:
-        return GatewayDecision(intent="resume_audit")
+    if master:
+        logger.info("Gateway: using master resume_id=%s", master.get("resume_id"))
+        return GatewayDecision(
+            intent="resume_audit",
+            resume_id=master.get("resume_id"),
+        )
 
-    return GatewayDecision(
-        intent="resume_audit",
-        resume_id=master.get("resume_id"),
-    )
+    # No master — fallback to most recent resume
+    resumes = await db.list_resumes()
+    if resumes:
+        logger.info("Gateway: no master, using most recent resume_id=%s", resumes[-1].get("resume_id"))
+        return GatewayDecision(
+            intent="resume_audit",
+            resume_id=resumes[-1].get("resume_id"),
+        )
+
+    logger.warning("Gateway: audit intent but no resumes found")
+    return GatewayDecision(intent="resume_audit")
