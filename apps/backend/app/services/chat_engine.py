@@ -158,9 +158,17 @@ async def run_turn(
 
     # If gateway determined a specific resume, inject it into context
     gateway_context = ""
+    gateway_resume_filename = ""
     if gateway.resume_id:
         gateway_context = f"\n[GATEWAY: User wants to audit resume_id={gateway.resume_id}. Call get_ats_audit with resume_id='{gateway.resume_id}'.]"
         logger.info("Gateway context injected: resume_id=%s", gateway.resume_id)
+        # Fetch resume for filename
+        try:
+            _resume = await db.get_resume(gateway.resume_id)
+            if _resume:
+                gateway_resume_filename = _resume.get("title") or _resume.get("filename") or "Resume"
+        except Exception:
+            gateway_resume_filename = "Resume"
 
     # --- End gateway ---
 
@@ -249,10 +257,11 @@ async def run_turn(
     # Phase 3: Generate answer
     # Build compact career data for the answer prompt
     career_data = await _build_career_context()
+    resume_context = f"\nRESUME BEING ANALYZED: {gateway_resume_filename} (id={gateway.resume_id})" if gateway.resume_id else ""
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
         career_data=career_data,
-        tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str),
+        tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context,
         rag_context=rag_context,
         active_memories=_format_memories(memories),
         mode=mode,
@@ -268,8 +277,11 @@ async def run_turn(
     await db.add_chat_message(thread_id, "user", user_message)
 
     # Build envelope for assistant message
+    cards = _build_cards(tool_results, stats)
+    if gateway.resume_id:
+        cards.insert(0, {"kind": "file", "data": {"filename": gateway_resume_filename, "resume_id": gateway.resume_id}})
     envelope = {
-        "cards": _build_cards(tool_results, stats),
+        "cards": cards,
         "actions": _build_actions(tool_results),
         "stats": stats,
         "pending_action": pending_action,
