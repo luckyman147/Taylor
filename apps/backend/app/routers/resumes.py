@@ -852,6 +852,39 @@ async def list_resumes(include_master: bool = Query(False)) -> ResumeListRespons
     return ResumeListResponse(request_id=str(uuid4()), data=summaries)
 
 
+@router.get("/{resume_id}/content")
+async def get_resume_content(resume_id: str) -> dict:
+    """Get resume raw markdown content for viewing."""
+    resume = await db.get_resume(resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    content = resume.get("original_markdown") or ""
+    if not content:
+        # Fallback to processed_data as text
+        data = resume.get("processed_data") or {}
+        parts = []
+        if pi := data.get("personalInfo"):
+            for v in pi.values():
+                if isinstance(v, str):
+                    parts.append(v)
+        if summary := data.get("summary"):
+            parts.append(summary)
+        for section in data.get("workExperience", []):
+            parts.append(section.get("company", ""))
+            parts.append(section.get("title", ""))
+            for d in section.get("description", []):
+                if isinstance(d, str):
+                    parts.append(d)
+        content = "\n".join(parts)
+
+    return {
+        "resume_id": resume_id,
+        "filename": resume.get("filename") or resume.get("title") or "Untitled",
+        "content": content,
+    }
+
+
 @router.post("/improve/preview", response_model=ImproveResumeResponse)
 async def improve_resume_preview_endpoint(
     request: ImproveResumeRequest,

@@ -7,6 +7,7 @@ import SidebarNav from '@/components/common/SidebarNav';
 import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
 import { ModeSwitcher } from '@/components/chat/mode-switcher';
+import { FileViewerDialog } from '@/components/chat/file-viewer-dialog';
 import { useTranslations } from '@/lib/i18n';
 import {
   createThread,
@@ -42,6 +43,7 @@ export default function ChatThreadRoute() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [fileViewer, setFileViewer] = useState<{ filename: string; content: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load threads and find active one
@@ -231,6 +233,19 @@ export default function ChatThreadRoute() {
     [send],
   );
 
+  const handleViewFile = useCallback(
+    async (filename: string, resumeId: string) => {
+      try {
+        const { getResumeContent } = await import('@/lib/api/chat');
+        const data = await getResumeContent(resumeId);
+        setFileViewer({ filename: data.filename, content: data.content });
+      } catch {
+        setFileViewer({ filename, content: '(Failed to load file content)' });
+      }
+    },
+    [],
+  );
+
   const handleUploadResume = useCallback(
     async (file: File, notes?: string) => {
       try {
@@ -306,6 +321,7 @@ export default function ChatThreadRoute() {
                 onDismissMemory={handleDismissMemory}
                 onFollowup={handleFollowup}
                 onSelectResume={handleSelectResume}
+                onViewFile={handleViewFile}
               />
             )}
 
@@ -406,6 +422,14 @@ export default function ChatThreadRoute() {
           </div>
         </div>
       </main>
+
+      {/* File viewer dialog */}
+      <FileViewerDialog
+        isOpen={!!fileViewer}
+        onClose={() => setFileViewer(null)}
+        filename={fileViewer?.filename || ''}
+        content={fileViewer?.content || ''}
+      />
     </div>
   );
 }

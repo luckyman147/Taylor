@@ -136,6 +136,19 @@ export async function deleteThread(threadId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Resume content
+// ---------------------------------------------------------------------------
+
+export async function getResumeContent(
+  resumeId: string,
+): Promise<{ resume_id: string; filename: string; content: string }> {
+  const res = await apiFetch(`/resumes/${resumeId}/content`, {
+    credentials: 'include',
+  });
+  return asJson(res, 'Failed to load resume content');
+}
+
+// ---------------------------------------------------------------------------
 // Thread messages
 // ---------------------------------------------------------------------------
 

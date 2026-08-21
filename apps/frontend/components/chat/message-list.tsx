@@ -30,6 +30,7 @@ interface MessageListProps {
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
   onSelectResume?: (resumeId: string) => void;
+  onViewFile?: (filename: string, content: string) => void;
 }
 
 export function MessageList({
@@ -41,6 +42,7 @@ export function MessageList({
   onDismissMemory,
   onFollowup,
   onSelectResume,
+  onViewFile,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +71,7 @@ export function MessageList({
             onDismissMemory={onDismissMemory}
             onFollowup={onFollowup}
             onSelectResume={onSelectResume}
+            onViewFile={onViewFile}
           />
         ))}
 

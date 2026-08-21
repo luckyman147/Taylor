@@ -5,7 +5,8 @@ import type { ToolCard } from '@/lib/api/chat';
 
 interface ToolCardsProps {
   cards: ToolCard[];
-  onSelectResume?: (resumeId: string) => void;
+  onSelectResume?: (id: string) => void;
+  onViewFile?: (filename: string, content: string) => void;
 }
 
 function formatCardTitle(kind: string): string {
@@ -120,14 +121,14 @@ function GenericCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function CardBody({ kind, data, onSelectResume }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void }) {
+function CardBody({ kind, data, onSelectResume, onViewFile }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, content: string) => void }) {
   // Resume selection card (needs_selection from get_ats_audit)
   if (data.needs_selection) return <ResumeSelectionCard data={data} onSelect={onSelectResume} />;
   if (kind === 'info') return <CareerSummaryCard data={data} />;
   return <GenericCard data={data} />;
 }
 
-export function ToolCards({ cards, onSelectResume }: ToolCardsProps) {
+export function ToolCards({ cards, onSelectResume, onViewFile }: ToolCardsProps) {
   if (cards.length === 0) return null;
 
   return (
@@ -140,7 +141,7 @@ export function ToolCards({ cards, onSelectResume }: ToolCardsProps) {
           <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
             {formatCardTitle(card.kind)}
           </div>
-          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} />
+          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} onViewFile={onViewFile} />
         </div>
       ))}
     </div>
