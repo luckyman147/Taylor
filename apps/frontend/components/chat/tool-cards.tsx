@@ -19,7 +19,7 @@ function formatCardTitle(kind: string): string {
 
 function CareerSummaryCard({ data }: { data: Record<string, unknown> }) {
   const profile = (data.profile || {}) as Record<string, string>;
-  const skills = (data.skills || []) as { name: string; category: string }[];
+  const skills = (data.skills || []) as (string | { name: string; category: string })[];
   const education = (data.education || []) as { institution: string; degree: string }[];
   const projects = (data.projects || []) as { name: string; description: string[] }[];
 
@@ -34,7 +34,7 @@ function CareerSummaryCard({ data }: { data: Record<string, unknown> }) {
       {skills.length > 0 && (
         <div>
           <span className="font-medium">Skills:</span>{' '}
-          <span className="text-ink-soft">{skills.slice(0, 6).map((s) => s.name).join(', ')}</span>
+          <span className="text-ink-soft">{skills.slice(0, 6).map((s) => typeof s === 'string' ? s : s.name).join(', ')}</span>
           {skills.length > 6 && <span className="text-ink-muted"> +{skills.length - 6} more</span>}
         </div>
       )}
