@@ -14,7 +14,7 @@ from typing import Any
 
 from app.config_cache import get_content_language
 from app.database import db
-from app.llm import complete, complete_json
+from app.llm import complete, complete_json, get_llm_config, get_model_name
 from app.prompts import (
     CHAT_ANSWER_PROMPT,
     CHAT_PLANNER_PROMPT,
@@ -285,6 +285,13 @@ async def run_turn(
         memory_candidates, thread_id
     )
 
+    # Include model info
+    config = get_llm_config()
+    model_info = {
+        "provider": config.provider,
+        "model": config.model,
+    }
+
     return {
         "assistant_content": assistant_content,
         "cards": envelope["cards"],
@@ -294,6 +301,7 @@ async def run_turn(
         "memory_candidates": saved_memories,
         "followups": followups,
         "sources": envelope["sources"],
+        "model_info": model_info,
     }
 
 

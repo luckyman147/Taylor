@@ -1,24 +1,45 @@
 'use client';
 
-import { FileText, Check } from 'lucide-react';
+import { FileText, FileCode, File, Eye, Check } from 'lucide-react';
 import type { ToolCard } from '@/lib/api/chat';
 
 interface ToolCardsProps {
   cards: ToolCard[];
   onSelectResume?: (id: string) => void;
-  onViewFile?: (filename: string, content: string) => void;
+  onViewFile?: (filename: string, resumeId: string) => void;
 }
 
 function formatCardTitle(kind: string): string {
   const titles: Record<string, string> = {
     audit: 'Resume Audit',
     resume_selection: 'Select Resume',
+    file: 'Resume',
     stats: 'Career Stats',
     evidence: 'Skill Evidence',
     job: 'Job Match',
     info: 'Career Summary',
   };
   return titles[kind] || 'Data';
+}
+
+const EXT_ICONS: Record<string, typeof FileText> = {
+  pdf: FileText,
+  doc: FileCode,
+  docx: FileCode,
+  md: FileText,
+  txt: File,
+};
+
+const EXT_COLORS: Record<string, string> = {
+  pdf: 'text-red-500 bg-red-50',
+  doc: 'text-blue-500 bg-blue-50',
+  docx: 'text-blue-500 bg-blue-50',
+  md: 'text-gray-600 bg-gray-50',
+  txt: 'text-gray-500 bg-gray-50',
+};
+
+function getExtension(filename: string): string {
+  return filename.split('.').pop()?.toLowerCase() || '';
 }
 
 function ResumeSelectionCard({ data, onSelect }: { data: Record<string, unknown>; onSelect?: (id: string) => void }) {
@@ -47,6 +68,35 @@ function ResumeSelectionCard({ data, onSelect }: { data: Record<string, unknown>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function FileCard({ data, onView }: { data: Record<string, unknown>; onView?: (filename: string, resumeId: string) => void }) {
+  const filename = (data.filename as string) || (data.title as string) || 'Resume';
+  const resumeId = data.resume_id as string;
+  const ext = getExtension(filename);
+  const Icon = EXT_ICONS[ext] || File;
+  const colorClass = EXT_COLORS[ext] || 'text-gray-500 bg-gray-50';
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colorClass}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-ink">{filename}</div>
+        <div className="text-xs text-ink-muted">{ext.toUpperCase()} document</div>
+      </div>
+      {resumeId && onView && (
+        <button
+          onClick={() => onView(filename, resumeId)}
+          className="flex items-center gap-1.5 rounded-lg border border-[#e6e3dc] bg-white px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:bg-[#f0ece4]"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </button>
+      )}
     </div>
   );
 }
@@ -121,9 +171,9 @@ function GenericCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function CardBody({ kind, data, onSelectResume, onViewFile }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, content: string) => void }) {
-  // Resume selection card (needs_selection from get_ats_audit)
+function CardBody({ kind, data, onSelectResume, onViewFile }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, resumeId: string) => void }) {
   if (data.needs_selection) return <ResumeSelectionCard data={data} onSelect={onSelectResume} />;
+  if (kind === 'file') return <FileCard data={data} onView={onViewFile} />;
   if (kind === 'info') return <CareerSummaryCard data={data} />;
   return <GenericCard data={data} />;
 }

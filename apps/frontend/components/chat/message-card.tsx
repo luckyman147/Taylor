@@ -23,6 +23,7 @@ interface MessageCardProps {
   pendingAction?: PendingAction | null;
   memoryCandidates?: MemoryCandidate[];
   followups?: string[];
+  modelInfo?: { provider: string; model: string } | null;
   onConfirm?: (token: string) => void;
   onCancel?: (token: string) => void;
   onDismissMemory?: (statement: string) => void;
@@ -40,6 +41,7 @@ export function MessageCard({
   pendingAction,
   memoryCandidates = [],
   followups = [],
+  modelInfo,
   onConfirm,
   onCancel,
   onDismissMemory,
@@ -132,6 +134,14 @@ export function MessageCard({
                 {action.label}
               </a>
             ))}
+          </div>
+        )}
+
+        {/* Model provider badge */}
+        {modelInfo && (
+          <div className="flex items-center gap-1.5 text-[10px] text-ink-muted">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            {modelInfo.provider} · {modelInfo.model}
           </div>
         )}
       </div>

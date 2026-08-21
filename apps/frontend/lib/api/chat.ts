@@ -43,6 +43,7 @@ export interface TurnResponse {
   memory_candidates: MemoryCandidate[];
   followups: string[];
   sources: string[];
+  model_info: { provider: string; model: string } | null;
 }
 
 export interface ToolCard {

@@ -19,6 +19,7 @@ export interface ChatMessage {
   memoryCandidates?: MemoryCandidate[];
   followups?: string[];
   sources?: string[];
+  modelInfo?: { provider: string; model: string } | null;
 }
 
 interface MessageListProps {
@@ -66,6 +67,7 @@ export function MessageList({
             pendingAction={msg.pendingAction}
             memoryCandidates={msg.memoryCandidates}
             followups={msg.followups}
+            modelInfo={msg.modelInfo}
             onConfirm={onConfirm}
             onCancel={onCancel}
             onDismissMemory={onDismissMemory}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Send, Loader2, Sparkles, Upload } from 'lucide-react';
+import { Send, Loader2, Sparkles, Upload, FileText } from 'lucide-react';
 import SidebarNav from '@/components/common/SidebarNav';
 import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
@@ -38,7 +38,6 @@ export default function ChatThreadRoute() {
   const [activeThread, setActiveThread] = useState<ThreadSummary | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [uploadNotes, setUploadNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,13 +124,14 @@ export default function ChatThreadRoute() {
       memoryCandidates: resp.memory_candidates,
       followups: resp.followups,
       sources: resp.sources,
+      modelInfo: resp.model_info,
     };
   }, []);
 
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || sending) return;
+      if ((!trimmed && !selectedFile) || sending) return;
 
       let currentThreadId = threadId;
       if (!currentThreadId) {
@@ -147,14 +147,35 @@ export default function ChatThreadRoute() {
         }
       }
 
-      const userMessage: ChatMessage = { role: 'user', content: trimmed };
+      // Upload file first if attached
+      let message = trimmed;
+      if (selectedFile) {
+        try {
+          const { getUploadUrl } = await import('@/lib/api/client');
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
+          if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+          setRefreshKey((k) => k + 1);
+          const fileName = selectedFile.name;
+          setSelectedFile(null);
+          message = trimmed
+            ? `I uploaded "${fileName}". ${trimmed}`
+            : `I uploaded "${fileName}". Analyze it.`;
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Upload failed');
+          return;
+        }
+      }
+
+      const userMessage: ChatMessage = { role: 'user', content: message };
       setMessages((prev) => [...prev, userMessage]);
       setInput('');
       setSending(true);
       setError(null);
 
       try {
-        const resp = await sendTurn(currentThreadId, trimmed);
+        const resp = await sendTurn(currentThreadId, message);
         const assistantMsg = processResponse(resp);
         setMessages((prev) => [...prev, assistantMsg]);
       } catch (e) {
@@ -165,7 +186,7 @@ export default function ChatThreadRoute() {
         setRefreshKey((k) => k + 1);
       }
     },
-    [threadId, sending, processResponse, router],
+    [threadId, sending, processResponse, router, selectedFile],
   );
 
   const handleConfirm = useCallback(
@@ -246,29 +267,6 @@ export default function ChatThreadRoute() {
     [],
   );
 
-  const handleUploadResume = useCallback(
-    async (file: File, notes?: string) => {
-      try {
-        const { getUploadUrl } = await import('@/lib/api/client');
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
-        if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-        setRefreshKey((k) => k + 1);
-        const noteText = notes?.trim();
-        const msg = noteText
-          ? `I just uploaded a new resume: ${file.name}. Notes: ${noteText}`
-          : `I just uploaded a new resume: ${file.name}.`;
-        setSelectedFile(null);
-        setUploadNotes('');
-        void send(msg);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Upload failed');
-      }
-    },
-    [send],
-  );
-
   const isEmpty = messages.length === 0;
 
   return (
@@ -341,82 +339,68 @@ export default function ChatThreadRoute() {
                 />
               </div>
 
-              {/* Upload notes bar */}
-              {selectedFile && (
-                <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#e6e3dc] bg-[#faf9f7] px-3 py-2">
-                  <span className="truncate text-xs text-ink-soft">{selectedFile.name}</span>
-                  <input
-                    type="text"
-                    value={uploadNotes}
-                    onChange={(e) => setUploadNotes(e.target.value)}
+              {/* Input pill */}
+              <div className="rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
+                {/* File attachment chip */}
+                {selectedFile && (
+                  <div className="flex items-center gap-2 border-b border-[#e6e3dc] px-4 py-2">
+                    <div className="flex items-center gap-2 rounded-lg border border-[#e6e3dc] bg-white px-2.5 py-1.5">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <span className="max-w-[150px] truncate text-xs font-medium text-ink">{selectedFile.name}</span>
+                      <button
+                        onClick={() => setSelectedFile(null)}
+                        className="ml-1 text-ink-muted hover:text-ink"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-end">
+                  <label className="flex h-9 w-9 shrink-0 items-center justify-center m-2 cursor-pointer rounded-full text-ink-muted transition-colors hover:bg-[#e6e3dc] hover:text-ink-soft">
+                    <Upload className="h-4 w-4" />
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.md,.txt"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setSelectedFile(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        void handleUploadResume(selectedFile, uploadNotes);
+                        void send(input);
                       }
                     }}
-                    placeholder="Add notes (optional)..."
-                    className="flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-ink-muted"
+                    placeholder={t('chat.placeholder')}
+                    className="min-h-[48px] max-h-[160px] flex-1 resize-none bg-transparent px-5 py-3.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink-muted"
                   />
                   <button
-                    onClick={() => void handleUploadResume(selectedFile, uploadNotes)}
-                    className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-[#17304f]"
+                    onClick={() => void send(input)}
+                    disabled={sending || (!input.trim() && !selectedFile)}
+                    className="m-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-[#17304f] disabled:opacity-40"
                   >
-                    Upload
-                  </button>
-                  <button
-                    onClick={() => { setSelectedFile(null); setUploadNotes(''); }}
-                    className="text-xs text-ink-muted hover:text-ink"
-                  >
-                    Cancel
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
-              )}
-
-              {/* Input pill */}
-              <div className="flex items-end rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
-                <label className="flex h-9 w-9 shrink-0 items-center justify-center m-2 cursor-pointer rounded-full text-ink-muted transition-colors hover:bg-[#e6e3dc] hover:text-ink-soft">
-                  <Upload className="h-4 w-4" />
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.md,.txt"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) setSelectedFile(file);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void send(input);
-                    }
-                  }}
-                  placeholder={t('chat.placeholder')}
-                  className="min-h-[48px] max-h-[160px] flex-1 resize-none bg-transparent px-5 py-3.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink-muted"
-                />
-                <button
-                  onClick={() => void send(input)}
-                  disabled={sending || !input.trim()}
-                  className="m-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-[#17304f] disabled:opacity-40"
-                >
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </button>
               </div>
             </div>
           </div>
