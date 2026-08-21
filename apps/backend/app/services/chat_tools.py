@@ -331,7 +331,7 @@ async def _get_ats_audit(resume_id: str | None = None) -> dict[str, Any]:
             return {"error": f"Resume not found: {resume_id}"}
         resume_data = resume.get("processed_data") or {}
         if not resume_data:
-            return {"error": f"Resume has no processed data: {resume_id}"}
+            return {"error": f"Resume has no processed data. Please re-upload and process the resume first."}
         result = await compute_resume_audit(resume_data)
         result["resume_id"] = resume.get("resume_id")
         result["resume_title"] = resume.get("title") or resume.get("filename") or "Untitled"
@@ -339,18 +339,18 @@ async def _get_ats_audit(resume_id: str | None = None) -> dict[str, Any]:
 
     # No resume_id — return list for user to pick
     resumes = await db.list_resumes()
-    master = await db.get_master_resume()
     if not resumes:
         return {"error": "No resumes found. Upload a resume first."}
     if len(resumes) == 1:
         # Only one resume — audit it directly
-        resume_data = resumes[0].get("processed_data") or {}
-        if resume_data:
-            result = await compute_resume_audit(resume_data)
-            result["resume_id"] = resumes[0].get("resume_id")
-            result["resume_title"] = resumes[0].get("title") or resumes[0].get("filename") or "Untitled"
-            return result
-        return {"error": "Resume has no processed data"}
+        resume = resumes[0]
+        resume_data = resume.get("processed_data") or {}
+        if not resume_data:
+            return {"error": f"Resume '{resume.get('title') or resume.get('filename')}' has no processed data. Please re-upload and process it first."}
+        result = await compute_resume_audit(resume_data)
+        result["resume_id"] = resume.get("resume_id")
+        result["resume_title"] = resume.get("title") or resume.get("filename") or "Untitled"
+        return result
 
     # Multiple resumes — present selection
     return {
