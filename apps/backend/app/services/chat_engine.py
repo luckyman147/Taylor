@@ -505,6 +505,26 @@ async def _build_career_context() -> str:
             entries.append(f"{role} at {company}".strip())
         parts.append(f"Experience: {'; '.join(entries)}")
 
+    # Projects with descriptions and languages
+    projects = await db.list_career_projects()
+    if projects:
+        proj_entries = []
+        for p in projects[:8]:
+            name = p.get("name", "")
+            role = p.get("role", "")
+            langs = p.get("languages") or []
+            desc = p.get("description") or []
+            parts_list = [f"  - {name}"]
+            if role:
+                parts_list[0] += f" ({role})"
+            if langs:
+                parts_list.append(f"    Tech: {', '.join(langs[:8])}")
+            if desc:
+                for bullet in desc[:3]:
+                    parts_list.append(f"    • {bullet}")
+            proj_entries.append("\n".join(parts_list))
+        parts.append("Projects:\n" + "\n".join(proj_entries))
+
     certs = await db.list_career_certifications()
     if certs:
         cert_names = [c.get("name", "") for c in certs[:5] if c.get("name")]

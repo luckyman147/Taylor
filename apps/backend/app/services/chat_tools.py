@@ -299,6 +299,7 @@ async def _get_career_summary() -> dict[str, Any]:
     from app.services.rag import rag_index
     profile = await db.get_career_profile() or {}
     skills = await db.list_career_skills()
+    projects = await db.list_career_projects()
 
     # Use RAG to retrieve relevant resume chunks
     try:
@@ -315,11 +316,23 @@ async def _get_career_summary() -> dict[str, Any]:
         resume_chunks = []
         skill_chunks = []
 
+    project_list = []
+    for p in projects[:8]:
+        proj = {"name": p.get("name", "")}
+        if p.get("role"):
+            proj["role"] = p["role"]
+        if p.get("languages"):
+            proj["languages"] = p["languages"][:8]
+        if p.get("description"):
+            proj["description"] = p["description"][:3]
+        project_list.append(proj)
+
     return {
         "name": profile.get("name"),
         "title": profile.get("title"),
         "skills": [s.get("name") for s in skills[:20]],
         "target_roles": profile.get("target_roles", []),
+        "projects": project_list,
         "resume_highlights": resume_chunks[:3],
         "skill_details": skill_chunks[:3],
     }
