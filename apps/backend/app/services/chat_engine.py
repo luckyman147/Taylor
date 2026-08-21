@@ -189,6 +189,14 @@ async def run_turn(
     narrative = plan.get("narrative", "")
     followups = plan.get("followups", [])
     memory_candidates = plan.get("memory_candidates", [])
+    plan_title = plan.get("title", "")
+
+    # Auto-title: update thread title from planner on first message
+    if plan_title and len(messages) <= 1:
+        try:
+            await db.update_chat_thread(thread_id, title=plan_title[:80])
+        except Exception:
+            pass
 
     # Phase 2: Execute read tools
     tool_results: dict[str, Any] = {}

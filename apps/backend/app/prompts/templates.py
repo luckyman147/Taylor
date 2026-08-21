@@ -1091,6 +1091,7 @@ RULES:
    - "intent": "query" (general question), "stat" (wants numbers/stats), or "action" (wants to create/update something)
    - "tool_calls": list of tool calls as {{"tool": "name", "args": {{...}}}} (empty list if none needed)
    - "narrative": brief plan of how you'll answer
+   - "title": short conversation title (3-6 words, e.g. "ATS Resume Audit", "Skill Gap Analysis", "Job Search Strategy")
    - "followups": 2-3 suggested follow-up questions the user might ask
    - "memory_candidates": list of {{"statement": "..."}} for durable preferences the user expressed (empty list if none)
 
