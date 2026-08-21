@@ -39,6 +39,12 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         params={},
         write=False,
     ),
+    "compare_resumes": ToolSpec(
+        name="compare_resumes",
+        description="Compare all uploaded resumes side by side: titles, master status, processing status, sections, skills count, and word count.",
+        params={},
+        write=False,
+    ),
     "get_ats_audit": ToolSpec(
         name="get_ats_audit",
         description="Run a resume ATS audit. Pass resume_id to audit a specific resume. Omit resume_id to see available resumes for selection.",
@@ -252,6 +258,8 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
     try:
         if name == "get_career_summary":
             return await _get_career_summary()
+        elif name == "compare_resumes":
+            return await _compare_resumes()
         elif name == "get_ats_audit":
             return await _get_ats_audit(args.get("resume_id"))
         elif name == "get_funnel_stats":
@@ -315,6 +323,53 @@ async def _get_career_summary() -> dict[str, Any]:
         "resume_highlights": resume_chunks[:3],
         "skill_details": skill_chunks[:3],
     }
+
+
+async def _compare_resumes() -> dict[str, Any]:
+    """Compare all uploaded resumes side by side."""
+    resumes = await db.list_resumes()
+    if not resumes:
+        return {"resumes": [], "hint": "No resumes uploaded yet."}
+
+    result = []
+    for r in resumes:
+        data = r.get("processed_data") or {}
+        skills = data.get("skills", [])
+        work = data.get("workExperience", [])
+        education = data.get("education", [])
+        projects = data.get("personalProjects", [])
+        summary = data.get("summary", "")
+        full_text = json.dumps(data, ensure_ascii=False)
+        word_count = len(full_text.split())
+
+        sections = []
+        if data.get("personalInfo"):
+            sections.append("personalInfo")
+        if summary:
+            sections.append("summary")
+        if work:
+            sections.append("workExperience")
+        if education:
+            sections.append("education")
+        if projects:
+            sections.append("personalProjects")
+        if skills:
+            sections.append("skills")
+
+        result.append({
+            "resume_id": r.get("resume_id"),
+            "title": r.get("title") or r.get("filename") or "Untitled",
+            "is_master": r.get("is_master", False),
+            "processing_status": r.get("processing_status", "unknown"),
+            "sections": sections,
+            "skills_count": len(skills),
+            "work_entries": len(work),
+            "education_entries": len(education),
+            "project_entries": len(projects),
+            "word_count": word_count,
+        })
+
+    return {"resumes": result, "total": len(result)}
 
 
 async def _get_ats_audit(resume_id: str | None = None) -> dict[str, Any]:
