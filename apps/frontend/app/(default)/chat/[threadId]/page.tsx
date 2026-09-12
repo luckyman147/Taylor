@@ -250,7 +250,7 @@ export default function ChatThreadRoute() {
               setStreamEvents((prev) => [...prev, event]);
             },
             onComplete: (resp) => {
-              const assistantMsg = processResponse(resp);
+              const assistantMsg = { ...processResponse(resp), streamEvents: [...streamEvents] };
               setMessages((prev) => [...prev, assistantMsg]);
               setStreamStatus('completed');
             },
@@ -319,7 +319,7 @@ export default function ChatThreadRoute() {
               {
                 onEvent: (event) => setStreamEvents((prev) => [...prev, event]),
                 onComplete: (resp) => {
-                  const assistantMsg = processResponse(resp);
+                  const assistantMsg = { ...processResponse(resp), streamEvents: [...streamEvents] };
                   setMessages((prev) => [...prev, assistantMsg]);
                   setStreamStatus('completed');
                 },
