@@ -14,7 +14,8 @@ import { EducationForm } from './forms/education-form';
 import { ProjectsForm } from './forms/projects-form';
 import { CertificationsForm } from './forms/certifications-form';
 import { AwardsForm } from './forms/awards-form';
-import { AdditionalForm } from './forms/additional-form';
+import { SkillsForm } from './forms/skills-form';
+import { LanguagesForm } from './forms/languages-form';
 import { SectionHeader } from './section-header';
 import { GenericTextForm } from './forms/generic-text-form';
 import { GenericItemForm } from './forms/generic-item-form';
@@ -151,9 +152,9 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate, ou
             />
           );
 
-        case 'additional':
+        case 'skills':
           return (
-            <AdditionalForm
+            <SkillsForm
               data={
                 resumeData.additional || {
                   technicalSkills: [],
@@ -163,6 +164,19 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate, ou
                 }
               }
               onChange={(data) => onUpdate({ ...resumeData, additional: data })}
+            />
+          );
+
+        case 'languages':
+          return (
+            <LanguagesForm
+              data={resumeData.additional?.languages ?? []}
+              onChange={(data) =>
+                onUpdate({
+                  ...resumeData,
+                  additional: { ...(resumeData.additional ?? {}), languages: data },
+                })
+              }
             />
           );
 
@@ -266,11 +280,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ resumeData, onUpdate, ou
           ? renderDefaultSection(section)
           : renderCustomSection(section);
 
-        return (
-          <div key={section.id}>
-            {sectionContent}
-          </div>
-        );
+        return <div key={section.id}>{sectionContent}</div>;
       })}
     </div>
   );

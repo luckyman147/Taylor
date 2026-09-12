@@ -286,7 +286,58 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
           </div>
         );
 
+      case 'skills': {
+        const rawSkills = additional?.technicalSkills ?? [];
+        const rawGroups = additional?.skillGroups ?? [];
+        const technicalSkills = rawSkills.filter(
+          (item): item is string => typeof item === 'string' && item.trim() !== ''
+        );
+        const skillGroups = rawGroups
+          .filter(
+            (group): group is SkillGroup =>
+              typeof group?.name === 'string' &&
+              Array.isArray(group.skills) &&
+              group.skills.some((s) => typeof s === 'string' && s.trim() !== '')
+          )
+          .map((group) => ({
+            name: group.name,
+            skills: group.skills.filter(
+              (s): s is string => typeof s === 'string' && s.trim() !== ''
+            ),
+          }));
+        if (technicalSkills.length === 0 && skillGroups.length === 0) return null;
+        return (
+          <div key={section.id} className={baseStyles['resume-section']}>
+            <h3 className={styles.sectionTitle}>{section.displayName}</h3>
+            <div className={`${baseStyles['resume-stack']} ${baseStyles['resume-text-sm']}`}>
+              <ResumeSkillsContent
+                skills={technicalSkills}
+                skillGroups={skillGroups}
+                layout={skillsLayout}
+                listSeparator={listSeparator}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      case 'languages': {
+        const languages = (additional?.languages ?? []).filter(
+          (item): item is string => typeof item === 'string' && item.trim() !== ''
+        );
+        if (languages.length === 0) return null;
+        return (
+          <div key={section.id} className={baseStyles['resume-section']}>
+            <h3 className={styles.sectionTitle}>{section.displayName}</h3>
+            <div className={`${baseStyles['resume-stack']} ${baseStyles['resume-text-sm']}`}>
+              <span>{languages.join(', ')}</span>
+            </div>
+          </div>
+        );
+      }
+
       case 'additional':
+        // Legacy fallback for old resumes
         if (!additional) return null;
         return (
           <AdditionalSection
@@ -296,9 +347,6 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
             labels={additionalSectionLabels}
             skillsLayout={skillsLayout}
             listSeparator={listSeparator}
-            hideCertifications={
-              data.sectionMeta?.some((s) => s.id === 'certifications' && s.isVisible) ?? false
-            }
           />
         );
 
@@ -426,9 +474,7 @@ const AdditionalSection: React.FC<{
   };
 
   const hasContent =
-    technicalSkills.length > 0 ||
-    languages.length > 0 ||
-    certificationsTraining.length > 0;
+    technicalSkills.length > 0 || languages.length > 0 || certificationsTraining.length > 0;
 
   if (!hasContent) return null;
 

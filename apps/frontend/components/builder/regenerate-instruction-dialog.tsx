@@ -11,7 +11,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Sparkles, Briefcase, FolderKanban, Lightbulb, CircleAlert } from 'lucide-react';
+import {
+  ArrowLeft,
+  Sparkles,
+  Briefcase,
+  FolderKanban,
+  Lightbulb,
+  FileText,
+  CircleAlert,
+} from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import type { RegenerateItemInput } from '@/lib/api/enrichment';
 
@@ -74,6 +82,8 @@ export const RegenerateInstructionDialog: React.FC<RegenerateInstructionDialogPr
         return <FolderKanban className="h-3.5 w-3.5 text-primary" />;
       case 'skills':
         return <Lightbulb className="h-3.5 w-3.5 text-primary" />;
+      case 'summary':
+        return <FileText className="h-3.5 w-3.5 text-primary" />;
       default:
         return null;
     }

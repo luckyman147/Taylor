@@ -179,7 +179,9 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
         </h1>
         {personalInfo?.title && <div className={styles.titleLine}>{personalInfo.title}</div>}
         {personalInfo && (
-          <div className={`flex flex-wrap gap-x-4 gap-y-1 mt-2 ${baseStyles['resume-contact-line']} ${styles.contactRow}`}>
+          <div
+            className={`flex flex-wrap gap-x-4 gap-y-1 mt-2 ${baseStyles['resume-contact-line']} ${styles.contactRow}`}
+          >
             {renderContactDetail('Website', personalInfo.website)}
             {renderContactDetail('LinkedIn', personalInfo.linkedin)}
             {renderContactDetail('GitHub', personalInfo.github)}
@@ -331,14 +333,14 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
               {renderArrowBullets(certificationsTraining)}
             </div>
           )}
-          {isSectionVisible('additional') &&
+          {(isSectionVisible('skills')) &&
             !isSectionVisible('certifications') &&
             certificationsTraining.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={styles.sectionTitle}>{headingFallbacks.certifications}</h3>
-              {renderArrowBullets(certificationsTraining)}
-            </div>
-          )}
+              <div className={baseStyles['resume-section']}>
+                <h3 className={styles.sectionTitle}>{headingFallbacks.certifications}</h3>
+                {renderArrowBullets(certificationsTraining)}
+              </div>
+            )}
 
           {customSections.map((section) => (
             <DynamicResumeSectionVivid
@@ -352,45 +354,47 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
 
         {/* Sidebar Column - Right */}
         <div className={styles.sidebarColumn}>
-          {isSectionVisible('additional') && technicalSkills.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={styles.sectionTitleSm}>{headingFallbacks.skills}</h3>
-              {skillGroups.length > 0 ? (
-                <div className="flex flex-col gap-0.5">
-                  {skillGroups.map((group) => (
-                    <p key={group.name} className={baseStyles['resume-text-xs']}>
-                      <strong>{group.name}:</strong> {group.skills.join(' • ')}
-                    </p>
-                  ))}
-                </div>
-              ) : skillsLayout === 'comma' ? (
-                <p className={baseStyles['resume-text-xs']}>{technicalSkills.join(' • ')}</p>
-              ) : skillsLayout === 'list' ? (
-                <div className="flex flex-col gap-0.5">
-                  {technicalSkills.map((skill, index) => (
-                    <p key={index} className={baseStyles['resume-text-xs']}>
-                      {skill}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-0.5">
-                  {technicalSkills.map((skill, index) => (
-                    <p key={index} className={baseStyles['resume-text-xs']}>
-                      {skill}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {(isSectionVisible('skills') || isSectionVisible('additional')) &&
+            technicalSkills.length > 0 && (
+              <div className={baseStyles['resume-section']}>
+                <h3 className={styles.sectionTitleSm}>{headingFallbacks.skills}</h3>
+                {skillGroups.length > 0 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {skillGroups.map((group) => (
+                      <p key={group.name} className={baseStyles['resume-text-xs']}>
+                        <strong>{group.name}:</strong> {group.skills.join(' • ')}
+                      </p>
+                    ))}
+                  </div>
+                ) : skillsLayout === 'comma' ? (
+                  <p className={baseStyles['resume-text-xs']}>{technicalSkills.join(' • ')}</p>
+                ) : skillsLayout === 'list' ? (
+                  <div className="flex flex-col gap-0.5">
+                    {technicalSkills.map((skill, index) => (
+                      <p key={index} className={baseStyles['resume-text-xs']}>
+                        {skill}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {technicalSkills.map((skill, index) => (
+                      <p key={index} className={baseStyles['resume-text-xs']}>
+                        {skill}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-          {isSectionVisible('additional') && languages.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={styles.sectionTitleSm}>{headingFallbacks.languages}</h3>
-              <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
-            </div>
-          )}
+          {(isSectionVisible('languages')) &&
+            languages.length > 0 && (
+              <div className={baseStyles['resume-section']}>
+                <h3 className={styles.sectionTitleSm}>{headingFallbacks.languages}</h3>
+                <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
+              </div>
+            )}
 
           {isSectionVisible('education') && education && education.length > 0 && (
             <div className={baseStyles['resume-section']}>

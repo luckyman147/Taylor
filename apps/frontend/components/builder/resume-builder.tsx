@@ -298,6 +298,22 @@ const ResumeBuilderContent = () => {
     return null;
   }, [resumeData.additional?.technicalSkills, t]);
 
+  const summaryItemForRegenerate: RegenerateItemInput | null = useMemo(() => {
+    const summary = resumeData.summary;
+    if (summary && summary.trim()) {
+      const lines = summary.split('\n').filter((line) => line.trim());
+      if (lines.length > 0) {
+        return {
+          item_id: 'summary',
+          item_type: 'summary' as const,
+          title: t('builder.regenerate.selectDialog.summary'),
+          current_content: lines,
+        };
+      }
+    }
+    return null;
+  }, [resumeData.summary, t]);
+
   const localizedResumeDataForPreview = useMemo(
     () => withLocalizedDefaultSections(resumeData, t),
     [resumeData, t]
@@ -873,6 +889,11 @@ const ResumeBuilderContent = () => {
                 <h1 className="text-3xl font-bold uppercase tracking-tight text-ink md:text-4xl">
                   {t('nav.builder')}
                 </h1>
+                {resumeTitle && (
+                  <span className="text-lg font-normal text-steel-grey truncate max-w-[300px]">
+                    — {resumeTitle}
+                  </span>
+                )}
                 {hasUnsavedChanges && (
                   <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-[#fbf6e9] px-2.5 py-1 text-[11px] font-semibold text-amber-700">
                     <AlertTriangle className="w-3 h-3" />
@@ -1423,6 +1444,7 @@ const ResumeBuilderContent = () => {
         experienceItems={experienceItemsForRegenerate}
         projectItems={projectItemsForRegenerate}
         skillsItem={skillsItemForRegenerate}
+        summaryItem={summaryItemForRegenerate}
         selectedItems={regenerateWizard.selectedItems}
         onSelectionChange={regenerateWizard.setSelectedItems}
         instruction={regenerateWizard.instruction}

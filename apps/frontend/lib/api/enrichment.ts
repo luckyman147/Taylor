@@ -108,7 +108,7 @@ export async function applyEnhancements(
 
 export interface RegenerateItemInput {
   item_id: string;
-  item_type: 'experience' | 'project' | 'skills';
+  item_type: 'experience' | 'project' | 'skills' | 'summary';
   title: string;
   subtitle?: string;
   current_content: string[];
@@ -123,17 +123,18 @@ export interface RegenerateRequest {
 
 export interface RegeneratedItem {
   item_id: string;
-  item_type: 'experience' | 'project' | 'skills';
+  item_type: 'experience' | 'project' | 'skills' | 'summary';
   title: string;
   subtitle?: string;
   original_content: string[];
   new_content: string[];
+  new_skill_groups?: { name: string; skills: string[] }[];
   diff_summary: string;
 }
 
 export interface RegenerateItemError {
   item_id: string;
-  item_type: 'experience' | 'project' | 'skills';
+  item_type: 'experience' | 'project' | 'skills' | 'summary';
   title: string;
   subtitle?: string;
   message: string;
@@ -209,6 +210,43 @@ export async function generateProjectBullets(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || `Failed to generate project bullets (status ${res.status}).`);
+  }
+
+  return res.json();
+}
+
+// ============================================
+// Company Research Types
+// ============================================
+
+export interface ResearchCompanyRequest {
+  company_name: string;
+  website?: string | null;
+  industry?: string | null;
+  linkedin_url?: string | null;
+}
+
+export interface ResearchCompanyResponse {
+  company_name: string;
+  website_content: string;
+  linkedin_content: string;
+  hiring_signals: string;
+  research_summary: string;
+  sources: string[];
+}
+
+/**
+ * Research a company by crawling its website, LinkedIn page, and checking hiring signals.
+ * Returns structured research data to personalize outreach emails.
+ */
+export async function researchCompany(
+  payload: ResearchCompanyRequest
+): Promise<ResearchCompanyResponse> {
+  const res = await apiPost('/enrichment/research-company', payload);
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `Failed to research company (status ${res.status}).`);
   }
 
   return res.json();

@@ -101,3 +101,13 @@ class ApplicationActionResponse(BaseModel):
 
     message: str
     affected: int
+
+
+class SaveJobFromChatRequest(BaseModel):
+    """Save a job listing from chat to the tracker."""
+
+    title: str = Field(min_length=1)
+    company: str = Field(min_length=1)
+    location: str = ""
+    url: str = ""
+    resume_id: str = ""

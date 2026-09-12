@@ -1,10 +1,13 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Users from 'lucide-react/dist/esm/icons/users';
 import Globe from 'lucide-react/dist/esm/icons/globe';
 import Linkedin from 'lucide-react/dist/esm/icons/linkedin';
 import Mail from 'lucide-react/dist/esm/icons/mail';
@@ -46,9 +49,11 @@ import {
 } from '@/lib/api/companies';
 import { downloadCsv } from '@/lib/utils/csv';
 import { ColumnsDropdown } from './columns-dropdown';
+import { FilterPopover } from './filter-popover';
 import { CompanyDetailsDialog } from './company-details-dialog';
 import { CompanyEmailDialog } from './company-email-dialog';
 import { CompanyFormDialog } from './company-form-dialog';
+import { BulkEmailDialog } from './bulk-email-dialog';
 import { InlineSelectEditor, InlineTextEditor } from './inline-edit';
 
 function initialsOf(name: string): string {
@@ -69,6 +74,8 @@ function toHref(raw: string | null): string | null {
 
 type GroupBy = 'none' | 'size' | 'type' | 'industry' | 'status';
 
+type SortBy = 'date-desc' | 'date-asc';
+
 /** Fields editable inline (click a cell). */
 type EditableField =
   'phone' | 'industry' | 'address' | 'company_size' | 'company_type' | 'status' | 'year_founded';
@@ -80,7 +87,15 @@ interface EditingCell {
 
 /** Table columns that can be hidden via the columns toggle. */
 type ColumnKey =
-  'phone' | 'industry' | 'address' | 'size' | 'type' | 'status' | 'year_founded' | 'links' | 'actions';
+  | 'phone'
+  | 'industry'
+  | 'address'
+  | 'size'
+  | 'type'
+  | 'status'
+  | 'year_founded'
+  | 'links'
+  | 'actions';
 
 const ALL_COLUMNS: ColumnKey[] = [
   'phone',
@@ -158,6 +173,7 @@ const PAGE_SIZE_OPTIONS = ['10', '25', '50'];
 
 export function CompaniesTable() {
   const { t } = useTranslations();
+  const pathname = usePathname();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,12 +188,14 @@ export function CompaniesTable() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [sizeFilter, setSizeFilter] = useState<CompanySize | ''>('');
   const [typeFilter, setTypeFilter] = useState<CompanyType | ''>('');
   const [statusFilter, setStatusFilter] = useState<CompanyStatus | ''>('');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [sortBy, setSortBy] = useState<SortBy>('date-desc');
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
 
   // Load saved column prefs after hydration (a lazy useState initializer would
@@ -305,7 +323,7 @@ export function CompaniesTable() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return companies.filter((company) => {
+    const matches = companies.filter((company) => {
       if (sizeFilter && company.company_size !== sizeFilter) return false;
       if (typeFilter && company.company_type !== typeFilter) return false;
       if (statusFilter && company.status !== statusFilter) return false;
@@ -317,7 +335,12 @@ export function CompaniesTable() {
         (company.email ?? '').toLowerCase().includes(query)
       );
     });
-  }, [companies, search, sizeFilter, typeFilter, statusFilter]);
+    return [...matches].sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return sortBy === 'date-asc' ? ta - tb : tb - ta;
+    });
+  }, [companies, search, sizeFilter, typeFilter, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageRows = useMemo(() => {
@@ -327,7 +350,7 @@ export function CompaniesTable() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sizeFilter, typeFilter, statusFilter, groupBy]);
+  }, [search, sizeFilter, typeFilter, statusFilter, groupBy, sortBy]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -484,6 +507,10 @@ export function CompaniesTable() {
     { id: 'industry', label: t('companies.toolbar.groupIndustry') },
     { id: 'status', label: t('companies.toolbar.groupStatus') },
   ];
+  const sortOptions: { id: SortBy; label: string }[] = [
+    { id: 'date-desc', label: t('companies.toolbar.sortDateDesc') },
+    { id: 'date-asc', label: t('companies.toolbar.sortDateAsc') },
+  ];
   const pageSizeOptions = PAGE_SIZE_OPTIONS.map((size) => ({
     id: size,
     label: t('companies.pagination.perPage', { count: size }),
@@ -503,6 +530,21 @@ export function CompaniesTable() {
     setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
   const visibleColumnCount = ALL_COLUMNS.filter((key) => visibleColumns[key]).length;
 
+  const activeFilterCount =
+    (sizeFilter ? 1 : 0) +
+    (typeFilter ? 1 : 0) +
+    (statusFilter ? 1 : 0) +
+    (groupBy !== 'none' ? 1 : 0) +
+    (sortBy !== 'date-desc' ? 1 : 0);
+
+  const clearFilters = () => {
+    setSizeFilter('');
+    setTypeFilter('');
+    setStatusFilter('');
+    setGroupBy('none');
+    setSortBy('date-desc');
+  };
+
   const showTable = !loading && companies.length > 0;
   const showNoResults = !loading && companies.length > 0 && filtered.length === 0;
 
@@ -520,6 +562,30 @@ export function CompaniesTable() {
             <h1 className="mt-1.5 font-sans text-3xl font-bold uppercase tracking-tight text-white md:text-4xl">
               {t('companies.title')}
             </h1>
+            <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 p-1 backdrop-blur">
+              <Link
+                href="/companies"
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                  pathname?.startsWith('/companies')
+                    ? 'bg-white text-primary'
+                    : 'text-primary-foreground/70 hover:text-white'
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                {t('companies.nav.companies')}
+              </Link>
+              <Link
+                href="/contacts"
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                  pathname?.startsWith('/contacts')
+                    ? 'bg-white text-primary'
+                    : 'text-primary-foreground/70 hover:text-white'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                {t('companies.nav.contacts')}
+              </Link>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <input
@@ -574,7 +640,7 @@ export function CompaniesTable() {
       {showTable && (
         <div className="shrink-0 border-b border-[#e6e3dc] bg-paper-tint/60 px-6 py-3 md:px-8">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative w-56">
+            <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
               <Input
                 type="search"
@@ -582,40 +648,28 @@ export function CompaniesTable() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('companies.toolbar.searchPlaceholder')}
                 aria-label={t('companies.toolbar.search')}
-                className="pl-9"
+                className="h-10 w-full pl-9 text-sm"
               />
             </div>
-            <Dropdown
-              options={[allOption, ...sizeOptions]}
-              value={sizeFilter}
-              onChange={(value) => setSizeFilter(value as CompanySize | '')}
-              ariaLabel={t('companies.toolbar.size')}
-              className="min-w-0 flex-1"
-              triggerClassName="h-10 rounded-lg px-3 py-0"
-            />
-            <Dropdown
-              options={[allOption, ...typeOptions]}
-              value={typeFilter}
-              onChange={(value) => setTypeFilter(value as CompanyType | '')}
-              ariaLabel={t('companies.toolbar.type')}
-              className="min-w-0 flex-1"
-              triggerClassName="h-10 rounded-lg px-3 py-0"
-            />
-            <Dropdown
-              options={[allOption, ...statusOptions]}
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as CompanyStatus | '')}
-              ariaLabel={t('companies.toolbar.status')}
-              className="min-w-0 flex-1"
-              triggerClassName="h-10 rounded-lg px-3 py-0"
-            />
-            <Dropdown
-              options={groupByOptions}
-              value={groupBy}
-              onChange={(value) => setGroupBy(value as GroupBy)}
-              ariaLabel={t('companies.toolbar.groupBy')}
-              className="min-w-0 flex-1"
-              triggerClassName="h-10 rounded-lg px-3 py-0"
+            <FilterPopover
+              sizeFilter={sizeFilter}
+              sizeOptions={sizeOptions}
+              allOption={allOption}
+              onSizeFilter={(value) => setSizeFilter(value as CompanySize | '')}
+              typeFilter={typeFilter}
+              typeOptions={typeOptions}
+              onTypeFilter={(value) => setTypeFilter(value as CompanyType | '')}
+              statusFilter={statusFilter}
+              statusOptions={statusOptions}
+              onStatusFilter={(value) => setStatusFilter(value as CompanyStatus | '')}
+              groupBy={groupBy}
+              groupByOptions={groupByOptions}
+              onGroupBy={(value) => setGroupBy(value as GroupBy)}
+              sortBy={sortBy}
+              sortOptions={sortOptions}
+              onSortBy={(value) => setSortBy(value as SortBy)}
+              activeFilterCount={activeFilterCount}
+              onClear={clearFilters}
             />
             <ColumnsDropdown
               options={columnOptions}
@@ -624,7 +678,7 @@ export function CompaniesTable() {
               label={t('companies.toolbar.columns')}
               ariaLabel={t('companies.toolbar.columns')}
             />
-            <span className="text-xs font-medium text-ink-soft">
+            <span className="shrink-0 text-xs font-medium text-ink-soft">
               {t('companies.toolbar.count', { count: String(filtered.length) })}
             </span>
           </div>
@@ -645,6 +699,16 @@ export function CompaniesTable() {
                 disabled={bulkDeleting}
               >
                 {t('companies.selection.clear')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkEmailOpen(true)}
+                disabled={bulkDeleting}
+                className="border-primary/40 text-primary hover:bg-primary/5"
+              >
+                <Mail className="h-4 w-4" />
+                {t('companies.selection.sendEmail')}
               </Button>
               <Button
                 variant="outline"
@@ -907,6 +971,13 @@ export function CompaniesTable() {
           if (!open) setEmailing(null);
         }}
         company={emailing}
+        onSent={() => void load()}
+      />
+
+      <BulkEmailDialog
+        open={bulkEmailOpen}
+        onOpenChange={setBulkEmailOpen}
+        companies={companies.filter((c) => selectedIds.has(c.company_id))}
         onSent={() => void load()}
       />
 
@@ -1361,7 +1432,11 @@ function CompanyRow({
               aria-label={t('companies.table.email')}
               onClick={() => onEmail(company)}
               disabled={!company.email}
-              title={company.email ? t('companies.table.email') : t('companies.emailDialog.errors.noEmail')}
+              title={
+                company.email
+                  ? t('companies.table.email')
+                  : t('companies.emailDialog.errors.noEmail')
+              }
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e6e3dc] text-ink-soft transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Mail className="h-4 w-4" />

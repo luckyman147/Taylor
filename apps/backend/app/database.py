@@ -232,12 +232,16 @@ class Database:
         return {
             "contact_id": row.contact_id,
             "name": row.name,
+            "email": row.email,
             "company": row.company,
             "location": row.location,
             "goal": row.goal,
             "status": row.status,
             "relationship": row.relationship,
             "follow_up_date": row.follow_up_date,
+            "description": row.description,
+            "linkedin_url": row.linkedin_url,
+            "website_url": row.website_url,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -376,6 +380,33 @@ class Database:
             "entry_type": row.entry_type,
             "entry_key": row.entry_key,
             "skill_name": row.skill_name,
+            "created_at": row.created_at,
+        }
+
+    def _scraped_job_to_dict(self, row: Any) -> dict[str, Any]:
+        return {
+            "job_id": row.job_id,
+            "search_id": row.search_id,
+            "resume_id": row.resume_id,
+            "title": row.title,
+            "company": row.company,
+            "location": row.location,
+            "url": row.url,
+            "source": row.source,
+            "description": row.description,
+            "posted_date": row.posted_date,
+            "relevance_score": row.relevance_score,
+            "remote": row.remote,
+            "easy_apply": row.easy_apply,
+            "job_type": row.job_type,
+            "experience_level": row.experience_level,
+            "salary": row.salary,
+            "languages": row.languages,
+            "applied": row.applied,
+            "applied_resume_id": row.applied_resume_id,
+            "archived": row.archived,
+            "embedding": row.embedding,
+            "metadata": json.loads(row.metadata_json) if row.metadata_json else None,
             "created_at": row.created_at,
         }
 
@@ -1094,12 +1125,16 @@ class Database:
     async def create_contact(
         self,
         name: str,
+        email: str | None = None,
         company: str | None = None,
         location: str | None = None,
         goal: str | None = None,
         status: str | None = None,
         relationship: str | None = None,
         follow_up_date: str | None = None,
+        description: str | None = None,
+        linkedin_url: str | None = None,
+        website_url: str | None = None,
     ) -> dict[str, Any]:
         """Create a contact, deduped on name (case-insensitive).
 
@@ -1119,12 +1154,16 @@ class Database:
             row = Contact(
                 contact_id=str(uuid4()),
                 name=name,
+                email=email,
                 company=company,
                 location=location,
                 goal=goal,
                 status=status,
                 relationship=relationship,
                 follow_up_date=follow_up_date,
+                description=description,
+                linkedin_url=linkedin_url,
+                website_url=website_url,
                 created_at=now,
                 updated_at=now,
             )
@@ -1189,12 +1228,16 @@ class Database:
 
             for key in (
                 "name",
+                "email",
                 "company",
                 "location",
                 "goal",
                 "status",
                 "relationship",
                 "follow_up_date",
+                "description",
+                "linkedin_url",
+                "website_url",
             ):
                 if key in updates:
                     setattr(row, key, updates[key])
@@ -1343,10 +1386,17 @@ class Database:
 
     @staticmethod
     def _chat_thread_to_dict(row: ChatThread) -> dict[str, Any]:
+        import json as _json
+        skills_raw = getattr(row, "skills", "[]")
+        try:
+            skills = _json.loads(skills_raw) if skills_raw else []
+        except (ValueError, TypeError):
+            skills = []
         return {
             "thread_id": row.thread_id,
             "title": row.title,
             "mode": row.mode,
+            "skills": skills,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -1380,23 +1430,26 @@ class Database:
         }
 
     async def create_chat_thread(
-        self, title: str = "New Chat", mode: str = "ask"
+        self, title: str = "New Chat", mode: str = "ask", skills: list[str] | None = None
     ) -> dict[str, Any]:
         """Create a new chat thread."""
+        import json as _json
         thread_id = str(uuid4())
         now = _now()
+        skills_json = _json.dumps(skills or [])
         async with self._session() as session:
             session.add(
                 ChatThread(
                     thread_id=thread_id,
                     title=title,
                     mode=mode,
+                    skills=skills_json,
                     created_at=now,
                     updated_at=now,
                 )
             )
             await session.commit()
-        return {"thread_id": thread_id, "title": title, "mode": mode, "created_at": now, "updated_at": now}
+        return {"thread_id": thread_id, "title": title, "mode": mode, "skills": skills or [], "created_at": now, "updated_at": now}
 
     async def list_chat_threads(self) -> list[dict[str, Any]]:
         """List chat threads with message counts, newest first."""
@@ -1437,9 +1490,11 @@ class Database:
             return self._chat_thread_to_dict(row) if row else None
 
     async def update_chat_thread(
-        self, thread_id: str, title: str | None = None, mode: str | None = None
+        self, thread_id: str, title: str | None = None, mode: str | None = None,
+        skills: list[str] | None = None,
     ) -> dict[str, Any] | None:
-        """Update thread title and/or mode. Returns the updated thread."""
+        """Update thread title, mode, and/or skills. Returns the updated thread."""
+        import json as _json
         now = _now()
         async with self._session() as session:
             result = await session.execute(
@@ -1452,6 +1507,8 @@ class Database:
                 row.title = title
             if mode is not None:
                 row.mode = mode
+            if skills is not None:
+                row.skills = _json.dumps(skills)
             row.updated_at = now
             await session.commit()
             return self._chat_thread_to_dict(row)
@@ -2463,6 +2520,7 @@ class Database:
 
     async def get_unembedded_jobs(self) -> list[dict[str, Any]]:
         """Return scraped jobs with no embedding stored."""
+        from app.models import ScrapedJob
         async with self._session() as session:
             result = await session.execute(
                 select(ScrapedJob).where(ScrapedJob.embedding.is_(None))
@@ -2502,6 +2560,7 @@ class Database:
 
     async def update_job_embedding(self, job_id: str, embedding_json: str) -> None:
         """Store a JSON-serialized embedding vector on a scraped job."""
+        from app.models import ScrapedJob
         async with self._session() as session:
             row = await session.get(ScrapedJob, job_id)
             if row:
@@ -2538,6 +2597,234 @@ class Database:
                 )
             )
             return [self._resume_to_dict(row) for row in result.scalars().all()]
+
+    # ── MCP Server CRUD ──────────────────────────────────────────────
+
+    async def create_mcp_server(self, server_id: str, name: str, url: str | None = None,
+                                 transport: str = "streamable-http", server_type: str = "custom",
+                                 display_name: str | None = None) -> dict[str, Any]:
+        """Register a new MCP server."""
+        from app.models import MCPServer
+        now = _now()
+        async with self._session() as session:
+            row = MCPServer(
+                server_id=server_id, name=name, display_name=display_name or name,
+                url=url, transport=transport, server_type=server_type,
+                created_at=now, updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._mcp_server_to_dict(row)
+
+    async def get_mcp_server(self, server_id: str) -> dict[str, Any] | None:
+        """Get a single MCP server by ID."""
+        from app.models import MCPServer
+        async with self._session() as session:
+            row = await session.get(MCPServer, server_id)
+            return self._mcp_server_to_dict(row) if row else None
+
+    async def get_mcp_server_by_name(self, name: str) -> dict[str, Any] | None:
+        """Get a single MCP server by name."""
+        from app.models import MCPServer
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPServer).where(MCPServer.name == name)
+            )
+            row = result.scalar_one_or_none()
+            return self._mcp_server_to_dict(row) if row else None
+
+    async def list_mcp_servers(self) -> list[dict[str, Any]]:
+        """List all registered MCP servers."""
+        from app.models import MCPServer
+        async with self._session() as session:
+            result = await session.execute(select(MCPServer))
+            return [self._mcp_server_to_dict(row) for row in result.scalars().all()]
+
+    async def update_mcp_server(self, server_id: str, **fields: Any) -> bool:
+        """Update MCP server fields (non-None values only)."""
+        from app.models import MCPServer
+        now = _now()
+        async with self._session() as session:
+            row = await session.get(MCPServer, server_id)
+            if not row:
+                return False
+            for key, val in fields.items():
+                if val is not None and hasattr(row, key):
+                    setattr(row, key, val)
+            row.updated_at = now
+            await session.commit()
+            return True
+
+    async def delete_mcp_server(self, server_id: str) -> bool:
+        """Delete an MCP server and its credentials."""
+        from app.models import MCPCredential, MCPServer
+        async with self._session() as session:
+            await session.execute(
+                delete(MCPCredential).where(MCPCredential.server_id == server_id)
+            )
+            row = await session.get(MCPServer, server_id)
+            if not row:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    async def get_mcp_servers_for_reliability(self) -> list[dict[str, Any]]:
+        """Return MCP servers with their reliability stats for the ranker."""
+        from app.models import MCPServer, ToolUsageStats
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPServer).where(MCPServer.enabled == True)
+            )
+            servers = []
+            for row in result.scalars().all():
+                d = self._mcp_server_to_dict(row)
+                stats = await session.execute(
+                    select(ToolUsageStats).where(ToolUsageStats.tool_name == row.server_id)
+                )
+                stats_row = stats.scalar_one_or_none()
+                if stats_row:
+                    d["reliability"] = {
+                        "total_calls": stats_row.total_calls,
+                        "successful_calls": stats_row.successful_calls,
+                        "avg_latency_ms": stats_row.avg_latency_ms,
+                    }
+                servers.append(d)
+            return servers
+
+    # ── MCP Credential CRUD ──────────────────────────────────────────
+
+    async def create_mcp_credential(self, credential_id: str, server_id: str,
+                                     auth_type: str, auth_config_encrypted: str) -> dict[str, Any]:
+        """Store an encrypted MCP credential."""
+        from app.models import MCPCredential
+        now = _now()
+        async with self._session() as session:
+            row = MCPCredential(
+                credential_id=credential_id, server_id=server_id,
+                auth_type=auth_type, auth_config=auth_config_encrypted,
+                created_at=now, updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return {"credential_id": credential_id, "server_id": server_id,
+                    "auth_type": auth_type, "created_at": now, "updated_at": now}
+
+    async def get_mcp_credential(self, credential_id: str) -> dict[str, Any] | None:
+        """Get a single MCP credential by ID."""
+        from app.models import MCPCredential
+        async with self._session() as session:
+            row = await session.get(MCPCredential, credential_id)
+            if not row:
+                return None
+            return {"credential_id": row.credential_id, "server_id": row.server_id,
+                    "auth_type": row.auth_type, "auth_config": row.auth_config,
+                    "created_at": row.created_at, "updated_at": row.updated_at}
+
+    async def get_mcp_credentials_for_server(self, server_id: str) -> list[dict[str, Any]]:
+        """Get all credentials for an MCP server."""
+        from app.models import MCPCredential
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPCredential).where(MCPCredential.server_id == server_id)
+            )
+            return [{"credential_id": r.credential_id, "server_id": r.server_id,
+                      "auth_type": r.auth_type, "auth_config": r.auth_config,
+                      "created_at": r.created_at, "updated_at": r.updated_at}
+                    for r in result.scalars().all()]
+
+    async def delete_mcp_credential(self, credential_id: str) -> bool:
+        """Delete an MCP credential."""
+        from app.models import MCPCredential
+        async with self._session() as session:
+            row = await session.get(MCPCredential, credential_id)
+            if not row:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    # ── Tool Usage Stats CRUD ────────────────────────────────────────
+
+    async def update_tool_usage(self, tool_name: str, success: bool, latency_ms: float,
+                                 error_type: str | None = None) -> None:
+        """Update tool usage stats (called after each tool execution)."""
+        from app.models import ToolUsageStats
+        now = _now()
+        async with self._session() as session:
+            result = await session.execute(
+                select(ToolUsageStats).where(ToolUsageStats.tool_name == tool_name)
+            )
+            row = result.scalar_one_or_none()
+            if row:
+                row.total_calls += 1
+                if success:
+                    row.successful_calls += 1
+                row.avg_latency_ms = (
+                    (row.avg_latency_ms * (row.total_calls - 1) + latency_ms) / row.total_calls
+                )
+                row.last_used_at = now
+                if not success and error_type:
+                    row.last_error_at = now
+                    row.last_error_type = error_type
+                row.updated_at = now
+            else:
+                row = ToolUsageStats(
+                    tool_name=tool_name, total_calls=1,
+                    successful_calls=1 if success else 0,
+                    avg_latency_ms=latency_ms, last_used_at=now,
+                    last_error_at=now if not success else None,
+                    last_error_type=error_type if not success else None,
+                    created_at=now, updated_at=now,
+                )
+                session.add(row)
+            await session.commit()
+
+    async def get_tool_usage(self, tool_name: str) -> dict[str, Any] | None:
+        """Get usage stats for a specific tool."""
+        from app.models import ToolUsageStats
+        async with self._session() as session:
+            result = await session.execute(
+                select(ToolUsageStats).where(ToolUsageStats.tool_name == tool_name)
+            )
+            row = result.scalar_one_or_none()
+            if not row:
+                return None
+            return {
+                "tool_name": row.tool_name, "total_calls": row.total_calls,
+                "successful_calls": row.successful_calls, "avg_latency_ms": row.avg_latency_ms,
+                "last_used_at": row.last_used_at, "last_error_at": row.last_error_at,
+                "last_error_type": row.last_error_type,
+            }
+
+    async def list_tool_usage(self) -> list[dict[str, Any]]:
+        """List usage stats for all tools."""
+        from app.models import ToolUsageStats
+        async with self._session() as session:
+            result = await session.execute(select(ToolUsageStats))
+            return [{"tool_name": r.tool_name, "total_calls": r.total_calls,
+                      "successful_calls": r.successful_calls, "avg_latency_ms": r.avg_latency_ms,
+                      "last_used_at": r.last_used_at, "last_error_at": r.last_error_at,
+                      "last_error_type": r.last_error_type}
+                    for r in result.scalars().all()]
+
+    def _mcp_server_to_dict(self, row: Any) -> dict[str, Any]:
+        """Convert an MCPServer ORM row to a plain dict."""
+        return {
+            "server_id": row.server_id, "name": row.name,
+            "display_name": row.display_name, "url": row.url,
+            "transport": row.transport, "server_type": row.server_type,
+            "enabled": row.enabled, "status": row.status,
+            "error_message": row.error_message, "tools_json": row.tools_json,
+            "last_connected_at": row.last_connected_at,
+            "health_last_success": row.health_last_success,
+            "health_last_failure": row.health_last_failure,
+            "health_consecutive_failures": row.health_consecutive_failures,
+            "health_avg_latency_ms": row.health_avg_latency_ms,
+            "health_total_calls": row.health_total_calls,
+            "health_success_calls": row.health_success_calls,
+            "created_at": row.created_at, "updated_at": row.updated_at,
+        }
 
     async def career_data_fingerprint(self) -> str:
         """Fingerprint of every table feeding the career-memory bundle.

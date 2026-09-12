@@ -387,23 +387,23 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
               </ul>
             </div>
           )}
-          {isSectionVisible('additional') &&
+          {(isSectionVisible('skills')) &&
             !isSectionVisible('certifications') &&
             certificationsTraining.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={baseStyles['resume-section-title']}>
-                {headingFallbacks.certifications}
-              </h3>
-              <ul className={`ml-4 ${baseStyles['resume-list']} ${baseStyles['resume-text-xs']}`}>
-                {certificationsTraining.map((cert, index) => (
-                  <li key={index} className="flex">
-                    <span className="mr-1.5 flex-shrink-0">•&nbsp;</span>
-                    <span>{cert}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+              <div className={baseStyles['resume-section']}>
+                <h3 className={baseStyles['resume-section-title']}>
+                  {headingFallbacks.certifications}
+                </h3>
+                <ul className={`ml-4 ${baseStyles['resume-list']} ${baseStyles['resume-text-xs']}`}>
+                  {certificationsTraining.map((cert, index) => (
+                    <li key={index} className="flex">
+                      <span className="mr-1.5 flex-shrink-0">•&nbsp;</span>
+                      <span>{cert}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
           {/* Custom Sections - Main column */}
           {customSections.map((section) => (
@@ -460,40 +460,42 @@ export const ResumeTwoColumn: React.FC<ResumeTwoColumnProps> = ({
           )}
 
           {/* Skills Section */}
-          {isSectionVisible('additional') && technicalSkills.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={baseStyles['resume-section-title-sm']}>{headingFallbacks.skills}</h3>
-              {skillGroups.length > 0 ? (
-                <div className="flex flex-col gap-1.5">
-                  {skillGroups.map((group) => (
-                    <div key={group.name}>
-                      <span className={baseStyles['resume-text-xs']}>
-                        <strong>{group.name}:</strong> {group.skills.join(' • ')}
+          {(isSectionVisible('skills')) &&
+            technicalSkills.length > 0 && (
+              <div className={baseStyles['resume-section']}>
+                <h3 className={baseStyles['resume-section-title-sm']}>{headingFallbacks.skills}</h3>
+                {skillGroups.length > 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    {skillGroups.map((group) => (
+                      <div key={group.name}>
+                        <span className={baseStyles['resume-text-xs']}>
+                          <strong>{group.name}:</strong> {group.skills.join(' • ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={skillsContainerClass}>
+                    {technicalSkills.map((skill, index) => (
+                      <span key={index} className={baseStyles['resume-skill-pill']}>
+                        {skill}
                       </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={skillsContainerClass}>
-                  {technicalSkills.map((skill, index) => (
-                    <span key={index} className={baseStyles['resume-skill-pill']}>
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Languages Section */}
-          {isSectionVisible('additional') && languages.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={baseStyles['resume-section-title-sm']}>
-                {headingFallbacks.languages}
-              </h3>
-              <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
-            </div>
-          )}
+          {(isSectionVisible('languages')) &&
+            languages.length > 0 && (
+              <div className={baseStyles['resume-section']}>
+                <h3 className={baseStyles['resume-section-title-sm']}>
+                  {headingFallbacks.languages}
+                </h3>
+                <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
+              </div>
+            )}
 
           {/* Awards Section */}
           {isSectionVisible('awards') && awards.length > 0 && (

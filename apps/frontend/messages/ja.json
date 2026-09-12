@@ -1,2165 +1,2303 @@
-{
-  "common": {
-    "save": "保存",
-    "saving": "保存中...",
-    "autosaved": "自動保存済み",
-    "cancel": "キャンセル",
-    "delete": "削除",
-    "edit": "編集",
-    "download": "ダウンロード",
-    "loading": "読み込み中...",
-    "uploading": "アップロード中...",
-    "checking": "確認中...",
-    "processing": "処理中...",
-    "generating": "生成中...",
-    "error": "エラー",
-    "success": "成功",
-    "confirm": "確認",
-    "back": "戻る",
-    "retry": "再試行",
-    "next": "次へ",
-    "continue": "続行",
-    "finish": "完了",
-    "optional": "任意",
-    "close": "閉じる",
-    "ok": "OK",
-    "search": "検索",
-    "filter": "フィルター",
-    "reset": "リセット",
-    "apply": "適用",
-    "selectOption": "選択してください...",
-    "unknown": "不明",
-    "keysCleared": "APIキーが正常にクリアされました",
-    "databaseReset": "データベースが正常にリセットされました",
-    "popupBlocked": "ポップアップがブロックされました。ポップアップを許可するか、次のURLを手動で開いてください: {url}"
-  },
-  "home": {
-    "brandLine1": "履歴書",
-    "brandLine2": "マッチャー",
-    "docs": "利用ドキュメント",
-    "launchApp": "アプリを起動"
-  },
-  "nav": {
-    "dashboard": "ダッシュボード",
-    "builder": "履歴書ビルダー",
-    "tailor": "履歴書をカスタマイズ",
-    "settings": "設定",
-    "backToDashboard": "ダッシュボードに戻る",
-    "goToSettings": "設定へ",
-    "applicationTracker": "応募トラッカー",
-    "jobSearch": "Job Search",
-    "jobTracking": "Job Tracking",
-    "resumeBuilder": "Resume Builder",
-    "companies": "Company Tracker",
-    "contacts": "Contact Tracker",
-    "profile": "My Profile",
-    "chat": "AIチャット",
-    "createResume": "履歴書を作成",
-    "interviewPractice": "面接練習"
-  },
-  "dashboard": {
-    "title": "ダッシュボード",
-    "subtitle": "履歴書と求人応募を管理",
-    "myResumes": "マイ履歴書",
-    "noResumes": "履歴書がありません",
-    "noResumesDescription": "最初の履歴書をアップロードして始めましょう",
-    "uploadResume": "履歴書をアップロード",
-    "createNew": "新規作成",
-    "lastModified": "最終更新",
-    "actions": "アクション",
-    "preview": "プレビュー",
-    "viewResume": "履歴書を見る",
-    "editResume": "履歴書を編集",
-    "deleteResume": "履歴書を削除",
-    "downloadPdf": "PDFをダウンロード",
-    "tailorResume": "求人に合わせてカスタマイズ",
-    "selectModule": "モジュールを選択",
-    "masterResume": "マスター履歴書",
-    "tailoredResume": "カスタマイズ履歴書",
-    "initializeMasterResume": "マスター履歴書を初期化",
-    "initializeSequence": "初期化シーケンス",
-    "masters": "マスター履歴書",
-    "addAnotherResume": "別の履歴書を追加",
-    "refreshStatus": "ステータスを更新",
-    "retryProcessing": "再処理",
-    "retryingProcessing": "再処理中...",
-    "deleteAndReupload": "削除して再アップロード",
-    "processingFailedHint": "このファイルを読み取れませんでした。再試行するか、別のファイルをアップロードしてください。",
-    "retrySuccess": "処理に成功しました！",
-    "retryFailed": "再処理に失敗しました。別のファイルをアップロードしてください。",
-    "createResume": "履歴書を作成",
-    "edited": "編集 {date}",
-    "statusLine": "ステータス: {status}",
-    "status": {
-      "checking": "確認中...",
-      "processing": "処理中...",
-      "ready": "準備完了",
-      "failed": "処理に失敗しました",
-      "pending": "保留中"
-    },
-    "llmNotConfiguredTitle": "[ LLM 未設定 ]",
-    "llmNotConfiguredMessage": "> API キーがありません。設定するまで履歴書のカスタマイズは無効です。",
-    "setupRequiredTitle": "[ 設定が必要 ]",
-    "setupRequiredMessage": "> 履歴書のカスタマイズを有効にするには、設定で API キーを構成してください。",
-    "uploadDialog": {
-      "success": "履歴書のアップロードに成功しました。",
-      "successMaster": "履歴書がアップロードされ、マスターとして設定されました。",
-      "successMissingId": "アップロードは成功しましたが、履歴書 ID が返されませんでした。",
-      "parsingFailed": "履歴書はアップロードされましたが、AI解析に失敗しました。手動でカスタマイズすることは可能です。",
-      "failed": "アップロードに失敗しました。",
-      "dropzoneTitle": "クリックまたはファイルをドラッグ",
-      "dropzoneSubtitle": "PDF、DOC、DOCX（最大 4MB）",
-      "tryDifferentFile": "別のファイルを試す",
-      "parsingFailedKeepOpen": "AI 解析に失敗しました。別のファイルを試すか、このダイアログを閉じてください。",
-      "saveAsMaster": "マスター履歴書として保存",
-      "saveAsMasterHint": "この履歴書を複数の求人向け調整のベースとして使用します。"
-    }
-  },
-  "builder": {
-    "title": "履歴書ビルダー",
-    "editMode": "編集モード",
-    "previewMode": "プレビューモード",
-    "createAndPreview": "作成＆プレビュー",
-    "unsavedDraft": "未保存の下書き",
-    "personalInfo": "個人情報",
-    "summary": "概要",
-    "experience": "職歴",
-    "education": "学歴",
-    "skills": "スキル",
-    "projects": "プロジェクト",
-    "certifications": "資格",
-    "languages": "言語",
-    "awards": "受賞歴",
-    "addSection": "セクションを追加",
-    "removeSection": "セクションを削除",
-    "saveChanges": "変更を保存",
-    "discardChanges": "変更を破棄",
-    "placeholders": {
-      "summary": "職務要約を簡潔に入力してください..."
-    },
-    "contentStats": {
-      "wordsChars": "{wordCount}語 / {charCount}文字"
-    },
-    "additionalForm": {
-      "instructions": "各項目を改行で区切って入力してください（1行につき1項目）。",
-      "placeholders": {
-        "technicalSkills": "React\nTypeScript\nNode.js",
-        "languages": "日本語\n英語",
-        "certifications": "AWS Solution Architect\nGoogle Analytics",
-        "awards": "月間MVP\nハッカソン優勝"
-      }
-    },
-    "customSections": {
-      "dialogTitle": "カスタムセクションを追加",
-      "dialogDescription": "任意の名前とタイプで新しいセクションを作成します。",
-      "sectionNameLabel": "セクション名",
-      "sectionNamePlaceholder": "例：出版、ボランティア、資格",
-      "sectionTypeLabel": "セクションタイプ",
-      "addCustomSectionButton": "カスタムセクションを追加",
-      "sectionTypes": {
-        "textBlockLabel": "テキストブロック",
-        "textBlockDescription": "単一のテキスト欄（概要など）",
-        "itemListLabel": "項目リスト",
-        "itemListDescription": "詳細を含む複数エントリ（職歴など）",
-        "stringListLabel": "シンプルリスト",
-        "stringListDescription": "シンプルな一覧（スキルなど）"
-      },
-      "contentLabel": "内容",
-      "contentPlaceholder": "{name} の内容を入力...",
-      "defaultTextPlaceholder": "内容を入力...",
-      "entryLabel": "エントリ",
-      "addEntryLabel": "エントリを追加",
-      "itemsLabel": "項目",
-      "itemsPlaceholder": "1行につき1項目を入力",
-      "unknownSectionType": "不明なセクションタイプ：{type}",
-      "unknownDefaultSection": "不明なデフォルトセクション：{section}"
-    },
-    "sectionHeader": {
-      "renameSection": "セクション名を変更",
-      "customTag": "カスタム",
-      "hiddenFromPdfTag": "PDFに含めない",
-      "hideSection": "セクションを非表示",
-      "showSection": "セクションを表示",
-      "moveUp": "上へ移動",
-      "moveDown": "下へ移動",
-      "deleteSection": "セクションを削除",
-      "deleteTitle": "セクションを削除",
-      "deleteDescription": "「{name}」を削除しますか？この操作は元に戻せません。"
-    },
-    "previewTabs": {
-      "resume": "履歴書",
-      "coverLetter": "カバーレター",
-      "outreach": "連絡メール",
-      "jdMatch": "JD一致",
-      "interviewPrep": "面接準備"
-    },
-    "footer": {
-      "moduleLabel": "履歴書ビルダーモジュール",
-      "singleColumn": "1カラム",
-      "twoColumn": "2カラム"
-    },
-    "pageSize": {
-      "usLetter": "USレター"
-    },
-    "generatePrompt": {
-      "notAvailableTitle": "{title}は利用できません",
-      "notAvailableDescription": "{title}を生成するには、まず求人内容を入力して履歴書をカスタマイズしてください。",
-      "goToDashboard": "ダッシュボードへ",
-      "generateTitle": "{title}を生成",
-      "coverLetterDescription": "履歴書と求人内容に基づいてカバーレターを生成します。",
-      "outreachDescription": "履歴書と求人内容に基づいて、LinkedIn またはメール向けの外連絡メッセージを生成します。",
-      "generateButton": "{title}を生成",
-      "coverLetterFooter": "ヒント：先にカスタマイズすると精度が上がります。",
-      "outreachFooter": "ヒント：短く、個別性を入れましょう。",
-      "interviewPrepDescription": "カスタマイズ済み履歴書と求人内容に基づいて、職種別の面接準備を生成します。",
-      "interviewPrepFooter": "ヒント：カスタマイズ後に、履歴書の根拠に基づく正確な回答を準備しましょう。"
-    },
-    "regenerateDialog": {
-      "title": "{title}を再生成しますか？",
-      "description": "現在の{title}を新しく生成した内容で置き換えます。編集内容は失われます。",
-      "instructionLabel": "追加の指示（任意）",
-      "instructionPlaceholder": "例：私の Python バックエンド経験に触れてください"
-    },
-    "regenerate": {
-      "buttonLabel": "AIで再生成",
-      "stepLabel": "ステップ {current} / {total}",
-      "selectDialog": {
-        "title": "再生成する項目を選択",
-        "subtitle": "改善したい履歴書の部分を選択してください",
-        "experience": "職務経験",
-        "projects": "プロジェクト",
-        "skills": "技術スキル",
-        "noItemsSelected": "少なくとも1つ選択してください",
-        "noItemsAvailable": "再生成できる項目がありません。まず職務経験、プロジェクト、またはスキルを追加してください。",
-        "itemCount": {
-          "one": "{count}件",
-          "other": "{count}件"
-        },
-        "continueButton": "続行"
-      },
-      "instructionDialog": {
-        "title": "どこを改善したいですか？",
-        "subtitle": "AIを導くために具体的なフィードバックを入力してください",
-        "defaultInstruction": "より強いアクション動詞で内容を改善し、可能な範囲で定量的な成果を示してください。",
-        "selectedItems": "選択した項目",
-        "placeholder": "例：より定量的な指標を追加する、リーダーシップを強調する、行動動詞を増やす…",
-        "hint": "満足していない点を具体的に書いてください",
-        "backButton": "戻る",
-        "generateButton": "生成"
-      },
-      "diffPreview": {
-        "title": "変更をプレビュー",
-        "subtitle": "適用する前に再生成された内容を確認してください",
-        "expandItem": "{item} を展開",
-        "collapseItem": "{item} を折りたたむ",
-        "partialFailures": "一部の項目を再生成できませんでした（{count}件）。成功した変更はそのまま確認して適用できます。",
-        "changesCount": "{count} 件変更",
-        "rejectButton": "却下して再生成",
-        "acceptButton": "変更を適用",
-        "originalLabel": "元の内容",
-        "newLabel": "新しい内容",
-        "noContent": "内容なし",
-        "applying": "適用中...",
-        "loading": "改善された内容を生成中..."
-      },
-      "errors": {
-        "generationFailed": "生成に失敗しました。もう一度お試しください。",
-        "applyFailed": "変更の適用に失敗しました。もう一度お試しください。",
-        "resumeChanged": "再生成後に履歴書の内容が変更されました。再生成してからもう一度お試しください。",
-        "noChangesToApply": "適用できる変更がありません。",
-        "networkError": "ネットワークエラー。接続を確認してください。"
-      }
-    },
-    "jdMatch": {
-      "yourResume": "あなたの履歴書",
-      "matchingKeywordsHighlighted": "（一致キーワードをハイライト）",
-      "jobDescriptionTitle": "求人内容",
-      "at": "＠",
-      "atSeparator": " @ ",
-      "roleSeparator": "—",
-      "aboutTitle": "JD一致について",
-      "aboutDescription": "このビューでは、履歴書が求人内容（JD）にどれだけ一致しているかを確認できます。JDのキーワードが履歴書内で黄色にハイライトされ、すでに含まれているスキルや用語が分かります。",
-      "highlightedKeywordsTitle": "ハイライトされたキーワード",
-      "highlightedKeywordsDescriptionTemplate": "__COLOR__でハイライトされた単語は、求人内容と履歴書の両方に含まれます。一致率が高いほど、要件への適合度が高いことを示します。",
-      "highlightedKeywordsDescriptionPrefix": "次の色でハイライトされた単語",
-      "highlightColor": "黄色",
-      "highlightedKeywordsDescriptionSuffix": "は、求人内容と履歴書の両方に含まれます。一致率が高いほど、要件への適合度が高いことを示します。",
-      "tipsTitle": "ヒント",
-      "tips": {
-        "items": {
-          "addMissingKeywords": "「履歴書」タブで不足しているキーワードを追加する",
-          "focusTechnicalSkills": "JDに記載された技術スキルやツールに注目する",
-          "matchActionVerbs": "要件にある行動動詞に合わせる"
-        }
-      },
-      "stats": {
-        "keywordsExtracted": "抽出キーワード数: {count}",
-        "matchesFound": "一致数: {count}",
-        "matchRateLabel": "一致率:"
-      }
-    },
-    "genericItemForm": {
-      "itemLabel": "項目",
-      "addItemLabel": "{label}を追加",
-      "fields": {
-        "title": "タイトル",
-        "organization": "組織",
-        "location": "場所",
-        "years": "期間",
-        "descriptionPoints": "説明ポイント"
-      },
-      "actions": {
-        "addPoint": "ポイントを追加",
-        "togglePointStyle": "箇条書き記号を切り替え"
-      },
-      "placeholders": {
-        "title": "タイトル",
-        "organization": "組織",
-        "location": "場所",
-        "years": "2020年1月 - 現在",
-        "description": "あなたの貢献を説明..."
-      },
-      "noEntries": "// {label} の項目はありません",
-      "addFirstItem": "最初の{label}を追加"
-    },
-    "forms": {
-      "experience": {
-        "addJob": "職歴を追加",
-        "addFirstJob": "最初の職歴を追加",
-        "fields": {
-          "jobTitle": "職種",
-          "company": "会社"
-        },
-        "placeholders": {
-          "jobTitle": "シニアエンジニア",
-          "company": "Tech Corp",
-          "location": "リモート / 都市",
-          "years": "2020年1月 - 現在",
-          "description": "実績を説明..."
-        }
-      },
-      "education": {
-        "addSchool": "学歴を追加",
-        "addFirstSchool": "最初の学歴を追加",
-        "fields": {
-          "institution": "学校/機関",
-          "degree": "学位",
-          "description": "説明",
-          "descriptionOptional": "説明（任意）"
-        },
-        "placeholders": {
-          "institution": "大学名",
-          "degree": "学士（理学）",
-          "years": "2016年8月 - 2020年5月",
-          "description": "追加の詳細..."
-        }
-      },
-      "projects": {
-        "addProject": "プロジェクトを追加",
-        "addFirstProject": "最初のプロジェクトを追加",
-        "fields": {
-          "projectName": "プロジェクト名",
-          "role": "役割",
-          "website": "Webサイト"
-        },
-        "placeholders": {
-          "projectName": "Taylor",
-          "role": "作成者",
-          "years": "2023年3月",
-          "github": "github.com/username/project",
-          "website": "https://project-demo.com",
-          "description": "プロジェクト詳細..."
-        }
-      },
-      "certifications": {
-        "addCertificate": "資格を追加",
-        "addManually": "手動で追加",
-        "noCertificates": "資格がまだありません。プロフィールから、または手動で追加してください。",
-        "fields": {
-          "certificate": "資格"
-        },
-        "placeholders": {
-          "certificate": "例: AWS Certified Solutions Architect — Amazon (2023)"
-        }
-      },
-      "awards": {
-        "addAward": "受賞歴を追加",
-        "addManually": "手動で追加",
-        "noAwards": "受賞歴がまだありません。プロフィールから、または手動で追加してください。",
-        "fields": {
-          "award": "受賞歴"
-        },
-        "placeholders": {
-          "award": "例: 月間MVP — 会社名 (2024)"
-        }
-      }
-    },
-    "formatting": {
-      "panelTitle": "テンプレートと書式",
-      "template": "テンプレート",
-      "templates": {
-        "swissSingle": {
-          "name": "1カラム",
-          "description": "内容密度が高い伝統的な全幅レイアウト"
-        },
-        "swissTwoColumn": {
-          "name": "2カラム",
-          "description": "経験中心のメイン列とスキル用サイドバー"
-        },
-        "modern": {
-          "name": "モダン",
-          "description": "カラフルなアクセントとテーマ色のカスタマイズ"
-        },
-        "modernTwoColumn": {
-          "name": "モダン2カラム",
-          "description": "モダンな2カラムとカラフルなアクセント"
-        },
-        "latex": {
-          "name": "LaTeX",
-          "description": "罫線付き見出しのクラシックなセリフ体レイアウト"
-        },
-        "clean": {
-          "name": "クリーン",
-          "description": "大きく控えめな見出しのミニマルなサンセリフ体レイアウト"
-        },
-        "vivid": {
-          "name": "ビビッド",
-          "description": "アクセント見出しと矢印箇条書きのカラフルな2カラムレイアウト"
-        }
-      },
-      "accentColor": "アクセントカラー",
-      "accentColors": {
-        "blue": "青",
-        "green": "緑",
-        "orange": "オレンジ",
-        "red": "赤"
-      },
-      "pageSize": "ページサイズ",
-      "margins": "余白（mm）",
-      "margin": {
-        "top": "上",
-        "bottom": "下",
-        "left": "左",
-        "right": "右"
-      },
-      "spacing": "間隔",
-      "spacingSection": "セクション",
-      "spacingItems": "項目",
-      "spacingLines": "行間",
-      "padding": "パディング",
-      "fontSize": "フォントサイズ",
-      "baseFontSize": "本文",
-      "headerScale": "見出し",
-      "headerFontFamily": "見出し",
-      "bodyFontFamily": "本文",
-      "fontNames": {
-        "serif": "セリフ",
-        "sans": "サンセリフ",
-        "mono": "等幅",
-        "timesRoman": "Times"
-      },
-      "options": "オプション",
-      "compactMode": "コンパクトモード",
-      "contactIcons": "連絡先アイコン",
-      "effectiveOutput": "適用結果",
-      "effectiveMargins": "余白（mm）：上{top} 下{bottom} 左{left} 右{right}",
-      "effectiveSectionGap": "セクション間隔",
-      "effectiveItemGap": "項目間隔",
-      "effectiveLineHeight": "行間",
-      "effectiveBaseFont": "本文フォント",
-      "effectiveHeaderScale": "見出しスケール",
-      "effectiveHeaderFont": "見出しフォント",
-      "effectiveBodyFont": "本文フォント",
-      "compactHint": "コンパクトモードでは間隔と行間が詰まります。余白と本文フォントサイズは維持されます。",
-      "resetDefaults": "デフォルトに戻す",
-      "dateFormat": "Date Format",
-      "dateFormats": {
-        "short": "Short name (Sep 2020)",
-        "long": "Long name (September 2020)",
-        "mmmyyyy": "Number (MMM/YYYY)",
-        "years": "Years (2020 - 2024)"
-      },
-      "lineHeight": "Line Height",
-      "listLineHeight": "List Line Height",
-      "headerAlignment": "Header Alignment",
-      "dateAlignment": "Date Alignment",
-      "locationAlignment": "Location Alignment",
-      "alignmentOptions": {
-        "left": "Left",
-        "center": "Center",
-        "right": "Right"
-      },
-      "skillsLayout": "Skills Layout",
-      "skillsLayoutOptions": {
-        "comma": "Comma separated",
-        "list": "Line separated",
-        "columns": "Columns"
-      },
-      "marginUnit": "Units",
-      "marginUnits": {
-        "mm": "Millimeters (mm)",
-        "percent": "Percent of page"
-      },
-      "typography": "Typography",
-      "bulletMarker": "Bullet Marker",
-      "listSeparator": "List Separator",
-      "markerOptions": {
-        "*": "*",
-        "-": "-",
-        ">>": ">>",
-        "->": "->"
-      },
-      "separatorOptions": {
-        "*": "*",
-        "-": "-",
-        ",": "Comma",
-        "|": "Pipe"
-      },
-      "weightOptions": {
-        "light": "Light",
-        "regular": "Regular",
-        "bold": "Bold",
-        "extralight": "Extra Light"
-      },
-      "transformOptions": {
-        "uppercase": "All Caps",
-        "as-written": "As Written",
-        "capitalize": "Title Case"
-      },
-      "elementNames": {
-        "bodyCopy": "Body Copy",
-        "primaryHeading": "Primary Heading",
-        "secondaryHeading": "Secondary Heading",
-        "sectionTitle": "Section Titles",
-        "fullName": "Full Name",
-        "minorCopy": "Minor Copy"
-      },
-      "spacingRows": {
-        "betweenSections": "Between Sections",
-        "titlesContent": "Titles & Content",
-        "primarySecondaryHeadings": "Primary & Secondary Headings",
-        "contentBlocks": "Content Blocks",
-        "listItems": "List Items"
-      },
-      "borderRows": {
-        "aboveHeader": "Above Header",
-        "belowHeader": "Below Header",
-        "sectionTitles": "Section Titles"
-      },
-      "borderEnabled": "Show",
-      "ptUnit": "pt",
-      "effectiveListLineHeight": "List Line Height",
-      "workShowBy": "Show work experience by",
-      "workDatesBy": "Show dates by",
-      "workLocationBy": "Show location by",
-      "workShowByOptions": {
-        "company": "Company",
-        "position": "Position"
-      },
-      "workDatesByOptions": {
-        "company": "Company",
-        "position": "Position",
-        "both": "Both"
-      },
-      "workLocationByOptions": {
-        "company": "Company",
-        "position": "Position",
-        "none": "None"
-      },
-      "educationShowBy": "Show education by",
-      "educationLayout": "Layout",
-      "educationShowByOptions": {
-        "degree": "Degree",
-        "institution": "Institution"
-      },
-      "educationLayoutOptions": {
-        "stacked": "Stacked",
-        "inline": "Inline"
-      },
-      "previewSelectors": {
-        "metaSample": "Sep 2020",
-        "locationSample": "Paris"
-      }
-    },
-    "personalInfoForm": {
-      "placeholders": {
-        "name": "山田 太郎",
-        "title": "ソフトウェアエンジニア",
-        "email": "taro@example.com",
-        "phone": "+81 90-0000-0000",
-        "location": "都市、国",
-        "website": "portfolio.com",
-        "linkedin": "linkedin.com/in/taro",
-        "github": "github.com/taro"
-      },
-      "displayAsLink": "リンクとして表示"
-    },
-    "leftPanel": {
-      "editorPanel": "編集パネル",
-      "coverLetterEditor": "カバーレター編集",
-      "outreachEditor": "連絡メール編集",
-      "jdMatchAnalysis": "JD一致分析",
-      "interviewPrep": "面接準備"
-    },
-    "alerts": {
-      "saveNotAvailable": "既存の履歴書を編集中のみ保存できます。",
-      "saveFailed": "履歴書の保存に失敗しました。もう一度お試しください。",
-      "saveAsMasterSuccess": "マスター履歴書として保存しました",
-      "saveAsMasterFailed": "マスター履歴書として保存できませんでした。もう一度お試しください。",
-      "coverLetterSaveSuccess": "カバーレターを保存しました",
-      "outreachSaveSuccess": "連絡メールを保存しました",
-      "downloadSuccess": "履歴書をダウンロードしました",
-      "reloadFailed": "変更は適用されましたが、履歴書の再読み込みに失敗しました。ページを更新してください。",
-      "downloadNotAvailable": "保存済みの履歴書のみダウンロードできます。",
-      "downloadFailed": "履歴書のダウンロードに失敗しました。もう一度お試しください。",
-      "coverLetterSaveFailed": "カバーレターの保存に失敗しました。もう一度お試しください。",
-      "coverLetterDownloadRequiresResume": "カバーレターをダウンロードする前に履歴書を保存してください。",
-      "coverLetterMissing": "カバーレターがありません。設定で生成を有効にして履歴書をカスタマイズしてください。",
-      "coverLetterDownloadFailed": "カバーレターのダウンロードに失敗しました: {error}",
-      "outreachSaveFailed": "連絡メールの保存に失敗しました。もう一度お試しください。",
-      "coverLetterGenerateFailed": "カバーレターの生成に失敗しました: {error}",
-      "outreachGenerateFailed": "連絡メールの生成に失敗しました: {error}",
-      "interviewPrepGenerateFailed": "面接準備の生成に失敗しました: {error}"
-    },
-    "editorModes": {
-      "design": "Design",
-      "content": "Content"
-    },
-    "designTabs": {
-      "presentation": "Presentation",
-      "sections": "Sections",
-      "settings": "Settings",
-      "advanced": "Advanced"
-    },
-    "designGroups": {
-      "controls": "Controls",
-      "styling": "Styling",
-      "heightsPaddings": "Heights & Paddings",
-      "alignmentsLayouts": "Alignments & Layouts",
-      "pageSetup": "Page Setup",
-      "workExperienceSettings": "Work Experience Settings",
-      "educationSettings": "Education Settings",
-      "advancedStyles": "Advanced Styles",
-      "textSizes": "Text Sizes",
-      "textWeights": "Text Weights",
-      "textTransformations": "Text Transformations",
-      "verticalSpacing": "Vertical Spacing",
-      "borders": "Borders",
-      "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
-    },
-    "sectionOrder": {
-      "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
-      "dragToReorder": "Drag to reorder"
-    },
-    "actions": {
-      "saveAsMaster": "マスター履歴書として保存",
-      "alreadyMaster": "この履歴書は既にマスターです",
-      "saveMoreOptions": "その他の保存オプション",
-      "saveAsMasterConfirmTitle": "マスター履歴書として保存しますか？",
-      "saveAsMasterConfirmDescription": "この履歴書は今後の求人応募の調整のベースになります。他のマスター履歴書は保持されます。",
-      "saveAsMasterConfirmLabel": "マスター履歴書として保存"
-    },
-    "projectsDialog": {
-      "title": "プロフィールからプロジェクトを追加",
-      "description": "キャリアプロフィールからプロジェクトを選択します。AIがREADMEまたは簡単なプロンプトから箇条書きを作成します。",
-      "profileProjects": "プロフィールのプロジェクト",
-      "searchPlaceholder": "プロジェクトを検索...",
-      "noProjects": "プロフィールにプロジェクトがまだありません。",
-      "noProjectsHint": "ここに表示するには、プロフィールにプロジェクトを追加してください。",
-      "goToProfile": "プロフィールへ",
-      "startFromScratch": "最初から作成",
-      "startFromScratchHint": "空のプロジェクト項目を追加して手動で入力します",
-      "readmeAvailable": "README",
-      "noReadme": "READMEなし",
-      "readmeLabel": "プロジェクトのREADME",
-      "promptLabel": "作成したものを説明してください",
-      "promptPlaceholder": "例: WebSocket、Redis pub/sub、同時5,000ユーザーのリアルタイムチャットアプリ",
-      "promptHint": "任意 — 注目してほしい点や詳細を追加できます。AIがREADME（ある場合）と組み合わせます。",
-      "generate": "箇条書きを生成",
-      "regenerate": "再生成",
-      "generating": "生成中...",
-      "previewTitle": "AIによる箇条書き",
-      "addToResume": "履歴書に追加",
-      "back": "戻る",
-      "loading": "プロジェクトを読み込み中...",
-      "loadError": "プロジェクトを読み込めませんでした。",
-      "retry": "再試行",
-      "generateError": "生成中にエラーが発生しました。もう一度お試しください。",
-      "allAdded": "プロフィールのプロジェクトはすべてこの履歴書に追加済みです。",
-      "allAddedHint": "ここに表示するには、プロフィールにプロジェクトを追加してください。",
-      "showAll": "すべて表示（あと{{count}}件）",
-      "showLess": "少なく表示"
-    },
-    "certificationsDialog": {
-      "title": "プロフィールから資格を追加",
-      "description": "この履歴書に追加する資格をプロフィールから選択します。",
-      "profileCertifications": "プロフィールの資格",
-      "searchPlaceholder": "資格を検索...",
-      "allAdded": "プロフィールの資格はすべてこの履歴書に追加済みです。",
-      "noCertificationsHint": "ここに表示するには、プロフィールに資格を追加してください。",
-      "goToProfile": "プロフィールへ",
-      "loading": "資格を読み込み中...",
-      "loadError": "資格を読み込めませんでした。",
-      "retry": "再試行"
-    },
-    "awardsDialog": {
-      "title": "プロフィールから受賞歴を追加",
-      "description": "この履歴書に追加する受賞歴をプロフィールから選択します。",
-      "profileAwards": "プロフィールの受賞歴",
-      "searchPlaceholder": "受賞歴を検索...",
-      "allAdded": "プロフィールの受賞歴はすべてこの履歴書に追加済みです。",
-      "noAwardsHint": "ここに表示するには、プロフィールに受賞歴を追加してください。",
-      "goToProfile": "プロフィールへ",
-      "loading": "受賞歴を読み込み中...",
-      "loadError": "受賞歴を読み込めませんでした。",
-      "retry": "再試行"
-    }
-  },
-  "enrichment": {
-    "title": "履歴書の強化",
-    "loading": {
-      "analyzingTitle": "履歴書を分析しています...",
-      "analyzingDescription": "詳細を補足できる箇所を特定しています",
-      "generatingTitle": "強化した記述を作成しています...",
-      "generatingDescription": "回答内容をもとに履歴書を改善します",
-      "applyingTitle": "強化内容を適用しています...",
-      "applyingDescription": "マスター履歴書を更新しています"
-    },
-    "questionProgress": "質問 {current} / {total}",
-    "itemType": {
-      "experience": "経験",
-      "project": "プロジェクト"
-    },
-    "shortcutHint": "Shift+Enterで改行、Cmd/Ctrl+Enterで続行",
-    "preview": {
-      "title": "新しい内容を確認",
-      "description": "履歴書に追加される新しい箇条書きを確認してください",
-      "applyButton": "履歴書に追加",
-      "keepingLabel": "保持",
-      "addingLabel": "追加",
-      "existingCount": "（既存 {count} 件）",
-      "newCount": "（新規 {count} 件）",
-      "noExistingDescription": "既存の説明はありません"
-    },
-    "complete": {
-      "title": "履歴書を強化しました！",
-      "updatedCountSingular": "{count} 件を更新しました",
-      "updatedCountPlural": "{count} 件を更新しました",
-      "updatedFallback": "強化した記述を履歴書に反映しました",
-      "doneButton": "完了"
-    },
-    "noImprovements": {
-      "title": "履歴書はとても良い状態です！",
-      "defaultDescription": "改善が必要な項目は見つかりませんでした。すでに十分に詳細な記述です。"
-    },
-    "error": {
-      "title": "エラーが発生しました",
-      "unexpected": "予期しないエラーが発生しました"
-    }
-  },
-  "tailor": {
-    "aiConnection": {
-      "title": "AI接続",
-      "subtitle": "開始する前に、LLMプロバイダーが動作することを確認します。",
-      "test": "接続テスト",
-      "testing": "テスト中…",
-      "retest": "再テスト",
-      "notConfigured": "LLMプロバイダーが設定されていません",
-      "ok": "接続は正常です",
-      "failed": "接続に失敗しました",
-      "connectedAs": "{provider} · {model}",
-      "latency": "{ms} ミリ秒",
-      "gotoSettings": "設定を開く"
-    },
-    "title": "履歴書をカスタマイズ",
-    "subtitle": "特定の求人に合わせて履歴書を最適化",
-    "heroTitle": "履歴書をカスタマイズ",
-    "selectResume": "履歴書を選択",
-    "resumePromptDescription": "調整に使用するマスター履歴書を選択します。",
-    "pasteJobDescription": "求人内容を貼り付け",
-    "pasteJobDescriptionBelow": "下に求人内容を貼り付け",
-    "jobDescriptionPlaceholder": "求人内容をここに貼り付けてください...",
-    "promptLabel": "調整の強さ",
-    "promptDescription": "求人情報にどの程度合わせるかを選択してください。",
-    "promptOptions": {
-      "nudge": {
-        "label": "軽く調整",
-        "description": "既存の経験に合わせて最小限の修正。"
-      },
-      "keywords": {
-        "label": "キーワード強化",
-        "description": "役割や範囲を変えずにキーワードを追加。"
-      },
-      "full": {
-        "label": "完全に調整",
-        "description": "求人情報を使って全面的に調整。"
-      },
-      "recruiter": {
-        "label": "採用担当者向け調整",
-        "description": "採用担当者レベルの調整。根拠のマッピングとATSの読みやすさを考慮。"
-      }
-    },
-    "analyzeJob": "求人を分析",
-    "generateTailored": "カスタマイズ履歴書を生成",
-    "setupRequiredTitle": "[ 設定が必要 ]",
-    "noApiKeyMessage": "> API キーが設定されていません。履歴書のカスタマイズには LLM プロバイダーが必要です。",
-    "configureApiKey": "API キーを設定",
-    "configureApiKeyFirst": "先に API キーを設定してください",
-    "charactersCount": "{count} 文字",
-    "matchScore": "マッチスコア",
-    "suggestions": "提案",
-    "keywords": "含めるべきキーワード",
-    "footerTagline": "AI 搭載最適化エンジン",
-    "diffModal": {
-      "title": "AI調整結果の確認",
-      "subtitle": "虚偽の情報が追加されていないか、変更内容を慎重に確認してください",
-      "summary": "変更の概要",
-      "skillsAdded": "追加されたスキル",
-      "skillsRemoved": "削除されたスキル",
-      "descriptionsModified": "変更された説明",
-      "certificationsAdded": "追加された資格",
-      "highRiskChanges": "高リスクの変更",
-      "warningTitle": "高リスクな追加が {count} 件検出されました",
-      "warningMessage": "これらのスキルが元の履歴書に実際に存在する、または説明内に反映されていることを確認してください",
-      "summaryChanges": "概要の変更",
-      "skillChanges": "スキルの変更",
-      "descriptionChanges": "職歴説明の変更",
-      "experienceChanges": "職歴の変更",
-      "educationChanges": "学歴の変更",
-      "projectChanges": "プロジェクトの変更",
-      "certificationChanges": "資格の変更",
-      "languageChanges": "言語の変更",
-      "awardChanges": "賞の変更",
-      "rejectButton": "拒否して再生成",
-      "confirmButton": "確認して保存"
-    },
-    "regenerateDialog": {
-      "title": "カスタマイズ済み履歴書を再生成しますか？",
-      "description": "現在のプレビューを破棄し、新しい AI 調整結果を取得します。",
-      "confirmLabel": "再生成"
-    },
-    "missingDiffDialog": {
-      "title": "変更を計算できませんでした",
-      "description": "この履歴書の差分を計算できませんでした。構造化データがない旧形式の履歴書で発生することがあります。カスタマイズ済み履歴書を保存するか、キャンセルして後で確認してください。",
-      "confirmLabel": "差分なしで続行"
-    },
-    "errors": {
-      "jobDescriptionTooShort": "求人内容が短すぎます。詳細を追加してから、もう一度お試しください。",
-      "apiKeyError": "API キーが機能していません。設定で確認してください。",
-      "rateLimit": "レート制限に達しました。約1分待ってから再試行してください。",
-      "failedToGenerate": "履歴書を生成できませんでした。設定で API キーを確認してから、もう一度お試しください。",
-      "timeout": "リクエストがタイムアウトしました。より短い求人内容で再試行するか、接続を確認してください。",
-      "failedToPreview": "履歴書をプレビューできませんでした。設定で API キーを確認してから、もう一度お試しください。",
-      "failedToConfirm": "変更を適用できませんでした。もう一度お試しください。"
-    },
-    "projectsPicker": {
-      "title": "調整した履歴書に含めるプロジェクトを選択",
-      "subtitle": "これらのプロジェクトは求人内容にマッチしています。最大4件まで選択できます。調整した履歴書のプロジェクト欄は選択内容で置き換えられます。",
-      "matchScore": "マッチ度",
-      "inResume": "履歴書に掲載済み",
-      "noDescription": "このプロジェクトの説明を作成できませんでした（LLMを利用できません）。",
-      "selectHint": "最大 {count} 件まで選択できます",
-      "skip": "スキップ — 最上位マッチを自動使用",
-      "tailorWithSelection": "選択内容で調整する"
-    },
-    "jobIntel": {
-      "shouldApply": {
-        "title": "Should I Apply?",
-        "matchPercent": "Match",
-        "careerRelevance": "Career Relevance",
-        "salaryPotential": "Salary Potential",
-        "competition": "Competition",
-        "companyQuality": "Company Quality",
-        "ghostRisk": "Ghost Risk",
-        "verdict": "Verdict",
-        "biggestGap": "Biggest Gap",
-        "recommendation": "Recommendation",
-        "analyze": "Analyze Job",
-        "analyzing": "Analyzing...",
-        "verdictYes": "Yes — strong match",
-        "verdictConditional": "Conditional — address gaps",
-        "verdictNo": "No — low match",
-        "notAvailable": "n/a"
-      },
-      "redFlags": {
-        "title": "Red Flags",
-        "ghostRisk": "Ghost Risk",
-        "noFlags": "No red flags detected",
-        "info": "Info",
-        "warning": "Warning",
-        "danger": "Danger",
-        "loadFailed": "レッドフラグを読み込めませんでした。"
-      },
-      "jobDna": {
-        "title": "Job DNA",
-        "technical": "Technical Skills",
-        "experience": "Experience Domains",
-        "company": "Company Culture",
-        "matched": "Matched",
-        "missing": "Missing",
-        "extra": "Extra",
-        "overallMatch": "Overall Match",
-        "loadFailed": "ジョブDNAを読み込めませんでした。"
-      },
-      "recommendations": {
-        "title": "Recruiter Recommendations",
-        "generating": "Generating recommendations...",
-        "accept": "Accept",
-        "reject": "Reject",
-        "apply": "Apply",
-        "accepted": "Accepted",
-        "rejected": "Rejected",
-        "applied": "Applied",
-        "regenerate": "Regenerate with feedback",
-        "noRecommendations": "No recommendations yet"
-      }
-    },
-    "hiringProbability": {
-      "title": "採用確率",
-      "skills": "スキル",
-      "experience": "経験",
-      "seniority": "シニア度",
-      "overall": "採用確率",
-      "loadFailed": "採用確率を読み込めませんでした。"
-    }
-  },
-  "settings": {
-    "title": "設定",
-    "subtitle": "設定をカスタマイズ",
-    "aiProvider": "AIプロバイダー",
-    "aiProviderDescription": "履歴書分析に使用するAIプロバイダーを選択",
-    "apiKey": "APIキー",
-    "apiKeyPlaceholder": "APIキーを入力",
-    "saveApiKey": "APIキーを保存",
-    "contentLanguage": "コンテンツ言語",
-    "contentLanguageDescription": "生成コンテンツの言語（履歴書、カバーレター）",
-    "uiLanguage": "UI言語",
-    "uiLanguageDescription": "ユーザーインターフェースの言語",
-    "theme": "テーマ",
-    "themeDescription": "お好みのカラーテーマを選択",
-    "lightMode": "ライト",
-    "darkMode": "ダーク",
-    "systemMode": "システム",
-    "dangerZone": "デインジャーゾーン",
-    "clearApiKeys": "APIキーを消去",
-    "clearApiKeysDescription": "設定から保存されているすべてのAPIキーを削除します。この操作は取り消せません。",
-    "resetDatabase": "データベースをリセット",
-    "resetDatabaseDescription": "履歴書、求人、生成されたコンテンツを含むすべてのデータを削除します。この操作は取り消せません。",
-    "llmConfigurationTitle": "LLM 設定",
-    "providerLabel": "プロバイダー",
-    "statusCards": {
-      "llm": "LLM",
-      "database": "データベース",
-      "resumes": "履歴書",
-      "jobs": "求人",
-      "improvements": "改善",
-      "masterResume": "マスター履歴書"
-    },
-    "statusValues": {
-      "healthy": "正常",
-      "offline": "オフライン",
-      "connected": "接続済み",
-      "configured": "設定済み",
-      "notSet": "未設定"
-    },
-    "apiKeyMenu": {
-      "buttonLabel": "LLM API",
-      "title": "OpenAI APIキー",
-      "description": "ホスト型 OpenAI モデルを有効にするためにキーを提供してください。",
-      "savedMessage": "APIキーを保存しました。",
-      "loadError": "APIキーを読み込めません",
-      "updateError": "APIキーを更新できません"
-    },
-    "setupRequired": {
-      "title": "[ 設定が必要 ]",
-      "description": "> API キーが設定されていません。下で LLM プロバイダーの API キーを追加して、履歴書のカスタマイズを有効にしてください。"
-    },
-    "systemStatus": {
-      "title": "システム状態",
-      "refresh": "更新",
-      "unableToConnect": "サーバーに接続できません",
-      "expectedAt": "想定 URL: {apiUrl}",
-      "lastFetched": {
-        "never": "未取得",
-        "justNow": "たった今",
-        "minutesAgo": "{minutes} 分前",
-        "hoursAgo": "{hours} 時間前"
-      }
-    },
-    "llmConfiguration": {
-      "selectedProvider": "選択中: {provider}",
-      "modelLabel": "モデル",
-      "defaultModel": "既定: {model}",
-      "apiKeyLabel": "API キー",
-      "apiKeyOptionalForOllama": "（Ollama は任意）",
-      "apiKeyOptional": "（任意）",
-      "apiKeyPlaceholder": "sk-...",
-      "apiKeyNotRequiredPlaceholder": "ローカルモデルでは不要",
-      "apiKeyOptionalPlaceholder": "サーバーに認証が必要ない場合は空欄のままでOK",
-      "leaveBlankToKeepExistingKey": "空欄のままにすると既存キーを保持します",
-      "baseUrlLabel": "ベースURL（任意）",
-      "baseUrlPlaceholder": "例: https://api.openai.com/v1",
-      "baseUrlDescription": "プロキシ/アグリゲーター等のエンドポイントを使う場合に Base URL を上書きできます。空欄の場合は既定値を使用します。",
-      "ollamaServerUrl": "Ollama サーバー URL",
-      "ollamaServerUrlPlaceholder": "http://localhost:11434",
-      "reasoningEffortLabel": "推論の深さ",
-      "reasoningEffortAuto": "自動",
-      "reasoningEffortAutoDesc": "reasoning_effort を送信しない（互換性重視の既定値）",
-      "reasoningEffortMinimal": "最小",
-      "reasoningEffortLow": "低",
-      "reasoningEffortMedium": "中",
-      "reasoningEffortHigh": "高",
-      "reasoningEffortDescription": "推論対応モデル（gpt-5 系、Claude 3.7+、DeepSeek R1、OpenAI o1/o3）にのみ影響します。対応していないプロバイダーではこの値は自動的に無視されます。",
-      "testConnection": "接続テスト",
-      "errorPrefix": "エラー: {error}",
-      "connectionSuccessful": "接続成功",
-      "connectionFailed": "接続失敗",
-      "connectionDetails": "プロバイダー: {provider} | モデル: {model}",
-      "testPromptLabel": "テスト内容",
-      "modelOutputLabel": "モデル出力",
-      "reasoningContentLabel": "モデルの思考",
-      "errorDetailLabel": "エラー詳細",
-      "healthErrors": {
-        "api_key_missing": "APIキーが設定されていません。設定で追加してください。",
-        "health_check_failed": "ヘルスチェックに失敗しました。",
-        "duplicate_v1_path": "ヘルスチェックに失敗しました。Base URL に /v1 が重複している可能性があります。",
-        "not_found_404": "ヘルスチェックに失敗しました。404 Not Found。Base URL が提供元と一致しているか確認してください。",
-        "html_response": "ヘルスチェックに失敗しました。Base URL が HTML を返しました。コンソールURLや未対応のゲートウェイの可能性があります。"
-      },
-      "healthWarnings": {
-        "empty_content": "ヘルスチェックで空の内容が返されました。"
-      }
-    },
-    "contentGeneration": {
-      "title": "コンテンツ生成",
-      "description": "履歴書のカスタマイズ時に追加のコンテンツ生成を有効化します。有効にすると、これらのドキュメントはカスタマイズ履歴書と一緒に自動生成されます。",
-      "coverLetter": {
-        "label": "カバーレター",
-        "description": "履歴書と一緒にカスタマイズされたカバーレターを生成します"
-      },
-      "outreachMessage": {
-        "label": "コールドアウトリーチメッセージ",
-        "description": "LinkedIn やメール向けのネットワーキングメッセージを生成します"
-      },
-      "customPromptLabel": "カスタムプロンプト（任意）",
-      "customPromptHelp": "次のプレースホルダーを中括弧で囲んで含めてください：job_description, resume_data, output_language。空欄の場合は既定のプロンプトを使用します。",
-      "customPromptResetButton": "デフォルトにリセット",
-      "customPromptErrorMissing": "必須のプレースホルダーが不足しています：{missing}",
-      "interviewPrep": {
-        "label": "面接準備",
-        "description": "保存済みのカスタマイズ履歴書と一緒に面接準備を自動生成します"
-      },
-      "outreachEmail": {
-        "label": "メール作成画面のプロンプト（任意）",
-        "help": "次のプレースホルダーを含めてください：output_language、company_name、sender_info、purpose。空欄の場合は既定のプロンプトを使用します。"
-      }
-    },
-    "promptSettings": {
-      "title": "プロンプト設定",
-      "description": "履歴書カスタマイズで使う既定のプロンプトを選択します。",
-      "defaultLabel": "既定のカスタマイズプロンプト"
-    },
-    "footer": {
-      "status": {
-        "checking": "確認中...",
-        "ready": "ステータス: 準備完了",
-        "setupRequired": "ステータス: 設定が必要",
-        "offline": "ステータス: オフライン"
-      }
-    },
-    "errors": {
-      "unableToConnectBackend": "サーバーに接続できません。サーバーが起動していることを確認してください。",
-      "apiKeyRequired": "選択したプロバイダーには API キーが必要です。",
-      "baseUrlRequired": "{provider} にはベース URL が必要です。",
-      "unknownProvider": "バックエンドから未知のプロバイダーが返されました: {provider}",
-      "unableToSaveConfiguration": "設定を保存できません",
-      "failedToClearApiKeys": "API キーの消去に失敗しました。もう一度お試しください。",
-      "failedToResetDatabase": "データベースのリセットに失敗しました。もう一度お試しください。"
-    },
-    "apiKeys": {
-      "savedTitle": "保存済み API キー",
-      "deleteAria": "{provider} のキーを削除",
-      "deleteConfirmTitle": "API キーを削除しますか？",
-      "deleteConfirmDescription": "保存された {provider} の API キーを削除しますか？後で再度追加できます。"
-    },
-    "email": {
-      "title": "メール設定",
-      "description": "企業ページからメールを送信する際に使用するSMTP送信者を設定します。",
-      "smtpHost": "SMTPホスト",
-      "smtpPort": "SMTPポート",
-      "senderEmail": "送信者メール",
-      "senderName": "送信者名",
-      "senderNamePlaceholder": "あなたの名前",
-      "password": "アプリパスワード",
-      "passwordSet": "********（パスワードは設定済みです）",
-      "passwordPlaceholder": "アプリパスワードを入力",
-      "passwordHint": "通常のアカウントパスワードではなく、アプリ専用パスワードを使用してください。",
-      "useTls": "TLSを使用",
-      "useTlsHint": "STARTTLSを有効にします（例: Gmailのポート587）。ポート465は常に暗黙のTLSを使用します。",
-      "save": "保存",
-      "saved": "保存しました",
-      "loadFailed": "メール設定を読み込めませんでした。",
-      "saveFailed": "メール設定を保存できませんでした。",
-      "invalidPort": "ポート番号が無効です。",
-      "togglePasswordVisibility": "アプリパスワードの表示を切り替える"
-    }
-  },
-  "resumeViewer": {
-    "resumeNotFound": "履歴書が見つかりません",
-    "loading": "履歴書を読み込み中...",
-    "useTailorFeature": "カスタマイズ機能を使う",
-    "retryProcessing": "再処理",
-    "deleteAndStartOver": "削除してやり直す",
-    "returnToDashboard": "ダッシュボードに戻る",
-    "enhanceResume": "履歴書を強化",
-    "downloadResume": "履歴書をダウンロード",
-    "deletedTitle": "履歴書を削除しました",
-    "deletedDescriptionMaster": "マスター履歴書はシステムから完全に削除されました。",
-    "deletedDescriptionRegular": "履歴書はシステムから完全に削除されました。",
-    "deleteFailedTitle": "削除に失敗しました",
-    "errors": {
-      "processingFailed": "履歴書を読み取れませんでした。再処理するか、削除して別のファイルをアップロードしてください。",
-      "stillProcessing": "履歴書はまだ処理中です。数秒待ってからページを更新してください。",
-      "notProcessedYet": "履歴書はまだ処理されていません。カスタマイズ機能で構造化履歴書を生成してください。",
-      "noDataAvailable": "利用可能な履歴書データがありません。",
-      "failedToLoad": "履歴書データの読み込みに失敗しました。",
-      "failedToDelete": "履歴書の削除に失敗しました。もう一度お試しください。"
-    },
-    "titlePlaceholder": "履歴書のタイトルを入力..."
-  },
-  "preview": {
-    "margins": "余白",
-    "calculating": "計算中...",
-    "pageBreak": "改ページ",
-    "pageCountSingular": "{count} ページ",
-    "pageCountPlural": "{count} ページ",
-    "zoomIn": "拡大",
-    "zoomOut": "縮小"
-  },
-  "resume": {
-    "personalInfo": {
-      "name": "氏名",
-      "title": "職種",
-      "email": "メールアドレス",
-      "phone": "電話番号",
-      "location": "所在地",
-      "website": "ウェブサイト",
-      "linkedin": "LinkedIn",
-      "github": "GitHub"
-    },
-    "sections": {
-      "personalInfo": "個人情報",
-      "summary": "概要",
-      "experience": "職歴",
-      "education": "学歴",
-      "projects": "プロジェクト",
-      "skills": "スキル・受賞歴",
-      "skillsOnly": "スキル",
-      "certifications": "研修・資格",
-      "languages": "言語",
-      "awards": "受賞歴",
-      "links": "リンク"
-    },
-    "defaults": {
-      "name": "あなたの名前"
-    },
-    "additional": {
-      "technicalSkills": "技術スキル"
-    },
-    "additionalLabels": {
-      "technicalSkills": "技術スキル：",
-      "languages": "言語：",
-      "certifications": "資格：",
-      "awards": "受賞歴："
-    }
-  },
-  "coverLetter": {
-    "title": "カバーレター",
-    "generate": "カバーレターを生成",
-    "regenerate": "再生成",
-    "copyToClipboard": "クリップボードにコピー",
-    "editor": {
-      "placeholder": "設定でカバーレター生成を有効にして履歴書をカスタマイズすると、ここに表示されます...",
-      "tip": "ヒント：良いカバーレターは通常300〜400語程度です。必要に応じて編集してください。"
-    },
-    "preview": {
-      "defaultName": "あなたの名前",
-      "emptyTitle": "まだカバーレターがありません。",
-      "emptyDescription": "設定でカバーレター生成を有効にしてから、履歴書をカスタマイズしてください。"
-    },
-    "print": {
-      "emptyContent": "カバーレターの内容がありません。"
-    },
-    "copied": "コピーしました！"
-  },
-  "outreach": {
-    "title": "連絡メール",
-    "generate": "連絡メールを生成",
-    "regenerate": "再生成",
-    "copy": "コピー",
-    "copyToClipboard": "クリップボードにコピー",
-    "copied": "コピーしました！",
-    "editor": {
-      "placeholder": "設定で外連絡メッセージ生成を有効にして履歴書をカスタマイズすると、ここに表示されます...",
-      "tip": "ヒント：外連絡メッセージは短く（100〜150語程度）まとめましょう。LinkedInやメールに貼り付けて使えます。"
-    },
-    "preview": {
-      "channels": {
-        "linkedin": "LinkedIn",
-        "email": "メール"
-      },
-      "howToUseTitle": "使い方：",
-      "steps": {
-        "step1": "1. 上のボタンでメッセージをコピー",
-        "step2": "2. LinkedIn またはメールクライアントを開く",
-        "step3": "3. 貼り付けて必要に応じて調整",
-        "step4": "4. リクルーターや採用担当に送信"
-      },
-      "emptyTitle": "まだ外連絡メッセージがありません。",
-      "emptyDescription": "設定で外連絡メッセージ生成を有効にしてから、履歴書をカスタマイズしてください。"
-    }
-  },
-  "errors": {
-    "generic": "エラーが発生しました。もう一度お試しください。",
-    "networkError": "ネットワークエラー。接続を確認してください。",
-    "unauthorized": "続行するにはサインインしてください。",
-    "notFound": "リクエストされたリソースが見つかりません。",
-    "validationError": "いくつかの入力欄を確認してください。マークされた欄を修正して、もう一度お試しください。",
-    "boundary": {
-      "title": "エラーが発生しました",
-      "description": "予期しない問題が発生しました。ページを再読み込みしてください。問題が続く場合は、お知らせください。",
-      "tryAgain": "再試行",
-      "reloadPage": "ページを再読み込み"
-    }
-  },
-  "a11y": {
-    "removeItem": "項目を削除",
-    "removeDescription": "この行を削除",
-    "removeFile": "ファイルを削除"
-  },
-  "confirmations": {
-    "deleteResume": "この履歴書を削除しますか？",
-    "deleteResumeDescription": "履歴書は完全に削除されます。",
-    "deleteMasterResumeTitle": "マスター履歴書を削除",
-    "deleteMasterResumeDescription": "マスター履歴書は完全に削除されます。",
-    "deleteResumeFromSystemDescription": "履歴書は完全に削除されます。",
-    "deleteResumeConfirmLabel": "履歴書を削除",
-    "keepResumeCancelLabel": "履歴書を保持",
-    "discardChanges": "保存していない変更を破棄しますか？",
-    "discardChangesDescription": "保存していない作業内容は失われます。",
-    "clearApiKeys": "すべてのAPIキーを消去しますか？",
-    "clearApiKeysDescription": "AI機能を再び使うには、もう一度入力が必要になります。",
-    "resetDatabase": "すべてリセットして最初からやり直しますか？",
-    "resetDatabaseDescription": "すべての履歴書、求人内容、生成されたドキュメントが完全に削除されます。"
-  },
-  "resumeWizard": {
-    "title": "履歴書ウィザード",
-    "answerLabel": "あなたの回答",
-    "keepAddingPrompt": "追加または変更したい内容は何ですか？",
-    "readyHint": "しっかりした履歴書を作るのに十分な情報が集まりました。準備ができたら確認して完成させましょう。",
-    "sections": {
-      "intro": "はじめに",
-      "contact": "連絡先情報",
-      "summary": "職務要約",
-      "workExperience": "職務経験",
-      "internships": "インターンシップ",
-      "education": "学歴",
-      "personalProjects": "プロジェクト",
-      "skills": "スキル",
-      "review": "確認"
-    },
-    "actions": {
-      "continue": "続行",
-      "skip": "スキップ",
-      "back": "戻る",
-      "review": "確認して完了",
-      "create": "マスター履歴書を作成",
-      "keepAdding": "続けて追加",
-      "backToDashboard": "ダッシュボードに戻る"
-    },
-    "preview": {
-      "label": "ライブ下書き",
-      "empty": "回答するにつれて、ここに履歴書が表示されます。",
-      "unnamed": "名前未設定の履歴書",
-      "experience": "職務経験",
-      "education": "学歴",
-      "projects": "プロジェクト",
-      "skills": "スキル"
-    },
-    "errors": {
-      "turnFailed": "ウィザードはその回答を保存できませんでした。もう一度お試しください。",
-      "finalizeFailed": "ウィザードはマスター履歴書を作成できませんでした。もう一度お試しください。"
-    },
-    "entry": {
-      "kicker": "マスター履歴書の設定",
-      "title": "開始方法を選択",
-      "description": "既存の書類からマスター履歴書を作成するか、AI の案内で一歩ずつ作成します。",
-      "upload": {
-        "kicker": "既存ファイル",
-        "title": "履歴書をアップロード",
-        "description": "PDF、DOC、DOCX ファイルから始め、Taylor にマスタープロフィールへ解析させます。",
-        "action": "履歴書をアップロード"
-      },
-      "wizard": {
-        "kicker": "AI ガイド",
-        "title": "AI ウィザードで作成",
-        "description": "焦点を絞った質問に答えると、ウィザードが質の高いマスター履歴書の初稿を組み立てます。",
-        "action": "ウィザードを開始"
-      }
-    }
-  },
-  "tracker": {
-    "scroll": {
-      "prev": "左へスクロール",
-      "next": "右へスクロール",
-      "hint": "スクロールして他のステージを表示"
-    },
-    "title": "応募トラッカー",
-    "subtitle": "各カスタマイズ済み履歴書の選考状況を管理します。",
-    "addApplication": "応募を追加",
-    "showOverview": "概要",
-    "hideOverview": "概要を隠す",
-    "columns": {
-      "saved": "保存済み",
-      "applied": "応募済み",
-      "no_response": "返信なし",
-      "response": "返信あり",
-      "interview": "面接",
-      "accepted": "内定",
-      "rejected": "不採用",
-      "empty": "まだ何もありません"
-    },
-    "empty": {
-      "title": "応募はまだありません",
-      "description": "求人に合わせて履歴書を調整するか、手動で追加して追跡を開始しましょう。"
-    },
-    "card": {
-      "companyUnknown": "会社名不明",
-      "roleUnknown": "役職名なし",
-      "sharedResume": "共有された履歴書",
-      "selectAria": "応募を選択",
-      "dragAria": "ドラッグして並べ替え"
-    },
-    "modal": {
-      "jobDescription": "求人内容",
-      "noJobDescription": "求人内容はありません。",
-      "notes": "メモ",
-      "notesPlaceholder": "この応募についてのメモを追加…",
-      "saveNotes": "メモを保存",
-      "resumeUnavailable": "応募した履歴書は利用できなくなりました。",
-      "loadFailed": "この応募を読み込めませんでした。",
-      "editResume": "履歴書を編集",
-      "rejectionReason": "Rejection reason (for AI career insights)",
-      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
-      "interviewRounds": "Interview rounds",
-      "interviewRoundsPlaceholder": "e.g. 2"
-    },
-    "bulk": {
-      "selected": "{count} 件選択中",
-      "moveTo": "移動先…",
-      "clear": "クリア",
-      "deleteConfirmTitle": "応募を削除しますか？",
-      "deleteConfirmDescription": "選択した {count} 件の応募を削除しますか？この操作は取り消せません。"
-    },
-    "manualAdd": {
-      "title": "応募を追加",
-      "description": "求人内容を貼り付けて応募を追跡します。",
-      "resume": "履歴書",
-      "untitledResume": "無題の履歴書",
-      "jobDescription": "求人内容",
-      "jobDescriptionPlaceholder": "ここに求人内容を貼り付け…",
-      "company": "会社",
-      "role": "役職",
-      "optional": "任意",
-      "status": "ステータス",
-      "submit": "追加",
-      "validation": "履歴書を選び、求人内容を貼り付けてください。",
-      "failed": "応募を作成できませんでした。"
-    },
-    "errors": {
-      "loadFailed": "応募を読み込めませんでした。",
-      "moveFailed": "応募を移動できませんでした。",
-      "deleteFailed": "応募を削除できませんでした。"
-    }
-  },
-  "companies": {
-    "title": "Company Tracker",
-    "subtitle": "Keep tabs on every company you engage with.",
-    "addCompany": "Add Company",
-    "empty": {
-      "title": "No companies yet",
-      "description": "Track the companies you apply to, contact, or want to keep an eye on.",
-      "noResults": "No companies match your filters",
-      "noResultsHint": "Try adjusting the search or clearing the filters."
-    },
-    "table": {
-      "company": "Company",
-      "phone": "Phone",
-      "industry": "Industry",
-      "size": "Size",
-      "type": "Type",
-      "status": "Status",
-      "yearFounded": "Founded",
-      "links": "Links",
-      "actions": "Actions",
-      "website": "Website",
-      "linkedin": "LinkedIn",
-      "edit": "Edit company",
-      "delete": "Delete company",
-      "editHint": "Click to edit",
-      "viewDetails": "View details",
-      "address": "住所",
-      "email": "この企業にメールを送信"
-    },
-    "size": {
-      "1-10": "1-10 employees",
-      "11-50": "11-50 employees",
-      "51-200": "51-200 employees",
-      "201-1000": "201-1000 employees",
-      "1000+": "1000+ employees"
-    },
-    "type": {
-      "startup": "Startup",
-      "agency": "Agency",
-      "enterprise": "Enterprise",
-      "nonprofit": "Nonprofit",
-      "education": "Education",
-      "government": "Government",
-      "other": "Other"
-    },
-    "status": {
-      "watching": "Watching",
-      "contacted": "Contacted",
-      "applied": "Applied",
-      "interviewing": "Interviewing",
-      "negotiating": "Negotiating",
-      "won": "Won",
-      "lost": "Lost"
-    },
-    "form": {
-      "addTitle": "Add Company",
-      "editTitle": "Edit Company",
-      "description": "Save contact details and background info for a company you are tracking.",
-      "name": "Company Name",
-      "namePlaceholder": "e.g. Acme Corp",
-      "email": "Email",
-      "phone": "Phone",
-      "address": "Address",
-      "website": "Website",
-      "linkedin": "LinkedIn URL",
-      "industry": "Industry",
-      "size": "Company Size",
-      "type": "Company Type",
-      "status": "Status",
-      "yearFounded": "Year Founded",
-      "optional": "Optional",
-      "none": "None",
-      "validation": "Company name is required.",
-      "invalidYear": "Year must be between 1600 and 2100.",
-      "failed": "Could not save the company.",
-      "save": "Save Changes",
-      "submit": "Add Company"
-    },
-    "delete": {
-      "title": "Delete company?",
-      "description": "Delete {name}? This cannot be undone.",
-      "confirm": "Delete"
-    },
-    "errors": {
-      "loadFailed": "Could not load companies.",
-      "deleteFailed": "Could not delete the company.",
-      "updateFailed": "Could not update the company."
-    },
-    "toolbar": {
-      "all": "All",
-      "search": "Search",
-      "searchPlaceholder": "Search by name, industry or email…",
-      "size": "Size",
-      "type": "Type",
-      "groupBy": "Group by",
-      "groupNone": "No grouping",
-      "groupSize": "Company size",
-      "groupType": "Company type",
-      "groupIndustry": "Industry",
-      "groupStatus": "Company status",
-      "status": "Status",
-      "columns": "Columns",
-      "import": "Import",
-      "export": "Export CSV",
-      "count": "{count} companies"
-    },
-    "import": {
-      "title": "Import companies",
-      "description": "CSV or Excel (.xlsx) upload result",
-      "created": "{count} companies added",
-      "skipped": "{count} already existed (skipped)",
-      "failedCount": "{count} rows failed",
-      "errorRow": "Row {row}: {name} — {error}",
-      "done": "Done",
-      "failed": "Could not import the file.",
-      "mappingTitle": "Map columns",
-      "mappingDescription": "Choose which CSV or Excel column goes into each company field.",
-      "mappingHint": "Only mapped fields are imported. Company name is required.",
-      "mappingAuto": "auto",
-      "mappingNameRequired": "Map the company name column before importing.",
-      "mappingImport": "Import"
-    },
-    "selection": {
-      "count": "{count} selected",
-      "clear": "Clear",
-      "delete": "Delete",
-      "selectAll": "Select all companies on this page",
-      "selectRow": "Select {name}",
-      "deleteTitle": "Delete companies?",
-      "deleteDescription": "Delete {count} selected companies? This cannot be undone."
-    },
-    "details": {
-      "created": "Added",
-      "updated": "Last updated"
-    },
-    "pagination": {
-      "showing": "Showing {from}–{to} of {total}",
-      "previous": "Previous page",
-      "next": "Next page",
-      "page": "Page {count}",
-      "perPage": "{count} per page"
-    },
-    "emailDialog": {
-      "title": "企業にメールを送信",
-      "toCompany": "{name} にメールを作成",
-      "description": "この企業にメールを作成して送信します。",
-      "loading": "メール設定を読み込み中...",
-      "notConfigured": "メール送信が設定されていません",
-      "notConfiguredHint": "企業にメールを送信する前に、設定でSMTP送信者を構成してください。",
-      "goToSettings": "設定へ移動",
-      "purpose": {
-        "label": "目的",
-        "internship": "インターンシップ",
-        "job": "求人応募",
-        "cold": "コールドアウトリーチ",
-        "custom": "カスタム",
-        "customSubject": "このメールの内容は何ですか？",
-        "customPlaceholder": "例: キャリアフェアのフォローアップ"
-      },
-      "recipientName": "宛先の名前",
-      "recipientPlaceholder": "例: 採用担当者",
-      "subject": "件名",
-      "subjectPlaceholder": "件名を入力",
-      "message": "本文",
-      "messagePlaceholder": "ここにメッセージを書いてください",
-      "attachment": "添付ファイル",
-      "chooseFile": "ファイルを選択",
-      "removeAttachment": "添付ファイルを削除",
-      "generate": "AIで生成",
-      "send": "メールを送信",
-      "sent": "メールを送信しました",
-      "errors": {
-        "nameRequired": "メールを生成するには企業名が必要です。",
-        "noEmail": "この企業にはメールアドレスがありません。",
-        "missingFields": "件名と本文が必要です。",
-        "generateFailed": "メールを生成できませんでした。もう一度お試しください。",
-        "sendFailed": "メールを送信できませんでした。SMTP設定を確認してください。",
-        "statusUpdateFailed": "メールは送信されましたが、会社のステータスを更新できませんでした。"
-      },
-      "resume": "履歴書",
-      "resumeHint": "この履歴書のプロフィールに基づいてメールがカスタマイズされます。",
-      "resumeUntitled": "タイトルなしの履歴書",
-      "saveDraft": "下書きを保存",
-      "draftSaved": "下書きを保存しました",
-      "statusUpdated": "会社を「連絡済み」にしました。",
-      "includeResume": "履歴書を添付する",
-      "additionalInstructions": "AIへの追加指示",
-      "additionalInstructionsPlaceholder": "例：80語以内にする、Flutterの経験に言及する、よりフォーマルなトーン",
-      "historyTitle": "送信済みメール",
-      "historyEmpty": "この企業にはまだメールを送信していません。"
-    }
-  },
-  "contacts": {
-    "title": "Contact Tracker",
-    "subtitle": "Keep track of the people in your professional network.",
-    "addContact": "Add Contact",
-    "empty": {
-      "title": "No contacts yet",
-      "description": "Track recruiters, mentors, alumni, and everyone else you want to follow up with.",
-      "noResults": "No contacts match your filters",
-      "noResultsHint": "Try adjusting the search or clearing the filters."
-    },
-    "table": {
-      "name": "Contact",
-      "company": "Company",
-      "location": "Location",
-      "goal": "Goal",
-      "status": "Status",
-      "relationship": "Relationship",
-      "followUpDate": "Follow-up date",
-      "actions": "Actions",
-      "edit": "Edit contact",
-      "delete": "Delete contact",
-      "viewDetails": "View details"
-    },
-    "goal": {
-      "networking": "Networking",
-      "informational_interview": "Informational interview",
-      "request_referral": "Request referral",
-      "research_interviewer": "Research interviewer",
-      "research_career": "Research career"
-    },
-    "status": {
-      "to_contact": "To contact",
-      "follow_up": "Follow up",
-      "meeting_scheduled": "Meeting scheduled",
-      "thank_you_sent": "Thank-you sent"
-    },
-    "relationship": {
-      "self": "Self",
-      "coworker": "Coworker",
-      "friend": "Friend",
-      "family": "Family",
-      "other": "Other",
-      "recruiter": "Recruiter",
-      "mentor": "Mentor",
-      "hiring_manager": "Hiring manager",
-      "alumni": "Alumni"
-    },
-    "form": {
-      "addTitle": "Add Contact",
-      "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
-      "name": "Full name",
-      "namePlaceholder": "e.g. Jane Doe",
-      "company": "Company",
-      "location": "Location",
-      "goal": "Goal",
-      "status": "Status",
-      "relationship": "Relationship",
-      "followUpDate": "Follow-up date",
-      "optional": "Optional",
-      "none": "None",
-      "validation": "Contact name is required.",
-      "invalidDate": "Enter the date as YYYY-MM-DD.",
-      "failed": "Could not save the contact.",
-      "save": "Save Changes",
-      "submit": "Add Contact"
-    },
-    "delete": {
-      "title": "Delete contact?",
-      "description": "Delete {name}? This cannot be undone.",
-      "confirm": "Delete"
-    },
-    "errors": {
-      "loadFailed": "Could not load contacts.",
-      "deleteFailed": "Could not delete the contact.",
-      "updateFailed": "Could not update the contact."
-    },
-    "toolbar": {
-      "all": "All",
-      "search": "Search",
-      "searchPlaceholder": "Search by name, company or location…",
-      "goal": "Goal",
-      "status": "Status",
-      "relationship": "Relationship",
-      "groupBy": "Group by",
-      "groupNone": "No grouping",
-      "groupGoal": "Goal",
-      "groupStatus": "Status",
-      "groupRelationship": "Relationship",
-      "columns": "Columns",
-      "import": "Import",
-      "export": "Export CSV",
-      "count": "{count} contacts"
-    },
-    "import": {
-      "title": "Import contacts",
-      "description": "CSV or Excel (.xlsx) upload result",
-      "created": "{count} contacts added",
-      "skipped": "{count} already existed (skipped)",
-      "failedCount": "{count} rows failed",
-      "errorRow": "Row {row}: {name} — {error}",
-      "done": "Done",
-      "failed": "Could not import the file.",
-      "mappingTitle": "Map columns",
-      "mappingDescription": "Choose which CSV or Excel column goes into each contact field.",
-      "mappingHint": "Only mapped fields are imported. Contact name is required.",
-      "mappingAuto": "auto",
-      "mappingNameRequired": "Map the contact name column before importing.",
-      "mappingImport": "Import"
-    },
-    "selection": {
-      "count": "{count} selected",
-      "clear": "Clear",
-      "delete": "Delete",
-      "selectAll": "Select all contacts on this page",
-      "selectRow": "Select {name}",
-      "deleteTitle": "Delete contacts?",
-      "deleteDescription": "Delete {count} selected contacts? This cannot be undone."
-    },
-    "details": {
-      "created": "Added",
-      "updated": "Last updated",
-      "noCompany": "No company"
-    },
-    "pagination": {
-      "showing": "Showing {from}–{to} of {total}",
-      "previous": "Previous page",
-      "next": "Next page",
-      "page": "Page {count}",
-      "perPage": "{count} per page"
-    }
-  },
-  "interviewPrep": {
-    "title": "面接準備",
-    "regenerate": "再生成",
-    "unavailableTitle": "面接準備は利用できません",
-    "loadingContextDescription": "生成前に、このカスタマイズ済み履歴書の求人コンテキストを確認しています。",
-    "missingContextDescription": "このカスタマイズ済み履歴書には、面接準備の生成に必要な保存済み求人コンテキストがありません。求人内容で履歴書を再度カスタマイズしてください。",
-    "saveRequiredDescription": "面接準備を生成する前に、このカスタマイズ済み履歴書を保存してください。",
-    "focusArea": "重点領域",
-    "suggestedAnswerPoints": "回答ポイント",
-    "whyItMatters": "重要な理由",
-    "preparationSuggestion": "準備の提案",
-    "sections": {
-      "roleFit": "職務適合分析",
-      "resumeQuestions": "履歴書ベースの質問",
-      "projectFollowUps": "プロジェクト深掘り質問",
-      "skillGaps": "スキルギャップ",
-      "talkingPoints": "話すべき要点"
-    }
-  },
-  "profile": {
-    "title": "My Profile",
-    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
-    "header": {
-      "sourceFrom": "元の履歴書"
-    },
-    "currentLocation": {
-      "title": "現在の居住地",
-      "placeholder": "例: 東京、日本"
-    },
-    "workExperience": {
-      "title": "職歴",
-      "empty": "職歴がまだありません。エントリを追加するか、履歴書からインポートしてください。",
-      "add": "エントリを追加",
-      "edit": "編集",
-      "delete": "削除",
-      "deleteTitle": "このエントリを削除しますか？",
-      "deleteDescription": "この操作は元に戻せません。",
-      "addTitle": "職歴を追加",
-      "editTitle": "職歴を編集",
-      "formDescription": "このエントリはキャリアアドバイザーが使用し、履歴書からインポートできます。",
-      "role": "役職 / 肩書き",
-      "company": "会社",
-      "location": "勤務地",
-      "years": "期間",
-      "description": "実績",
-      "descriptionPlaceholder": "1行に1つの箇条書き",
-      "roleRequired": "役職または会社を入力してください。",
-      "save": "エントリを保存"
-    },
-    "github": {
-      "title": "GitHub リポジトリ",
-      "loading": "GitHub の状態を読み込み中…",
-      "connectHint": "GitHub アカウントを接続すると、リポジトリを確認し、オープンソースへの貢献に合わせて履歴書を調整できます。",
-      "connect": "GitHub に接続",
-      "useToken": "個人アクセストークンを使用",
-      "tokenLabel": "個人アクセストークン",
-      "tokenHelpStart": "作成場所:",
-      "tokenHelpEnd": "（repo + user スコープ）",
-      "tokenSubmit": "接続",
-      "connectedAs": "接続ユーザー",
-      "repositories": "リポジトリ",
-      "disconnect": "切断",
-      "noDescription": "説明なし",
-      "showReadme": "README を表示",
-      "hideReadme": "README を隠す",
-      "connectTitle": "GitHub に接続"
-    },
-    "tabs": {
-      "profile": "Profile",
-      "skillRoi": "Skill ROI",
-      "education": "学歴",
-      "projects": "プロジェクト",
-      "achievements": "実績",
-      "experience": "職履"
-    },
-    "overview": {
-      "totalApplications": "Total applications",
-      "rejectionRate": "Rejection rate",
-      "rejectionRateHint": "Rejected ÷ advanced applications",
-      "appliedToInterview": "Applied → Interview",
-      "interviewToAccepted": "Interview → Accepted",
-      "medianDaysToInterview": "Median days to interview",
-      "medianDaysHint": "Across interview-stage applications",
-      "llmInsights": "AI Insights",
-      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
-      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
-    },
-    "languages": {
-      "title": "言語",
-      "add": "追加",
-      "empty": "言語はまだありません。",
-      "placeholder": "例: 日本語、英語"
-    },
-    "awards": {
-      "title": "栄誉・受賞歴",
-      "add": "追加",
-      "empty": "栄誉・受賞歴はまだありません。",
-      "placeholder": "例: 成績優秀者"
-    },
-    "form": {
-      "provision": "Automatic setup",
-      "seedHint": "マスター履歴書から氏名、連絡先、要約、スキル、職歴、言語、受賞歴をコピーします。",
-      "seeded": "マスター履歴書からプロフィールをインポートしました。",
-      "saved": "Profile saved.",
-      "personalInfo": "Personal info",
-      "name": "Full name",
-      "title": "Job title",
-      "email": "Email",
-      "phone": "Phone",
-      "location": "Location",
-      "website": "Website",
-      "linkedin": "LinkedIn",
-      "github": "GitHub",
-      "summary": "Professional summary",
-      "careerGoals": "Career goals",
-      "targetRoles": "Target roles",
-      "targetLocations": "Target locations",
-      "salaryMin": "Target salary min",
-      "salaryMax": "Target salary max",
-      "seedFromMaster": "マスター履歴書からインポート",
-      "tagPlaceholder": "入力して Enter を押す",
-      "uploadDesktop": "デスクトップからアップロード",
-      "uploaded": "履歴書をアップロードしました。",
-      "save": "Save profile"
-    },
-    "skills": {
-      "title": "Skills",
-      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
-      "searchPlaceholder": "スキルを検索",
-      "noResults": "検索に一致するスキルはありません。",
-      "alreadyExists": "このスキルはプロフィールに既に存在します。",
-      "add": "Add skill",
-      "edit": "Edit skill",
-      "delete": "Delete skill",
-      "deleteTitle": "Delete this skill?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add skill",
-      "editTitle": "Edit skill",
-      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
-      "name": "Skill name",
-      "nameRequired": "Skill name is required.",
-      "category": "Category",
-      "proficiency": "Proficiency (1–5)",
-      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
-      "yearsExperience": "Years of experience",
-      "lastUsed": "Last used",
-      "optional": "Optional",
-      "save": "Save skill",
-      "suggestionsButton": "AI提案",
-      "suggestionsTitle": "AIスキル提案",
-      "suggestionsDescription": "あなたのプロフィールに基づいた、記載し忘れている可能性のあるスキル。",
-      "suggestionsLoading": "記載し忘れている可能性のあるスキルを検索中…",
-      "suggestionsEmpty": "現在提案はありません。プロフィールに詳細を追加して、もう一度お試しください。",
-      "suggestAdd": "{name} をスキルに追加",
-      "suggestionsGroupRemembered": "リストに載せ忘れた可能性のあるスキル",
-      "suggestionsGroupLearnNext": "2026年に学ぶ価値のあるスキル"
-    },
-    "certifications": {
-      "title": "Certifications",
-      "empty": "No certifications yet.",
-      "add": "Add certification",
-      "edit": "Edit certification",
-      "delete": "Delete certification",
-      "deleteTitle": "Delete this certification?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add certification",
-      "editTitle": "Edit certification",
-      "formDescription": "Certifications strengthen your career advisor memory.",
-      "name": "Certification name",
-      "nameRequired": "Certification name is required.",
-      "issuer": "Issuer",
-      "dateObtained": "Date obtained",
-      "invalidDate": "Use YYYY or YYYY-MM.",
-      "url": "Credential URL",
-      "optional": "Optional",
-      "save": "Save certification"
-    },
-    "roi": {
-      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
-      "refresh": "Refresh",
-      "getAdvice": "Ask AI what to learn",
-      "skill": "Skill",
-      "jobsUnlocked": "Jobs unlocked",
-      "salaryImpact": "Salary impact",
-      "learningEffort": "Learning effort",
-      "roiScore": "ROI score",
-      "noData": "—",
-      "effort": {
-        "low": "Low",
-        "medium": "Medium",
-        "high": "High"
-      },
-      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
-      "advice": "AI Recommendation",
-      "adviceDescription": "保存した求人と現在のスキルに基づいて、次に学ぶべきスキルを個別に推奨します。",
-      "adviceLoading": "推奨を生成中…",
-      "adviceUnavailable": "現在推奨を表示できません — LLM API キーを設定し、分析する求人を保存してからもう一度お試しください。",
-      "learnTitle": "学ぶべきスキル",
-      "learnDescription": "保存した求人で求められているのにプロフィールにないスキルです。学ぶことで最大のチャンスが開けます。",
-      "strengthenTitle": "強化すべきスキル",
-      "strengthenDescription": "保有していて求人でも求められているが習熟度が低いスキルです。伸ばす効果が最も高いです。",
-      "resources": "学習リソース",
-      "refreshResources": "リソースを更新",
-      "loadingResources": "リソースを探しています…",
-      "noResources": "確認済みのリソースはまだありません。",
-      "jobs": "件",
-      "youKnow": "習熟度",
-      "showRest": "他{count}件を表示",
-      "hideRest": "隠す",
-      "restHint": "すでに強い、または需要が少ないスキル",
-      "allOnTrack": "対応が必要なスキルはありません。プロフィールは保存した求人の要求をすでに満たしています。",
-      "advisorTitle": "スキル投資アドバイザー",
-      "advisorDescription": "あなたにとって最もリターンの高いスキルは？ 解放できる求人、難易度、ROIでランク付け。",
-      "difficulty": "難易度",
-      "difficultyEasy": "簡単",
-      "difficultyMedium": "普通",
-      "difficultyHard": "難しい"
-    },
-    "market": {
-      "title": "市場ポジション",
-      "description": "市場におけるあなたの立ち位置 — パーセンタイルはスキル、経験、認定資格からモデル化されます。",
-      "refresh": "更新",
-      "domainsTitle": "領域別の位置",
-      "skillsTitle": "スキル別の位置",
-      "percentile": "{ordinal}パーセンタイル",
-      "noteEmpty": "スキルと職務経験を追加すると、市場での位置を確認できます。",
-      "currentRole": "あなたのポジション",
-      "specialization": "専門分野",
-      "picksTitle": "目指すべき職種",
-      "picksDescription": "スキル・プロジェクト・経験に基づく最適な職種です。",
-      "match": "一致度 {score}%",
-      "verdictTitle": "まとめ",
-      "readiness": {
-        "strong": "強い",
-        "adequate": "十分",
-        "underqualified": "資格不足"
-      },
-      "seniority": {
-        "senior": "シニア",
-        "mid": "ミッド",
-        "junior": "ジュニア"
-      },
-      "domains": {
-        "Backend": "バックエンド",
-        "Frontend": "フロントエンド",
-        "Cloud & DevOps": "クラウドとDevOps",
-        "Data & ML": "データとML",
-        "System Design": "システム設計"
-      }
-    },
-    "chat": {
-      "title": "Career Advisor",
-      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
-      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
-      "suggestions": {
-        "q1": "Why am I getting rejected?",
-        "q2": "Which skill should I learn next?",
-        "q3": "How can I improve my interview-to-accepted rate?",
-        "q4": "What salary should I target?"
-      }
-    },
-    "education": {
-      "title": "学歴",
-      "add": "学歴を追加",
-      "empty": "学歴はまだありません。履歴書からインポートできます。",
-      "edit": "編集",
-      "delete": "削除",
-      "deleteTitle": "このエントリを削除しますか？",
-      "deleteDescription": "この操作は元に戻せません。",
-      "addTitle": "学歴を追加",
-      "editTitle": "学歴を編集",
-      "formDescription": "学歴情報。履歴書からインポートされ、キャリアグラフに保存されます。",
-      "institution": "機関",
-      "degree": "学位",
-      "years": "期間",
-      "description": "メモ",
-      "optional": "任意",
-      "institutionRequired": "機関を入力してください。"
-    },
-    "projects": {
-      "title": "プロジェクト",
-      "add": "プロジェクトを追加",
-      "empty": "プロジェクトはまだありません。履歴書からインポートできます。",
-      "edit": "編集",
-      "delete": "削除",
-      "deleteTitle": "このプロジェクトを削除しますか？",
-      "deleteDescription": "関連するスキルも削除されます。",
-      "addTitle": "プロジェクトを追加",
-      "editTitle": "プロジェクトを編集",
-      "formDescription": "GitHub / ウェブサイトへのリンク付きの個人プロジェクト。",
-      "name": "プロジェクト名",
-      "role": "役割",
-      "years": "期間",
-      "github": "GitHub",
-      "website": "ウェブサイト",
-      "description": "説明",
-      "descriptionAdd": "箇条書きを追加",
-      "descriptionEmpty": "箇条書きはまだありません。",
-      "descriptionRemove": "箇条書きを削除",
-      "optional": "任意",
-      "nameRequired": "プロジェクト名を入力してください。",
-      "importFromGithub": "GitHub からインポート",
-      "importing": "インポート中…",
-      "imported": "GitHub から {count} 件のプロジェクトをインポートしました",
-      "importHint": "インポートしたプロジェクトはプロフィールに保存され、再インポートするまで GitHub を再取得しません。",
-      "importDialogTitle": "GitHub からプロジェクトをインポート",
-      "importDialogDescription": "プロフィールに追加するリポジトリを選択してください。",
-      "importSelected": "選択した {count} 件をインポート",
-      "selectAll": "すべて選択",
-      "noSelection": "インポートするプロジェクトを少なくとも 1 件選択してください。"
-    },
-    "achievements": {
-      "title": "実績",
-      "add": "実績を追加",
-      "empty": "実績はまだありません。",
-      "edit": "編集",
-      "delete": "削除",
-      "deleteTitle": "この実績を削除しますか？",
-      "deleteDescription": "この操作は元に戻せません。",
-      "addTitle": "実績を追加",
-      "editTitle": "実績を編集",
-      "formDescription": "注目すべき成果、受賞歴、マイルストーン。",
-      "titleLabel": "タイトル",
-      "description": "詳細",
-      "date": "日付",
-      "optional": "任意",
-      "titleRequired": "タイトルを入力してください。",
-      "invalidDate": "YYYY または YYYY-MM 形式で入力してください。"
-    }
-  },
-  "interviewPractice": {
-    "title": "面接練習ハブ",
-    "subtitle": "マスターレジュメに基づくAIコーチで回答を磨きましょう。",
-    "loading": "読み込み中...",
-    "minutes": "{count} 分",
-    "libraryTitle": "シナリオライブラリ",
-    "libraryDescription": "シナリオを選んで、実際に声に出して回答してみましょう。構造化されたフィードバックが返ってきます。",
-    "practiceStart": "練習する",
-    "practiceAnswerLabel": "あなたの回答",
-    "practiceAnswerPlaceholder": "面接で話すように回答を入力してください...",
-    "resumeGroundingNote": "フィードバックはマスターレジュメに基づいています。コーチはレジュメに実際にある経験だけを評価します。",
-    "practiceGetFeedback": "フィードバックを受ける",
-    "practiceScoring": "回答を評価中...",
-    "practiceAnswerRequired": "先に回答を入力してください。",
-    "practiceFeedbackError": "フィードバックを生成できませんでした。もう一度お試しください。",
-    "practiceAgain": "もう一度練習する",
-    "backToLibrary": "ライブラリに戻る",
-    "scoreLabel": "スコア",
-    "strengthsTitle": "良かった点",
-    "improvementsTitle": "改善点",
-    "recommendedPointsTitle": "おすすめの回答ポイント",
-    "followUpsTitle": "予想されるフォローアップ質問",
-    "levels": {
-      "strong": "強い",
-      "good": "良い",
-      "needs_work": "要改善"
-    },
-    "customTitle": "シナリオのアイデアがありますか？",
-    "customDescription": "面接の質問やトピックを入力して、すぐに練習できます。",
-    "customPlaceholder": "例：「なぜあなたを採用すべきですか？」「最大の失敗を教えてください」",
-    "customStart": "開始",
-    "upcomingTitle": "今後の面接",
-    "upcomingDescription": "応募トラッカーで管理している面接です。",
-    "upcomingViewTracker": "トラッカーを見る",
-    "upcomingEmpty": "今後の面接はまだありません。応募トラッカーで追加してください。",
-    "upcomingUntitled": "社名未定",
-    "historyTitle": "練習履歴",
-    "historyDescription": "完了した練習セッションの一覧です。",
-    "historyEmpty": "まだ練習セッションがありません。上のシナリオを選んで始めましょう！",
-    "historyAnswerLabel": "あなたの回答",
-    "historyUnknownDate": "日付不明",
-    "scenarios": {
-      "tellMeAboutYourself": {
-        "title": "自己紹介をお願いします",
-        "description": "経歴、スキル、そしてあなたがこの職種に最適な理由をまとめて話しましょう。"
-      },
-      "whyWorkHere": {
-        "title": "なぜ当社で働きたいのですか？",
-        "description": "企業のミッションや仕事内容を、自分の目標や経験と結びつけましょう。"
-      },
-      "careerGaps": {
-        "title": "職歴のブランクを自信を持って説明する",
-        "description": "ブランクを正直かつ前向きに説明し、過剰な言い訳は避けましょう。"
-      },
-      "salaryExpectations": {
-        "title": "希望年収の話し合い",
-        "description": "調査に基づいた自信のあるレンジを示し、交渉をスマートに進めましょう。"
-      },
-      "weaknesses": {
-        "title": "あなたの弱点は何ですか？",
-        "description": "本当の弱点を共有し、改善のための具体的な取り組みを示しましょう。"
-      },
-      "jobSpecific": {
-        "title": "職種別の面接",
-        "description": "応募先の職種に特化した深い技術質問・業務質問に答えましょう。"
-      },
-      "proudestAccomplishment": {
-        "title": "最も誇れる成果は何ですか？",
-        "description": "具体的な証拠と測定可能な結果を交えた簡潔なストーリーを語りましょう。"
-      },
-      "handleConflict": {
-        "title": "対立にはどう対応しますか？",
-        "description": "困難な場面でのコミュニケーション力と問題解決力を示しましょう。"
-      }
-    }
-  },
-  "chat": {
-    "title": "AIキャリアアシスタント",
-    "subtitle": "あなたの個人キャリアコマンドセンター",
-    "placeholder": "キャリアについて質問… (Enter で送信、Shift+Enter で改行)",
-    "empty": {
-      "title": "どのようにお手伝いできますか?",
-      "description": "キャリア、スキル、応募について質問したり、アドバイスを受けることができます。"
-    },
-    "suggestions": {
-      "q1": "なぜ内定が来ないのですか?",
-      "q2": "次に学ぶべきスキルは?",
-      "q3": "面接到内定の比率を改善するには?",
-      "q4": "どの程度の年収を目指すべきですか?"
-    },
-    "sidebar": {
-      "threads": "スレッド",
-      "newThread": "新しいスレッド",
-      "loading": "読み込み中…",
-      "empty": "スレッドなし",
-      "messages": "メッセージ",
-      "deleteThread": "スレッドを削除"
-    },
-    "mode": {
-      "ask": "質問",
-      "coach": "コーチ",
-      "recruiter": "リクルーター",
-      "resumeAnalyst": "履歴書"
-    },
-    "confirm": {
-      "pendingAction": "保留中のアクション",
-      "execute": "実行",
-      "cancel": "キャンセル"
-    },
-    "memory": {
-      "saved": "記憶済み",
-      "dismiss": "却下"
-    },
-    "context": {
-      "funnel_stats": "ファネル",
-      "skill_roi": "スキルROI",
-      "market_position": "市場",
-      "ats_audit": "監査",
-      "evidence": "証拠",
-      "job": "求人",
-      "info": "情報",
-      "audit": "監査",
-      "stats": "統計"
-    }
-  }
+{
+  "common": {
+    "save": "保存",
+    "saving": "保存中...",
+    "autosaved": "自動保存済み",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "download": "ダウンロード",
+    "loading": "読み込み中...",
+    "uploading": "アップロード中...",
+    "checking": "確認中...",
+    "processing": "処理中...",
+    "generating": "生成中...",
+    "error": "エラー",
+    "success": "成功",
+    "confirm": "確認",
+    "back": "戻る",
+    "retry": "再試行",
+    "next": "次へ",
+    "continue": "続行",
+    "finish": "完了",
+    "optional": "任意",
+    "close": "閉じる",
+    "ok": "OK",
+    "search": "検索",
+    "filter": "フィルター",
+    "reset": "リセット",
+    "apply": "適用",
+    "selectOption": "選択してください...",
+    "unknown": "不明",
+    "keysCleared": "APIキーが正常にクリアされました",
+    "databaseReset": "データベースが正常にリセットされました",
+    "popupBlocked": "ポップアップがブロックされました。ポップアップを許可するか、次のURLを手動で開いてください: {url}"
+  },
+  "home": {
+    "brandLine1": "履歴書",
+    "brandLine2": "マッチャー",
+    "docs": "利用ドキュメント",
+    "launchApp": "アプリを起動"
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "builder": "履歴書ビルダー",
+    "tailor": "履歴書をカスタマイズ",
+    "settings": "設定",
+    "backToDashboard": "ダッシュボードに戻る",
+    "goToSettings": "設定へ",
+    "applicationTracker": "応募トラッカー",
+    "jobSearch": "Job Search",
+    "jobTracking": "Job Tracking",
+    "resumeBuilder": "Resume Builder",
+    "companies": "Company Tracker",
+    "contacts": "Contact Tracker",
+    "profile": "My Profile",
+    "chat": "AIチャット",
+    "createResume": "履歴書を作成",
+    "interviewPractice": "面接練習"
+  },
+  "dashboard": {
+    "title": "ダッシュボード",
+    "subtitle": "履歴書と求人応募を管理",
+    "myResumes": "マイ履歴書",
+    "noResumes": "履歴書がありません",
+    "noResumesDescription": "最初の履歴書をアップロードして始めましょう",
+    "uploadResume": "履歴書をアップロード",
+    "createNew": "新規作成",
+    "lastModified": "最終更新",
+    "actions": "アクション",
+    "preview": "プレビュー",
+    "viewResume": "履歴書を見る",
+    "editResume": "履歴書を編集",
+    "deleteResume": "履歴書を削除",
+    "downloadPdf": "PDFをダウンロード",
+    "tailorResume": "求人に合わせてカスタマイズ",
+    "selectModule": "モジュールを選択",
+    "masterResume": "マスター履歴書",
+    "tailoredResume": "カスタマイズ履歴書",
+    "initializeMasterResume": "マスター履歴書を初期化",
+    "initializeSequence": "初期化シーケンス",
+    "masters": "マスター履歴書",
+    "addAnotherResume": "別の履歴書を追加",
+    "refreshStatus": "ステータスを更新",
+    "retryProcessing": "再処理",
+    "retryingProcessing": "再処理中...",
+    "deleteAndReupload": "削除して再アップロード",
+    "processingFailedHint": "このファイルを読み取れませんでした。再試行するか、別のファイルをアップロードしてください。",
+    "retrySuccess": "処理に成功しました！",
+    "retryFailed": "再処理に失敗しました。別のファイルをアップロードしてください。",
+    "createResume": "履歴書を作成",
+    "edited": "編集 {date}",
+    "statusLine": "ステータス: {status}",
+    "status": {
+      "checking": "確認中...",
+      "processing": "処理中...",
+      "ready": "準備完了",
+      "failed": "処理に失敗しました",
+      "pending": "保留中"
+    },
+    "llmNotConfiguredTitle": "[ LLM 未設定 ]",
+    "llmNotConfiguredMessage": "> API キーがありません。設定するまで履歴書のカスタマイズは無効です。",
+    "setupRequiredTitle": "[ 設定が必要 ]",
+    "setupRequiredMessage": "> 履歴書のカスタマイズを有効にするには、設定で API キーを構成してください。",
+    "uploadDialog": {
+      "success": "履歴書のアップロードに成功しました。",
+      "successMaster": "履歴書がアップロードされ、マスターとして設定されました。",
+      "successMissingId": "アップロードは成功しましたが、履歴書 ID が返されませんでした。",
+      "parsingFailed": "履歴書はアップロードされましたが、AI解析に失敗しました。手動でカスタマイズすることは可能です。",
+      "failed": "アップロードに失敗しました。",
+      "dropzoneTitle": "クリックまたはファイルをドラッグ",
+      "dropzoneSubtitle": "PDF、DOC、DOCX（最大 4MB）",
+      "tryDifferentFile": "別のファイルを試す",
+      "parsingFailedKeepOpen": "AI 解析に失敗しました。別のファイルを試すか、このダイアログを閉じてください。",
+      "saveAsMaster": "マスター履歴書として保存",
+      "saveAsMasterHint": "この履歴書を複数の求人向け調整のベースとして使用します。"
+    }
+  },
+  "builder": {
+    "title": "履歴書ビルダー",
+    "editMode": "編集モード",
+    "previewMode": "プレビューモード",
+    "createAndPreview": "作成＆プレビュー",
+    "unsavedDraft": "未保存の下書き",
+    "personalInfo": "個人情報",
+    "summary": "概要",
+    "experience": "職歴",
+    "education": "学歴",
+    "skills": "スキル",
+    "projects": "プロジェクト",
+    "certifications": "資格",
+    "languages": "言語",
+    "awards": "受賞歴",
+    "addSection": "セクションを追加",
+    "removeSection": "セクションを削除",
+    "saveChanges": "変更を保存",
+    "discardChanges": "変更を破棄",
+    "placeholders": {
+      "summary": "職務要約を簡潔に入力してください..."
+    },
+    "contentStats": {
+      "wordsChars": "{wordCount}語 / {charCount}文字"
+    },
+    "additionalForm": {
+      "instructions": "各項目を改行で区切って入力してください（1行につき1項目）。",
+      "placeholders": {
+        "technicalSkills": "React\nTypeScript\nNode.js",
+        "languages": "日本語\n英語",
+        "certifications": "AWS Solution Architect\nGoogle Analytics",
+        "awards": "月間MVP\nハッカソン優勝"
+      }
+    },
+    "skillsForm": {
+      "instructions": "Add skills as tags, or switch to grouped mode to organize by category.",
+      "groupedMode": "Grouped",
+      "listMode": "List",
+      "addGroup": "Add Group",
+      "removeGroup": "Remove Group",
+      "groupName": "Group Name",
+      "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
+      "skillPlaceholder": "Type a skill and press Enter"
+    },
+    "languagesForm": {
+      "instructions": "Add languages as tags.",
+      "placeholder": "English, Spanish, French"
+    },
+    "customSections": {
+      "dialogTitle": "カスタムセクションを追加",
+      "dialogDescription": "任意の名前とタイプで新しいセクションを作成します。",
+      "sectionNameLabel": "セクション名",
+      "sectionNamePlaceholder": "例：出版、ボランティア、資格",
+      "sectionTypeLabel": "セクションタイプ",
+      "addCustomSectionButton": "カスタムセクションを追加",
+      "sectionTypes": {
+        "textBlockLabel": "テキストブロック",
+        "textBlockDescription": "単一のテキスト欄（概要など）",
+        "itemListLabel": "項目リスト",
+        "itemListDescription": "詳細を含む複数エントリ（職歴など）",
+        "stringListLabel": "シンプルリスト",
+        "stringListDescription": "シンプルな一覧（スキルなど）"
+      },
+      "contentLabel": "内容",
+      "contentPlaceholder": "{name} の内容を入力...",
+      "defaultTextPlaceholder": "内容を入力...",
+      "entryLabel": "エントリ",
+      "addEntryLabel": "エントリを追加",
+      "itemsLabel": "項目",
+      "itemsPlaceholder": "1行につき1項目を入力",
+      "unknownSectionType": "不明なセクションタイプ：{type}",
+      "unknownDefaultSection": "不明なデフォルトセクション：{section}"
+    },
+    "sectionHeader": {
+      "renameSection": "セクション名を変更",
+      "customTag": "カスタム",
+      "hiddenFromPdfTag": "PDFに含めない",
+      "hideSection": "セクションを非表示",
+      "showSection": "セクションを表示",
+      "moveUp": "上へ移動",
+      "moveDown": "下へ移動",
+      "deleteSection": "セクションを削除",
+      "deleteTitle": "セクションを削除",
+      "deleteDescription": "「{name}」を削除しますか？この操作は元に戻せません。"
+    },
+    "previewTabs": {
+      "resume": "履歴書",
+      "coverLetter": "カバーレター",
+      "outreach": "連絡メール",
+      "jdMatch": "JD一致",
+      "interviewPrep": "面接準備"
+    },
+    "footer": {
+      "moduleLabel": "履歴書ビルダーモジュール",
+      "singleColumn": "1カラム",
+      "twoColumn": "2カラム"
+    },
+    "pageSize": {
+      "usLetter": "USレター"
+    },
+    "generatePrompt": {
+      "notAvailableTitle": "{title}は利用できません",
+      "notAvailableDescription": "{title}を生成するには、まず求人内容を入力して履歴書をカスタマイズしてください。",
+      "goToDashboard": "ダッシュボードへ",
+      "generateTitle": "{title}を生成",
+      "coverLetterDescription": "履歴書と求人内容に基づいてカバーレターを生成します。",
+      "outreachDescription": "履歴書と求人内容に基づいて、LinkedIn またはメール向けの外連絡メッセージを生成します。",
+      "generateButton": "{title}を生成",
+      "coverLetterFooter": "ヒント：先にカスタマイズすると精度が上がります。",
+      "outreachFooter": "ヒント：短く、個別性を入れましょう。",
+      "interviewPrepDescription": "カスタマイズ済み履歴書と求人内容に基づいて、職種別の面接準備を生成します。",
+      "interviewPrepFooter": "ヒント：カスタマイズ後に、履歴書の根拠に基づく正確な回答を準備しましょう。"
+    },
+    "regenerateDialog": {
+      "title": "{title}を再生成しますか？",
+      "description": "現在の{title}を新しく生成した内容で置き換えます。編集内容は失われます。",
+      "instructionLabel": "追加の指示（任意）",
+      "instructionPlaceholder": "例：私の Python バックエンド経験に触れてください"
+    },
+    "regenerate": {
+      "buttonLabel": "AIで再生成",
+      "stepLabel": "ステップ {current} / {total}",
+      "selectDialog": {
+        "title": "再生成する項目を選択",
+        "subtitle": "改善したい履歴書の部分を選択してください",
+        "experience": "職務経験",
+        "projects": "プロジェクト",
+        "skills": "技術スキル",
+        "noItemsSelected": "少なくとも1つ選択してください",
+        "noItemsAvailable": "再生成できるアイテムがありません。まず、経験、プロジェクト、スキル、または概要を追加してください。",
+        "itemCount": {
+          "one": "{count}件",
+          "other": "{count}件"
+        },
+        "continueButton": "続行",
+        "summary": "プロフェッショナルサマリー"
+      },
+      "instructionDialog": {
+        "title": "どこを改善したいですか？",
+        "subtitle": "AIを導くために具体的なフィードバックを入力してください",
+        "defaultInstruction": "より強いアクション動詞で内容を改善し、可能な範囲で定量的な成果を示してください。",
+        "selectedItems": "選択した項目",
+        "placeholder": "例：より定量的な指標を追加する、リーダーシップを強調する、行動動詞を増やす…",
+        "hint": "満足していない点を具体的に書いてください",
+        "backButton": "戻る",
+        "generateButton": "生成"
+      },
+      "diffPreview": {
+        "title": "変更をプレビュー",
+        "subtitle": "適用する前に再生成された内容を確認してください",
+        "expandItem": "{item} を展開",
+        "collapseItem": "{item} を折りたたむ",
+        "partialFailures": "一部の項目を再生成できませんでした（{count}件）。成功した変更はそのまま確認して適用できます。",
+        "changesCount": "{count} 件変更",
+        "rejectButton": "却下して再生成",
+        "acceptButton": "変更を適用",
+        "originalLabel": "元の内容",
+        "newLabel": "新しい内容",
+        "noContent": "内容なし",
+        "applying": "適用中...",
+        "loading": "改善された内容を生成中..."
+      },
+      "errors": {
+        "generationFailed": "生成に失敗しました。もう一度お試しください。",
+        "applyFailed": "変更の適用に失敗しました。もう一度お試しください。",
+        "resumeChanged": "再生成後に履歴書の内容が変更されました。再生成してからもう一度お試しください。",
+        "noChangesToApply": "適用できる変更がありません。",
+        "networkError": "ネットワークエラー。接続を確認してください。"
+      }
+    },
+    "jdMatch": {
+      "yourResume": "あなたの履歴書",
+      "matchingKeywordsHighlighted": "（一致キーワードをハイライト）",
+      "jobDescriptionTitle": "求人内容",
+      "at": "＠",
+      "atSeparator": " @ ",
+      "roleSeparator": "—",
+      "aboutTitle": "JD一致について",
+      "aboutDescription": "このビューでは、履歴書が求人内容（JD）にどれだけ一致しているかを確認できます。JDのキーワードが履歴書内で黄色にハイライトされ、すでに含まれているスキルや用語が分かります。",
+      "highlightedKeywordsTitle": "ハイライトされたキーワード",
+      "highlightedKeywordsDescriptionTemplate": "__COLOR__でハイライトされた単語は、求人内容と履歴書の両方に含まれます。一致率が高いほど、要件への適合度が高いことを示します。",
+      "highlightedKeywordsDescriptionPrefix": "次の色でハイライトされた単語",
+      "highlightColor": "黄色",
+      "highlightedKeywordsDescriptionSuffix": "は、求人内容と履歴書の両方に含まれます。一致率が高いほど、要件への適合度が高いことを示します。",
+      "tipsTitle": "ヒント",
+      "tips": {
+        "items": {
+          "addMissingKeywords": "「履歴書」タブで不足しているキーワードを追加する",
+          "focusTechnicalSkills": "JDに記載された技術スキルやツールに注目する",
+          "matchActionVerbs": "要件にある行動動詞に合わせる"
+        }
+      },
+      "stats": {
+        "keywordsExtracted": "抽出キーワード数: {count}",
+        "matchesFound": "一致数: {count}",
+        "matchRateLabel": "一致率:"
+      }
+    },
+    "genericItemForm": {
+      "itemLabel": "項目",
+      "addItemLabel": "{label}を追加",
+      "fields": {
+        "title": "タイトル",
+        "organization": "組織",
+        "location": "場所",
+        "years": "期間",
+        "descriptionPoints": "説明ポイント"
+      },
+      "actions": {
+        "addPoint": "ポイントを追加",
+        "togglePointStyle": "箇条書き記号を切り替え"
+      },
+      "placeholders": {
+        "title": "タイトル",
+        "organization": "組織",
+        "location": "場所",
+        "years": "2020年1月 - 現在",
+        "description": "あなたの貢献を説明..."
+      },
+      "noEntries": "// {label} の項目はありません",
+      "addFirstItem": "最初の{label}を追加"
+    },
+    "forms": {
+      "experience": {
+        "addJob": "職歴を追加",
+        "addFirstJob": "最初の職歴を追加",
+        "fields": {
+          "jobTitle": "職種",
+          "company": "会社"
+        },
+        "placeholders": {
+          "jobTitle": "シニアエンジニア",
+          "company": "Tech Corp",
+          "location": "リモート / 都市",
+          "years": "2020年1月 - 現在",
+          "description": "実績を説明..."
+        }
+      },
+      "education": {
+        "addSchool": "学歴を追加",
+        "addFirstSchool": "最初の学歴を追加",
+        "fields": {
+          "institution": "学校/機関",
+          "degree": "学位",
+          "description": "説明",
+          "descriptionOptional": "説明（任意）"
+        },
+        "placeholders": {
+          "institution": "大学名",
+          "degree": "学士（理学）",
+          "years": "2016年8月 - 2020年5月",
+          "description": "追加の詳細..."
+        }
+      },
+      "projects": {
+        "addProject": "プロジェクトを追加",
+        "addFirstProject": "最初のプロジェクトを追加",
+        "fields": {
+          "projectName": "プロジェクト名",
+          "role": "役割",
+          "website": "Webサイト"
+        },
+        "placeholders": {
+          "projectName": "Taylor",
+          "role": "作成者",
+          "years": "2023年3月",
+          "github": "github.com/username/project",
+          "website": "https://project-demo.com",
+          "description": "プロジェクト詳細..."
+        }
+      },
+      "certifications": {
+        "addCertificate": "資格を追加",
+        "addManually": "手動で追加",
+        "noCertificates": "資格がまだありません。プロフィールから、または手動で追加してください。",
+        "fields": {
+          "certificate": "資格"
+        },
+        "placeholders": {
+          "certificate": "例: AWS Certified Solutions Architect — Amazon (2023)"
+        }
+      },
+      "awards": {
+        "addAward": "受賞歴を追加",
+        "addManually": "手動で追加",
+        "noAwards": "受賞歴がまだありません。プロフィールから、または手動で追加してください。",
+        "fields": {
+          "award": "受賞歴"
+        },
+        "placeholders": {
+          "award": "例: 月間MVP — 会社名 (2024)"
+        }
+      }
+    },
+    "formatting": {
+      "panelTitle": "テンプレートと書式",
+      "template": "テンプレート",
+      "templates": {
+        "swissSingle": {
+          "name": "1カラム",
+          "description": "内容密度が高い伝統的な全幅レイアウト"
+        },
+        "swissTwoColumn": {
+          "name": "2カラム",
+          "description": "経験中心のメイン列とスキル用サイドバー"
+        },
+        "modern": {
+          "name": "モダン",
+          "description": "カラフルなアクセントとテーマ色のカスタマイズ"
+        },
+        "modernTwoColumn": {
+          "name": "モダン2カラム",
+          "description": "モダンな2カラムとカラフルなアクセント"
+        },
+        "latex": {
+          "name": "LaTeX",
+          "description": "罫線付き見出しのクラシックなセリフ体レイアウト"
+        },
+        "clean": {
+          "name": "クリーン",
+          "description": "大きく控えめな見出しのミニマルなサンセリフ体レイアウト"
+        },
+        "vivid": {
+          "name": "ビビッド",
+          "description": "アクセント見出しと矢印箇条書きのカラフルな2カラムレイアウト"
+        }
+      },
+      "accentColor": "アクセントカラー",
+      "accentColors": {
+        "blue": "青",
+        "green": "緑",
+        "orange": "オレンジ",
+        "red": "赤",
+        "custom": "カスタム"
+      },
+      "pageSize": "ページサイズ",
+      "margins": "余白（mm）",
+      "margin": {
+        "top": "上",
+        "bottom": "下",
+        "left": "左",
+        "right": "右"
+      },
+      "spacing": "間隔",
+      "spacingSection": "セクション",
+      "spacingItems": "項目",
+      "spacingLines": "行間",
+      "padding": "パディング",
+      "fontSize": "フォントサイズ",
+      "baseFontSize": "本文",
+      "headerScale": "見出し",
+      "headerFontFamily": "見出し",
+      "bodyFontFamily": "本文",
+      "fontNames": {
+        "serif": "セリフ",
+        "sans": "サンセリフ",
+        "mono": "等幅",
+        "timesRoman": "Times"
+      },
+      "options": "オプション",
+      "compactMode": "コンパクトモード",
+      "contactIcons": "連絡先アイコン",
+      "effectiveOutput": "適用結果",
+      "effectiveMargins": "余白（mm）：上{top} 下{bottom} 左{left} 右{right}",
+      "effectiveSectionGap": "セクション間隔",
+      "effectiveItemGap": "項目間隔",
+      "effectiveLineHeight": "行間",
+      "effectiveBaseFont": "本文フォント",
+      "effectiveHeaderScale": "見出しスケール",
+      "effectiveHeaderFont": "見出しフォント",
+      "effectiveBodyFont": "本文フォント",
+      "compactHint": "コンパクトモードでは間隔と行間が詰まります。余白と本文フォントサイズは維持されます。",
+      "resetDefaults": "デフォルトに戻す",
+      "dateFormat": "Date Format",
+      "dateFormats": {
+        "short": "Short name (Sep 2020)",
+        "long": "Long name (September 2020)",
+        "mmmyyyy": "Number (MMM/YYYY)",
+        "years": "Years (2020 - 2024)"
+      },
+      "lineHeight": "Line Height",
+      "listLineHeight": "List Line Height",
+      "headerAlignment": "Header Alignment",
+      "dateAlignment": "Date Alignment",
+      "locationAlignment": "Location Alignment",
+      "alignmentOptions": {
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      },
+      "skillsLayout": "Skills Layout",
+      "skillsLayoutOptions": {
+        "comma": "Comma separated",
+        "list": "Line separated",
+        "columns": "Columns"
+      },
+      "marginUnit": "Units",
+      "marginUnits": {
+        "mm": "Millimeters (mm)",
+        "percent": "Percent of page"
+      },
+      "typography": "Typography",
+      "bulletMarker": "Bullet Marker",
+      "listSeparator": "List Separator",
+      "markerOptions": {
+        "*": "*",
+        "-": "-",
+        ">>": ">>",
+        "->": "->"
+      },
+      "separatorOptions": {
+        "*": "*",
+        "-": "-",
+        ",": "Comma",
+        "|": "Pipe"
+      },
+      "weightOptions": {
+        "light": "Light",
+        "regular": "Regular",
+        "bold": "Bold",
+        "extralight": "Extra Light"
+      },
+      "transformOptions": {
+        "uppercase": "All Caps",
+        "as-written": "As Written",
+        "capitalize": "Title Case"
+      },
+      "elementNames": {
+        "bodyCopy": "Body Copy",
+        "primaryHeading": "Primary Heading",
+        "secondaryHeading": "Secondary Heading",
+        "sectionTitle": "Section Titles",
+        "fullName": "Full Name",
+        "minorCopy": "Minor Copy"
+      },
+      "spacingRows": {
+        "betweenSections": "Between Sections",
+        "titlesContent": "Titles & Content",
+        "primarySecondaryHeadings": "Primary & Secondary Headings",
+        "contentBlocks": "Content Blocks",
+        "listItems": "List Items"
+      },
+      "borderRows": {
+        "aboveHeader": "Above Header",
+        "belowHeader": "Below Header",
+        "sectionTitles": "Section Titles"
+      },
+      "borderEnabled": "Show",
+      "ptUnit": "pt",
+      "effectiveListLineHeight": "List Line Height",
+      "workShowBy": "Show work experience by",
+      "workDatesBy": "Show dates by",
+      "workLocationBy": "Show location by",
+      "workShowByOptions": {
+        "company": "Company",
+        "position": "Position"
+      },
+      "workDatesByOptions": {
+        "company": "Company",
+        "position": "Position",
+        "both": "Both"
+      },
+      "workLocationByOptions": {
+        "company": "Company",
+        "position": "Position",
+        "none": "None"
+      },
+      "educationShowBy": "Show education by",
+      "educationLayout": "Layout",
+      "educationShowByOptions": {
+        "degree": "Degree",
+        "institution": "Institution"
+      },
+      "educationLayoutOptions": {
+        "stacked": "Stacked",
+        "inline": "Inline"
+      },
+      "previewSelectors": {
+        "metaSample": "Sep 2020",
+        "locationSample": "Paris"
+      }
+    },
+    "personalInfoForm": {
+      "placeholders": {
+        "name": "山田 太郎",
+        "title": "ソフトウェアエンジニア",
+        "email": "taro@example.com",
+        "phone": "+81 90-0000-0000",
+        "location": "都市、国",
+        "website": "portfolio.com",
+        "linkedin": "linkedin.com/in/taro",
+        "github": "github.com/taro"
+      },
+      "displayAsLink": "リンクとして表示"
+    },
+    "leftPanel": {
+      "editorPanel": "編集パネル",
+      "coverLetterEditor": "カバーレター編集",
+      "outreachEditor": "連絡メール編集",
+      "jdMatchAnalysis": "JD一致分析",
+      "interviewPrep": "面接準備"
+    },
+    "alerts": {
+      "saveNotAvailable": "既存の履歴書を編集中のみ保存できます。",
+      "saveFailed": "履歴書の保存に失敗しました。もう一度お試しください。",
+      "saveAsMasterSuccess": "マスター履歴書として保存しました",
+      "saveAsMasterFailed": "マスター履歴書として保存できませんでした。もう一度お試しください。",
+      "coverLetterSaveSuccess": "カバーレターを保存しました",
+      "outreachSaveSuccess": "連絡メールを保存しました",
+      "downloadSuccess": "履歴書をダウンロードしました",
+      "reloadFailed": "変更は適用されましたが、履歴書の再読み込みに失敗しました。ページを更新してください。",
+      "downloadNotAvailable": "保存済みの履歴書のみダウンロードできます。",
+      "downloadFailed": "履歴書のダウンロードに失敗しました。もう一度お試しください。",
+      "coverLetterSaveFailed": "カバーレターの保存に失敗しました。もう一度お試しください。",
+      "coverLetterDownloadRequiresResume": "カバーレターをダウンロードする前に履歴書を保存してください。",
+      "coverLetterMissing": "カバーレターがありません。設定で生成を有効にして履歴書をカスタマイズしてください。",
+      "coverLetterDownloadFailed": "カバーレターのダウンロードに失敗しました: {error}",
+      "outreachSaveFailed": "連絡メールの保存に失敗しました。もう一度お試しください。",
+      "coverLetterGenerateFailed": "カバーレターの生成に失敗しました: {error}",
+      "outreachGenerateFailed": "連絡メールの生成に失敗しました: {error}",
+      "interviewPrepGenerateFailed": "面接準備の生成に失敗しました: {error}"
+    },
+    "editorModes": {
+      "design": "Design",
+      "content": "Content"
+    },
+    "designTabs": {
+      "presentation": "Presentation",
+      "sections": "Sections",
+      "settings": "Settings",
+      "advanced": "Advanced"
+    },
+    "designGroups": {
+      "controls": "Controls",
+      "styling": "Styling",
+      "heightsPaddings": "Heights & Paddings",
+      "alignmentsLayouts": "Alignments & Layouts",
+      "pageSetup": "Page Setup",
+      "workExperienceSettings": "Work Experience Settings",
+      "educationSettings": "Education Settings",
+      "advancedStyles": "Advanced Styles",
+      "textSizes": "Text Sizes",
+      "textWeights": "Text Weights",
+      "textTransformations": "Text Transformations",
+      "verticalSpacing": "Vertical Spacing",
+      "borders": "Borders",
+      "comingSoon": "Coming soon",
+      "comingSoonHint": "These settings are not available yet."
+    },
+    "sectionOrder": {
+      "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
+      "dragToReorder": "Drag to reorder"
+    },
+    "actions": {
+      "saveAsMaster": "マスター履歴書として保存",
+      "alreadyMaster": "この履歴書は既にマスターです",
+      "saveMoreOptions": "その他の保存オプション",
+      "saveAsMasterConfirmTitle": "マスター履歴書として保存しますか？",
+      "saveAsMasterConfirmDescription": "この履歴書は今後の求人応募の調整のベースになります。他のマスター履歴書は保持されます。",
+      "saveAsMasterConfirmLabel": "マスター履歴書として保存"
+    },
+    "projectsDialog": {
+      "title": "プロフィールからプロジェクトを追加",
+      "description": "キャリアプロフィールからプロジェクトを選択します。AIがREADMEまたは簡単なプロンプトから箇条書きを作成します。",
+      "profileProjects": "プロフィールのプロジェクト",
+      "searchPlaceholder": "プロジェクトを検索...",
+      "noProjects": "プロフィールにプロジェクトがまだありません。",
+      "noProjectsHint": "ここに表示するには、プロフィールにプロジェクトを追加してください。",
+      "goToProfile": "プロフィールへ",
+      "startFromScratch": "最初から作成",
+      "startFromScratchHint": "空のプロジェクト項目を追加して手動で入力します",
+      "readmeAvailable": "README",
+      "noReadme": "READMEなし",
+      "readmeLabel": "プロジェクトのREADME",
+      "promptLabel": "作成したものを説明してください",
+      "promptPlaceholder": "例: WebSocket、Redis pub/sub、同時5,000ユーザーのリアルタイムチャットアプリ",
+      "promptHint": "任意 — 注目してほしい点や詳細を追加できます。AIがREADME（ある場合）と組み合わせます。",
+      "generate": "箇条書きを生成",
+      "regenerate": "再生成",
+      "generating": "生成中...",
+      "previewTitle": "AIによる箇条書き",
+      "addToResume": "履歴書に追加",
+      "back": "戻る",
+      "loading": "プロジェクトを読み込み中...",
+      "loadError": "プロジェクトを読み込めませんでした。",
+      "retry": "再試行",
+      "generateError": "生成中にエラーが発生しました。もう一度お試しください。",
+      "allAdded": "プロフィールのプロジェクトはすべてこの履歴書に追加済みです。",
+      "allAddedHint": "ここに表示するには、プロフィールにプロジェクトを追加してください。",
+      "showAll": "すべて表示（あと{{count}}件）",
+      "showLess": "少なく表示"
+    },
+    "certificationsDialog": {
+      "title": "プロフィールから資格を追加",
+      "description": "この履歴書に追加する資格をプロフィールから選択します。",
+      "profileCertifications": "プロフィールの資格",
+      "searchPlaceholder": "資格を検索...",
+      "allAdded": "プロフィールの資格はすべてこの履歴書に追加済みです。",
+      "noCertificationsHint": "ここに表示するには、プロフィールに資格を追加してください。",
+      "goToProfile": "プロフィールへ",
+      "loading": "資格を読み込み中...",
+      "loadError": "資格を読み込めませんでした。",
+      "retry": "再試行"
+    },
+    "awardsDialog": {
+      "title": "プロフィールから受賞歴を追加",
+      "description": "この履歴書に追加する受賞歴をプロフィールから選択します。",
+      "profileAwards": "プロフィールの受賞歴",
+      "searchPlaceholder": "受賞歴を検索...",
+      "allAdded": "プロフィールの受賞歴はすべてこの履歴書に追加済みです。",
+      "noAwardsHint": "ここに表示するには、プロフィールに受賞歴を追加してください。",
+      "goToProfile": "プロフィールへ",
+      "loading": "受賞歴を読み込み中...",
+      "loadError": "受賞歴を読み込めませんでした。",
+      "retry": "再試行"
+    }
+  },
+  "enrichment": {
+    "title": "履歴書の強化",
+    "loading": {
+      "analyzingTitle": "履歴書を分析しています...",
+      "analyzingDescription": "詳細を補足できる箇所を特定しています",
+      "generatingTitle": "強化した記述を作成しています...",
+      "generatingDescription": "回答内容をもとに履歴書を改善します",
+      "applyingTitle": "強化内容を適用しています...",
+      "applyingDescription": "マスター履歴書を更新しています"
+    },
+    "questionProgress": "質問 {current} / {total}",
+    "itemType": {
+      "experience": "経験",
+      "project": "プロジェクト"
+    },
+    "shortcutHint": "Shift+Enterで改行、Cmd/Ctrl+Enterで続行",
+    "preview": {
+      "title": "新しい内容を確認",
+      "description": "履歴書に追加される新しい箇条書きを確認してください",
+      "applyButton": "履歴書に追加",
+      "keepingLabel": "保持",
+      "addingLabel": "追加",
+      "existingCount": "（既存 {count} 件）",
+      "newCount": "（新規 {count} 件）",
+      "noExistingDescription": "既存の説明はありません"
+    },
+    "complete": {
+      "title": "履歴書を強化しました！",
+      "updatedCountSingular": "{count} 件を更新しました",
+      "updatedCountPlural": "{count} 件を更新しました",
+      "updatedFallback": "強化した記述を履歴書に反映しました",
+      "doneButton": "完了"
+    },
+    "noImprovements": {
+      "title": "履歴書はとても良い状態です！",
+      "defaultDescription": "改善が必要な項目は見つかりませんでした。すでに十分に詳細な記述です。"
+    },
+    "error": {
+      "title": "エラーが発生しました",
+      "unexpected": "予期しないエラーが発生しました"
+    }
+  },
+  "tailor": {
+    "aiConnection": {
+      "title": "AI接続",
+      "subtitle": "開始する前に、LLMプロバイダーが動作することを確認します。",
+      "test": "接続テスト",
+      "testing": "テスト中…",
+      "retest": "再テスト",
+      "notConfigured": "LLMプロバイダーが設定されていません",
+      "ok": "接続は正常です",
+      "failed": "接続に失敗しました",
+      "connectedAs": "{provider} · {model}",
+      "latency": "{ms} ミリ秒",
+      "gotoSettings": "設定を開く"
+    },
+    "title": "履歴書をカスタマイズ",
+    "subtitle": "特定の求人に合わせて履歴書を最適化",
+    "heroTitle": "履歴書をカスタマイズ",
+    "selectResume": "履歴書を選択",
+    "resumePromptDescription": "調整に使用するマスター履歴書を選択します。",
+    "pasteJobDescription": "求人内容を貼り付け",
+    "pasteJobDescriptionBelow": "下に求人内容を貼り付け",
+    "jobDescriptionPlaceholder": "求人内容をここに貼り付けてください...",
+    "promptLabel": "調整の強さ",
+    "promptDescription": "求人情報にどの程度合わせるかを選択してください。",
+    "promptOptions": {
+      "nudge": {
+        "label": "軽く調整",
+        "description": "既存の経験に合わせて最小限の修正。"
+      },
+      "keywords": {
+        "label": "キーワード強化",
+        "description": "役割や範囲を変えずにキーワードを追加。"
+      },
+      "full": {
+        "label": "完全に調整",
+        "description": "求人情報を使って全面的に調整。"
+      },
+      "recruiter": {
+        "label": "採用担当者向け調整",
+        "description": "採用担当者レベルの調整。根拠のマッピングとATSの読みやすさを考慮。"
+      }
+    },
+    "analyzeJob": "求人を分析",
+    "generateTailored": "カスタマイズ履歴書を生成",
+    "setupRequiredTitle": "[ 設定が必要 ]",
+    "noApiKeyMessage": "> API キーが設定されていません。履歴書のカスタマイズには LLM プロバイダーが必要です。",
+    "configureApiKey": "API キーを設定",
+    "configureApiKeyFirst": "先に API キーを設定してください",
+    "charactersCount": "{count} 文字",
+    "matchScore": "マッチスコア",
+    "suggestions": "提案",
+    "keywords": "含めるべきキーワード",
+    "footerTagline": "AI 搭載最適化エンジン",
+    "diffModal": {
+      "title": "AI調整結果の確認",
+      "subtitle": "虚偽の情報が追加されていないか、変更内容を慎重に確認してください",
+      "summary": "変更の概要",
+      "skillsAdded": "追加されたスキル",
+      "skillsRemoved": "削除されたスキル",
+      "descriptionsModified": "変更された説明",
+      "certificationsAdded": "追加された資格",
+      "highRiskChanges": "高リスクの変更",
+      "warningTitle": "高リスクな追加が {count} 件検出されました",
+      "warningMessage": "これらのスキルが元の履歴書に実際に存在する、または説明内に反映されていることを確認してください",
+      "summaryChanges": "概要の変更",
+      "skillChanges": "スキルの変更",
+      "descriptionChanges": "職歴説明の変更",
+      "experienceChanges": "職歴の変更",
+      "educationChanges": "学歴の変更",
+      "projectChanges": "プロジェクトの変更",
+      "certificationChanges": "資格の変更",
+      "languageChanges": "言語の変更",
+      "awardChanges": "賞の変更",
+      "rejectButton": "拒否して再生成",
+      "confirmButton": "確認して保存"
+    },
+    "regenerateDialog": {
+      "title": "カスタマイズ済み履歴書を再生成しますか？",
+      "description": "現在のプレビューを破棄し、新しい AI 調整結果を取得します。",
+      "confirmLabel": "再生成"
+    },
+    "missingDiffDialog": {
+      "title": "変更を計算できませんでした",
+      "description": "この履歴書の差分を計算できませんでした。構造化データがない旧形式の履歴書で発生することがあります。カスタマイズ済み履歴書を保存するか、キャンセルして後で確認してください。",
+      "confirmLabel": "差分なしで続行"
+    },
+    "errors": {
+      "jobDescriptionTooShort": "求人内容が短すぎます。詳細を追加してから、もう一度お試しください。",
+      "apiKeyError": "API キーが機能していません。設定で確認してください。",
+      "rateLimit": "レート制限に達しました。約1分待ってから再試行してください。",
+      "failedToGenerate": "履歴書を生成できませんでした。設定で API キーを確認してから、もう一度お試しください。",
+      "timeout": "リクエストがタイムアウトしました。より短い求人内容で再試行するか、接続を確認してください。",
+      "failedToPreview": "履歴書をプレビューできませんでした。設定で API キーを確認してから、もう一度お試しください。",
+      "failedToConfirm": "変更を適用できませんでした。もう一度お試しください。"
+    },
+    "projectsPicker": {
+      "title": "調整した履歴書に含めるプロジェクトを選択",
+      "subtitle": "これらのプロジェクトは求人内容にマッチしています。最大4件まで選択できます。調整した履歴書のプロジェクト欄は選択内容で置き換えられます。",
+      "matchScore": "マッチ度",
+      "inResume": "履歴書に掲載済み",
+      "noDescription": "このプロジェクトの説明を作成できませんでした（LLMを利用できません）。",
+      "selectHint": "最大 {count} 件まで選択できます",
+      "skip": "スキップ — 最上位マッチを自動使用",
+      "tailorWithSelection": "選択内容で調整する"
+    },
+    "jobIntel": {
+      "shouldApply": {
+        "title": "Should I Apply?",
+        "matchPercent": "Match",
+        "careerRelevance": "Career Relevance",
+        "salaryPotential": "Salary Potential",
+        "competition": "Competition",
+        "companyQuality": "Company Quality",
+        "ghostRisk": "Ghost Risk",
+        "verdict": "Verdict",
+        "biggestGap": "Biggest Gap",
+        "recommendation": "Recommendation",
+        "analyze": "Analyze Job",
+        "analyzing": "Analyzing...",
+        "verdictYes": "Yes — strong match",
+        "verdictConditional": "Conditional — address gaps",
+        "verdictNo": "No — low match",
+        "notAvailable": "n/a"
+      },
+      "redFlags": {
+        "title": "Red Flags",
+        "ghostRisk": "Ghost Risk",
+        "noFlags": "No red flags detected",
+        "info": "Info",
+        "warning": "Warning",
+        "danger": "Danger",
+        "loadFailed": "レッドフラグを読み込めませんでした。"
+      },
+      "jobDna": {
+        "title": "Job DNA",
+        "technical": "Technical Skills",
+        "experience": "Experience Domains",
+        "company": "Company Culture",
+        "matched": "Matched",
+        "missing": "Missing",
+        "extra": "Extra",
+        "overallMatch": "Overall Match",
+        "loadFailed": "ジョブDNAを読み込めませんでした。"
+      },
+      "recommendations": {
+        "title": "Recruiter Recommendations",
+        "generating": "Generating recommendations...",
+        "accept": "Accept",
+        "reject": "Reject",
+        "apply": "Apply",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "applied": "Applied",
+        "regenerate": "Regenerate with feedback",
+        "noRecommendations": "No recommendations yet"
+      }
+    },
+    "hiringProbability": {
+      "title": "採用確率",
+      "skills": "スキル",
+      "experience": "経験",
+      "seniority": "シニア度",
+      "overall": "採用確率",
+      "loadFailed": "採用確率を読み込めませんでした。"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "subtitle": "設定をカスタマイズ",
+    "aiProvider": "AIプロバイダー",
+    "aiProviderDescription": "履歴書分析に使用するAIプロバイダーを選択",
+    "apiKey": "APIキー",
+    "apiKeyPlaceholder": "APIキーを入力",
+    "saveApiKey": "APIキーを保存",
+    "contentLanguage": "コンテンツ言語",
+    "contentLanguageDescription": "生成コンテンツの言語（履歴書、カバーレター）",
+    "uiLanguage": "UI言語",
+    "uiLanguageDescription": "ユーザーインターフェースの言語",
+    "theme": "テーマ",
+    "themeDescription": "お好みのカラーテーマを選択",
+    "lightMode": "ライト",
+    "darkMode": "ダーク",
+    "systemMode": "システム",
+    "dangerZone": "デインジャーゾーン",
+    "clearApiKeys": "APIキーを消去",
+    "clearApiKeysDescription": "設定から保存されているすべてのAPIキーを削除します。この操作は取り消せません。",
+    "resetDatabase": "データベースをリセット",
+    "resetDatabaseDescription": "履歴書、求人、生成されたコンテンツを含むすべてのデータを削除します。この操作は取り消せません。",
+    "llmConfigurationTitle": "LLM 設定",
+    "providerLabel": "プロバイダー",
+    "statusCards": {
+      "llm": "LLM",
+      "database": "データベース",
+      "resumes": "履歴書",
+      "jobs": "求人",
+      "improvements": "改善",
+      "masterResume": "マスター履歴書"
+    },
+    "statusValues": {
+      "healthy": "正常",
+      "offline": "オフライン",
+      "connected": "接続済み",
+      "configured": "設定済み",
+      "notSet": "未設定"
+    },
+    "apiKeyMenu": {
+      "buttonLabel": "LLM API",
+      "title": "OpenAI APIキー",
+      "description": "ホスト型 OpenAI モデルを有効にするためにキーを提供してください。",
+      "savedMessage": "APIキーを保存しました。",
+      "loadError": "APIキーを読み込めません",
+      "updateError": "APIキーを更新できません"
+    },
+    "setupRequired": {
+      "title": "[ 設定が必要 ]",
+      "description": "> API キーが設定されていません。下で LLM プロバイダーの API キーを追加して、履歴書のカスタマイズを有効にしてください。"
+    },
+    "systemStatus": {
+      "title": "システム状態",
+      "refresh": "更新",
+      "unableToConnect": "サーバーに接続できません",
+      "expectedAt": "想定 URL: {apiUrl}",
+      "lastFetched": {
+        "never": "未取得",
+        "justNow": "たった今",
+        "minutesAgo": "{minutes} 分前",
+        "hoursAgo": "{hours} 時間前"
+      }
+    },
+    "llmConfiguration": {
+      "selectedProvider": "選択中: {provider}",
+      "modelLabel": "モデル",
+      "defaultModel": "既定: {model}",
+      "apiKeyLabel": "API キー",
+      "apiKeyOptionalForOllama": "（Ollama は任意）",
+      "apiKeyOptional": "（任意）",
+      "apiKeyPlaceholder": "sk-...",
+      "apiKeyNotRequiredPlaceholder": "ローカルモデルでは不要",
+      "apiKeyOptionalPlaceholder": "サーバーに認証が必要ない場合は空欄のままでOK",
+      "leaveBlankToKeepExistingKey": "空欄のままにすると既存キーを保持します",
+      "baseUrlLabel": "ベースURL（任意）",
+      "baseUrlPlaceholder": "例: https://api.openai.com/v1",
+      "baseUrlDescription": "プロキシ/アグリゲーター等のエンドポイントを使う場合に Base URL を上書きできます。空欄の場合は既定値を使用します。",
+      "ollamaServerUrl": "Ollama サーバー URL",
+      "ollamaServerUrlPlaceholder": "http://localhost:11434",
+      "reasoningEffortLabel": "推論の深さ",
+      "reasoningEffortAuto": "自動",
+      "reasoningEffortAutoDesc": "reasoning_effort を送信しない（互換性重視の既定値）",
+      "reasoningEffortMinimal": "最小",
+      "reasoningEffortLow": "低",
+      "reasoningEffortMedium": "中",
+      "reasoningEffortHigh": "高",
+      "reasoningEffortDescription": "推論対応モデル（gpt-5 系、Claude 3.7+、DeepSeek R1、OpenAI o1/o3）にのみ影響します。対応していないプロバイダーではこの値は自動的に無視されます。",
+      "testConnection": "接続テスト",
+      "errorPrefix": "エラー: {error}",
+      "connectionSuccessful": "接続成功",
+      "connectionFailed": "接続失敗",
+      "connectionDetails": "プロバイダー: {provider} | モデル: {model}",
+      "testPromptLabel": "テスト内容",
+      "modelOutputLabel": "モデル出力",
+      "reasoningContentLabel": "モデルの思考",
+      "errorDetailLabel": "エラー詳細",
+      "healthErrors": {
+        "api_key_missing": "APIキーが設定されていません。設定で追加してください。",
+        "health_check_failed": "ヘルスチェックに失敗しました。",
+        "duplicate_v1_path": "ヘルスチェックに失敗しました。Base URL に /v1 が重複している可能性があります。",
+        "not_found_404": "ヘルスチェックに失敗しました。404 Not Found。Base URL が提供元と一致しているか確認してください。",
+        "html_response": "ヘルスチェックに失敗しました。Base URL が HTML を返しました。コンソールURLや未対応のゲートウェイの可能性があります。"
+      },
+      "healthWarnings": {
+        "empty_content": "ヘルスチェックで空の内容が返されました。"
+      }
+    },
+    "contentGeneration": {
+      "title": "コンテンツ生成",
+      "description": "履歴書のカスタマイズ時に追加のコンテンツ生成を有効化します。有効にすると、これらのドキュメントはカスタマイズ履歴書と一緒に自動生成されます。",
+      "coverLetter": {
+        "label": "カバーレター",
+        "description": "履歴書と一緒にカスタマイズされたカバーレターを生成します"
+      },
+      "outreachMessage": {
+        "label": "コールドアウトリーチメッセージ",
+        "description": "LinkedIn やメール向けのネットワーキングメッセージを生成します"
+      },
+      "customPromptLabel": "カスタムプロンプト（任意）",
+      "customPromptHelp": "次のプレースホルダーを中括弧で囲んで含めてください：job_description, resume_data, output_language。空欄の場合は既定のプロンプトを使用します。",
+      "customPromptResetButton": "デフォルトにリセット",
+      "customPromptErrorMissing": "必須のプレースホルダーが不足しています：{missing}",
+      "interviewPrep": {
+        "label": "面接準備",
+        "description": "保存済みのカスタマイズ履歴書と一緒に面接準備を自動生成します"
+      },
+      "outreachEmail": {
+        "label": "メール作成画面のプロンプト（任意）",
+        "help": "次のプレースホルダーを含めてください：output_language、company_name、sender_info、purpose。空欄の場合は既定のプロンプトを使用します。"
+      }
+    },
+    "promptSettings": {
+      "title": "プロンプト設定",
+      "description": "履歴書カスタマイズで使う既定のプロンプトを選択します。",
+      "defaultLabel": "既定のカスタマイズプロンプト"
+    },
+    "footer": {
+      "status": {
+        "checking": "確認中...",
+        "ready": "ステータス: 準備完了",
+        "setupRequired": "ステータス: 設定が必要",
+        "offline": "ステータス: オフライン"
+      }
+    },
+    "errors": {
+      "unableToConnectBackend": "サーバーに接続できません。サーバーが起動していることを確認してください。",
+      "apiKeyRequired": "選択したプロバイダーには API キーが必要です。",
+      "baseUrlRequired": "{provider} にはベース URL が必要です。",
+      "unknownProvider": "バックエンドから未知のプロバイダーが返されました: {provider}",
+      "unableToSaveConfiguration": "設定を保存できません",
+      "failedToClearApiKeys": "API キーの消去に失敗しました。もう一度お試しください。",
+      "failedToResetDatabase": "データベースのリセットに失敗しました。もう一度お試しください。"
+    },
+    "apiKeys": {
+      "savedTitle": "保存済み API キー",
+      "deleteAria": "{provider} のキーを削除",
+      "deleteConfirmTitle": "API キーを削除しますか？",
+      "deleteConfirmDescription": "保存された {provider} の API キーを削除しますか？後で再度追加できます。"
+    },
+    "email": {
+      "title": "メール設定",
+      "description": "企業ページからメールを送信する際に使用するSMTP送信者を設定します。",
+      "smtpHost": "SMTPホスト",
+      "smtpPort": "SMTPポート",
+      "senderEmail": "送信者メール",
+      "senderName": "送信者名",
+      "senderNamePlaceholder": "あなたの名前",
+      "password": "アプリパスワード",
+      "passwordSet": "********（パスワードは設定済みです）",
+      "passwordPlaceholder": "アプリパスワードを入力",
+      "passwordHint": "通常のアカウントパスワードではなく、アプリ専用パスワードを使用してください。",
+      "useTls": "TLSを使用",
+      "useTlsHint": "STARTTLSを有効にします（例: Gmailのポート587）。ポート465は常に暗黙のTLSを使用します。",
+      "save": "保存",
+      "saved": "保存しました",
+      "loadFailed": "メール設定を読み込めませんでした。",
+      "saveFailed": "メール設定を保存できませんでした。",
+      "invalidPort": "ポート番号が無効です。",
+      "togglePasswordVisibility": "アプリパスワードの表示を切り替える"
+    }
+  },
+  "resumeViewer": {
+    "resumeNotFound": "履歴書が見つかりません",
+    "loading": "履歴書を読み込み中...",
+    "useTailorFeature": "カスタマイズ機能を使う",
+    "retryProcessing": "再処理",
+    "deleteAndStartOver": "削除してやり直す",
+    "returnToDashboard": "ダッシュボードに戻る",
+    "enhanceResume": "履歴書を強化",
+    "downloadResume": "履歴書をダウンロード",
+    "deletedTitle": "履歴書を削除しました",
+    "deletedDescriptionMaster": "マスター履歴書はシステムから完全に削除されました。",
+    "deletedDescriptionRegular": "履歴書はシステムから完全に削除されました。",
+    "deleteFailedTitle": "削除に失敗しました",
+    "errors": {
+      "processingFailed": "履歴書を読み取れませんでした。再処理するか、削除して別のファイルをアップロードしてください。",
+      "stillProcessing": "履歴書はまだ処理中です。数秒待ってからページを更新してください。",
+      "notProcessedYet": "履歴書はまだ処理されていません。カスタマイズ機能で構造化履歴書を生成してください。",
+      "noDataAvailable": "利用可能な履歴書データがありません。",
+      "failedToLoad": "履歴書データの読み込みに失敗しました。",
+      "failedToDelete": "履歴書の削除に失敗しました。もう一度お試しください。"
+    },
+    "titlePlaceholder": "履歴書のタイトルを入力..."
+  },
+  "preview": {
+    "margins": "余白",
+    "calculating": "計算中...",
+    "pageBreak": "改ページ",
+    "pageCountSingular": "{count} ページ",
+    "pageCountPlural": "{count} ページ",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小"
+  },
+  "resume": {
+    "personalInfo": {
+      "name": "氏名",
+      "title": "職種",
+      "email": "メールアドレス",
+      "phone": "電話番号",
+      "location": "所在地",
+      "website": "ウェブサイト",
+      "linkedin": "LinkedIn",
+      "github": "GitHub"
+    },
+    "sections": {
+      "personalInfo": "個人情報",
+      "summary": "概要",
+      "experience": "職歴",
+      "education": "学歴",
+      "projects": "プロジェクト",
+      "skills": "スキル",
+      "skillsOnly": "スキル",
+      "certifications": "研修・資格",
+      "languages": "言語",
+      "awards": "受賞歴",
+      "links": "リンク"
+    },
+    "defaults": {
+      "name": "あなたの名前"
+    },
+    "additional": {
+      "technicalSkills": "技術スキル"
+    },
+    "additionalLabels": {
+      "technicalSkills": "技術スキル：",
+      "languages": "言語：",
+      "certifications": "資格：",
+      "awards": "受賞歴："
+    }
+  },
+  "coverLetter": {
+    "title": "カバーレター",
+    "generate": "カバーレターを生成",
+    "regenerate": "再生成",
+    "copyToClipboard": "クリップボードにコピー",
+    "editor": {
+      "placeholder": "設定でカバーレター生成を有効にして履歴書をカスタマイズすると、ここに表示されます...",
+      "tip": "ヒント：良いカバーレターは通常300〜400語程度です。必要に応じて編集してください。"
+    },
+    "preview": {
+      "defaultName": "あなたの名前",
+      "emptyTitle": "まだカバーレターがありません。",
+      "emptyDescription": "設定でカバーレター生成を有効にしてから、履歴書をカスタマイズしてください。"
+    },
+    "print": {
+      "emptyContent": "カバーレターの内容がありません。"
+    },
+    "copied": "コピーしました！"
+  },
+  "outreach": {
+    "title": "連絡メール",
+    "generate": "連絡メールを生成",
+    "regenerate": "再生成",
+    "copy": "コピー",
+    "copyToClipboard": "クリップボードにコピー",
+    "copied": "コピーしました！",
+    "editor": {
+      "placeholder": "設定で外連絡メッセージ生成を有効にして履歴書をカスタマイズすると、ここに表示されます...",
+      "tip": "ヒント：外連絡メッセージは短く（100〜150語程度）まとめましょう。LinkedInやメールに貼り付けて使えます。"
+    },
+    "preview": {
+      "channels": {
+        "linkedin": "LinkedIn",
+        "email": "メール"
+      },
+      "howToUseTitle": "使い方：",
+      "steps": {
+        "step1": "1. 上のボタンでメッセージをコピー",
+        "step2": "2. LinkedIn またはメールクライアントを開く",
+        "step3": "3. 貼り付けて必要に応じて調整",
+        "step4": "4. リクルーターや採用担当に送信"
+      },
+      "emptyTitle": "まだ外連絡メッセージがありません。",
+      "emptyDescription": "設定で外連絡メッセージ生成を有効にしてから、履歴書をカスタマイズしてください。"
+    }
+  },
+  "errors": {
+    "generic": "エラーが発生しました。もう一度お試しください。",
+    "networkError": "ネットワークエラー。接続を確認してください。",
+    "unauthorized": "続行するにはサインインしてください。",
+    "notFound": "リクエストされたリソースが見つかりません。",
+    "validationError": "いくつかの入力欄を確認してください。マークされた欄を修正して、もう一度お試しください。",
+    "boundary": {
+      "title": "エラーが発生しました",
+      "description": "予期しない問題が発生しました。ページを再読み込みしてください。問題が続く場合は、お知らせください。",
+      "tryAgain": "再試行",
+      "reloadPage": "ページを再読み込み"
+    }
+  },
+  "a11y": {
+    "removeItem": "項目を削除",
+    "removeDescription": "この行を削除",
+    "removeFile": "ファイルを削除"
+  },
+  "confirmations": {
+    "deleteResume": "この履歴書を削除しますか？",
+    "deleteResumeDescription": "履歴書は完全に削除されます。",
+    "deleteMasterResumeTitle": "マスター履歴書を削除",
+    "deleteMasterResumeDescription": "マスター履歴書は完全に削除されます。",
+    "deleteResumeFromSystemDescription": "履歴書は完全に削除されます。",
+    "deleteResumeConfirmLabel": "履歴書を削除",
+    "keepResumeCancelLabel": "履歴書を保持",
+    "discardChanges": "保存していない変更を破棄しますか？",
+    "discardChangesDescription": "保存していない作業内容は失われます。",
+    "clearApiKeys": "すべてのAPIキーを消去しますか？",
+    "clearApiKeysDescription": "AI機能を再び使うには、もう一度入力が必要になります。",
+    "resetDatabase": "すべてリセットして最初からやり直しますか？",
+    "resetDatabaseDescription": "すべての履歴書、求人内容、生成されたドキュメントが完全に削除されます。"
+  },
+  "resumeWizard": {
+    "title": "履歴書ウィザード",
+    "answerLabel": "あなたの回答",
+    "keepAddingPrompt": "追加または変更したい内容は何ですか？",
+    "readyHint": "しっかりした履歴書を作るのに十分な情報が集まりました。準備ができたら確認して完成させましょう。",
+    "sections": {
+      "intro": "はじめに",
+      "contact": "連絡先情報",
+      "summary": "職務要約",
+      "workExperience": "職務経験",
+      "internships": "インターンシップ",
+      "education": "学歴",
+      "personalProjects": "プロジェクト",
+      "skills": "スキル",
+      "review": "確認"
+    },
+    "actions": {
+      "continue": "続行",
+      "skip": "スキップ",
+      "back": "戻る",
+      "review": "確認して完了",
+      "create": "マスター履歴書を作成",
+      "keepAdding": "続けて追加",
+      "backToDashboard": "ダッシュボードに戻る"
+    },
+    "preview": {
+      "label": "ライブ下書き",
+      "empty": "回答するにつれて、ここに履歴書が表示されます。",
+      "unnamed": "名前未設定の履歴書",
+      "experience": "職務経験",
+      "education": "学歴",
+      "projects": "プロジェクト",
+      "skills": "スキル"
+    },
+    "errors": {
+      "turnFailed": "ウィザードはその回答を保存できませんでした。もう一度お試しください。",
+      "finalizeFailed": "ウィザードはマスター履歴書を作成できませんでした。もう一度お試しください。"
+    },
+    "entry": {
+      "kicker": "マスター履歴書の設定",
+      "title": "開始方法を選択",
+      "description": "既存の書類からマスター履歴書を作成するか、AI の案内で一歩ずつ作成します。",
+      "upload": {
+        "kicker": "既存ファイル",
+        "title": "履歴書をアップロード",
+        "description": "PDF、DOC、DOCX ファイルから始め、Taylor にマスタープロフィールへ解析させます。",
+        "action": "履歴書をアップロード"
+      },
+      "wizard": {
+        "kicker": "AI ガイド",
+        "title": "AI ウィザードで作成",
+        "description": "焦点を絞った質問に答えると、ウィザードが質の高いマスター履歴書の初稿を組み立てます。",
+        "action": "ウィザードを開始"
+      }
+    }
+  },
+  "tracker": {
+    "scroll": {
+      "prev": "左へスクロール",
+      "next": "右へスクロール",
+      "hint": "スクロールして他のステージを表示"
+    },
+    "title": "応募トラッカー",
+    "subtitle": "各カスタマイズ済み履歴書の選考状況を管理します。",
+    "addApplication": "応募を追加",
+    "showOverview": "概要",
+    "hideOverview": "概要を隠す",
+    "columns": {
+      "saved": "保存済み",
+      "applied": "応募済み",
+      "no_response": "返信なし",
+      "response": "返信あり",
+      "interview": "面接",
+      "accepted": "内定",
+      "rejected": "不採用",
+      "empty": "まだ何もありません"
+    },
+    "empty": {
+      "title": "応募はまだありません",
+      "description": "求人に合わせて履歴書を調整するか、手動で追加して追跡を開始しましょう。"
+    },
+    "card": {
+      "companyUnknown": "会社名不明",
+      "roleUnknown": "役職名なし",
+      "sharedResume": "共有された履歴書",
+      "selectAria": "応募を選択",
+      "dragAria": "ドラッグして並べ替え"
+    },
+    "modal": {
+      "jobDescription": "求人内容",
+      "noJobDescription": "求人内容はありません。",
+      "notes": "メモ",
+      "notesPlaceholder": "この応募についてのメモを追加…",
+      "saveNotes": "メモを保存",
+      "resumeUnavailable": "応募した履歴書は利用できなくなりました。",
+      "loadFailed": "この応募を読み込めませんでした。",
+      "editResume": "履歴書を編集",
+      "rejectionReason": "Rejection reason (for AI career insights)",
+      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
+      "interviewRounds": "Interview rounds",
+      "interviewRoundsPlaceholder": "e.g. 2"
+    },
+    "bulk": {
+      "selected": "{count} 件選択中",
+      "moveTo": "移動先…",
+      "clear": "クリア",
+      "deleteConfirmTitle": "応募を削除しますか？",
+      "deleteConfirmDescription": "選択した {count} 件の応募を削除しますか？この操作は取り消せません。"
+    },
+    "manualAdd": {
+      "title": "応募を追加",
+      "description": "求人内容を貼り付けて応募を追跡します。",
+      "resume": "履歴書",
+      "untitledResume": "無題の履歴書",
+      "jobDescription": "求人内容",
+      "jobDescriptionPlaceholder": "ここに求人内容を貼り付け…",
+      "company": "会社",
+      "role": "役職",
+      "optional": "任意",
+      "status": "ステータス",
+      "submit": "追加",
+      "validation": "履歴書を選び、求人内容を貼り付けてください。",
+      "failed": "応募を作成できませんでした。"
+    },
+    "errors": {
+      "loadFailed": "応募を読み込めませんでした。",
+      "moveFailed": "応募を移動できませんでした。",
+      "deleteFailed": "応募を削除できませんでした。"
+    }
+  },
+  "companies": {
+    "title": "Company Tracker",
+    "subtitle": "Keep tabs on every company you engage with.",
+    "addCompany": "Add Company",
+    "empty": {
+      "title": "No companies yet",
+      "description": "Track the companies you apply to, contact, or want to keep an eye on.",
+      "noResults": "No companies match your filters",
+      "noResultsHint": "Try adjusting the search or clearing the filters."
+    },
+    "table": {
+      "company": "Company",
+      "phone": "Phone",
+      "industry": "Industry",
+      "size": "Size",
+      "type": "Type",
+      "status": "Status",
+      "yearFounded": "Founded",
+      "links": "Links",
+      "actions": "Actions",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "edit": "Edit company",
+      "delete": "Delete company",
+      "editHint": "Click to edit",
+      "viewDetails": "View details",
+      "address": "住所",
+      "email": "この企業にメールを送信"
+    },
+    "size": {
+      "1-10": "1-10 employees",
+      "11-50": "11-50 employees",
+      "51-200": "51-200 employees",
+      "201-1000": "201-1000 employees",
+      "1000+": "1000+ employees"
+    },
+    "type": {
+      "startup": "Startup",
+      "agency": "Agency",
+      "enterprise": "Enterprise",
+      "nonprofit": "Nonprofit",
+      "education": "Education",
+      "government": "Government",
+      "other": "Other"
+    },
+    "status": {
+      "watching": "Watching",
+      "contacted": "Contacted",
+      "applied": "Applied",
+      "interviewing": "Interviewing",
+      "negotiating": "Negotiating",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "form": {
+      "addTitle": "Add Company",
+      "editTitle": "Edit Company",
+      "description": "Save contact details and background info for a company you are tracking.",
+      "name": "Company Name",
+      "namePlaceholder": "e.g. Acme Corp",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "website": "Website",
+      "linkedin": "LinkedIn URL",
+      "industry": "Industry",
+      "size": "Company Size",
+      "type": "Company Type",
+      "status": "Status",
+      "yearFounded": "Year Founded",
+      "optional": "Optional",
+      "none": "None",
+      "validation": "Company name is required.",
+      "invalidYear": "Year must be between 1600 and 2100.",
+      "failed": "Could not save the company.",
+      "save": "Save Changes",
+      "submit": "Add Company"
+    },
+    "delete": {
+      "title": "Delete company?",
+      "description": "Delete {name}? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "loadFailed": "Could not load companies.",
+      "deleteFailed": "Could not delete the company.",
+      "updateFailed": "Could not update the company."
+    },
+    "toolbar": {
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Search by name, industry or email…",
+      "filters": "フィルター",
+      "clearFilters": "フィルターをクリア",
+      "size": "Size",
+      "type": "Type",
+      "groupBy": "Group by",
+      "groupNone": "No grouping",
+      "groupSize": "Company size",
+      "groupType": "Company type",
+      "groupIndustry": "Industry",
+      "groupStatus": "Company status",
+      "sortBy": "並び替え",
+      "sortDateDesc": "新しい順",
+      "sortDateAsc": "古い順",
+      "status": "Status",
+      "columns": "Columns",
+      "import": "Import",
+      "export": "Export CSV",
+      "count": "{count} companies"
+    },
+    "import": {
+      "title": "Import companies",
+      "description": "CSV or Excel (.xlsx) upload result",
+      "created": "{count} companies added",
+      "skipped": "{count} already existed (skipped)",
+      "failedCount": "{count} rows failed",
+      "errorRow": "Row {row}: {name} — {error}",
+      "done": "Done",
+      "failed": "Could not import the file.",
+      "mappingTitle": "Map columns",
+      "mappingDescription": "Choose which CSV or Excel column goes into each company field.",
+      "mappingHint": "Only mapped fields are imported. Company name is required.",
+      "mappingAuto": "auto",
+      "mappingNameRequired": "Map the company name column before importing.",
+      "mappingImport": "Import"
+    },
+    "selection": {
+      "count": "{count} selected",
+      "clear": "Clear",
+      "sendEmail": "メールを送信",
+      "delete": "Delete",
+      "selectAll": "Select all companies on this page",
+      "selectRow": "Select {name}",
+      "deleteTitle": "Delete companies?",
+      "deleteDescription": "Delete {count} selected companies? This cannot be undone."
+    },
+    "details": {
+      "created": "Added",
+      "updated": "Last updated"
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {count}",
+      "perPage": "{count} per page"
+    },
+    "emailDialog": {
+      "title": "企業にメールを送信",
+      "toCompany": "{name} にメールを作成",
+      "description": "この企業にメールを作成して送信します。",
+      "loading": "メール設定を読み込み中...",
+      "notConfigured": "メール送信が設定されていません",
+      "notConfiguredHint": "企業にメールを送信する前に、設定でSMTP送信者を構成してください。",
+      "goToSettings": "設定へ移動",
+      "purpose": {
+        "label": "目的",
+        "internship": "インターンシップ",
+        "job": "求人応募",
+        "cold": "コールドアウトリーチ",
+        "custom": "カスタム",
+        "customSubject": "このメールの内容は何ですか？",
+        "customPlaceholder": "例: キャリアフェアのフォローアップ"
+      },
+      "recipientName": "宛先の名前",
+      "recipientPlaceholder": "例: 採用担当者",
+      "subject": "件名",
+      "subjectPlaceholder": "件名を入力",
+      "message": "本文",
+      "messagePlaceholder": "ここにメッセージを書いてください",
+      "attachment": "添付ファイル",
+      "chooseFile": "ファイルを選択",
+      "removeAttachment": "添付ファイルを削除",
+      "generate": "AIで生成",
+      "send": "メールを送信",
+      "sent": "メールを送信しました",
+      "errors": {
+        "nameRequired": "メールを生成するには企業名が必要です。",
+        "noEmail": "この企業にはメールアドレスがありません。",
+        "missingFields": "件名と本文が必要です。",
+        "generateFailed": "メールを生成できませんでした。もう一度お試しください。",
+        "sendFailed": "メールを送信できませんでした。SMTP設定を確認してください。",
+        "statusUpdateFailed": "メールは送信されましたが、会社のステータスを更新できませんでした。"
+      },
+      "resume": "履歴書",
+      "resumeHint": "この履歴書のプロフィールに基づいてメールがカスタマイズされます。",
+      "resumeUntitled": "タイトルなしの履歴書",
+      "saveDraft": "下書きを保存",
+      "draftSaved": "下書きを保存しました",
+      "statusUpdated": "会社を「連絡済み」にしました。",
+      "includeResume": "履歴書を添付する",
+      "additionalInstructions": "AIへの追加指示",
+      "additionalInstructionsPlaceholder": "例：80語以内にする、Flutterの経験に言及する、よりフォーマルなトーン",
+      "historyTitle": "送信済みメール",
+      "historyEmpty": "この企業にはまだメールを送信していません。"
+    },
+    "bulkEmail": {
+      "title": "一括メール",
+      "description": "{count}件の企業にAI生成の個人化メールを送信します。各メールは調査され、カスタマイズされます。",
+      "stepConfigure": "設定",
+      "stepResearch": "調査",
+      "stepGenerate": "生成",
+      "stepPreview": "プレビュー",
+      "stepSending": "送信中",
+      "purposeLabel": "メールの目的",
+      "instructionLabel": "追加指示",
+      "instructionPlaceholder": "例：5年の経験に言及、100語以内",
+      "generateAll": "すべて生成",
+      "researchingAll": "企業を調査中...",
+      "researching": "{company}を調査中...",
+      "researchSources": "検出されたソース: {sources}",
+      "generating": "個人化メールを生成中...",
+      "sendAll": "すべて送信",
+      "edit": "編集",
+      "skip": "スキップ",
+      "ready": "{count}件準備完了",
+      "skipped": "{count}件スキップ（メールなし）",
+      "progress": "{total}件中{sent}件送信済み",
+      "done": "すべてのメールを送信しました！",
+      "close": "閉じる",
+      "research": "調査",
+      "researchSummary": "調査概要",
+      "regen": "再生成",
+      "regenTarget": "再生成する内容",
+      "regenBoth": "両方",
+      "regenSubject": "件名のみ",
+      "regenBody": "本文のみ",
+      "regenInstruction": "この企業への追加指示",
+      "regenPlaceholder": "例：もっとフォーマルにして、Reactの経験に言及...",
+      "regenenerating": "メールを再生成中...",
+      "websiteContent": "ウェブサイト",
+      "linkedinContent": "LinkedIn",
+      "hiringSignals": "採用シグナル",
+      "back": "戻る"
+    },
+    "approval": {
+      "title": "企業をデータベースに追加しますか？",
+      "description": "求人情報から「{company}」を検出しました。企業一覧に追加しますか？",
+      "name": "企業名",
+      "website": "ウェブサイト",
+      "industry": "業界",
+      "addButton": "企業を追加",
+      "dismissButton": "後で",
+      "success": "企業が正常に追加されました"
+    },
+    "nav": {
+      "companies": "企業",
+      "contacts": "連絡先"
+    }
+  },
+  "contacts": {
+    "title": "Contact Tracker",
+    "subtitle": "Keep track of the people in your professional network.",
+    "addContact": "Add Contact",
+    "empty": {
+      "title": "No contacts yet",
+      "description": "Track recruiters, mentors, alumni, and everyone else you want to follow up with.",
+      "noResults": "No contacts match your filters",
+      "noResultsHint": "Try adjusting the search or clearing the filters."
+    },
+    "table": {
+      "name": "Contact",
+      "company": "Company",
+      "location": "Location",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "followUpDate": "Follow-up date",
+      "actions": "Actions",
+      "edit": "Edit contact",
+      "delete": "Delete contact",
+      "viewDetails": "View details",
+      "email": "Email",
+      "sendEmail": "Send email",
+      "noEmail": "No email",
+      "description": "説明",
+      "linkedinUrl": "LinkedIn",
+      "websiteUrl": "ウェブサイト"
+    },
+    "goal": {
+      "networking": "Networking",
+      "informational_interview": "Informational interview",
+      "request_referral": "Request referral",
+      "research_interviewer": "Research interviewer",
+      "research_career": "Research career"
+    },
+    "status": {
+      "to_contact": "To contact",
+      "follow_up": "Follow up",
+      "meeting_scheduled": "Meeting scheduled",
+      "thank_you_sent": "Thank-you sent",
+      "contacted": "Contacted"
+    },
+    "relationship": {
+      "self": "Self",
+      "coworker": "Coworker",
+      "friend": "Friend",
+      "family": "Family",
+      "other": "Other",
+      "recruiter": "Recruiter",
+      "mentor": "Mentor",
+      "hiring_manager": "Hiring manager",
+      "alumni": "Alumni"
+    },
+    "form": {
+      "addTitle": "Add Contact",
+      "editTitle": "Edit Contact",
+      "description": "Save the details of a person in your professional network.",
+      "name": "Full name",
+      "namePlaceholder": "e.g. Jane Doe",
+      "company": "Company",
+      "location": "Location",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "followUpDate": "Follow-up date",
+      "optional": "Optional",
+      "none": "None",
+      "validation": "Contact name is required.",
+      "invalidDate": "Enter the date as YYYY-MM-DD.",
+      "failed": "Could not save the contact.",
+      "save": "Save Changes",
+      "submit": "Add Contact",
+      "email": "Email",
+      "description": "説明",
+      "descriptionPlaceholder": "この連絡先に関するオプションのメモ…",
+      "linkedinUrl": "LinkedIn URL",
+      "linkedinUrlPlaceholder": "https://linkedin.com/in/…",
+      "websiteUrl": "ウェブサイトURL",
+      "websiteUrlPlaceholder": "https://…"
+    },
+    "delete": {
+      "title": "Delete contact?",
+      "description": "Delete {name}? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "loadFailed": "Could not load contacts.",
+      "deleteFailed": "Could not delete the contact.",
+      "updateFailed": "Could not update the contact."
+    },
+    "toolbar": {
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Search by name, company or location…",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "groupBy": "Group by",
+      "groupNone": "No grouping",
+      "groupGoal": "Goal",
+      "groupStatus": "Status",
+      "groupRelationship": "Relationship",
+      "columns": "Columns",
+      "import": "Import",
+      "export": "Export CSV",
+      "count": "{count} contacts",
+      "date": "フォローアップ日",
+      "dateFrom": "開始日",
+      "dateTo": "終了日",
+      "dateOverdue": "期限切れ",
+      "dateDueSoon": "7日以内",
+      "dateUpcoming": "7日後以降",
+      "dateNone": "日付なし",
+      "clearFilters": "フィルターをクリア",
+      "filters": "フィルター",
+      "clearSearch": "検索をクリア",
+      "dateRange": "日付範囲"
+    },
+    "import": {
+      "title": "Import contacts",
+      "description": "CSV or Excel (.xlsx) upload result",
+      "created": "{count} contacts added",
+      "skipped": "{count} already existed (skipped)",
+      "failedCount": "{count} rows failed",
+      "errorRow": "Row {row}: {name} — {error}",
+      "done": "Done",
+      "failed": "Could not import the file.",
+      "mappingTitle": "Map columns",
+      "mappingDescription": "Choose which CSV or Excel column goes into each contact field.",
+      "mappingHint": "Only mapped fields are imported. Contact name is required.",
+      "mappingAuto": "auto",
+      "mappingNameRequired": "Map the contact name column before importing.",
+      "mappingImport": "Import"
+    },
+    "selection": {
+      "count": "{count} selected",
+      "clear": "Clear",
+      "delete": "Delete",
+      "selectAll": "Select all contacts on this page",
+      "selectRow": "Select {name}",
+      "deleteTitle": "Delete contacts?",
+      "deleteDescription": "Delete {count} selected contacts? This cannot be undone.",
+      "sendEmail": "Send email"
+    },
+    "details": {
+      "created": "Added",
+      "updated": "Last updated",
+      "noCompany": "No company"
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {count}",
+      "perPage": "{count} per page"
+    },
+    "emailDialog": {
+      "title": "Email Contact",
+      "description": "Compose and send an email to this contact.",
+      "noEmail": "This contact has no email address.",
+      "recipientEmail": "Recipient email",
+      "statusUpdated": "Contact marked as contacted.",
+      "toContact": "Compose an email to {name}",
+      "send": "Send email"
+    },
+    "bulkEmail": {
+      "title": "Bulk Email",
+      "description": "Send personalized AI-generated emails to {count} contacts.",
+      "generating": "Generating personalized emails...",
+      "previewHint": "Review and edit each email before sending. Skipped contacts will not be emailed.",
+      "noEmail": "No email",
+      "sending": "Sending emails...",
+      "progress": "{sent} of {total} sent",
+      "done": "All emails sent!",
+      "sentOk": "Sent",
+      "doneToast": "Emails sent",
+      "generate": "Generate Emails",
+      "sendAll": "Send All"
+    },
+    "nav": {
+      "companies": "企業",
+      "contacts": "連絡先"
+    }
+  },
+  "interviewPrep": {
+    "title": "面接準備",
+    "regenerate": "再生成",
+    "unavailableTitle": "面接準備は利用できません",
+    "loadingContextDescription": "生成前に、このカスタマイズ済み履歴書の求人コンテキストを確認しています。",
+    "missingContextDescription": "このカスタマイズ済み履歴書には、面接準備の生成に必要な保存済み求人コンテキストがありません。求人内容で履歴書を再度カスタマイズしてください。",
+    "saveRequiredDescription": "面接準備を生成する前に、このカスタマイズ済み履歴書を保存してください。",
+    "focusArea": "重点領域",
+    "suggestedAnswerPoints": "回答ポイント",
+    "whyItMatters": "重要な理由",
+    "preparationSuggestion": "準備の提案",
+    "sections": {
+      "roleFit": "職務適合分析",
+      "resumeQuestions": "履歴書ベースの質問",
+      "projectFollowUps": "プロジェクト深掘り質問",
+      "skillGaps": "スキルギャップ",
+      "talkingPoints": "話すべき要点"
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "header": {
+      "sourceFrom": "元の履歴書"
+    },
+    "currentLocation": {
+      "title": "現在の居住地",
+      "placeholder": "例: 東京、日本"
+    },
+    "workExperience": {
+      "title": "職歴",
+      "empty": "職歴がまだありません。エントリを追加するか、履歴書からインポートしてください。",
+      "add": "エントリを追加",
+      "edit": "編集",
+      "delete": "削除",
+      "deleteTitle": "このエントリを削除しますか？",
+      "deleteDescription": "この操作は元に戻せません。",
+      "addTitle": "職歴を追加",
+      "editTitle": "職歴を編集",
+      "formDescription": "このエントリはキャリアアドバイザーが使用し、履歴書からインポートできます。",
+      "role": "役職 / 肩書き",
+      "company": "会社",
+      "location": "勤務地",
+      "years": "期間",
+      "description": "実績",
+      "descriptionPlaceholder": "1行に1つの箇条書き",
+      "roleRequired": "役職または会社を入力してください。",
+      "save": "エントリを保存"
+    },
+    "github": {
+      "title": "GitHub リポジトリ",
+      "loading": "GitHub の状態を読み込み中…",
+      "connectHint": "GitHub アカウントを接続すると、リポジトリを確認し、オープンソースへの貢献に合わせて履歴書を調整できます。",
+      "connect": "GitHub に接続",
+      "useToken": "個人アクセストークンを使用",
+      "tokenLabel": "個人アクセストークン",
+      "tokenHelpStart": "作成場所:",
+      "tokenHelpEnd": "（repo + user スコープ）",
+      "tokenSubmit": "接続",
+      "connectedAs": "接続ユーザー",
+      "repositories": "リポジトリ",
+      "disconnect": "切断",
+      "noDescription": "説明なし",
+      "showReadme": "README を表示",
+      "hideReadme": "README を隠す",
+      "connectTitle": "GitHub に接続"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "skillRoi": "Skill ROI",
+      "education": "学歴",
+      "projects": "プロジェクト",
+      "achievements": "実績",
+      "experience": "職履"
+    },
+    "overview": {
+      "totalApplications": "Total applications",
+      "rejectionRate": "Rejection rate",
+      "rejectionRateHint": "Rejected ÷ advanced applications",
+      "appliedToInterview": "Applied → Interview",
+      "interviewToAccepted": "Interview → Accepted",
+      "medianDaysToInterview": "Median days to interview",
+      "medianDaysHint": "Across interview-stage applications",
+      "llmInsights": "AI Insights",
+      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
+      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
+    },
+    "languages": {
+      "title": "言語",
+      "add": "追加",
+      "empty": "言語はまだありません。",
+      "placeholder": "例: 日本語、英語"
+    },
+    "awards": {
+      "title": "栄誉・受賞歴",
+      "add": "追加",
+      "empty": "栄誉・受賞歴はまだありません。",
+      "placeholder": "例: 成績優秀者"
+    },
+    "form": {
+      "provision": "Automatic setup",
+      "seedHint": "マスター履歴書から氏名、連絡先、要約、スキル、職歴、言語、受賞歴をコピーします。",
+      "seeded": "マスター履歴書からプロフィールをインポートしました。",
+      "saved": "Profile saved.",
+      "personalInfo": "Personal info",
+      "name": "Full name",
+      "title": "Job title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "summary": "Professional summary",
+      "careerGoals": "Career goals",
+      "targetRoles": "Target roles",
+      "targetLocations": "Target locations",
+      "salaryMin": "Target salary min",
+      "salaryMax": "Target salary max",
+      "seedFromMaster": "マスター履歴書からインポート",
+      "tagPlaceholder": "入力して Enter を押す",
+      "uploadDesktop": "デスクトップからアップロード",
+      "uploaded": "履歴書をアップロードしました。",
+      "save": "Save profile"
+    },
+    "skills": {
+      "title": "Skills",
+      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
+      "searchPlaceholder": "スキルを検索",
+      "noResults": "検索に一致するスキルはありません。",
+      "alreadyExists": "このスキルはプロフィールに既に存在します。",
+      "duplicateWarning": "「{name}」はすでにプロフィールに存在します。以下のリストから編集できます。",
+      "add": "Add skill",
+      "edit": "Edit skill",
+      "delete": "Delete skill",
+      "deleteTitle": "Delete this skill?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add skill",
+      "editTitle": "Edit skill",
+      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
+      "name": "Skill name",
+      "nameRequired": "Skill name is required.",
+      "category": "Category",
+      "proficiency": "Proficiency (1–5)",
+      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
+      "yearsExperience": "Years of experience",
+      "lastUsed": "Last used",
+      "optional": "Optional",
+      "save": "Save skill",
+      "suggestionsButton": "AI提案",
+      "suggestionsTitle": "AIスキル提案",
+      "suggestionsDescription": "あなたのプロフィールに基づいた、記載し忘れている可能性のあるスキル。",
+      "suggestionsLoading": "記載し忘れている可能性のあるスキルを検索中…",
+      "suggestionsEmpty": "現在提案はありません。プロフィールに詳細を追加して、もう一度お試しください。",
+      "suggestAdd": "{name} をスキルに追加",
+      "suggestionsGroupRemembered": "リストに載せ忘れた可能性のあるスキル",
+      "suggestionsGroupLearnNext": "2026年に学ぶ価値のあるスキル"
+    },
+    "certifications": {
+      "title": "Certifications",
+      "empty": "No certifications yet.",
+      "add": "Add certification",
+      "edit": "Edit certification",
+      "delete": "Delete certification",
+      "deleteTitle": "Delete this certification?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add certification",
+      "editTitle": "Edit certification",
+      "formDescription": "Certifications strengthen your career advisor memory.",
+      "name": "Certification name",
+      "nameRequired": "Certification name is required.",
+      "issuer": "Issuer",
+      "dateObtained": "Date obtained",
+      "invalidDate": "Use YYYY or YYYY-MM.",
+      "url": "Credential URL",
+      "optional": "Optional",
+      "save": "Save certification"
+    },
+    "roi": {
+      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
+      "refresh": "Refresh",
+      "getAdvice": "Ask AI what to learn",
+      "skill": "Skill",
+      "jobsUnlocked": "Jobs unlocked",
+      "salaryImpact": "Salary impact",
+      "learningEffort": "Learning effort",
+      "roiScore": "ROI score",
+      "noData": "—",
+      "effort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
+      "advice": "AI Recommendation",
+      "adviceDescription": "保存した求人と現在のスキルに基づいて、次に学ぶべきスキルを個別に推奨します。",
+      "adviceLoading": "推奨を生成中…",
+      "adviceUnavailable": "現在推奨を表示できません — LLM API キーを設定し、分析する求人を保存してからもう一度お試しください。",
+      "learnTitle": "学ぶべきスキル",
+      "learnDescription": "保存した求人で求められているのにプロフィールにないスキルです。学ぶことで最大のチャンスが開けます。",
+      "strengthenTitle": "強化すべきスキル",
+      "strengthenDescription": "保有していて求人でも求められているが習熟度が低いスキルです。伸ばす効果が最も高いです。",
+      "resources": "学習リソース",
+      "refreshResources": "リソースを更新",
+      "loadingResources": "リソースを探しています…",
+      "noResources": "確認済みのリソースはまだありません。",
+      "jobs": "件",
+      "youKnow": "習熟度",
+      "showRest": "他{count}件を表示",
+      "hideRest": "隠す",
+      "restHint": "すでに強い、または需要が少ないスキル",
+      "allOnTrack": "対応が必要なスキルはありません。プロフィールは保存した求人の要求をすでに満たしています。",
+      "advisorTitle": "スキル投資アドバイザー",
+      "advisorDescription": "あなたにとって最もリターンの高いスキルは？ 解放できる求人、難易度、ROIでランク付け。",
+      "difficulty": "難易度",
+      "difficultyEasy": "簡単",
+      "difficultyMedium": "普通",
+      "difficultyHard": "難しい"
+    },
+    "market": {
+      "title": "市場ポジション",
+      "description": "市場におけるあなたの立ち位置 — パーセンタイルはスキル、経験、認定資格からモデル化されます。",
+      "refresh": "更新",
+      "domainsTitle": "領域別の位置",
+      "skillsTitle": "スキル別の位置",
+      "percentile": "{ordinal}パーセンタイル",
+      "noteEmpty": "スキルと職務経験を追加すると、市場での位置を確認できます。",
+      "currentRole": "あなたのポジション",
+      "specialization": "専門分野",
+      "picksTitle": "目指すべき職種",
+      "picksDescription": "スキル・プロジェクト・経験に基づく最適な職種です。",
+      "match": "一致度 {score}%",
+      "verdictTitle": "まとめ",
+      "readiness": {
+        "strong": "強い",
+        "adequate": "十分",
+        "underqualified": "資格不足"
+      },
+      "seniority": {
+        "senior": "シニア",
+        "mid": "ミッド",
+        "junior": "ジュニア"
+      },
+      "domains": {
+        "Backend": "バックエンド",
+        "Frontend": "フロントエンド",
+        "Cloud & DevOps": "クラウドとDevOps",
+        "Data & ML": "データとML",
+        "System Design": "システム設計"
+      }
+    },
+    "chat": {
+      "title": "Career Advisor",
+      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
+      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
+      "suggestions": {
+        "q1": "Why am I getting rejected?",
+        "q2": "Which skill should I learn next?",
+        "q3": "How can I improve my interview-to-accepted rate?",
+        "q4": "What salary should I target?"
+      }
+    },
+    "education": {
+      "title": "学歴",
+      "add": "学歴を追加",
+      "empty": "学歴はまだありません。履歴書からインポートできます。",
+      "edit": "編集",
+      "delete": "削除",
+      "deleteTitle": "このエントリを削除しますか？",
+      "deleteDescription": "この操作は元に戻せません。",
+      "addTitle": "学歴を追加",
+      "editTitle": "学歴を編集",
+      "formDescription": "学歴情報。履歴書からインポートされ、キャリアグラフに保存されます。",
+      "institution": "機関",
+      "degree": "学位",
+      "years": "期間",
+      "description": "メモ",
+      "optional": "任意",
+      "institutionRequired": "機関を入力してください。"
+    },
+    "projects": {
+      "title": "プロジェクト",
+      "add": "プロジェクトを追加",
+      "empty": "プロジェクトはまだありません。履歴書からインポートできます。",
+      "edit": "編集",
+      "delete": "削除",
+      "deleteTitle": "このプロジェクトを削除しますか？",
+      "deleteDescription": "関連するスキルも削除されます。",
+      "addTitle": "プロジェクトを追加",
+      "editTitle": "プロジェクトを編集",
+      "formDescription": "GitHub / ウェブサイトへのリンク付きの個人プロジェクト。",
+      "name": "プロジェクト名",
+      "role": "役割",
+      "years": "期間",
+      "github": "GitHub",
+      "website": "ウェブサイト",
+      "description": "説明",
+      "descriptionAdd": "箇条書きを追加",
+      "descriptionEmpty": "箇条書きはまだありません。",
+      "descriptionRemove": "箇条書きを削除",
+      "optional": "任意",
+      "nameRequired": "プロジェクト名を入力してください。",
+      "importFromGithub": "GitHub からインポート",
+      "importing": "インポート中…",
+      "imported": "GitHub から {count} 件のプロジェクトをインポートしました",
+      "importHint": "インポートしたプロジェクトはプロフィールに保存され、再インポートするまで GitHub を再取得しません。",
+      "importDialogTitle": "GitHub からプロジェクトをインポート",
+      "importDialogDescription": "プロフィールに追加するリポジトリを選択してください。",
+      "importSelected": "選択した {count} 件をインポート",
+      "selectAll": "すべて選択",
+      "noSelection": "インポートするプロジェクトを少なくとも 1 件選択してください。",
+      "search": "プロジェクトを検索…",
+      "noResults": "一致するプロジェクトがありません。",
+      "repoSearch": "リポジトリを検索…",
+      "noRepoResults": "一致するリポジトリがありません。"
+    },
+    "achievements": {
+      "title": "実績",
+      "add": "実績を追加",
+      "empty": "実績はまだありません。",
+      "edit": "編集",
+      "delete": "削除",
+      "deleteTitle": "この実績を削除しますか？",
+      "deleteDescription": "この操作は元に戻せません。",
+      "addTitle": "実績を追加",
+      "editTitle": "実績を編集",
+      "formDescription": "注目すべき成果、受賞歴、マイルストーン。",
+      "titleLabel": "タイトル",
+      "description": "詳細",
+      "date": "日付",
+      "optional": "任意",
+      "titleRequired": "タイトルを入力してください。",
+      "invalidDate": "YYYY または YYYY-MM 形式で入力してください。"
+    }
+  },
+  "interviewPractice": {
+    "title": "面接練習ハブ",
+    "subtitle": "マスターレジュメに基づくAIコーチで回答を磨きましょう。",
+    "loading": "読み込み中...",
+    "minutes": "{count} 分",
+    "libraryTitle": "シナリオライブラリ",
+    "libraryDescription": "シナリオを選んで、実際に声に出して回答してみましょう。構造化されたフィードバックが返ってきます。",
+    "practiceStart": "練習する",
+    "practiceAnswerLabel": "あなたの回答",
+    "practiceAnswerPlaceholder": "面接で話すように回答を入力してください...",
+    "resumeGroundingNote": "フィードバックはマスターレジュメに基づいています。コーチはレジュメに実際にある経験だけを評価します。",
+    "practiceGetFeedback": "フィードバックを受ける",
+    "practiceScoring": "回答を評価中...",
+    "practiceAnswerRequired": "先に回答を入力してください。",
+    "practiceFeedbackError": "フィードバックを生成できませんでした。もう一度お試しください。",
+    "practiceAgain": "もう一度練習する",
+    "backToLibrary": "ライブラリに戻る",
+    "scoreLabel": "スコア",
+    "strengthsTitle": "良かった点",
+    "improvementsTitle": "改善点",
+    "recommendedPointsTitle": "おすすめの回答ポイント",
+    "followUpsTitle": "予想されるフォローアップ質問",
+    "levels": {
+      "strong": "強い",
+      "good": "良い",
+      "needs_work": "要改善"
+    },
+    "customTitle": "シナリオのアイデアがありますか？",
+    "customDescription": "面接の質問やトピックを入力して、すぐに練習できます。",
+    "customPlaceholder": "例：「なぜあなたを採用すべきですか？」「最大の失敗を教えてください」",
+    "customStart": "開始",
+    "upcomingTitle": "今後の面接",
+    "upcomingDescription": "応募トラッカーで管理している面接です。",
+    "upcomingViewTracker": "トラッカーを見る",
+    "upcomingEmpty": "今後の面接はまだありません。応募トラッカーで追加してください。",
+    "upcomingUntitled": "社名未定",
+    "historyTitle": "練習履歴",
+    "historyDescription": "完了した練習セッションの一覧です。",
+    "historyEmpty": "まだ練習セッションがありません。上のシナリオを選んで始めましょう！",
+    "historyAnswerLabel": "あなたの回答",
+    "historyUnknownDate": "日付不明",
+    "scenarios": {
+      "tellMeAboutYourself": {
+        "title": "自己紹介をお願いします",
+        "description": "経歴、スキル、そしてあなたがこの職種に最適な理由をまとめて話しましょう。"
+      },
+      "whyWorkHere": {
+        "title": "なぜ当社で働きたいのですか？",
+        "description": "企業のミッションや仕事内容を、自分の目標や経験と結びつけましょう。"
+      },
+      "careerGaps": {
+        "title": "職歴のブランクを自信を持って説明する",
+        "description": "ブランクを正直かつ前向きに説明し、過剰な言い訳は避けましょう。"
+      },
+      "salaryExpectations": {
+        "title": "希望年収の話し合い",
+        "description": "調査に基づいた自信のあるレンジを示し、交渉をスマートに進めましょう。"
+      },
+      "weaknesses": {
+        "title": "あなたの弱点は何ですか？",
+        "description": "本当の弱点を共有し、改善のための具体的な取り組みを示しましょう。"
+      },
+      "jobSpecific": {
+        "title": "職種別の面接",
+        "description": "応募先の職種に特化した深い技術質問・業務質問に答えましょう。"
+      },
+      "proudestAccomplishment": {
+        "title": "最も誇れる成果は何ですか？",
+        "description": "具体的な証拠と測定可能な結果を交えた簡潔なストーリーを語りましょう。"
+      },
+      "handleConflict": {
+        "title": "対立にはどう対応しますか？",
+        "description": "困難な場面でのコミュニケーション力と問題解決力を示しましょう。"
+      }
+    }
+  },
+  "chat": {
+    "title": "AIキャリアアシスタント",
+    "subtitle": "あなたの個人キャリアコマンドセンター",
+    "placeholder": "キャリアについて質問… (Enter で送信、Shift+Enter で改行)",
+    "empty": {
+      "title": "どのようにお手伝いできますか?",
+      "description": "キャリア、スキル、応募について質問したり、アドバイスを受けることができます。"
+    },
+    "suggestions": {
+      "q1": "なぜ内定が来ないのですか?",
+      "q2": "次に学ぶべきスキルは?",
+      "q3": "面接到内定の比率を改善するには?",
+      "q4": "どの程度の年収を目指すべきですか?"
+    },
+    "sidebar": {
+      "threads": "スレッド",
+      "newThread": "新しいスレッド",
+      "loading": "読み込み中…",
+      "empty": "スレッドなし",
+      "messages": "メッセージ",
+      "deleteThread": "スレッドを削除"
+    },
+    "mode": {
+      "ask": "質問する",
+      "agent": "エージェント",
+      "search": "検索"
+    },
+    "confirm": {
+      "pendingAction": "保留中のアクション",
+      "execute": "実行",
+      "cancel": "キャンセル",
+      "searchConfirm": "I'll search for jobs. Click Execute to start."
+    },
+    "memory": {
+      "saved": "記憶済み",
+      "dismiss": "却下"
+    },
+    "context": {
+      "funnel_stats": "ファネル",
+      "skill_roi": "スキルROI",
+      "market_position": "市場",
+      "ats_audit": "監査",
+      "evidence": "証拠",
+      "job": "求人",
+      "info": "情報",
+      "audit": "監査",
+      "stats": "統計"
+    },
+    "skill": {
+      "coach": "キャリアコーチ",
+      "recruiter": "採用担当者",
+      "resumeAnalyst": "履歴書アナリスト"
+    }
+  }
 }

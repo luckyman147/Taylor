@@ -27,6 +27,7 @@ class ToolSpec:
     description: str
     params: dict[str, dict[str, Any]]
     write: bool
+    needs_confirmation: bool = False
     summary_template: str = ""
 
 
@@ -99,15 +100,6 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         name="get_companies",
         description="Get the user's tracked companies.",
         params={},
-        write=False,
-    ),
-    "search_jobs": ToolSpec(
-        name="search_jobs",
-        description="Search stored scraped jobs by query.",
-        params={
-            "query": {"type": "str", "required": True, "max_len": 200},
-            "limit": {"type": "int", "required": False, "default": 5},
-        },
         write=False,
     ),
     "get_job_verdict": ToolSpec(
@@ -188,16 +180,44 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         write=True,
         summary_template="Set follow-up for {contact_id} on {follow_up_date}",
     ),
+    "search_mcp_jobs": ToolSpec(
+        name="search_mcp_jobs",
+        description="Search for jobs across all enabled external sources (LinkedIn, Exa web search, RSS feeds, RemoteOK, Keejob, Tunisian freelance boards). Returns live job listings with title, company, location, and URL.",
+        params={
+            "query": {"type": "str", "required": True, "max_len": 200},
+            "limit": {"type": "int", "required": False, "default": 10},
+            "seniority": {"type": "str", "required": False, "default": ""},
+            "location": {"type": "str", "required": False, "default": ""},
+            "remote": {"type": "str", "required": False, "default": ""},
+        },
+        write=False,
+    ),
+    "list_mcp_sources": ToolSpec(
+        name="list_mcp_sources",
+        description="List all available MCP data sources (LinkedIn, Exa, GitHub, RSS, etc.) and their current connection status.",
+        params={},
+        write=False,
+    ),
+    "web_search": ToolSpec(
+        name="web_search",
+        description="Search the general web for any topic. Uses DuckDuckGo to find relevant URLs, then Crawl4AI fetches full page content. Returns titles, URLs, and rich page excerpts. Use for technology trends, news, research, or any non-job query.",
+        params={
+            "query": {"type": "str", "required": True, "max_len": 200},
+            "num_results": {"type": "int", "required": False, "default": 8},
+        },
+        write=False,
+    ),
 }
 
 
-def get_tool_catalog_json(mode: str | None = None) -> list[dict[str, Any]]:
-    """Return tool catalog as JSON-serializable list, optionally filtered by mode."""
-    from app.prompts import CHAT_MODE_CONFIGS
+def get_tool_catalog_json(mode: str | None = None, skills: list[str] | None = None) -> list[dict[str, Any]]:
+    """Return tool catalog as JSON-serializable list, optionally filtered by mode and skills."""
+    from app.prompts import CHAT_BASE_MODES, get_skill_allowlist
 
+    # If skills are active, use their UNION allowlist
     allowlist: list[str] = []
-    if mode and mode in CHAT_MODE_CONFIGS:
-        allowlist = CHAT_MODE_CONFIGS[mode].get("allowlist", [])
+    if skills:
+        allowlist = get_skill_allowlist(skills)
 
     result = []
     for name, spec in TOOL_CATALOG.items():
@@ -246,11 +266,21 @@ async def execute_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
 
     validated = validate_tool_args(name, args)
 
-    if spec.write:
-        summary = spec.summary_template.format(**validated)
+    if spec.write or spec.needs_confirmation:
+        summary = spec.summary_template.format(**validated) if spec.summary_template else f"Execute {name}"
         raise ToolRequiresConfirmation(name, validated, summary)
 
     return await _execute_read_tool(name, validated)
+
+
+async def execute_tool_confirmed(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Execute a write tool that has been confirmed by the user."""
+    spec = TOOL_CATALOG.get(name)
+    if spec is None:
+        raise ValueError(f"Unknown tool: {name}")
+
+    validated = validate_tool_args(name, args)
+    return await _execute_write_tool(name, validated)
 
 
 async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -278,8 +308,6 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return await _get_contacts()
         elif name == "get_companies":
             return await _get_companies()
-        elif name == "search_jobs":
-            return await _search_jobs(args["query"], args.get("limit", 5))
         elif name == "get_job_verdict":
             return await _get_job_verdict(args["job_id"])
         elif name == "get_evidence":
@@ -287,6 +315,12 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return await get_evidence(args["skill"])
         elif name == "get_resume_for_audit":
             return await _get_resume_for_audit(args["resume_id"])
+        elif name == "search_mcp_jobs":
+            return await _search_mcp_jobs(args["query"], args.get("limit", 10))
+        elif name == "list_mcp_sources":
+            return await _list_mcp_sources()
+        elif name == "web_search":
+            return await _web_search(args["query"], args.get("num_results", 8))
         else:
             return {"error": f"Unknown read tool: {name}"}
     except Exception as e:
@@ -301,7 +335,7 @@ async def _get_career_summary() -> dict[str, Any]:
     skills = await db.list_career_skills()
     projects = await db.list_career_projects()
 
-    # Use RAG to retrieve relevant resume chunks
+    profile_source = "rag"
     try:
         results = await rag_index.query(
             "career profile skills experience",
@@ -313,8 +347,15 @@ async def _get_career_summary() -> dict[str, Any]:
         resume_chunks = [c.text for c, _ in results.get("resumes", [])]
         skill_chunks = [c.text for c, _ in results.get("skills", [])]
     except Exception:
-        resume_chunks = []
-        skill_chunks = []
+        logger.exception("Career profile RAG retrieval failed, falling back to database")
+        profile_source = "database"
+        resume_chunks = [
+            p.get("description", "") for p in projects[:3] if p.get("description")
+        ]
+        skill_chunks = [
+            f"{s.get('name', '')} ({s.get('category', '')})"
+            for s in skills[:10] if s.get("name")
+        ]
 
     project_list = []
     for p in projects[:8]:
@@ -335,6 +376,7 @@ async def _get_career_summary() -> dict[str, Any]:
         "projects": project_list,
         "resume_highlights": resume_chunks[:3],
         "skill_details": skill_chunks[:3],
+        "profile_source": profile_source,
     }
 
 
@@ -567,6 +609,9 @@ async def _get_contacts() -> dict[str, Any]:
                 "relationship": c.get("relationship"),
                 "status": c.get("status"),
                 "follow_up_date": c.get("follow_up_date"),
+                "description": c.get("description"),
+                "linkedin_url": c.get("linkedin_url"),
+                "website_url": c.get("website_url"),
             }
             for c in contacts[:50]
         ],
@@ -588,55 +633,6 @@ async def _get_companies() -> dict[str, Any]:
             for c in companies[:50]
         ],
     }
-
-
-async def _search_jobs(query: str, limit: int = 5) -> dict[str, Any]:
-    """RAG-powered job search — hybrid vector + keyword search."""
-    from app.services.rag import rag_index
-    try:
-        results = await rag_index.query(
-            query,
-            include_resumes=False,
-            include_memories=False,
-            include_skills=False,
-            top_k=limit,
-            rerank=True,
-        )
-        jobs = results.get("jobs", [])
-        return {
-            "total": len(jobs),
-            "jobs": [
-                {
-                    "job_id": chunk.source_id,
-                    "title": chunk.metadata.get("title", ""),
-                    "company": chunk.metadata.get("company", ""),
-                    "score": round(score, 3),
-                }
-                for chunk, score in jobs
-            ],
-        }
-    except Exception:
-        # Fallback to keyword search
-        all_jobs = await db.list_scraped_jobs_for_analysis()
-        query_lower = query.lower()
-        matches = [
-            j for j in all_jobs
-            if query_lower in (j.get("title") or "").lower()
-            or query_lower in (j.get("company") or "").lower()
-            or query_lower in (j.get("description") or "").lower()
-        ]
-        return {
-            "total": len(matches),
-            "jobs": [
-                {
-                    "job_id": j.get("job_id"),
-                    "title": j.get("title"),
-                    "company": j.get("company"),
-                    "location": j.get("location"),
-                }
-                for j in matches[:limit]
-            ],
-        }
 
 
 async def _get_job_verdict(job_id: str) -> dict[str, Any]:
@@ -679,3 +675,215 @@ async def _get_resume_for_audit(resume_id: str) -> dict[str, Any]:
             ],
         },
     }
+
+
+async def _search_mcp_jobs(query: str, limit: int = 10, seniority: str = "", location: str = "", remote: str = "") -> dict[str, Any]:
+    """Search all enabled MCP sources for live job listings."""
+    from app.services.job_scraper import get_mcp_manager
+    from app.schemas.job_scraper import JobSearchFilters, ExperienceLevel, WorkType
+
+    manager = get_mcp_manager()
+
+    # Map extracted seniority to structured ExperienceLevel
+    seniority_map = {
+        "intern": ExperienceLevel.INTERNSHIP,
+        "internship": ExperienceLevel.INTERNSHIP,
+        "entry": ExperienceLevel.ENTRY,
+        "entry-level": ExperienceLevel.ENTRY,
+        "junior": ExperienceLevel.ENTRY,
+        "mid-level": ExperienceLevel.MID_SENIOR,
+        "associate": ExperienceLevel.ASSOCIATE,
+        "senior": ExperienceLevel.MID_SENIOR,
+        "lead": ExperienceLevel.MID_SENIOR,
+        "staff": ExperienceLevel.DIRECTOR,
+        "principal": ExperienceLevel.DIRECTOR,
+        "head": ExperienceLevel.DIRECTOR,
+        "chief": ExperienceLevel.EXECUTIVE,
+    }
+    experience_levels = []
+    if seniority:
+        level = seniority_map.get(seniority.lower())
+        if level:
+            experience_levels.append(level)
+
+    # Map remote keyword to WorkType
+    work_types = []
+    if remote:
+        rt = remote.lower().replace("work from home", "remote").replace("wfh", "remote").replace("on-site", "on_site").replace("onsite", "on_site")
+        if rt == "remote":
+            work_types.append(WorkType.REMOTE)
+        elif rt == "hybrid":
+            work_types.append(WorkType.HYBRID)
+        elif rt == "on_site":
+            work_types.append(WorkType.ON_SITE)
+
+    filters = JobSearchFilters(
+        keywords=query,
+        experience_levels=experience_levels,
+        work_types=work_types,
+    )
+
+    try:
+        jobs, mcp_status = await manager.search_all(query, filters)
+    except Exception as e:
+        logger.error("MCP search failed: %s", e)
+        return {"error": f"MCP search failed: {e}", "jobs": [], "sources": {}}
+
+    results = []
+    for job in jobs[:limit]:
+        results.append({
+            "title": job.title,
+            "company": job.company,
+            "location": job.location or "Not specified",
+            "url": job.url or "",
+            "source": job.source or "",
+            "description_snippet": (job.description or "")[:200],
+        })
+
+    sources_status = {}
+    for name, status in mcp_status.items():
+        sources_status[name] = {
+            "status": status.get("status", "unknown"),
+            "count": status.get("count", 0),
+            "error": status.get("error"),
+        }
+
+    return {
+        "query": query,
+        "total_results": len(jobs),
+        "returned": len(results),
+        "jobs": results,
+        "sources": sources_status,
+    }
+
+
+def serialize_job(chunk: Any, score: float | None = None) -> dict[str, Any]:
+    """Normalize a RAG job chunk into a consistent schema."""
+    metadata = getattr(chunk, "metadata", None) or {}
+    return {
+        "job_id": getattr(chunk, "source_id", ""),
+        "title": metadata.get("title", ""),
+        "company": metadata.get("company", ""),
+        "location": metadata.get("location"),
+        "url": metadata.get("url") or metadata.get("link"),
+        "source": metadata.get("source"),
+        "description_snippet": (
+            metadata.get("description_snippet")
+            or metadata.get("description")
+            or (getattr(chunk, "text", None) or "")[:500]
+        ),
+        "score": round(score, 3) if score is not None else None,
+        "published_at": metadata.get("published_at"),
+    }
+
+
+async def _list_mcp_sources() -> dict[str, Any]:
+    """List all MCP sources and their connection status."""
+    from app.services.job_scraper import get_mcp_manager
+
+    manager = get_mcp_manager()
+
+    try:
+        statuses = await manager.detect_all()
+    except Exception as e:
+        logger.error("MCP status check failed: %s", e)
+        return {"error": str(e), "sources": {}}
+
+    sources = {}
+    for name, status in statuses.items():
+        sources[name] = {
+            "available": status.available,
+            "enabled": status.enabled,
+            "backend": status.backend,
+            "details": status.details,
+        }
+
+    return {"sources": sources}
+
+
+async def _web_search(query: str, num_results: int = 8) -> dict[str, Any]:
+    """General web search via DuckDuckGo + Crawl4AI page fetching.
+
+    1. DuckDuckGo finds relevant URLs (free, no API key).
+    2. Crawl4AI fetches full page content as clean Markdown.
+    """
+    import asyncio
+
+    # Step 1: DuckDuckGo search for URLs
+    try:
+        from ddgs import DDGS
+
+        loop = asyncio.get_event_loop()
+        ddgs = DDGS()
+        search_results = await loop.run_in_executor(
+            None,
+            lambda: list(ddgs.text(query, max_results=num_results)),
+        )
+    except Exception as e:
+        logger.error("DuckDuckGo search failed for '%s': %s", query, e)
+        return {"error": str(e), "query": query, "results": []}
+
+    if not search_results:
+        return {"query": query, "total_results": 0, "results": []}
+
+    # Build basic results from DuckDuckGo snippets
+    results = []
+    urls_to_crawl = []
+    for item in search_results:
+        url = item.get("href", "")
+        title = item.get("title", "Unknown")
+        snippet = item.get("body", "")
+        results.append({
+            "title": title,
+            "url": url,
+            "source": url,
+            "snippet": snippet[:500],
+            "published_date": None,
+        })
+        if url:
+            urls_to_crawl.append(url)
+
+    # Step 2: Crawl4AI fetches full page content for top results (in parallel)
+    try:
+        from app.services.mcp.crawl4ai import Crawl4AIAdapter
+
+        crawler = Crawl4AIAdapter()
+        if await crawler.is_available() and urls_to_crawl:
+            # Crawl top results in parallel (limit to avoid overload)
+            crawl_urls = urls_to_crawl[:min(num_results, 5)]
+            crawled = await crawler.fetch_pages(crawl_urls)
+
+            # Enrich results with full page content
+            for r in results:
+                url = r["url"]
+                if url in crawled and crawled[url]:
+                    # Use first 1000 chars of page content as enriched snippet
+                    r["snippet"] = crawled[url][:1000]
+    except Exception as e:
+        logger.warning("Crawl4AI page fetch failed (using snippets only): %s", e)
+
+    return {
+        "query": query,
+        "total_results": len(results),
+        "results": results,
+    }
+
+
+async def _execute_write_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Execute a confirmed write tool."""
+    try:
+        if name == "create_application":
+            return await _create_application(args)
+        elif name == "update_application_status":
+            return await _update_application_status(args)
+        elif name == "create_skill":
+            return await _create_skill(args)
+        elif name == "create_contact":
+            return await _create_contact(args)
+        elif name == "create_followup":
+            return await _create_followup(args)
+        else:
+            return {"error": f"Unknown write tool: {name}"}
+    except Exception as e:
+        logger.error("Write tool execution failed for %s: %s", name, e)
+        return {"error": str(e)}

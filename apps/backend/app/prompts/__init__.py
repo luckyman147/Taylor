@@ -22,7 +22,11 @@ from app.prompts.templates import (
     CHAT_THINKING_PROMPT,
     CHAT_MODE_CONFIGS,
     CHAT_AUDIT_PROMPT,
+    CHAT_BASE_MODES,
+    CHAT_SKILLS,
     get_language_name,
+    get_merged_system_prompt,
+    get_skill_allowlist,
 )
 
 # Placeholders every user-supplied cover-letter / outreach message prompt must
@@ -84,8 +88,12 @@ __all__ = [
     "CHAT_THINKING_PROMPT",
     "CHAT_MODE_CONFIGS",
     "CHAT_AUDIT_PROMPT",
+    "CHAT_BASE_MODES",
+    "CHAT_SKILLS",
     "REQUIRED_FEATURE_PROMPT_PLACEHOLDERS",
     "REQUIRED_OUTREACH_EMAIL_PLACEHOLDERS",
     "validate_prompt_placeholders",
     "get_language_name",
+    "get_merged_system_prompt",
+    "get_skill_allowlist",
 ]

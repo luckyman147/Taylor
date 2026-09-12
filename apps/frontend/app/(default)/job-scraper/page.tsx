@@ -32,7 +32,6 @@ import {
   type JobSearchResponse,
   type ScrapedJobDraft,
 } from '@/lib/api/job-scraper';
-import { fetchJobs, deleteJob, type MobileJob } from '@/lib/api/jobs';
 import { classifyJobs, type ClassifiedJob, type DupKind } from '@/lib/utils/dedup';
 import { fetchMCPStatus, restartMCPs, type MCPServerStatus } from '@/lib/api/mcp';
 import { HiringProbabilityPanel } from '@/components/tailor/hiring-probability-panel';
@@ -114,50 +113,8 @@ export default function JobScraperPage() {
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [draftSortBy, setDraftSortBy] = useState<'relevance' | 'date'>('date');
   const [hiddenSources, setHiddenSources] = useState<Set<string>>(new Set());
-  const [mobileJobs, setMobileJobs] = useState<MobileJob[]>([]);
-  const [mobileJobsLoading, setMobileJobsLoading] = useState(false);
-  const [mobileJobsError, setMobileJobsError] = useState<string | null>(null);
   const [dupByResultUrl, setDupByResultUrl] = useState<Map<string, ClassifiedJob>>(new Map());
   const [newResultsCount, setNewResultsCount] = useState(0);
-
-  const loadMobileJobs = useCallback(async () => {
-    setMobileJobsLoading(true);
-    setMobileJobsError(null);
-    try {
-      const jobs = await fetchJobs({ limit: 50 });
-      setMobileJobs(jobs);
-    } catch {
-      setMobileJobsError('Could not load jobs from the server.');
-    } finally {
-      setMobileJobsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadMobileJobs();
-  }, [loadMobileJobs]);
-
-  const handleTailorMobile = useCallback(async (job: MobileJob) => {
-    try {
-      const res = await fetch(`/api/v1/jobs/${job.job_id}`);
-      if (!res.ok) throw new Error('Failed to load job description');
-      const full = await res.json();
-      const jdText = `[${job.title ?? 'Untitled'}] ${job.company ?? 'Unknown Company'}\n\n${full.content || 'No description available'}\n\nLocation: ${job.location ?? 'Remote'}`;
-      localStorage.setItem('pending_job_description', jdText);
-      window.open('/tailor', '_blank');
-    } catch {
-      window.open('/tailor', '_blank');
-    }
-  }, []);
-
-  const handleDeleteMobile = useCallback(async (jobId: string) => {
-    try {
-      await deleteJob(jobId);
-      setMobileJobs((prev) => prev.filter((j) => j.job_id !== jobId));
-    } catch {
-      setMobileJobsError('Could not delete job from the server.');
-    }
-  }, []);
 
   const handleRestartMCPs = useCallback(async () => {
     setRestarting(true);
@@ -230,11 +187,10 @@ export default function JobScraperPage() {
   useEffect(() => {
     const onFocus = () => {
       loadDrafts();
-      loadMobileJobs();
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [loadDrafts, loadMobileJobs]);
+  }, [loadDrafts]);
 
   useEffect(() => {
     try {
@@ -276,16 +232,9 @@ export default function JobScraperPage() {
       setResults(res);
 
       // Dedup classification (same deterministic algorithm as the mobile app):
-      // results are checked against phone jobs, existing drafts, and each
+      // results are checked against existing drafts and each
       // other (URL -> SHA-256 fingerprint -> candidate similarity).
       const known: ClassifiedJob['job'][] = [
-        ...mobileJobs.map((j) => ({
-          url: j.url ?? undefined,
-          web_url: j.web_url ?? undefined,
-          title: j.title,
-          company: j.company,
-          location: j.location,
-        })),
         ...drafts.map((d) => ({
           url: d.url,
           title: d.title,
@@ -470,10 +419,9 @@ export default function JobScraperPage() {
     0
   );
 
-  // Nothing to show yet (drafts not open, no phone jobs, no search results):
+  // Nothing to show yet (drafts not open, no search results):
   // the MCP status + search filters take the full width.
-  const emptyState =
-    !results && mobileJobs.length === 0 && !mobileJobsLoading && !showDrafts;
+  const emptyState = !results && !showDrafts;
 
   return (
     <div className="min-h-screen bg-white pl-16">
@@ -991,16 +939,6 @@ export default function JobScraperPage() {
               </div>
             )}
           </div>
-          <div className="order-3">
-            <PhoneJobsCard
-              jobs={mobileJobs}
-              loading={mobileJobsLoading}
-              error={mobileJobsError}
-              onRefresh={loadMobileJobs}
-              onTailor={handleTailorMobile}
-              onDelete={handleDeleteMobile}
-            />
-          </div>
         </div>
       </div>
     </div>
@@ -1245,169 +1183,4 @@ function DraftCard({
   );
 }
 
-const MOBILE_SOURCE_META: Record<string, { label: string; color: string; bg: string }> = {
-  linkedin: { label: 'LinkedIn', color: 'border-blue-600 text-blue-600', bg: 'bg-primary/5' },
-  gmail: { label: 'Gmail', color: 'border-red-600 text-red-600', bg: 'bg-[#fdf3f2]' },
-  manual: { label: 'Manual', color: 'border-gray-600 text-gray-600', bg: 'bg-gray-50' },
-};
 
-function PhoneJobsCard({
-  jobs,
-  loading,
-  error,
-  onRefresh,
-  onTailor,
-  onDelete,
-}: {
-  jobs: MobileJob[];
-  loading: boolean;
-  error: string | null;
-  onRefresh: () => void;
-  onTailor: (job: MobileJob) => void;
-  onDelete: (jobId: string) => void;
-}) {
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-  const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const pageJobs = jobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  useEffect(() => {
-    setPage(1);
-  }, [jobs.length]);
-
-  return (
-    <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2.5">
-          <Smartphone className="h-4 w-4 text-primary" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
-            From your phone {jobs.length > 0 && `(${jobs.length})`}
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#e7e6df] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-soft transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
-
-      {error && (
-        <p className="rounded-xl border border-red-500 bg-[#fdf3f2] p-3 text-xs text-red-700">
-          {error}
-        </p>
-      )}
-
-      {!error && jobs.length === 0 && (
-        <p className="rounded-xl border border-[#e7e6df] bg-paper-tint p-4 text-center text-xs text-ink-soft">
-          {loading
-            ? 'Loading jobs…'
-            : 'No jobs from your phone yet. Jobs captured in the TAYLOR mobile app appear here.'}
-        </p>
-      )}
-
-      {jobs.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#e7e6df] text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                <th className="py-2 pr-3">Title</th>
-                <th className="py-2 pr-3">Company</th>
-                <th className="py-2 pr-3 hidden md:table-cell">Location</th>
-                <th className="py-2 pr-3 hidden sm:table-cell">Source</th>
-                <th className="py-2 pr-3 hidden lg:table-cell">Received</th>
-                <th className="py-2 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageJobs.map((job) => {
-                const meta = MOBILE_SOURCE_META[job.source ?? ''] ?? {
-                  label: job.source ?? 'unknown',
-                  color: 'border-gray-400 text-gray-400',
-                  bg: 'bg-gray-50',
-                };
-                return (
-                  <tr
-                    key={job.job_id}
-                    className="border-b border-[#f0eee8] last:border-0 hover:bg-paper-tint/50"
-                  >
-                    <td className="py-2.5 pr-3">
-                      <span className="font-bold text-ink line-clamp-1">
-                        {job.title ?? 'Untitled'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-3 text-ink-soft line-clamp-1">{job.company ?? '—'}</td>
-                    <td className="py-2.5 pr-3 text-ink-soft line-clamp-1 hidden md:table-cell">
-                      {job.location ?? '—'}
-                    </td>
-                    <td className="py-2.5 pr-3 hidden sm:table-cell">
-                      <span
-                        className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.bg} ${meta.color}`}
-                      >
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-3 text-[11px] text-ink-soft hidden lg:table-cell">
-                      {new Date(job.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          onClick={() => onTailor(job)}
-                          className="rounded-full px-3 text-xs"
-                        >
-                          Tailor CV
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(job.job_id)}
-                          title="Delete job"
-                          className="inline-flex items-center justify-center rounded-full border border-red-400/50 bg-red-50 p-1.5 text-red-600 transition-colors hover:border-red-500 hover:bg-red-500 hover:text-white"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {jobs.length > pageSize && (
-        <div className="mt-3 flex items-center justify-between border-t border-[#f0eee8] pt-3">
-          <span className="text-xs text-ink-soft">
-            Page {currentPage} of {pageCount}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPage(currentPage - 1)}
-              disabled={currentPage <= 1}
-              className="rounded-full px-3 text-xs"
-            >
-              Previous
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPage(currentPage + 1)}
-              disabled={currentPage >= pageCount}
-              className="rounded-full px-3 text-xs"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}

@@ -45,7 +45,8 @@ describe('getSectionMeta', () => {
       'certifications',
       'awards',
       'personalProjects',
-      'additional',
+      'skills',
+      'languages',
     ]);
     expect(result.find((s) => s.id === 'certifications')).toMatchObject({
       isVisible: false,
@@ -91,7 +92,8 @@ describe('getAllSections', () => {
       'certifications',
       'awards',
       'personalProjects',
-      'additional',
+      'skills',
+      'languages',
     ]);
   });
 });

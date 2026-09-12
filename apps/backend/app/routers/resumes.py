@@ -101,8 +101,9 @@ async def _auto_create_tracker_application(
     tracker failure can never break the tailoring flow.
     """
     try:
-        company = (job or {}).get("company")
-        role = title or (job or {}).get("role")
+        job_kw = (job or {}).get("job_keywords") or {}
+        company = (job or {}).get("company") or job_kw.get("company") or ""
+        role = title or (job or {}).get("role") or job_kw.get("role") or ""
         await db.create_application(
             job_id=job_id,
             resume_id=tailored_resume_id,
@@ -1107,6 +1108,14 @@ async def _improve_preview_flow(
             cache_updates["company"] = company
         if role:
             cache_updates["role"] = role
+        raw_website = job_keywords.get("website")
+        website = raw_website.strip() if isinstance(raw_website, str) else ""
+        if website:
+            cache_updates["website"] = website
+        raw_industry = job_keywords.get("industry")
+        industry = raw_industry.strip() if isinstance(raw_industry, str) else ""
+        if industry:
+            cache_updates["industry"] = industry
         try:
             updated_job = await db.update_job(
                 request.job_id,
@@ -1989,6 +1998,7 @@ async def download_resume_pdf(
     compactMode: bool = Query(False),
     showContactIcons: bool = Query(False),
     accentColor: str = Query("blue", pattern="^(blue|green|orange|red)$"),
+    customAccentColor: str | None = Query(None, pattern="^#[0-9a-fA-F]{6}$"),
     workShowBy: str = Query("position", pattern="^(company|position)$"),
     workDatesBy: str = Query("position", pattern="^(company|position|both)$"),
     workLocationBy: str = Query("company", pattern="^(company|position|none)$"),
@@ -2102,6 +2112,7 @@ async def download_resume_pdf(
         f"&compactMode={str(compactMode).lower()}"
         f"&showContactIcons={str(showContactIcons).lower()}"
         f"&accentColor={accentColor}"
+        f"{f'&customAccentColor={customAccentColor}' if customAccentColor else ''}"
         f"&workShowBy={workShowBy}"
         f"&workDatesBy={workDatesBy}"
         f"&workLocationBy={workLocationBy}"
@@ -2525,9 +2536,16 @@ async def get_job_description_for_resume(resume_id: str) -> dict:
             detail="The associated job description was not found.",
         )
 
+    # Surface company/role/website/industry from the job record.
+    # For older jobs the fields may only exist inside job_keywords.
+    kw = job.get("job_keywords") or {}
     return {
         "job_id": job["job_id"],
         "content": job["content"],
+        "company": job.get("company") or kw.get("company") or "",
+        "role": job.get("role") or kw.get("role") or "",
+        "website": job.get("website") or kw.get("website") or "",
+        "industry": job.get("industry") or kw.get("industry") or "",
     }
 
 

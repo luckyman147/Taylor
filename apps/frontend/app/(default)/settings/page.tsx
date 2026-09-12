@@ -44,6 +44,7 @@ import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dropdown } from '@/components/ui/dropdown';
 import { EmailSettings } from '@/components/settings/email-settings';
+import { MCPSettings } from '@/components/settings/mcp-settings';
 import {
   Save,
   Key,
@@ -182,13 +183,14 @@ export default function SettingsPage() {
 
   // Active settings section (sidebar navigation)
   const [activeSection, setActiveSection] = useState<
-    'system' | 'ai' | 'content' | 'language' | 'email' | 'danger'
+    'system' | 'ai' | 'mcp' | 'content' | 'language' | 'email' | 'danger'
   >('system');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const section = params.get('section');
     if (section === 'email') setActiveSection('email');
+    if (section === 'mcp') setActiveSection('mcp');
   }, []);
 
   // Language settings
@@ -207,6 +209,7 @@ export default function SettingsPage() {
   const SETTINGS_SECTIONS = [
     { id: 'system', label: t('settings.systemStatus.title'), icon: Activity },
     { id: 'ai', label: t('settings.llmConfigurationTitle'), icon: Sparkles },
+    { id: 'mcp', label: 'MCP Servers', icon: Server },
     { id: 'content', label: t('settings.contentGeneration.title'), icon: Settings2 },
     { id: 'language', label: t('settings.uiLanguage'), icon: Globe },
     { id: 'email', label: t('settings.email.title'), icon: Mail },
@@ -1223,6 +1226,21 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
+                </section>
+              )}
+
+              {/* MCP Servers Section */}
+              {activeSection === 'mcp' && (
+                <section className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Server className="h-4 w-4 text-primary" />
+                    </span>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
+                      MCP Servers
+                    </h2>
+                  </div>
+                  <MCPSettings />
                 </section>
               )}
 

@@ -1,10 +1,14 @@
 """Chat Command Center endpoints: threads, turns, confirm/cancel, memory."""
 
+import asyncio
+import json
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 
 from app.database import db
+from app.schemas.agent_events import serialize_event
 from app.schemas.chat import (
     CancelRequest,
     ConfirmRequest,
@@ -17,7 +21,7 @@ from app.schemas.chat import (
     TurnRequest,
     TurnResponse,
 )
-from app.services.chat_engine import cancel_pending, confirm_pending, run_turn
+from app.services.chat_engine import cancel_pending, confirm_pending, run_turn, run_turn_stream
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,7 @@ async def list_threads() -> list[ThreadSummary]:
             thread_id=t["thread_id"],
             title=t.get("title", "New Chat"),
             mode=t.get("mode", "ask"),
+            skills=t.get("skills", []),
             created_at=t.get("created_at", ""),
             updated_at=t.get("updated_at", ""),
             message_count=t.get("message_count", 0),
@@ -51,11 +56,12 @@ async def list_threads() -> list[ThreadSummary]:
 async def create_thread(request: ThreadCreate) -> ThreadSummary:
     """Create a new chat thread."""
     title = request.title or "New Chat"
-    thread = await db.create_chat_thread(title=title, mode=request.mode)
+    thread = await db.create_chat_thread(title=title, mode=request.mode, skills=request.skills)
     return ThreadSummary(
         thread_id=thread["thread_id"],
         title=thread.get("title", title),
         mode=thread.get("mode", request.mode),
+        skills=thread.get("skills", []),
         created_at=thread.get("created_at", ""),
         updated_at=thread.get("updated_at", ""),
         message_count=0,
@@ -65,7 +71,7 @@ async def create_thread(request: ThreadCreate) -> ThreadSummary:
 
 @router.patch("/threads/{thread_id}")
 async def update_thread(thread_id: str, request: ThreadUpdate) -> dict:
-    """Update thread title or mode."""
+    """Update thread title, mode, or skills."""
     thread = await db.get_chat_thread(thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
@@ -74,6 +80,7 @@ async def update_thread(thread_id: str, request: ThreadUpdate) -> dict:
         thread_id,
         title=request.title,
         mode=request.mode,
+        skills=request.skills,
     )
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to update thread")
@@ -121,7 +128,7 @@ async def get_thread_messages(thread_id: str, limit: int = 100) -> list[ThreadMe
 async def send_turn(thread_id: str, request: TurnRequest) -> TurnResponse:
     """Send a user message and get an assistant response."""
     try:
-        result = await run_turn(thread_id, request.message)
+        result = await run_turn(thread_id, request.message, resume_id=request.resume_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -137,6 +144,78 @@ async def send_turn(thread_id: str, request: TurnRequest) -> TurnResponse:
         memory_candidates=result.get("memory_candidates", []),
         followups=result.get("followups", []),
         sources=result.get("sources", []),
+    )
+
+
+@router.post("/threads/{thread_id}/turn/stream", response_model=None)
+async def send_turn_stream(
+    thread_id: str,
+    request: TurnRequest,
+    stream: bool = Query(True),
+) -> StreamingResponse | TurnResponse:
+    """Send a message with optional SSE streaming of agent status events.
+
+    ?stream=true (default): Returns text/event-stream with status events
+    followed by a final turn_complete event.
+    ?stream=false: Returns the plain TurnResponse (backward compat).
+    """
+    if not stream:
+        result = await run_turn(thread_id, request.message, resume_id=request.resume_id)
+        return TurnResponse(
+            assistant_content=result["assistant_content"],
+            cards=result.get("cards", []),
+            actions=result.get("actions", []),
+            stats=result.get("stats"),
+            pending_action=result.get("pending_action"),
+            memory_candidates=result.get("memory_candidates", []),
+            followups=result.get("followups", []),
+            sources=result.get("sources", []),
+        )
+
+    event_queue: asyncio.Queue = asyncio.Queue()
+
+    async def event_generator():
+        async def _run():
+            try:
+                await run_turn_stream(
+                    thread_id,
+                    request.message,
+                    resume_id=request.resume_id,
+                    event_queue=event_queue,
+                )
+            except Exception as e:
+                logger.error("Streamed turn failed: %s", e)
+                from app.schemas.agent_events import AgentStatusEvent, AgentStatus
+                await event_queue.put(AgentStatusEvent(
+                    status=AgentStatus.FAILED,
+                    message="An error occurred. Please try again.",
+                ))
+            finally:
+                await event_queue.put(None)  # Sentinel
+
+        turn_task = asyncio.create_task(_run())
+        event_count = 0
+
+        while True:
+            try:
+                event = await event_queue.get()
+            except asyncio.CancelledError:
+                break
+            if event is None:
+                break
+            event_count += 1
+            yield f"data: {serialize_event(event)}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

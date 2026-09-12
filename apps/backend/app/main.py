@@ -26,6 +26,7 @@ from app.routers import (
     contacts_router,
     email_router,
     enrichment_router,
+    eval_router,
     github_router,
     health_router,
     interview_practice_router,
@@ -71,7 +72,7 @@ async def lifespan(app: FastAPI):
         import sqlite3 as _sqlite3
         _db_path = str(settings.data_dir / "resume_matcher.db")
         _conn = _sqlite3.connect(_db_path)
-        for _table in ("resumes", "scraped_jobs", "chat_memories"):
+        for _table in ("resumes", "scraped_jobs", "chat_memories", "career_skills"):
             _cols = {row[1] for row in _conn.execute(f"PRAGMA table_info({_table})").fetchall()}
             if "embedding" not in _cols:
                 _conn.execute(f"ALTER TABLE {_table} ADD COLUMN embedding TEXT")
@@ -88,6 +89,14 @@ async def lifespan(app: FastAPI):
             await startup_index()
         except Exception as e:
             logger.warning("RAG startup indexing failed: %s", e)
+
+    # Validate tool system — ensures registry and catalog are synchronized
+    try:
+        from app.tools.registry import validate_tool_system
+        validate_tool_system()
+    except Exception as e:
+        logger.error("Tool system validation failed: %s", e)
+        raise
 
     # PDF renderer uses lazy initialization - will initialize on first use
     # await init_pdf_renderer()
@@ -138,6 +147,7 @@ app.include_router(job_intel_router, prefix="/api/v1")
 app.include_router(email_router, prefix="/api/v1")
 app.include_router(interview_practice_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(eval_router, prefix="/api/v1")
 
 
 @app.get("/")

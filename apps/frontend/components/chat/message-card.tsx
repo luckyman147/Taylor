@@ -31,6 +31,7 @@ interface MessageCardProps {
   onFollowup?: (question: string) => void;
   onSelectResume?: (resumeId: string) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
+  onJobSearch?: (query: string) => void;
 }
 
 export function MessageCard({
@@ -50,6 +51,7 @@ export function MessageCard({
   onFollowup,
   onSelectResume,
   onViewFile,
+  onJobSearch,
 }: MessageCardProps) {
   const isUser = role === 'user';
 
@@ -103,7 +105,7 @@ export function MessageCard({
 
         {/* Tool result cards */}
         {cards.length > 0 && (
-          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} />
+          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} />
         )}
 
         {/* Pending action confirmation */}

@@ -10,6 +10,7 @@ export type ContactGoal =
 
 export type ContactStatus =
   | 'to_contact'
+  | 'contacted'
   | 'follow_up'
   | 'meeting_scheduled'
   | 'thank_you_sent';
@@ -28,12 +29,16 @@ export type ContactRelationship =
 export interface Contact {
   contact_id: string;
   name: string;
+  email: string | null;
   company: string | null;
   location: string | null;
   goal: ContactGoal | null;
   status: ContactStatus | null;
   relationship: ContactRelationship | null;
   follow_up_date: string | null;
+  description: string | null;
+  linkedin_url: string | null;
+  website_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,22 +49,30 @@ export interface ContactListResponse {
 
 export interface ContactCreate {
   name: string;
+  email?: string;
   company?: string;
   location?: string;
   goal?: ContactGoal;
   status?: ContactStatus;
   relationship?: ContactRelationship;
   follow_up_date?: string;
+  description?: string;
+  linkedin_url?: string;
+  website_url?: string;
 }
 
 export interface ContactUpdate {
   name?: string | null;
+  email?: string | null;
   company?: string | null;
   location?: string | null;
   goal?: ContactGoal | null;
   status?: ContactStatus | null;
   relationship?: ContactRelationship | null;
   follow_up_date?: string | null;
+  description?: string | null;
+  linkedin_url?: string | null;
+  website_url?: string | null;
 }
 
 export interface ContactActionResponse {
@@ -88,12 +101,16 @@ export interface ContactImportHeaders {
 /** Contact fields that can be mapped to an import column. */
 export type ContactField =
   | 'name'
+  | 'email'
   | 'company'
   | 'location'
   | 'goal'
   | 'status'
   | 'relationship'
-  | 'follow_up_date';
+  | 'follow_up_date'
+  | 'description'
+  | 'linkedin_url'
+  | 'website_url';
 
 function extractDetail(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;

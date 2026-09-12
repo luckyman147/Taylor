@@ -51,6 +51,7 @@ def _register_adapters(manager: MCPManager) -> None:
     from app.services.mcp.rss import RSSAdapter
     from app.services.mcp.exa import ExaAdapter
     from app.services.mcp.web import WebAdapter
+    from app.services.mcp.crawl4ai import Crawl4AIAdapter
     from app.services.mcp.github import GitHubAdapter
     from app.services.mcp.tunisian import TunisianFreelanceAdapter
     from app.services.mcp.remote_freelance import RemoteFreelanceAdapter
@@ -60,6 +61,7 @@ def _register_adapters(manager: MCPManager) -> None:
     manager.register(RSSAdapter())
     manager.register(ExaAdapter())
     manager.register(WebAdapter())
+    manager.register(Crawl4AIAdapter())
     manager.register(GitHubAdapter())
     manager.register(TunisianFreelanceAdapter())
     manager.register(RemoteFreelanceAdapter())

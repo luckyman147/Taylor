@@ -330,6 +330,9 @@ export function getResumePdfUrl(
     params.set('compactMode', String(settings.compactMode));
     params.set('showContactIcons', String(settings.showContactIcons));
     params.set('accentColor', settings.accentColor);
+    if (settings.customAccentColor) {
+      params.set('customAccentColor', settings.customAccentColor);
+    }
     params.set('workShowBy', settings.workExperience.showBy);
     params.set('workDatesBy', settings.workExperience.datesBy);
     params.set('workLocationBy', settings.workExperience.locationBy);
@@ -529,7 +532,7 @@ export async function retryProcessing(resumeId: string): Promise<ResumeUploadRes
 /** Fetches the job description used to tailor a resume */
 export async function fetchJobDescription(
   resumeId: string
-): Promise<{ job_id: string; content: string }> {
+): Promise<{ job_id: string; content: string; company: string; role: string; website: string; industry: string }> {
   const res = await apiFetch(`/resumes/${encodeURIComponent(resumeId)}/job-description`);
   if (!res.ok) {
     const text = await res.text().catch(() => '');

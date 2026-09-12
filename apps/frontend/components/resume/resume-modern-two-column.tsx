@@ -191,7 +191,9 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
           <div className={`${baseStyles['resume-title']} mt-1`}>{personalInfo.title}</div>
         )}
         {personalInfo && (
-          <div className={`${baseStyles['resume-meta']} ${baseStyles['resume-contact-line']} flex flex-wrap gap-x-3 gap-y-1 mt-2`}>
+          <div
+            className={`${baseStyles['resume-meta']} ${baseStyles['resume-contact-line']} flex flex-wrap gap-x-3 gap-y-1 mt-2`}
+          >
             {renderContactDetail('Email', personalInfo.email, 'mailto:')}
             {renderContactDetail('Phone', personalInfo.phone, 'tel:')}
             {renderContactDetail('Location', personalInfo.location)}
@@ -355,21 +357,21 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
               </ul>
             </div>
           )}
-          {isSectionVisible('additional') &&
+          {(isSectionVisible('skills')) &&
             !isSectionVisible('certifications') &&
             certificationsTraining.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3 className={styles.sectionTitleAccent}>{headingFallbacks.certifications}</h3>
-              <ul className={`ml-4 ${baseStyles['resume-list']} ${baseStyles['resume-text-xs']}`}>
-                {certificationsTraining.map((cert, index) => (
-                  <li key={index} className="flex">
-                    <span className="mr-1.5 flex-shrink-0">•&nbsp;</span>
-                    <span>{cert}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+              <div className={baseStyles['resume-section']}>
+                <h3 className={styles.sectionTitleAccent}>{headingFallbacks.certifications}</h3>
+                <ul className={`ml-4 ${baseStyles['resume-list']} ${baseStyles['resume-text-xs']}`}>
+                  {certificationsTraining.map((cert, index) => (
+                    <li key={index} className="flex">
+                      <span className="mr-1.5 flex-shrink-0">•&nbsp;</span>
+                      <span>{cert}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
           {/* Custom Sections - Main column */}
           {customSections.map((section) => (
@@ -428,43 +430,45 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
           )}
 
           {/* Skills Section */}
-          {isSectionVisible('additional') && technicalSkills.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3
-                className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
-              >
-                {headingFallbacks.skills}
-              </h3>
-              <div className={skillsContainerClass}>
-                {skillGroups.length > 0
-                  ? skillGroups.map((group) => (
-                      <div key={group.name} className="w-full">
-                        <strong>{group.name}:</strong>{' '}
-                        <span className={baseStyles['resume-text-xs']}>
-                          {group.skills.join(' • ')}
+          {(isSectionVisible('skills')) &&
+            technicalSkills.length > 0 && (
+              <div className={baseStyles['resume-section']}>
+                <h3
+                  className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
+                >
+                  {headingFallbacks.skills}
+                </h3>
+                <div className={skillsContainerClass}>
+                  {skillGroups.length > 0
+                    ? skillGroups.map((group) => (
+                        <div key={group.name} className="w-full">
+                          <strong>{group.name}:</strong>{' '}
+                          <span className={baseStyles['resume-text-xs']}>
+                            {group.skills.join(' • ')}
+                          </span>
+                        </div>
+                      ))
+                    : technicalSkills.map((skill, index) => (
+                        <span key={index} className={baseStyles['resume-skill-pill']}>
+                          {skill}
                         </span>
-                      </div>
-                    ))
-                  : technicalSkills.map((skill, index) => (
-                      <span key={index} className={baseStyles['resume-skill-pill']}>
-                        {skill}
-                      </span>
-                    ))}
+                      ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Languages Section */}
-          {isSectionVisible('additional') && languages.length > 0 && (
-            <div className={baseStyles['resume-section']}>
-              <h3
-                className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
-              >
-                {headingFallbacks.languages}
-              </h3>
-              <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
-            </div>
-          )}
+          {(isSectionVisible('languages')) &&
+            languages.length > 0 && (
+              <div className={baseStyles['resume-section']}>
+                <h3
+                  className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
+                >
+                  {headingFallbacks.languages}
+                </h3>
+                <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
+              </div>
+            )}
 
           {/* Awards Section */}
           {isSectionVisible('awards') && awards.length > 0 && (

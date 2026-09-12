@@ -18,6 +18,7 @@ import {
   Briefcase,
   FolderKanban,
   Lightbulb,
+  FileText,
   Sparkles,
   TriangleAlert,
 } from 'lucide-react';
@@ -78,6 +79,9 @@ export const RegenerateDiffPreview: React.FC<RegenerateDiffPreviewProps> = ({
     if (item.item_type === 'skills') {
       return t('builder.regenerate.selectDialog.skills');
     }
+    if (item.item_type === 'summary') {
+      return t('builder.regenerate.selectDialog.summary');
+    }
 
     const title = item.title?.trim();
     const subtitle = item.subtitle?.trim();
@@ -97,6 +101,8 @@ export const RegenerateDiffPreview: React.FC<RegenerateDiffPreviewProps> = ({
         return <FolderKanban className="h-4 w-4 text-primary" />;
       case 'skills':
         return <Lightbulb className="h-4 w-4 text-primary" />;
+      case 'summary':
+        return <FileText className="h-4 w-4 text-primary" />;
       default:
         return null;
     }
@@ -257,8 +263,20 @@ export const RegenerateDiffPreview: React.FC<RegenerateDiffPreviewProps> = ({
                         {t('builder.regenerate.diffPreview.newLabel')}
                       </span>
                     </div>
-                    <div className="space-y-1 rounded-xl bg-green-50/60 p-3">
-                      {item.new_content.length > 0 ? (
+                    <div className="space-y-2 rounded-xl bg-green-50/60 p-3">
+                      {item.item_type === 'skills' &&
+                      item.new_skill_groups &&
+                      item.new_skill_groups.length > 0 ? (
+                        item.new_skill_groups.map((group) => (
+                          <div key={group.name}>
+                            <p className="text-xs font-bold text-green-900 mb-0.5">{group.name}</p>
+                            <p className="text-sm text-green-800 pl-2">
+                              <span className="mr-1.5 font-semibold">+</span>
+                              {group.skills.join(', ')}
+                            </p>
+                          </div>
+                        ))
+                      ) : item.new_content.length > 0 ? (
                         item.new_content.map((content, idx) => (
                           <p key={idx} className="text-sm text-green-800">
                             <span className="mr-1.5 font-semibold">+</span>

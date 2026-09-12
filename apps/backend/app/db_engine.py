@@ -100,6 +100,19 @@ def init_models_sync(engine: Engine) -> None:
             if "status" not in company_col_names:
                 conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN status TEXT")
 
+        # Add email column to contacts table
+        contact_columns = conn.exec_driver_sql("PRAGMA table_info(contacts)").mappings().all()
+        if contact_columns:
+            contact_col_names = {column["name"] for column in contact_columns}
+            if "email" not in contact_col_names:
+                conn.exec_driver_sql("ALTER TABLE contacts ADD COLUMN email TEXT")
+            if "description" not in contact_col_names:
+                conn.exec_driver_sql("ALTER TABLE contacts ADD COLUMN description TEXT")
+            if "linkedin_url" not in contact_col_names:
+                conn.exec_driver_sql("ALTER TABLE contacts ADD COLUMN linkedin_url TEXT")
+            if "website_url" not in contact_col_names:
+                conn.exec_driver_sql("ALTER TABLE contacts ADD COLUMN website_url TEXT")
+
         # Rejection-learning columns on applications (career insights).
         application_columns = conn.exec_driver_sql("PRAGMA table_info(applications)").mappings().all()
         if application_columns:
@@ -141,4 +154,32 @@ def init_models_sync(engine: Engine) -> None:
             for column in ("languages",):
                 conn.exec_driver_sql(
                     f"UPDATE career_projects SET {column} = '[]' WHERE {column} IS NULL"
+                )
+
+        # Career skills: embedding column for RAG.
+        skill_columns = conn.exec_driver_sql("PRAGMA table_info(career_skills)").mappings().all()
+        if skill_columns:
+            skill_col_names = {column["name"] for column in skill_columns}
+            if "embedding" not in skill_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_skills ADD COLUMN embedding TEXT")
+
+        # Chat threads: skills column for base mode + skills architecture.
+        thread_columns = conn.exec_driver_sql("PRAGMA table_info(chat_threads)").mappings().all()
+        if thread_columns:
+            thread_col_names = {column["name"] for column in thread_columns}
+            if "skills" not in thread_col_names:
+                conn.exec_driver_sql("ALTER TABLE chat_threads ADD COLUMN skills TEXT DEFAULT '[]'")
+                # Migrate existing mode-based threads to new skills format
+                conn.exec_driver_sql(
+                    "UPDATE chat_threads SET skills = '[\"coach\"]' WHERE mode = 'coach'"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE chat_threads SET skills = '[\"recruiter\"]' WHERE mode = 'recruiter'"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE chat_threads SET skills = '[\"resume_analyst\"]' WHERE mode = 'resume_analyst'"
+                )
+                # Reset mode to 'ask' for skill-based threads
+                conn.exec_driver_sql(
+                    "UPDATE chat_threads SET mode = 'ask' WHERE mode IN ('coach', 'recruiter', 'resume_analyst')"
                 )

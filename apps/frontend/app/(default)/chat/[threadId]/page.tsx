@@ -2,17 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Send, Loader2, Sparkles, Upload, FileText } from 'lucide-react';
+import { Send, Loader2, Sparkles, Plus, FileText, Paperclip, Plug, MessageCircle, Target, Briefcase, CheckCircle2, Pause } from 'lucide-react';
 import SidebarNav from '@/components/common/SidebarNav';
 import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
-import { ModeSwitcher } from '@/components/chat/mode-switcher';
+import { ModeSkillSelector } from '@/components/chat/mode-switcher';
 import { ModelBadge } from '@/components/chat/model-badge';
+import { EvalPanel } from '@/components/chat/eval-panel';
+import { AddMCPDialog } from '@/components/chat/add-mcp-dialog';
 import { FileViewerDialog } from '@/components/chat/file-viewer-dialog';
+import { StatusTimeline } from '@/components/chat/status-timeline';
 import { useTranslations } from '@/lib/i18n';
 import {
   createThread,
   sendTurn,
+  sendTurnStream,
   confirmAction,
   cancelAction,
   dismissMemory,
@@ -20,6 +24,7 @@ import {
   getThreadMessages,
   type ThreadSummary,
   type TurnResponse,
+  type AgentEvent,
 } from '@/lib/api/chat';
 
 const SUGGESTED_QUESTIONS = [
@@ -27,6 +32,18 @@ const SUGGESTED_QUESTIONS = [
   'chat.suggestions.q2',
   'chat.suggestions.q3',
   'chat.suggestions.q4',
+];
+
+const MODES = [
+  { id: 'ask', icon: MessageCircle, label: 'Ask' },
+  { id: 'agent', icon: Target, label: 'Agent' },
+  { id: 'search', icon: Briefcase, label: 'Search' },
+];
+
+const SKILLS = [
+  { id: 'coach', label: 'Career Coach', icon: '🎯' },
+  { id: 'recruiter', label: 'Recruiter', icon: '👔' },
+  { id: 'resume_analyst', label: 'Resume Analyst', icon: '📊' },
 ];
 
 export default function ChatThreadRoute() {
@@ -40,12 +57,27 @@ export default function ChatThreadRoute() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ filename: string; resumeId: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [fileViewer, setFileViewer] = useState<{ filename: string; content: string } | null>(null);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [showMCPDialog, setShowMCPDialog] = useState(false);
+  const [streamEvents, setStreamEvents] = useState<AgentEvent[]>([]);
+  const [streamStatus, setStreamStatus] = useState<'running' | 'paused' | 'completed'>('completed');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inFlight = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Abort stream on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // Load threads and find active one
   useEffect(() => {
@@ -116,6 +148,17 @@ export default function ChatThreadRoute() {
     [activeThread],
   );
 
+  const handleSkillsChange = useCallback(
+    async (skills: string[]) => {
+      if (!activeThread) return;
+      try {
+        await updateThread(activeThread.thread_id, { skills });
+        setActiveThread((prev) => (prev ? { ...prev, skills } : null));
+      } catch {}
+    },
+    [activeThread],
+  );
+
   const processResponse = useCallback((resp: TurnResponse): ChatMessage => {
     return {
       role: 'assistant',
@@ -130,10 +173,32 @@ export default function ChatThreadRoute() {
     };
   }, []);
 
+  const handleFileSelect = useCallback(async (file: File) => {
+    setSelectedFile(file);
+    setUploadedFile(null);
+    setUploading(true);
+    setError(null);
+    try {
+      const { getUploadUrl } = await import('@/lib/api/client');
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      const data = await res.json();
+      setRefreshKey((k) => k + 1);
+      setUploadedFile({ filename: file.name, resumeId: data.resume_id });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
+      setSelectedFile(null);
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if ((!trimmed && !selectedFile) || inFlight.current) return;
+      if ((!trimmed && !uploadedFile) || inFlight.current || uploading) return;
       inFlight.current = true;
 
       let currentThreadId = threadId;
@@ -151,53 +216,65 @@ export default function ChatThreadRoute() {
         }
       }
 
-      // Upload file first if attached
-      let message = trimmed;
-      let attachment: { filename: string; resumeId: string } | null = null;
-      if (selectedFile) {
-        try {
-          const { getUploadUrl } = await import('@/lib/api/client');
-          const formData = new FormData();
-          formData.append('file', selectedFile);
-          const res = await fetch(getUploadUrl(), { method: 'POST', body: formData });
-          if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-          const data = await res.json();
-          setRefreshKey((k) => k + 1);
-          const fileName = selectedFile.name;
-          const resumeId = data.resume_id;
-          attachment = { filename: fileName, resumeId };
-          setSelectedFile(null);
-          message = trimmed
-            ? `I uploaded "${fileName}". ${trimmed}`
-            : `I uploaded "${fileName}". Analyze it.`;
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Upload failed');
-          inFlight.current = false;
-          return;
-        }
-      }
+      const message = trimmed || 'Analyze this file.';
+      const attachment = uploadedFile;
+
+      const finalMessage = attachment?.resumeId
+        ? `${message}\n\n[Attached resume: ${attachment.filename} (id: ${attachment.resumeId})]`
+        : message;
 
       const userMessage: ChatMessage = { role: 'user', content: message, attachment };
       setMessages((prev) => [...prev, userMessage]);
       setInput('');
       setSending(true);
+      setStreamEvents([]);
+      setStreamStatus('running');
       setError(null);
+      setSelectedFile(null);
+      setUploadedFile(null);
 
       try {
-        const resp = await sendTurn(currentThreadId, message);
-        const assistantMsg = processResponse(resp);
-        setMessages((prev) => [...prev, assistantMsg]);
+        const controller = await sendTurnStream(
+          currentThreadId,
+          finalMessage,
+          attachment?.resumeId,
+          {
+            onEvent: (event) => {
+              setStreamEvents((prev) => [...prev, event]);
+            },
+            onComplete: (resp) => {
+              const assistantMsg = processResponse(resp);
+              setMessages((prev) => [...prev, assistantMsg]);
+              setStreamStatus('completed');
+            },
+            onError: (err) => {
+              setError(err.message);
+              setMessages((prev) => prev.filter((m) => m !== userMessage));
+              setStreamStatus('completed');
+            },
+          },
+        );
+        abortControllerRef.current = controller;
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setMessages((prev) => prev.filter((m) => m !== userMessage));
+        setStreamStatus('completed');
       } finally {
         setSending(false);
         inFlight.current = false;
         setRefreshKey((k) => k + 1);
       }
     },
-    [threadId, processResponse, router, selectedFile],
+    [threadId, processResponse, router, uploadedFile, uploading],
   );
+
+  const handlePause = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setSending(false);
+    setStreamStatus('paused');
+    inFlight.current = false;
+  }, []);
 
   const handleConfirm = useCallback(
     async (token: string) => {
@@ -205,12 +282,12 @@ export default function ChatThreadRoute() {
         const result = await confirmAction(token);
         setMessages((prev) => {
           const updated = [...prev];
-          const lastIdx = updated.length - 1;
-          if (lastIdx >= 0 && updated[lastIdx].pendingAction) {
-            updated[lastIdx] = {
-              ...updated[lastIdx],
+          const idx = updated.findLastIndex((m) => m.pendingAction);
+          if (idx >= 0) {
+            updated[idx] = {
+              ...updated[idx],
               pendingAction: null,
-              content: `${updated[lastIdx].content}\n\n✅ ${result.message}`,
+              content: `${updated[idx].content}\n\n✅ ${result.message}`,
             };
           }
           return updated;
@@ -228,10 +305,10 @@ export default function ChatThreadRoute() {
         await cancelAction(token);
         setMessages((prev) => {
           const updated = [...prev];
-          const lastIdx = updated.length - 1;
-          if (lastIdx >= 0 && updated[lastIdx].pendingAction) {
-            updated[lastIdx] = {
-              ...updated[lastIdx],
+          const idx = updated.findLastIndex((m) => m.pendingAction);
+          if (idx >= 0) {
+            updated[idx] = {
+              ...updated[idx],
               pendingAction: null,
             };
           }
@@ -330,6 +407,9 @@ export default function ChatThreadRoute() {
                 onFollowup={handleFollowup}
                 onSelectResume={handleSelectResume}
                 onViewFile={handleViewFile}
+                onJobSearch={handleFollowup}
+                streamEvents={streamEvents}
+                streamStatus={streamStatus}
               />
             )}
 
@@ -338,50 +418,116 @@ export default function ChatThreadRoute() {
               <div className="px-5 py-1 text-center text-xs text-destructive">{error}</div>
             )}
 
+            {/* Eval Panel (temporary testing) */}
+            <EvalPanel
+              lastUserMessage={
+                messages.length > 0
+                  ? [...messages].reverse().find((m) => m.role === 'user')?.content || ''
+                  : ''
+              }
+            />
+
             {/* Composer */}
             <div className="mx-auto w-full max-w-3xl px-5 pb-5">
-              {/* Mode toggles above input */}
-              <div className="mb-2.5 flex items-center justify-center gap-3">
-                <ModeSwitcher
-                  currentMode={activeThread?.mode || 'ask'}
-                  onModeChange={handleModeChange}
-                  disabled={!activeThread}
-                />
-                <ModelBadge />
-              </div>
-
               {/* Input pill */}
               <div className="rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
                 {/* File attachment chip */}
-                {selectedFile && (
+                {(selectedFile || uploadedFile) && (
                   <div className="flex items-center gap-2 border-b border-[#e6e3dc] px-4 py-2">
-                    <div className="flex items-center gap-2 rounded-lg border border-[#e6e3dc] bg-white px-2.5 py-1.5">
-                      <FileText className="h-4 w-4 text-blue-500" />
-                      <span className="max-w-[150px] truncate text-xs font-medium text-ink">{selectedFile.name}</span>
-                      <button
-                        onClick={() => setSelectedFile(null)}
-                        className="ml-1 text-ink-muted hover:text-ink"
-                      >
-                        ×
-                      </button>
+                    <div className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${
+                      uploadedFile ? 'border-emerald-200 bg-emerald-50' : 'border-[#e6e3dc] bg-white'
+                    }`}>
+                      {uploading ? (
+                        <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                      ) : uploadedFile ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-blue-500" />
+                      )}
+                      <span className="max-w-[150px] truncate text-xs font-medium text-ink">
+                        {selectedFile?.name || uploadedFile?.filename}
+                      </span>
+                      {uploading && (
+                        <span className="text-[10px] text-ink-muted">Uploading...</span>
+                      )}
+                      {!uploading && (
+                        <button
+                          onClick={() => { setSelectedFile(null); setUploadedFile(null); }}
+                          className="ml-1 text-ink-muted hover:text-ink"
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
 
+                {/* Top row: mode/skill selector + model badge */}
+                <div className="flex items-center justify-between px-4 pt-2.5 pb-1">
+                  {/* Mode + Skill selector */}
+                  <ModeSkillSelector
+                    currentMode={activeThread?.mode || 'ask'}
+                    currentSkills={activeThread?.skills || []}
+                    onModeChange={handleModeChange}
+                    onSkillsChange={handleSkillsChange}
+                    disabled={!activeThread}
+                  />
+
+                  {/* Model badge */}
+                  <ModelBadge />
+                </div>
+
                 <div className="flex items-end">
-                  <label className="flex h-9 w-9 shrink-0 items-center justify-center m-2 cursor-pointer rounded-full text-ink-muted transition-colors hover:bg-[#e6e3dc] hover:text-ink-soft">
-                    <Upload className="h-4 w-4" />
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx,.md,.txt"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setSelectedFile(file);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
+                  {/* + Button with menu */}
+                  <div className="relative m-2" ref={plusMenuRef}>
+                    <button
+                      onClick={() => setShowPlusMenu(!showPlusMenu)}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-[#e6e3dc] hover:text-ink-soft"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+
+                    {showPlusMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowPlusMenu(false)} />
+                        <div className="absolute bottom-full left-0 z-50 mb-2 w-48 rounded-xl border border-[#e6e3dc] bg-white py-1.5 shadow-lg">
+                          <button
+                            onClick={() => {
+                              setShowPlusMenu(false);
+                              document.getElementById('chat-file-input')?.click();
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink hover:bg-[#faf9f7] transition-colors"
+                          >
+                            <Paperclip className="h-4 w-4 text-ink-muted" />
+                            Upload File
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowPlusMenu(false);
+                              setShowMCPDialog(true);
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink hover:bg-[#faf9f7] transition-colors"
+                          >
+                            <Plug className="h-4 w-4 text-ink-muted" />
+                            MCP Servers
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Hidden file input */}
+                  <input
+                    id="chat-file-input"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.md,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleFileSelect(file);
+                      e.target.value = '';
+                    }}
+                  />
                   <textarea
                     ref={textareaRef}
                     rows={1}
@@ -401,12 +547,18 @@ export default function ChatThreadRoute() {
                     className="min-h-[48px] max-h-[160px] flex-1 resize-none bg-transparent px-5 py-3.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink-muted"
                   />
                   <button
-                    onClick={() => void send(input)}
-                    disabled={sending || (!input.trim() && !selectedFile)}
+                    onClick={() => {
+                      if (sending) {
+                        handlePause();
+                      } else {
+                        void send(input);
+                      }
+                    }}
+                    disabled={!sending && (uploading || (!input.trim() && !uploadedFile))}
                     className="m-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-[#17304f] disabled:opacity-40"
                   >
                     {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Pause className="h-4 w-4" />
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
@@ -424,6 +576,12 @@ export default function ChatThreadRoute() {
         onClose={() => setFileViewer(null)}
         filename={fileViewer?.filename || ''}
         content={fileViewer?.content || ''}
+      />
+
+      {/* MCP add dialog */}
+      <AddMCPDialog
+        open={showMCPDialog}
+        onClose={() => setShowMCPDialog(false)}
       />
     </div>
   );

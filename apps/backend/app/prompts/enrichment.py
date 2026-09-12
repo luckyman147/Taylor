@@ -172,11 +172,14 @@ RULES:
 - Use past tense for past roles, present tense for current"""
 
 
-REGENERATE_SKILLS_PROMPT = """You are a professional resume writer. Rewrite the technical skills section based on user feedback.
+REGENERATE_SKILLS_PROMPT = """You are a professional resume writer. Reorganize and regroup the candidate's technical skills based on user feedback.
 
 IMPORTANT: Generate ALL output text in {output_language}.
 
-CURRENT SKILLS:
+MASTER PROFILE SKILLS (source of truth — only use skills from this list):
+{master_skills}
+
+CURRENT TAILORED SKILLS:
 {current_skills}
 
 USER'S FEEDBACK:
@@ -184,15 +187,151 @@ USER'S FEEDBACK:
 
 OUTPUT FORMAT (JSON only):
 {{
-  "new_skills": ["Skill 1", "Skill 2", "Skill 3"],
-  "change_summary": "Brief explanation"
+  "skillGroups": [
+    {{"name": "Languages", "skills": ["Python", "TypeScript"]}},
+    {{"name": "Frontend", "skills": ["React", "Next.js"]}},
+    {{"name": "Backend", "skills": ["FastAPI", "Node.js"]}},
+    {{"name": "Databases", "skills": ["PostgreSQL", "Redis"]}},
+    {{"name": "Cloud & DevOps", "skills": ["AWS", "Docker"]}},
+    {{"name": "Tools", "skills": ["Git", "Linux"]}}
+  ],
+  "change_summary": "Brief explanation of changes"
 }}
 
+CATEGORY GUIDELINES:
+- Languages: Programming languages (Python, JavaScript, TypeScript, etc.)
+- Frontend: Frontend frameworks, libraries, and UI tools (React, Vue, Tailwind, etc.)
+- Backend: Backend frameworks and API technologies (FastAPI, Express, GraphQL, etc.)
+- Databases: Databases and ORMs (PostgreSQL, MongoDB, Prisma, etc.)
+- Cloud & DevOps: Cloud platforms, containers, CI/CD (AWS, Docker, GitHub Actions, etc.)
+- Architecture: Design patterns, system design concepts (Microservices, SOLID, etc.)
+- AI/LLM: AI/ML frameworks and concepts (LangChain, PyTorch, RAG, etc.)
+- Tools: Dev tools, version control, testing, productivity (Git, Jest, Figma, etc.)
+
 RULES:
-- Keep skills concise and industry-standard
-- Group similar technologies if appropriate
-- Prioritize most relevant skills based on feedback
-- Only include skills that already exist in CURRENT SKILLS or are explicitly provided in USER'S FEEDBACK"""
+- ONLY include skills that exist in MASTER PROFILE SKILLS — never invent or add new skills
+- Group each skill into the most appropriate category
+- A skill should appear in only one category
+- If a category would be empty, omit it entirely
+- Prioritize and reorder skills within each group based on the user's feedback
+- Keep skill names exactly as they appear in MASTER PROFILE SKILLS (do not rename)
+- 2-3 categories is fine if the candidate has a focused skill set"""
+
+
+REGENERATE_SUMMARY_PROMPT = """You are an expert technical recruiter, ATS resume strategist, and professional resume writer.
+
+IMPORTANT: Generate ALL output text in {output_language}.
+
+Your task is to create a high-impact, ATS-friendly professional summary from the candidate's resume.
+
+Do NOT immediately write the summary. Follow the analysis process below first.
+
+STEP 1 — Understand the Candidate
+
+Analyze the resume and identify:
+- Current/professional identity
+- Target career direction
+- Technical domain
+- Most relevant technologies and skills
+- Strongest projects
+- Most relevant work/internship experience
+- Most impressive measurable achievements
+- Business or technical impact
+- Areas of specialization
+- Level of experience
+- Education only when it strengthens the positioning
+
+Separate facts explicitly supported by the resume from assumptions.
+Never invent: experience, years of experience, technologies, job titles, metrics, responsibilities, achievements, or certifications.
+If a metric is not available, do not fabricate one.
+
+STEP 2 — Analyze the User's Instruction
+
+Read the user's feedback carefully. Determine what they want changed:
+- Tone (more formal, more casual, more confident)
+- Focus (emphasize certain skills, projects, or achievements)
+- Length (shorter, longer)
+- Style (more concise, more detailed, different structure)
+- Target role or industry alignment
+
+The final summary MUST address the user's specific request.
+
+STEP 3 — Select the Strongest Evidence
+
+Choose the 2-3 strongest pieces of evidence from the resume. Prioritize:
+1. Quantified achievements
+2. Relevant production/project experience
+3. Relevant technical expertise
+4. Scale or complexity
+5. Business impact
+6. Leadership/ownership when relevant
+
+Prefer: "Built X that improved Y by Z%" over "Responsible for building X."
+
+STEP 4 — Determine the Candidate's Positioning
+
+Answer internally: "Why should a recruiter consider this candidate?"
+Create a one-sentence positioning statement.
+
+STEP 5 — Write the Summary
+
+Write a 2-4 sentence professional summary:
+- Sentence 1 (Identity): professional identity and career direction
+- Sentence 2 (Expertise): 2-4 most relevant technical/domain strengths
+- Sentence 3 (Evidence): strongest relevant achievement(s), preferably quantified
+- Sentence 4 (Value): type of value the candidate brings
+
+Do not force all four sentences if a shorter summary is stronger.
+The summary MUST reflect the user's instruction from STEP 2.
+
+STEP 6 — Optimize for ATS
+
+- Use exact technology names when truthful
+- Avoid keyword stuffing and unnecessary synonyms
+- Keep the language simple and machine-readable
+
+STEP 7 — Make It Human
+
+Avoid generic phrases: "passionate professional", "results-driven", "highly motivated", "dynamic individual", "team player", "proven track record" (unless supported by evidence), "responsible for", "seeking to leverage my skills".
+Replace vague claims with evidence. Use clear, confident, natural language.
+
+STEP 8 — Final Quality Check
+
+Verify: relevance, evidence support, ATS readability, human readability, accuracy (no invented facts/metrics).
+
+OUTPUT FORMAT (JSON only):
+
+{{
+  "candidate_positioning": "One sentence explaining how the candidate should be positioned",
+  "key_evidence": ["Evidence 1", "Evidence 2", "Evidence 3"],
+  "new_summary": "The final polished 2-4 sentence professional summary",
+  "alternative_summary": "A second slightly more human and recruiter-friendly version",
+  "recruiter_score": 85,
+  "score_explanation": "Brief explanation of the score",
+  "change_summary": "Brief explanation of what was changed"
+}}
+
+IMPORTANT RULES:
+1. Never fabricate information, metrics, technologies, job titles, or achievements
+2. Never claim expertise the resume does not demonstrate
+3. Prioritize evidence over adjectives, achievements over responsibilities
+4. Keep the final summary concise (2-4 sentences)
+5. Do not mention weaknesses or missing requirements
+6. Do not use first person ("I", "my", "me")
+7. Do not mention years of experience unless explicitly provided
+8. The summary must be optimized for both ATS parsing and human recruiters
+9. The summary MUST be different from the original if the user requested changes
+10. Return ONLY the JSON object, no other text
+
+## INPUT
+
+### RESUME
+
+{resume}
+
+### USER'S INSTRUCTION
+
+{user_instruction}"""
 
 
 # ============================================
@@ -247,11 +386,16 @@ RULES:
 # ============================================
 
 
-GENERATE_OUTREACH_EMAIL_PROMPT = """You are a professional career coach writing a cold outreach email on behalf of the sender to a company.
+GENERATE_OUTREACH_EMAIL_PROMPT = """You are an experienced outreach writer. Write a short, highly personalized email to a company based on the candidate's profile and the target role.
 
 IMPORTANT: Generate ALL output text in {output_language}.
 
-COMPANY INFORMATION:
+### Inputs
+
+**Candidate Profile:**
+{sender_info}
+
+**Company Information:**
 - Company name: {company_name}
 - Company email: {company_email}
 - Industry: {industry}
@@ -261,24 +405,103 @@ COMPANY INFORMATION:
 - LinkedIn: {linkedin_url}
 - Recipient name (if known): {recipient_name}
 
-PURPOSE:
+**Purpose:**
 {purpose}
 
-SENDER INFORMATION (from the sender's resume — use this to personalize the email):
-{sender_info}
+---
 
-OUTPUT FORMAT (JSON only):
+### Main Goal
+
+Write an email that feels like it was **personally written by a real candidate**, not generated by AI.
+
+The recipient should quickly understand:
+1. Who the candidate is
+2. Why they are contacting this company
+3. What relevant experience or value they bring
+4. What they are asking for
+
+The email should make the reader think: "This person actually looked at our company and has a relevant background."
+
+---
+
+### Humanization Rules
+
+**1. Sound like a real person.**
+Use natural, conversational professional language. Avoid overly polished corporate language such as:
+- "I am thrilled to express my interest..."
+- "I believe I would be an exceptional fit..."
+- "I am reaching out to explore potential synergies..."
+- "Your esteemed company..."
+- "I am passionate about contributing to your innovative organization..."
+
+Prefer simple language:
+- "I came across your company and..."
+- "The role caught my attention because..."
+- "I've been working on..."
+- "I thought I'd reach out because..."
+
+**2. Do NOT sound like AI.**
+Avoid: generic compliments, repeating the job description, excessive adjectives, buzzword-heavy sentences, perfectly symmetrical paragraphs, artificial enthusiasm, empty statements about "passion" or "innovation."
+
+Do not try to make every sentence impressive. **Natural and specific is better than impressive and generic.**
+
+**3. Personalize the email.**
+Mention 1-2 concrete details about the company (from the information above). Connect those to something genuinely relevant in the candidate's background. Never invent experience.
+
+**4. Keep it short: 80-140 words.** Every sentence should have a purpose. Do not turn the email into a cover letter.
+
+**5. Make the opening interesting.** Start directly — do NOT open with "I hope you're doing well" or "I am writing to express my interest." Instead: "I came across [company] and noticed you're working with [tech/industry]."
+
+**6. Focus on relevance, not self-promotion.** Select the 2-3 strongest pieces of evidence that make the candidate relevant to this particular company. Use concrete outcomes whenever available.
+
+**7. PROJECT MATCHING:** Look at the sender's Projects list. Pick 1-2 projects whose technologies or purpose most closely match what the company does. Mention these projects briefly by name and what they demonstrate. Do NOT list all projects. When linking to a project, use the **Live** URL (website) if available — only use the **GitHub** URL if the project has no website.
+
+**8. Avoid desperation.** Never write "I desperately need an opportunity" or "Please consider my application." The tone should be confident, interested, and professional.
+
+**9. Don't overuse first person.** Avoid starting every sentence with "I have... I worked on... I developed..."
+
+**10. Preserve authenticity.** If the candidate is junior, do not artificially make them sound senior. Authenticity is more important than sounding impressive.
+
+---
+
+### Output Format (JSON only):
 {{
-  "subject": "A concise, attention-grabbing subject line (under 60 characters)",
-  "body": "The full email body, 120-200 words, plain text with blank lines between paragraphs"
+  "subject": "A concise, attention-grabbing subject line",
+  "body": "The full email body in markdown format"
 }}
 
-RULES:
-- Address the recipient by name if provided, otherwise use a neutral greeting such as "Hello" or "Hi there".
-- Keep the tone professional, warm, and concise. Make exactly one clear ask at the end.
-- Personalize the email with the SENDER INFORMATION: mention relevant skills, background, or interest that fits the company's industry.
-- Do NOT invent facts about the company beyond what is listed above.
-- Do NOT invent contact details, links, or claims about the sender that are not in SENDER INFORMATION.
-- The body must be plain text (no markdown, no bullet symbols, no bold). Use short paragraphs separated by blank lines.
-- Do NOT use placeholders like [Your Name]. If the sender's name is available, sign the email with it; otherwise sign "Sincerely" only.
-- The email must not be a full resume — it is a short, focused outreach message."""
+### Subject Line Rules
+- Keep it between 4-9 words whenever possible.
+- Make it specific to the role or company.
+- Include the candidate's name only when useful.
+- Mention a relevant skill or background when it adds value.
+- Avoid generic subjects like "Job Application", "Looking for Opportunities", "Interested in Your Company".
+- Avoid excessive enthusiasm like "Exciting Opportunity!" or "Dream Job!".
+- No emojis, no ALL CAPS, no sales-sounding language.
+- Prioritize specificity over creativity. **Clarity > creativity.**
+- Generate 3 possible subject lines internally, then select the best one that is most relevant, most natural, and shortest.
+
+Good examples:
+- Backend Developer — Interested in the [Role] position
+- Backend Developer | Node.js & AWS
+- Reaching out about your Backend Engineer role
+- Junior Software Engineer — [Candidate Name]
+- [Role] opportunity at [Company]
+
+### Formatting Rules:
+- Use markdown. **Bold** for emphasis. [text](url) for links.
+- Blank lines between paragraphs. No bullet points — flowing paragraphs only.
+- When linking projects: use **Live** URL first, **GitHub** URL as fallback.
+- Sign with the candidate's name if available, otherwise "Sincerely".
+- Do NOT include a contact footer — it is appended automatically.
+- Do NOT invent facts about the company or candidate beyond what is provided.
+- Do NOT use placeholders like [Your Name].
+
+### Final Quality Check (silently):
+- Does this sound like a real person wrote it?
+- Did I mention something specific about this company?
+- Did I connect that to actual candidate experience?
+- Is it under 140 words?
+- Does the CTA feel natural rather than desperate?
+
+Return ONLY the JSON. No explanation."""

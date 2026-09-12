@@ -36,6 +36,7 @@ router = APIRouter(prefix="/contacts", tags=["Contact Tracker"])
 # dashes/apostrophes) so CSV/Excel columns can vary between files.
 _FIELD_ALIASES: dict[str, set[str]] = {
     "name": {"name", "fullname", "full_name", "contactname", "contact"},
+    "email": {"email", "e_mail", "emailaddress", "email_address", "mail", "emailaddr"},
     "company": {"company", "companyname", "company_name", "organization", "organisation", "org"},
     "location": {"location", "city", "citystate", "region", "country"},
     "goal": {"goal", "objective", "purpose", "goaltype"},
@@ -49,17 +50,24 @@ _FIELD_ALIASES: dict[str, set[str]] = {
         "nextfollowup",
         "date",
     },
+    "description": {"description", "desc", "notes", "note", "about", "bio", "biography"},
+    "linkedin_url": {"linkedin", "linkedinurl", "linkedin_url", "linkedinprofile", "linkedin_profile", "profileurl"},
+    "website_url": {"website", "websiteurl", "website_url", "url", "homepage", "personalwebsite", "portfolio"},
 }
 
 # Order used for the auto-detected mapping payload and the mapping UI.
 _IMPORT_FIELDS: list[str] = [
     "name",
+    "email",
     "company",
     "location",
     "goal",
     "status",
     "relationship",
     "follow_up_date",
+    "description",
+    "linkedin_url",
+    "website_url",
 ]
 
 _GOAL_VALUES = {g.value for g in ContactGoal}
@@ -203,12 +211,16 @@ async def import_contacts(
                 continue
             await db.create_contact(
                 name=name,
+                email=normalized.get("email", "").strip() or None,
                 company=normalized.get("company", "").strip() or None,
                 location=normalized.get("location", "").strip() or None,
                 goal=goal,
                 status=status,
                 relationship=relationship,
                 follow_up_date=follow_up_date,
+                description=normalized.get("description", "").strip() or None,
+                linkedin_url=normalized.get("linkedin_url", "").strip() or None,
+                website_url=normalized.get("website_url", "").strip() or None,
             )
             created += 1
         except Exception as e:

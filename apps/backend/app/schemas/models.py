@@ -441,9 +441,9 @@ DEFAULT_SECTION_META: list[dict[str, Any]] = [
         "order": 4,
     },
     {
-        "id": "additional",
-        "key": "additional",
-        "displayName": "Skills & Awards",
+        "id": "skills",
+        "key": "skills",
+        "displayName": "Skills",
         "sectionType": SectionType.STRING_LIST,
         "isDefault": True,
         "isVisible": True,
@@ -462,6 +462,30 @@ def normalize_resume_data(data: dict[str, Any]) -> dict[str, Any]:
         # Use deepcopy to avoid shared mutable reference bug
         # Without this, all resumes would share the same list reference
         data["sectionMeta"] = copy.deepcopy(DEFAULT_SECTION_META)
+    else:
+        # Migrate legacy 'additional' section id/key to 'skills'
+        # to match the frontend's DEFAULT_SECTION_META.
+        migrated = False
+        for section in data["sectionMeta"]:
+            if section.get("id") == "additional":
+                section["id"] = "skills"
+                migrated = True
+            if section.get("key") == "additional":
+                section["key"] = "skills"
+                if not migrated:
+                    migrated = True
+        # If the migration removed a duplicate (both 'additional' and 'skills'
+        # existed), deduplicate by keeping the 'skills' entry.
+        if migrated:
+            seen_ids: set[str] = set()
+            deduped: list[dict[str, Any]] = []
+            for section in data["sectionMeta"]:
+                sid = section.get("id", "")
+                if sid in seen_ids:
+                    continue
+                seen_ids.add(sid)
+                deduped.append(section)
+            data["sectionMeta"] = deduped
     if "customSections" not in data:
         data["customSections"] = {}
     return data

@@ -53,6 +53,7 @@ type PageProps = {
     compactMode?: string;
     showContactIcons?: string;
     accentColor?: string;
+    customAccentColor?: string;
     workShowBy?: string;
     workDatesBy?: string;
     workLocationBy?: string;
@@ -315,7 +316,10 @@ function parseListSeparator(value: string | undefined): ListSeparator {
   );
 }
 
-function parseTextWeight(value: string | undefined, defaultValue: TextWeightOption): TextWeightOption {
+function parseTextWeight(
+  value: string | undefined,
+  defaultValue: TextWeightOption
+): TextWeightOption {
   return parseEnum(value, ['light', 'regular', 'bold', 'extralight'] as const, defaultValue);
 }
 
@@ -326,7 +330,10 @@ function parseTextTransform(
   return parseEnum(value, ['uppercase', 'as-written', 'capitalize'] as const, defaultValue);
 }
 
-function parseBorderWidth(value: string | undefined, defaultValue: number): { enabled: boolean; thickness: number } {
+function parseBorderWidth(
+  value: string | undefined,
+  defaultValue: number
+): { enabled: boolean; thickness: number } {
   const pt = parsePt(value, defaultValue);
   return { enabled: pt > 0, thickness: pt > 0 ? pt : 1 };
 }
@@ -462,6 +469,7 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
       DEFAULT_TEMPLATE_SETTINGS.showContactIcons
     ),
     accentColor: parseAccentColor(resolvedSearchParams?.accentColor),
+    customAccentColor: resolvedSearchParams?.customAccentColor || null,
     workExperience: {
       showBy: parseWorkShowBy(resolvedSearchParams?.workShowBy),
       datesBy: parseWorkDatesBy(resolvedSearchParams?.workDatesBy),
@@ -475,40 +483,124 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
       bulletMarker: parseBulletMarker(resolvedSearchParams?.bulletMarker),
       listSeparator: parseListSeparator(resolvedSearchParams?.listSeparator),
       textSizes: {
-        fullName: parsePt(resolvedSearchParams?.sizeFullName, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.fullName),
-        primaryHeading: parsePt(resolvedSearchParams?.sizePrimaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.primaryHeading),
-        secondaryHeading: parsePt(resolvedSearchParams?.sizeSecondaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.secondaryHeading),
-        sectionTitle: parsePt(resolvedSearchParams?.sizeSectionTitle, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.sectionTitle),
-        bodyCopy: parsePt(resolvedSearchParams?.sizeBodyCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.bodyCopy),
-        minorCopy: parsePt(resolvedSearchParams?.sizeMinorCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.minorCopy),
+        fullName: parsePt(
+          resolvedSearchParams?.sizeFullName,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.fullName
+        ),
+        primaryHeading: parsePt(
+          resolvedSearchParams?.sizePrimaryHeading,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.primaryHeading
+        ),
+        secondaryHeading: parsePt(
+          resolvedSearchParams?.sizeSecondaryHeading,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.secondaryHeading
+        ),
+        sectionTitle: parsePt(
+          resolvedSearchParams?.sizeSectionTitle,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.sectionTitle
+        ),
+        bodyCopy: parsePt(
+          resolvedSearchParams?.sizeBodyCopy,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.bodyCopy
+        ),
+        minorCopy: parsePt(
+          resolvedSearchParams?.sizeMinorCopy,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textSizes.minorCopy
+        ),
       },
       textWeights: {
-        fullName: parseTextWeight(resolvedSearchParams?.weightFullName, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.fullName),
-        primaryHeading: parseTextWeight(resolvedSearchParams?.weightPrimaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.primaryHeading),
-        secondaryHeading: parseTextWeight(resolvedSearchParams?.weightSecondaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.secondaryHeading),
-        sectionTitle: parseTextWeight(resolvedSearchParams?.weightSectionTitle, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.sectionTitle),
-        bodyCopy: parseTextWeight(resolvedSearchParams?.weightBodyCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.bodyCopy),
-        minorCopy: parseTextWeight(resolvedSearchParams?.weightMinorCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.minorCopy),
+        fullName: parseTextWeight(
+          resolvedSearchParams?.weightFullName,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.fullName
+        ),
+        primaryHeading: parseTextWeight(
+          resolvedSearchParams?.weightPrimaryHeading,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.primaryHeading
+        ),
+        secondaryHeading: parseTextWeight(
+          resolvedSearchParams?.weightSecondaryHeading,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.secondaryHeading
+        ),
+        sectionTitle: parseTextWeight(
+          resolvedSearchParams?.weightSectionTitle,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.sectionTitle
+        ),
+        bodyCopy: parseTextWeight(
+          resolvedSearchParams?.weightBodyCopy,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.bodyCopy
+        ),
+        minorCopy: parseTextWeight(
+          resolvedSearchParams?.weightMinorCopy,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textWeights.minorCopy
+        ),
       },
       textTransforms: {
-        fullName: parseTextTransform(resolvedSearchParams?.transformFullName, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.fullName),
-        primaryHeading: parseTextTransform(resolvedSearchParams?.transformPrimaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.primaryHeading),
-        secondaryHeading: parseTextTransform(resolvedSearchParams?.transformSecondaryHeading, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.secondaryHeading),
-        sectionTitle: parseTextTransform(resolvedSearchParams?.transformSectionTitle, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.sectionTitle),
-        bodyCopy: parseTextTransform(resolvedSearchParams?.transformBodyCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.bodyCopy),
-        minorCopy: parseTextTransform(resolvedSearchParams?.transformMinorCopy, DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.minorCopy),
+        fullName: parseTextTransform(
+          resolvedSearchParams?.transformFullName,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.fullName
+        ),
+        primaryHeading: parseTextTransform(
+          resolvedSearchParams?.transformPrimaryHeading,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.primaryHeading
+        ),
+        secondaryHeading: parseTextTransform(
+          resolvedSearchParams?.transformSecondaryHeading,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.secondaryHeading
+        ),
+        sectionTitle: parseTextTransform(
+          resolvedSearchParams?.transformSectionTitle,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.sectionTitle
+        ),
+        bodyCopy: parseTextTransform(
+          resolvedSearchParams?.transformBodyCopy,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.bodyCopy
+        ),
+        minorCopy: parseTextTransform(
+          resolvedSearchParams?.transformMinorCopy,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.textTransforms.minorCopy
+        ),
       },
       verticalSpacing: {
-        betweenSections: parsePt(resolvedSearchParams?.vspaceBetweenSections, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.betweenSections),
-        titlesContent: parsePt(resolvedSearchParams?.vspaceTitlesContent, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.titlesContent),
-        primarySecondaryHeadings: parsePt(resolvedSearchParams?.vspacePrimarySecondary, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.primarySecondaryHeadings),
-        contentBlocks: parsePt(resolvedSearchParams?.vspaceContentBlocks, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.contentBlocks),
-        listItems: parsePt(resolvedSearchParams?.vspaceListItems, DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.listItems),
+        betweenSections: parsePt(
+          resolvedSearchParams?.vspaceBetweenSections,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.betweenSections
+        ),
+        titlesContent: parsePt(
+          resolvedSearchParams?.vspaceTitlesContent,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.titlesContent
+        ),
+        primarySecondaryHeadings: parsePt(
+          resolvedSearchParams?.vspacePrimarySecondary,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.primarySecondaryHeadings
+        ),
+        contentBlocks: parsePt(
+          resolvedSearchParams?.vspaceContentBlocks,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.contentBlocks
+        ),
+        listItems: parsePt(
+          resolvedSearchParams?.vspaceListItems,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.verticalSpacing.listItems
+        ),
       },
       borders: {
-        aboveHeader: parseBorderWidth(resolvedSearchParams?.borderAboveHeader, DEFAULT_TEMPLATE_SETTINGS.advanced.borders.aboveHeader.enabled ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.aboveHeader.thickness : 0),
-        belowHeader: parseBorderWidth(resolvedSearchParams?.borderBelowHeader, DEFAULT_TEMPLATE_SETTINGS.advanced.borders.belowHeader.enabled ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.belowHeader.thickness : 0),
-        sectionTitles: parseBorderWidth(resolvedSearchParams?.borderSectionTitles, DEFAULT_TEMPLATE_SETTINGS.advanced.borders.sectionTitles.enabled ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.sectionTitles.thickness : 0),
+        aboveHeader: parseBorderWidth(
+          resolvedSearchParams?.borderAboveHeader,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.borders.aboveHeader.enabled
+            ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.aboveHeader.thickness
+            : 0
+        ),
+        belowHeader: parseBorderWidth(
+          resolvedSearchParams?.borderBelowHeader,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.borders.belowHeader.enabled
+            ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.belowHeader.thickness
+            : 0
+        ),
+        sectionTitles: parseBorderWidth(
+          resolvedSearchParams?.borderSectionTitles,
+          DEFAULT_TEMPLATE_SETTINGS.advanced.borders.sectionTitles.enabled
+            ? DEFAULT_TEMPLATE_SETTINGS.advanced.borders.sectionTitles.thickness
+            : 0
+        ),
       },
     },
   };

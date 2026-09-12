@@ -167,7 +167,8 @@ class SentEmail(Base):
 class ChatThread(Base):
     """A persistent chat conversation thread.
 
-    ``mode`` stores the active persona (ask, coach, recruiter, resume_analyst).
+    ``mode`` stores the base mode (ask, agent, search).
+    ``skills`` stores active skill IDs as JSON array (coach, recruiter, resume_analyst).
     ``title`` is auto-generated from the first user message and can be renamed.
     """
 
@@ -176,6 +177,7 @@ class ChatThread(Base):
     thread_id: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, default="New Chat")
     mode: Mapped[str] = mapped_column(String, default="ask")
+    skills: Mapped[str] = mapped_column(String, default="[]")
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -251,12 +253,16 @@ class Contact(Base):
 
     contact_id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
     company: Mapped[str | None] = mapped_column(String, nullable=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)
     goal: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str | None] = mapped_column(String, nullable=True)
     relationship: Mapped[str | None] = mapped_column(String, nullable=True)
     follow_up_date: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -326,6 +332,7 @@ class CareerSkill(Base):
     proficiency: Mapped[int | None] = mapped_column(Integer, nullable=True)
     years_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_used: Mapped[str | None] = mapped_column(String, nullable=True)
+    embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -463,3 +470,71 @@ class ScrapedJob(Base):
     embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class MCPServer(Base):
+    """A registered MCP server (built-in or user-added custom).
+
+    Stores server metadata, connection info, cached tool list, and health
+    tracking. Credentials are stored separately in MCPCredential (encrypted).
+    """
+
+    __tablename__ = "mcp_servers"
+
+    server_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    url: Mapped[str | None] = mapped_column(String, nullable=True)
+    transport: Mapped[str] = mapped_column(String, default="streamable-http")
+    server_type: Mapped[str] = mapped_column(String, default="custom")  # "builtin" | "custom"
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String, default="unknown")  # connected | error | needs_configuration | unknown
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tools_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # cached tool list
+    last_connected_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Health tracking
+    health_last_success: Mapped[str | None] = mapped_column(String, nullable=True)
+    health_last_failure: Mapped[str | None] = mapped_column(String, nullable=True)
+    health_consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    health_avg_latency_ms: Mapped[float] = mapped_column(default=0.0)
+    health_total_calls: Mapped[int] = mapped_column(Integer, default=0)
+    health_success_calls: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class MCPCredential(Base):
+    """An encrypted credential for an MCP server.
+
+    Stores API keys, bearer tokens, OAuth tokens, etc. encrypted via Fernet.
+    The LLM never sees these -- they are injected at the HTTP transport layer.
+    """
+
+    __tablename__ = "mcp_credentials"
+
+    credential_id: Mapped[str] = mapped_column(String, primary_key=True)
+    server_id: Mapped[str] = mapped_column(String, index=True)
+    auth_type: Mapped[str] = mapped_column(String)  # api_key | bearer | oauth | env_vars | custom_headers
+    auth_config: Mapped[str] = mapped_column(Text)  # encrypted JSON: {key, header_name, token, etc.}
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class ToolUsageStats(Base):
+    """Historical usage stats for a tool (built-in or MCP).
+
+    Tracks success rate, latency, and last error to power the tool ranker
+    and reliability-based ranking.
+    """
+
+    __tablename__ = "tool_usage_stats"
+
+    tool_name: Mapped[str] = mapped_column(String, primary_key=True)
+    total_calls: Mapped[int] = mapped_column(Integer, default=0)
+    successful_calls: Mapped[int] = mapped_column(Integer, default=0)
+    avg_latency_ms: Mapped[float] = mapped_column(default=0.0)
+    last_used_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_error_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_error_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)

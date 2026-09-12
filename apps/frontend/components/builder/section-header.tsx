@@ -42,6 +42,7 @@ export const SECTION_ICONS: Record<string, React.ComponentType<{ className?: str
   workExperience: Briefcase,
   education: GraduationCap,
   personalProjects: Rocket,
+  skills: Sparkles,
   additional: Sparkles,
 };
 

@@ -14,6 +14,7 @@ def _client():
 
 PAYLOAD = {
     "name": "Jane Doe",
+    "email": "jane.doe@acme.com",
     "company": "Acme Corp",
     "location": "Tunis",
     "goal": "request_referral",
@@ -46,6 +47,7 @@ class TestCreate:
         assert resp.status_code == 201
         body = resp.json()
         assert body["name"] == "Jane Doe"
+        assert body["email"] == "jane.doe@acme.com"
         assert body["company"] == "Acme Corp"
         assert body["location"] == "Tunis"
         assert body["goal"] == "request_referral"
@@ -59,8 +61,19 @@ class TestCreate:
         assert resp.status_code == 201
         body = resp.json()
         assert body["name"] == "Solo"
+        assert body["email"] is None
         assert body["goal"] is None
         assert body["status"] is None
+
+    async def test_create_accepts_contacted_status_and_email(self, isolated_db):
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/contacts", json={"name": "Recruiter X", "email": "r@acme.com", "status": "contacted"}
+            )
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["email"] == "r@acme.com"
+        assert body["status"] == "contacted"
 
     async def test_create_requires_name(self, isolated_db):
         async with _client() as client:
@@ -142,6 +155,19 @@ class TestUpdate:
             resp = await client.patch("/api/v1/contacts/nope", json={"company": "X"})
         assert resp.status_code == 404
 
+    async def test_update_email_and_contacted_status(self, isolated_db):
+        created = await isolated_db.create_contact(name="Jane Doe", status="to_contact")
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/contacts/{created['contact_id']}",
+                json={"email": "jane@example.org", "status": "contacted"},
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["email"] == "jane@example.org"
+        assert body["status"] == "contacted"
+        assert body["name"] == "Jane Doe"
+
     async def test_rename_to_duplicate_returns_409(self, isolated_db):
         a = await isolated_db.create_contact(name="Jane Doe")
         await isolated_db.create_contact(name="Beth Kim")
@@ -183,7 +209,7 @@ class TestDelete:
         assert await isolated_db.get_contact(third["contact_id"]) is not None
 
 
-CSV_HEADER = "name,company,location,goal,status,relationship,follow_up_date"
+CSV_HEADER = "name,email,company,location,goal,status,relationship,follow_up_date"
 
 
 class TestImport:
@@ -196,8 +222,8 @@ class TestImport:
     async def test_import_csv_creates_contacts(self, isolated_db):
         csv_content = (
             f"{CSV_HEADER}\n"
-            "Jane Doe,Acme Corp,Tunis,request_referral,follow_up,recruiter,2026-09-01\n"
-            "Beth Kim,,,networking,to_contact,friend,\n"
+            "Jane Doe,jane@acme.com,Acme Corp,Tunis,request_referral,follow_up,recruiter,2026-09-01\n"
+            "Beth Kim,,,,networking,to_contact,friend,\n"
         ).encode("utf-8")
         async with _client() as client:
             resp = await self._upload(client, "contacts.csv", csv_content)
@@ -207,6 +233,7 @@ class TestImport:
         assert body["skipped"] == 0
         assert body["errors"] == []
         jane = await isolated_db.get_contact_by_name("Jane Doe")
+        assert jane["email"] == "jane@acme.com"
         assert jane["company"] == "Acme Corp"
         assert jane["goal"] == "request_referral"
         assert jane["status"] == "follow_up"
@@ -217,8 +244,8 @@ class TestImport:
         await isolated_db.create_contact(name="Jane Doe")
         csv_content = (
             f"{CSV_HEADER}\n"
-            "jane doe,hr@acme.test,,,,,\n"
-            "New Person,,,,,,\n"
+            "jane doe,hr@acme.test,,,,,,\n"
+            "New Person,,,,,,,\n"
         ).encode("utf-8")
         async with _client() as client:
             resp = await self._upload(client, "contacts.csv", csv_content)
@@ -231,12 +258,12 @@ class TestImport:
     async def test_import_reports_per_row_errors(self, isolated_db):
         csv_content = (
             f"{CSV_HEADER}\n"
-            ",Acme Corp,,,,,\n"
-            "Bad Goal,,,not-a-goal,,,\n"
-            "Bad Status,,,,not-a-status,,\n"
-            "Bad Relation,,,,,,not-a-relation\n"
-            "Bad Date,,,,,,2026-13-45\n"
-            "Good Person,,,networking,to_contact,friend,2026-01-10\n"
+            ",,Acme Corp,,,,,\n"
+            "Bad Goal,,,,not-a-goal,,,\n"
+            "Bad Status,,,,,not-a-status,,\n"
+            "Bad Relation,,,,,,not-a-relation,\n"
+            "Bad Date,,,,,,,2026-13-45\n"
+            "Good Person,,,,networking,to_contact,friend,2026-01-10\n"
         ).encode("utf-8")
         async with _client() as client:
             resp = await self._upload(client, "contacts.csv", csv_content)
@@ -250,8 +277,8 @@ class TestImport:
     async def test_import_accepts_friendly_values(self, isolated_db):
         csv_content = (
             f"{CSV_HEADER}\n"
-            "Recruiter Pal,,,networking,follow-up,Alumni,2026-08-01\n"
-            "Hiring Mgr,,,informational interview,Meeting Scheduled,Hiring Manager,20/08/2026\n"
+            "Recruiter Pal,recruiter@x.com,,,networking,follow-up,Alumni,2026-08-01\n"
+            "Hiring Mgr,hiring@x.com,,,informational interview,Meeting Scheduled,Hiring Manager,20/08/2026\n"
         ).encode("utf-8")
         async with _client() as client:
             resp = await self._upload(client, "contacts.csv", csv_content)
@@ -259,6 +286,7 @@ class TestImport:
         assert body["created"] == 2
         assert body["errors"] == []
         first = await isolated_db.get_contact_by_name("Recruiter Pal")
+        assert first["email"] == "recruiter@x.com"
         assert first["status"] == "follow_up"
         assert first["relationship"] == "alumni"
         second = await isolated_db.get_contact_by_name("Hiring Mgr")

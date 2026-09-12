@@ -20,6 +20,11 @@
 | [Application tracker](screenshots/06-tracker.png) | Kanban board tracking each application through saved → applied → response → interview → accepted/rejected. |
 | [Job scraper](screenshots/07-job-scraper.png) | Pull job listings from external sources (RSS, remote boards, Tunisian boards) straight into your search. |
 | [Settings](screenshots/08-settings.png) | LLM provider config with Save & Test, content-generation toggles, language, GitHub connection and the danger zone. |
+| [Company pipeline](screenshots/09-companies.png) | Track target companies through watching → contacted → applied → interviewing → negotiating → won/lost, with CSV/XLSX import and consolidated filter bar. |
+| [Contact CRM](screenshots/10-contacts.png) | Networking and recruiter contacts with goals, relationship types, follow-up dates and CSV/XLSX import. |
+| [Interview Practice Hub](screenshots/11-interview-practice.png) | AI-generated interview questions based on your resume and the target job, with a practice mode to rehearse answers. |
+| [AI Chat](screenshots/12-ai-chat.png) | Conversational assistant grounded in your resume context — ask questions, get tailoring advice, or brainstorm cover-letter angles. |
+| [Profile](screenshots/13-profile.png) | User profile and account settings. |
 
 ## Features
 

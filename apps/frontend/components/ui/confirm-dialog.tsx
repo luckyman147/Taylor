@@ -15,6 +15,7 @@ import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import Check from 'lucide-react/dist/esm/icons/check';
 import Info from 'lucide-react/dist/esm/icons/info';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 
 /**
  * Confirm Dialog Component
@@ -35,6 +36,7 @@ export interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  confirmLoading?: boolean;
   variant?: 'danger' | 'warning' | 'success' | 'default';
   closeOnConfirm?: boolean;
   onConfirm: () => void;
@@ -52,6 +54,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmLabel,
   cancelLabel,
   confirmDisabled = false,
+  confirmLoading = false,
   variant = 'default',
   closeOnConfirm = true,
   onConfirm,
@@ -139,8 +142,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             variant={buttonVariant}
             onClick={handleConfirm}
             className="rounded-full"
-            disabled={confirmDisabled}
+            disabled={confirmDisabled || confirmLoading}
           >
+            {confirmLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {finalConfirmLabel}
           </Button>
         </DialogFooter>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Github from 'lucide-react/dist/esm/icons/github';
+import Search from 'lucide-react/dist/esm/icons/search';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,8 @@ export function GitHubImportButton({ onImported }: GitHubImportButtonProps) {
   const [tokenInput, setTokenInput] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importStep, setImportStep] = useState<'idle' | 'fetching' | 'importing'>('idle');
+  const [repoSearch, setRepoSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -184,6 +187,7 @@ export function GitHubImportButton({ onImported }: GitHubImportButtonProps) {
       return;
     }
     setImporting(true);
+    setImportStep('importing');
     setError(null);
     try {
       const result = await importProjectsFromGithub({ repo_urls: [...selected] });
@@ -191,10 +195,12 @@ export function GitHubImportButton({ onImported }: GitHubImportButtonProps) {
       setDialogOpen(false);
       setRepos(null);
       setSelected(new Set());
+      setRepoSearch('');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setImporting(false);
+      setImportStep('idle');
     }
   };
 
@@ -280,63 +286,124 @@ export function GitHubImportButton({ onImported }: GitHubImportButtonProps) {
               )}
             </div>
           ) : reposLoading || repos === null ? (
-            <div className="flex items-center gap-2 p-6 text-sm text-ink-soft">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t('profile.github.loading')}
+            <div className="space-y-3 p-6">
+              <div className="flex items-center gap-2 text-sm text-ink-soft">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('profile.github.loading')}
+              </div>
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 rounded-xl border border-[#f0ece4] px-4 py-3"
+                  >
+                    <div className="h-4 w-4 animate-pulse rounded bg-[#e6e3dc]" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3.5 w-1/3 animate-pulse rounded bg-[#e6e3dc]" />
+                      <div className="h-2.5 w-2/3 animate-pulse rounded bg-[#f0ece4]" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : repos.length === 0 ? (
             <p className="p-6 text-sm text-ink-soft">{t('profile.github.noDescription')}</p>
           ) : (
-            <div className="max-h-[50vh] overflow-y-auto p-2">
-              <div
-                onClick={toggleAll}
-                className="flex cursor-pointer items-center gap-2 border-b border-[#f0ece4] px-4 py-2 text-xs font-semibold text-ink"
-              >
-                <Checkbox checked={selected.size === repos.length} onCheckedChange={toggleAll} />
-                {t('profile.projects.selectAll')} ({selected.size}/{repos.length})
-              </div>
-              {repos.map((repo) => (
-                <div
-                  key={repo.url}
-                  onClick={() => toggleRepo(repo.url)}
-                  className="flex cursor-pointer items-start gap-3 border-b border-[#f0ece4] px-4 py-3 hover:bg-secondary/40"
-                >
-                  <Checkbox
-                    checked={selected.has(repo.url)}
-                    onCheckedChange={() => toggleRepo(repo.url)}
-                    className="mt-0.5"
+            <div className="max-h-[50vh] overflow-y-auto">
+              <div className="sticky top-0 z-10 border-b border-[#f0ece4] bg-white p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+                  <Input
+                    placeholder={t('profile.projects.repoSearch')}
+                    value={repoSearch}
+                    onChange={(e) => setRepoSearch(e.target.value)}
+                    className="h-9 rounded-xl border-[#e6e3dc] pl-9 text-xs"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-ink">{repo.name}</span>
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          repo.visibility === 'PUBLIC'
-                            ? 'border-green-200 bg-green-50 text-green-600'
-                            : 'border-amber-200 bg-[#fbf6e9] text-amber-600'
-                        }`}
-                      >
-                        {repo.visibility}
-                      </span>
-                    </div>
-                    {repo.description && (
-                      <p className="mt-0.5 truncate text-xs text-ink-soft">{repo.description}</p>
-                    )}
-                    {repo.languages.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {repo.languages.slice(0, 5).map((lang) => (
-                          <span
-                            key={lang}
-                            className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600"
-                          >
-                            {lang}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
-              ))}
+              </div>
+              {(() => {
+                const filtered = repoSearch.trim()
+                  ? repos.filter((repo) => {
+                      const q = repoSearch.toLowerCase();
+                      return (
+                        repo.name.toLowerCase().includes(q) ||
+                        (repo.description && repo.description.toLowerCase().includes(q)) ||
+                        repo.languages.some((l) => l.toLowerCase().includes(q))
+                      );
+                    })
+                  : repos;
+                return filtered.length === 0 ? (
+                  <p className="p-6 text-center text-sm text-ink-soft">
+                    {t('profile.projects.noRepoResults')}
+                  </p>
+                ) : (
+                  <div className="p-2">
+                    <div
+                      onClick={toggleAll}
+                      className="flex cursor-pointer items-center gap-2 border-b border-[#f0ece4] px-4 py-2 text-xs font-semibold text-ink"
+                    >
+                      <Checkbox
+                        checked={selected.size === filtered.length}
+                        onCheckedChange={toggleAll}
+                      />
+                      {t('profile.projects.selectAll')} ({selected.size}/{filtered.length})
+                    </div>
+                    {filtered.map((repo) => (
+                      <div
+                        key={repo.url}
+                        onClick={() => toggleRepo(repo.url)}
+                        className="flex cursor-pointer items-start gap-3 border-b border-[#f0ece4] px-4 py-3 hover:bg-secondary/40"
+                      >
+                        <Checkbox
+                          checked={selected.has(repo.url)}
+                          onCheckedChange={() => toggleRepo(repo.url)}
+                          className="mt-0.5"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-ink">
+                              {repo.name}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                repo.visibility === 'PUBLIC'
+                                  ? 'border-green-200 bg-green-50 text-green-600'
+                                  : 'border-amber-200 bg-[#fbf6e9] text-amber-600'
+                              }`}
+                            >
+                              {repo.visibility}
+                            </span>
+                          </div>
+                          {repo.description && (
+                            <p className="mt-0.5 truncate text-xs text-ink-soft">
+                              {repo.description}
+                            </p>
+                          )}
+                          {repo.languages.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {repo.languages.slice(0, 5).map((lang) => (
+                                <span
+                                  key={lang}
+                                  className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600"
+                                >
+                                  {lang}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {importing && (
+            <div className="mx-6 my-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs text-primary">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <p>{t('profile.projects.importing')}</p>
             </div>
           )}
 
@@ -354,7 +421,9 @@ export function GitHubImportButton({ onImported }: GitHubImportButtonProps) {
             {!needsConnect && repos !== null && !reposLoading && (
               <Button onClick={() => void runImport()} disabled={importing || selected.size === 0}>
                 {importing && <Loader2 className="h-4 w-4 animate-spin" />}
-                {t('profile.projects.importSelected', { count: String(selected.size) })}
+                {importing
+                  ? t('profile.projects.importing')
+                  : t('profile.projects.importSelected', { count: String(selected.size) })}
               </Button>
             )}
             {needsConnect && (

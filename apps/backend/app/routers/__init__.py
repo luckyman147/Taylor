@@ -7,6 +7,7 @@ from app.routers.config import router as config_router
 from app.routers.contacts import router as contacts_router
 from app.routers.email import router as email_router
 from app.routers.enrichment import router as enrichment_router
+from app.routers.eval import router as eval_router
 from app.routers.github import router as github_router
 from app.routers.health import router as health_router
 from app.routers.interview_practice import router as interview_practice_router
@@ -36,4 +37,5 @@ __all__ = [
     "job_intel_router",
     "email_router",
     "interview_practice_router",
+    "eval_router",
 ]

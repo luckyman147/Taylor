@@ -4,7 +4,7 @@
  * Persistent threads, two-phase tool calling, confirm/cancel, memory.
  */
 
-import { apiDelete, apiFetch, apiPatch, apiPost } from './client';
+import { BACKEND_URL, apiDelete, apiFetch, apiPatch, apiPost } from './client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,6 +14,7 @@ export interface ThreadSummary {
   thread_id: string;
   title: string;
   mode: string;
+  skills: string[];
   created_at: string;
   updated_at: string;
   message_count: number;
@@ -64,6 +65,78 @@ export interface ConfirmResponse {
   result_card: ToolCard | null;
 }
 
+// ---------------------------------------------------------------------------
+// Agent Event types (SSE streaming)
+// ---------------------------------------------------------------------------
+
+export type AgentStatus =
+  | 'thinking'
+  | 'planning'
+  | 'discovering_tools'
+  | 'generating_workflow'
+  | 'executing'
+  | 'tool_running'
+  | 'tool_completed'
+  | 'evaluating'
+  | 'recovering'
+  | 'retrieving_context'
+  | 'generating_answer'
+  | 'completed'
+  | 'failed'
+  | 'paused';
+
+export type ToolExecStatus = 'running' | 'success' | 'failed' | 'cached' | 'skipped';
+
+export interface AgentStatusEvent {
+  type: 'agent_status';
+  status: AgentStatus;
+  message: string;
+}
+
+export interface ToolExecutionEvent {
+  type: 'tool_execution';
+  tool: string;
+  status: ToolExecStatus;
+  duration_ms?: number;
+  message?: string;
+  iteration?: number;
+}
+
+export interface RecoveryEvent {
+  type: 'recovery';
+  attempt: number;
+  message: string;
+}
+
+export interface TurnCompleteEvent {
+  type: 'turn_complete';
+  data: TurnResponse;
+}
+
+export interface WorkflowEvent {
+  type: 'workflow';
+  status: 'generating' | 'executing' | 'completed';
+  step_count: number;
+  message: string;
+}
+
+export interface StepEvent {
+  type: 'step';
+  step_id: string;
+  tool: string;
+  status: 'running' | 'success' | 'failed' | 'skipped' | 'timeout';
+  duration_ms?: number;
+  error?: string;
+}
+
+export type AgentEvent =
+  | AgentStatusEvent
+  | ToolExecutionEvent
+  | RecoveryEvent
+  | TurnCompleteEvent
+  | WorkflowEvent
+  | StepEvent;
+
 export interface ThreadMessage {
   message_id: string;
   thread_id: string;
@@ -112,14 +185,15 @@ export async function listThreads(): Promise<ThreadSummary[]> {
 export async function createThread(
   mode: string = 'ask',
   title?: string,
+  skills: string[] = [],
 ): Promise<ThreadSummary> {
-  const res = await apiPost('/chat/threads', { mode, title }, 30_000);
+  const res = await apiPost('/chat/threads', { mode, title, skills }, 30_000);
   return asJson<ThreadSummary>(res, 'Failed to create thread');
 }
 
 export async function updateThread(
   threadId: string,
-  patch: { title?: string; mode?: string },
+  patch: { title?: string; mode?: string; skills?: string[] },
 ): Promise<void> {
   const res = await apiPatch(`/chat/threads/${threadId}`, patch);
   if (!res.ok) {
@@ -169,13 +243,96 @@ export async function getThreadMessages(
 export async function sendTurn(
   threadId: string,
   message: string,
+  resumeId?: string,
 ): Promise<TurnResponse> {
   const res = await apiPost(
     `/chat/threads/${threadId}/turn`,
-    { message },
+    { message, resume_id: resumeId || null },
     300_000, // LLM timeout
   );
   return asJson<TurnResponse>(res, 'Failed to send message');
+}
+
+// ---------------------------------------------------------------------------
+// Streaming turn (SSE)
+// ---------------------------------------------------------------------------
+
+export interface StreamCallbacks {
+  onEvent: (event: AgentEvent) => void;
+  onComplete: (response: TurnResponse) => void;
+  onError: (error: Error) => void;
+}
+
+/**
+ * Send a message with SSE streaming. Returns an AbortController so the
+ * caller can pause/cancel the request.
+ */
+export async function sendTurnStream(
+  threadId: string,
+  message: string,
+  resumeId: string | undefined,
+  callbacks: StreamCallbacks,
+): Promise<AbortController> {
+  const controller = new AbortController();
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/chat/threads/${threadId}/turn/stream?stream=true`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, resume_id: resumeId || null }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Stream request failed: ${res.status}`);
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') {
+          return controller;
+        }
+
+        try {
+          const event = JSON.parse(data) as AgentEvent;
+          if (event.type === 'turn_complete') {
+            callbacks.onComplete((event as TurnCompleteEvent).data);
+          } else {
+            callbacks.onEvent(event);
+          }
+        } catch {
+          // skip malformed events
+        }
+      }
+    }
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      // User cancelled — no error
+      return controller;
+    }
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+  }
+
+  return controller;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,4 +377,19 @@ export async function dismissMemory(
     const data = await res.json().catch(() => ({}));
     throw new Error(extractDetail(data) || 'Failed to dismiss memory');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Save Job from Chat
+// ---------------------------------------------------------------------------
+
+export async function saveJobFromChat(params: {
+  title: string;
+  company: string;
+  location?: string;
+  url?: string;
+  resume_id?: string;
+}): Promise<{ application_id: string; message: string }> {
+  const res = await apiPost('/applications/save-job', params, 10_000);
+  return asJson(res, 'Failed to save job');
 }

@@ -1,2165 +1,2303 @@
-{
-  "common": {
-    "save": "Save",
-    "saving": "Saving...",
-    "autosaved": "Auto-saved",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "edit": "Edit",
-    "download": "Download",
-    "loading": "Loading...",
-    "uploading": "Uploading...",
-    "checking": "Checking...",
-    "processing": "Processing...",
-    "generating": "Generating...",
-    "error": "Error",
-    "success": "Success",
-    "confirm": "Confirm",
-    "back": "Back",
-    "retry": "Retry",
-    "next": "Next",
-    "continue": "Continue",
-    "finish": "Finish",
-    "optional": "Optional",
-    "close": "Close",
-    "ok": "OK",
-    "search": "Search",
-    "filter": "Filter",
-    "reset": "Reset",
-    "apply": "Apply",
-    "selectOption": "Select an option...",
-    "unknown": "Unknown",
-    "keysCleared": "API keys cleared successfully",
-    "databaseReset": "Database reset successfully",
-    "popupBlocked": "Popup blocked. Please allow popups or open this URL manually: {url}"
-  },
-  "home": {
-    "brandLine1": "Resume",
-    "brandLine2": "Matcher",
-    "docs": "Docs",
-    "launchApp": "Launch App"
-  },
-  "nav": {
-    "dashboard": "Dashboard",
-    "builder": "Resume Builder",
-    "tailor": "Tailor Resume",
-    "settings": "Settings",
-    "backToDashboard": "Back to Dashboard",
-    "goToSettings": "Go to Settings",
-    "applicationTracker": "Application Tracker",
-    "jobSearch": "Job Search",
-    "jobTracking": "Job Tracking",
-    "resumeBuilder": "Resume Builder",
-    "companies": "Company Tracker",
-    "contacts": "Contact Tracker",
-    "profile": "My Profile",
-    "chat": "AI Chat",
-    "createResume": "Create Resume",
-    "interviewPractice": "Interview Practice"
-  },
-  "dashboard": {
-    "title": "Dashboard",
-    "subtitle": "Manage your resumes and job applications",
-    "myResumes": "My Resumes",
-    "noResumes": "No resumes yet",
-    "noResumesDescription": "Upload your first resume to get started",
-    "uploadResume": "Upload Resume",
-    "createNew": "Create New",
-    "lastModified": "Last modified",
-    "actions": "Actions",
-    "preview": "Preview",
-    "viewResume": "View Resume",
-    "editResume": "Edit Resume",
-    "deleteResume": "Delete Resume",
-    "downloadPdf": "Download PDF",
-    "tailorResume": "Tailor for Job",
-    "selectModule": "Select Module",
-    "masterResume": "Master Resume",
-    "tailoredResume": "Tailored Resume",
-    "initializeMasterResume": "Initialize Master Resume",
-    "initializeSequence": "Initialize Sequence",
-    "masters": "Master Resumes",
-    "addAnotherResume": "Add Another Resume",
-    "refreshStatus": "Refresh status",
-    "retryProcessing": "Retry Processing",
-    "retryingProcessing": "Retrying...",
-    "deleteAndReupload": "Delete & Re-upload",
-    "processingFailedHint": "We couldn't read this file. Retry or upload a different one.",
-    "retrySuccess": "Processing succeeded!",
-    "retryFailed": "Retry failed. Try uploading a different file.",
-    "createResume": "Create Resume",
-    "edited": "Edited {date}",
-    "statusLine": "STATUS: {status}",
-    "status": {
-      "checking": "Checking...",
-      "processing": "Processing...",
-      "ready": "Ready",
-      "failed": "Processing failed",
-      "pending": "Pending"
-    },
-    "llmNotConfiguredTitle": "[ LLM NOT CONFIGURED ]",
-    "llmNotConfiguredMessage": "> API keys are missing. Resume tailoring is disabled until configured in settings.",
-    "setupRequiredTitle": "[ SETUP REQUIRED ]",
-    "setupRequiredMessage": "> Configure API key in settings to enable resume tailoring.",
-    "uploadDialog": {
-      "success": "Resume uploaded successfully.",
-      "successMaster": "Resume uploaded and set as master.",
-      "successMissingId": "Upload succeeded but no Resume ID returned.",
-      "parsingFailed": "Resume uploaded but AI parsing failed. You can still tailor it manually.",
-      "failed": "Upload failed.",
-      "dropzoneTitle": "Click or Drag File",
-      "dropzoneSubtitle": "PDF, DOC, DOCX (Max 4MB)",
-      "tryDifferentFile": "Try Different File",
-      "parsingFailedKeepOpen": "AI parsing failed. Try a different file or close this dialog.",
-      "saveAsMaster": "Save as master resume",
-      "saveAsMasterHint": "Use this resume as a base for tailoring multiple job applications."
-    }
-  },
-  "builder": {
-    "title": "Resume Builder",
-    "editMode": "Edit Mode",
-    "previewMode": "Preview Mode",
-    "createAndPreview": "Create & Preview",
-    "unsavedDraft": "Unsaved Draft",
-    "personalInfo": "Personal Information",
-    "summary": "Summary",
-    "experience": "Experience",
-    "education": "Education",
-    "skills": "Skills",
-    "projects": "Projects",
-    "certifications": "Certifications",
-    "languages": "Languages",
-    "awards": "Awards",
-    "addSection": "Add Section",
-    "removeSection": "Remove Section",
-    "saveChanges": "Save Changes",
-    "discardChanges": "Discard Changes",
-    "placeholders": {
-      "summary": "Briefly describe your professional background..."
-    },
-    "contentStats": {
-      "wordsChars": "{wordCount} words / {charCount} chars"
-    },
-    "additionalForm": {
-      "instructions": "Enter items separated by new lines (press Enter for each item).",
-      "placeholders": {
-        "technicalSkills": "React\nTypeScript\nNode.js",
-        "languages": "English\nSpanish",
-        "certifications": "AWS Solution Architect\nGoogle Analytics",
-        "awards": "Employee of the Month\nHackathon Winner"
-      }
-    },
-    "customSections": {
-      "dialogTitle": "Add Custom Section",
-      "dialogDescription": "Create a new section for your resume with a custom name and type.",
-      "sectionNameLabel": "Section Name",
-      "sectionNamePlaceholder": "e.g., Publications, Volunteer Work, Certifications",
-      "sectionTypeLabel": "Section Type",
-      "addCustomSectionButton": "Add Custom Section",
-      "sectionTypes": {
-        "textBlockLabel": "Text Block",
-        "textBlockDescription": "Single text area (like Summary)",
-        "itemListLabel": "Item List",
-        "itemListDescription": "Multiple entries with details (like Experience)",
-        "stringListLabel": "Skill List",
-        "stringListDescription": "Simple list of items (like Skills)"
-      },
-      "contentLabel": "Content",
-      "contentPlaceholder": "Enter content for {name}...",
-      "defaultTextPlaceholder": "Enter text content...",
-      "entryLabel": "Entry",
-      "addEntryLabel": "Add Entry",
-      "itemsLabel": "Items",
-      "itemsPlaceholder": "Enter items, one per line",
-      "unknownSectionType": "Unknown section type: {type}",
-      "unknownDefaultSection": "Unknown default section: {section}"
-    },
-    "sectionHeader": {
-      "renameSection": "Rename section",
-      "customTag": "Custom",
-      "hiddenFromPdfTag": "Hidden from PDF",
-      "hideSection": "Hide section",
-      "showSection": "Show section",
-      "moveUp": "Move up",
-      "moveDown": "Move down",
-      "deleteSection": "Delete section",
-      "deleteTitle": "Delete Section",
-      "deleteDescription": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
-    },
-    "previewTabs": {
-      "resume": "RESUME",
-      "coverLetter": "COVER LETTER",
-      "outreach": "OUTREACH MAIL",
-      "jdMatch": "JD MATCH",
-      "interviewPrep": "INTERVIEW PREP"
-    },
-    "footer": {
-      "moduleLabel": "Resume Builder Module",
-      "singleColumn": "Single Column",
-      "twoColumn": "Two Column"
-    },
-    "pageSize": {
-      "usLetter": "US Letter"
-    },
-    "generatePrompt": {
-      "notAvailableTitle": "{title} Not Available",
-      "notAvailableDescription": "To generate {title}, first tailor your resume with a job description.",
-      "goToDashboard": "Go to Dashboard",
-      "generateTitle": "Generate {title}",
-      "coverLetterDescription": "Generate a tailored cover letter based on your resume and job description.",
-      "outreachDescription": "Generate a concise outreach message for LinkedIn or email based on your resume and job description.",
-      "generateButton": "Generate {title}",
-      "coverLetterFooter": "Tip: tailor first for best results.",
-      "outreachFooter": "Tip: keep it short and personalized.",
-      "interviewPrepDescription": "Generate role-specific interview preparation based on your tailored resume and job description.",
-      "interviewPrepFooter": "Tip: use this after tailoring to prepare truthful, resume-grounded answers."
-    },
-    "regenerateDialog": {
-      "title": "Regenerate {title}?",
-      "description": "This will replace your current {title} with a newly generated one. Any edits you've made will be lost.",
-      "instructionLabel": "Additional instructions (optional)",
-      "instructionPlaceholder": "e.g. Focus on my Python backend experience"
-    },
-    "regenerate": {
-      "buttonLabel": "AI Regenerate",
-      "stepLabel": "Step {current} of {total}",
-      "selectDialog": {
-        "title": "Select Items to Regenerate",
-        "subtitle": "Choose which parts of your resume you want to improve",
-        "experience": "Work Experience",
-        "projects": "Projects",
-        "skills": "Technical Skills",
-        "noItemsSelected": "Please select at least one item",
-        "noItemsAvailable": "No items available to regenerate. Add experience, projects, or skills first.",
-        "itemCount": {
-          "one": "{count} item",
-          "other": "{count} items"
-        },
-        "continueButton": "Continue"
-      },
-      "instructionDialog": {
-        "title": "What Would You Like to Improve?",
-        "subtitle": "Provide specific feedback to guide the AI",
-        "defaultInstruction": "Improve the content with stronger action verbs and quantifiable impact where available.",
-        "selectedItems": "Selected Items",
-        "placeholder": "Example: Add more quantifiable metrics, emphasize leadership skills, use more action verbs...",
-        "hint": "Be specific about what you're not satisfied with",
-        "backButton": "Back",
-        "generateButton": "Generate"
-      },
-      "diffPreview": {
-        "title": "Preview Changes",
-        "subtitle": "Review the regenerated content before applying",
-        "expandItem": "Expand {item}",
-        "collapseItem": "Collapse {item}",
-        "partialFailures": "Some items couldn't be regenerated ({count}). You can still review and apply the successful ones.",
-        "changesCount": "{count} items modified",
-        "rejectButton": "Reject & Regenerate",
-        "acceptButton": "Accept Changes",
-        "originalLabel": "Original",
-        "newLabel": "New",
-        "noContent": "No content",
-        "applying": "Applying...",
-        "loading": "Generating improved content..."
-      },
-      "errors": {
-        "generationFailed": "Failed to generate content. Please try again.",
-        "applyFailed": "Failed to apply changes. Please try again.",
-        "resumeChanged": "Resume content changed since regeneration. Please regenerate and try again.",
-        "noChangesToApply": "No changes to apply.",
-        "networkError": "Network error. Please check your connection."
-      }
-    },
-    "jdMatch": {
-      "yourResume": "Your Resume",
-      "matchingKeywordsHighlighted": "(matching keywords highlighted)",
-      "jobDescriptionTitle": "Job Description",
-      "at": "at",
-      "atSeparator": " at ",
-      "roleSeparator": "-",
-      "aboutTitle": "About JD Match",
-      "aboutDescription": "This view shows how well your resume matches the job description. Keywords from the JD are highlighted in yellow on your resume, helping you see which skills and terms are already covered.",
-      "highlightedKeywordsTitle": "Highlighted Keywords",
-      "highlightedKeywordsDescriptionTemplate": "Words highlighted in __COLOR__ appear in both the job description and your resume. A higher match rate suggests better alignment with the job requirements.",
-      "highlightedKeywordsDescriptionPrefix": "Words highlighted in",
-      "highlightColor": "yellow",
-      "highlightedKeywordsDescriptionSuffix": "appear in both the job description and your resume. A higher match rate suggests better alignment with the job requirements.",
-      "tipsTitle": "Tips",
-      "tips": {
-        "items": {
-          "addMissingKeywords": "Use the Resume tab to add missing keywords",
-          "focusTechnicalSkills": "Focus on technical skills and tools mentioned in the JD",
-          "matchActionVerbs": "Match action verbs from the job requirements"
-        }
-      },
-      "stats": {
-        "keywordsExtracted": "{count} keywords extracted",
-        "matchesFound": "{count} matches found",
-        "matchRateLabel": "Match Rate:"
-      }
-    },
-    "genericItemForm": {
-      "itemLabel": "Item",
-      "addItemLabel": "Add {label}",
-      "fields": {
-        "title": "Title",
-        "organization": "Organization",
-        "location": "Location",
-        "years": "Years",
-        "descriptionPoints": "Description Points"
-      },
-      "actions": {
-        "addPoint": "Add Point",
-        "togglePointStyle": "Toggle bullet marker"
-      },
-      "placeholders": {
-        "title": "Title",
-        "organization": "Organization",
-        "location": "Location",
-        "years": "Jan 2020 - Present",
-        "description": "Describe your contribution..."
-      },
-      "noEntries": "// NO {label} ENTRIES",
-      "addFirstItem": "Add First {label}"
-    },
-    "forms": {
-      "experience": {
-        "addJob": "Add Job",
-        "addFirstJob": "Add First Job",
-        "fields": {
-          "jobTitle": "Job Title",
-          "company": "Company"
-        },
-        "placeholders": {
-          "jobTitle": "Senior Developer",
-          "company": "Tech Corp",
-          "location": "Remote / City",
-          "years": "Jan 2020 - Present",
-          "description": "Describe your achievement..."
-        }
-      },
-      "education": {
-        "addSchool": "Add School",
-        "addFirstSchool": "Add First School",
-        "fields": {
-          "institution": "Institution",
-          "degree": "Degree",
-          "description": "Description",
-          "descriptionOptional": "Description (Optional)"
-        },
-        "placeholders": {
-          "institution": "University Name",
-          "degree": "Bachelor of Science",
-          "years": "Aug 2016 - May 2020",
-          "description": "Additional details..."
-        }
-      },
-      "projects": {
-        "addProject": "Add Project",
-        "addFirstProject": "Add First Project",
-        "fields": {
-          "projectName": "Project Name",
-          "role": "Role",
-          "website": "Website"
-        },
-        "placeholders": {
-          "projectName": "Taylor",
-          "role": "Creator",
-          "years": "Mar 2023",
-          "github": "github.com/username/project",
-          "website": "https://project-demo.com",
-          "description": "Project detail..."
-        }
-      },
-      "certifications": {
-        "addCertificate": "Add Certificate",
-        "addManually": "Add manually",
-        "noCertificates": "No certificates yet. Add them from your profile or manually.",
-        "fields": {
-          "certificate": "Certificate"
-        },
-        "placeholders": {
-          "certificate": "e.g. AWS Certified Solutions Architect — Amazon (2023)"
-        }
-      },
-      "awards": {
-        "addAward": "Add Award",
-        "addManually": "Add manually",
-        "noAwards": "No awards yet. Add them from your profile or manually.",
-        "fields": {
-          "award": "Award"
-        },
-        "placeholders": {
-          "award": "e.g. Employee of the Month — Company (2024)"
-        }
-      }
-    },
-    "formatting": {
-      "panelTitle": "Template & Formatting",
-      "template": "Template",
-      "templates": {
-        "swissSingle": {
-          "name": "Single Column",
-          "description": "Traditional full-width layout with maximum content density"
-        },
-        "swissTwoColumn": {
-          "name": "Two Column",
-          "description": "Experience-focused main column with sidebar for skills"
-        },
-        "modern": {
-          "name": "Modern",
-          "description": "Colorful accents with customizable theme colors"
-        },
-        "modernTwoColumn": {
-          "name": "Modern Two Column",
-          "description": "Two-column layout with modern colorful accents and themes"
-        },
-        "latex": {
-          "name": "LaTeX",
-          "description": "Classic serif academic layout with ruled section headers"
-        },
-        "clean": {
-          "name": "Clean",
-          "description": "Minimal sans layout with large understated section headers"
-        },
-        "vivid": {
-          "name": "Vivid",
-          "description": "Colorful two-column layout with accent headers and arrow bullets"
-        }
-      },
-      "accentColor": "Accent Color",
-      "accentColors": {
-        "blue": "Blue",
-        "green": "Green",
-        "orange": "Orange",
-        "red": "Red"
-      },
-      "dateFormat": "Date Format",
-      "dateFormats": {
-        "short": "Short name (Sep 2020)",
-        "long": "Long name (September 2020)",
-        "mmmyyyy": "Number (MMM/YYYY)",
-        "years": "Years (2020 - 2024)"
-      },
-      "lineHeight": "Line Height",
-      "listLineHeight": "List Line Height",
-      "headerAlignment": "Header Alignment",
-      "dateAlignment": "Date Alignment",
-      "locationAlignment": "Location Alignment",
-      "alignmentOptions": {
-        "left": "Left",
-        "center": "Center",
-        "right": "Right"
-      },
-      "skillsLayout": "Skills Layout",
-      "skillsLayoutOptions": {
-        "comma": "Comma separated",
-        "list": "Line separated",
-        "columns": "Columns"
-      },
-      "marginUnit": "Units",
-      "marginUnits": {
-        "mm": "Millimeters (mm)",
-        "percent": "Percent of page"
-      },
-      "pageSize": "Page Size",
-      "margins": "Margins",
-      "margin": {
-        "top": "Top",
-        "bottom": "Bottom",
-        "left": "Left",
-        "right": "Right"
-      },
-      "spacing": "Spacing",
-      "spacingSection": "Section",
-      "spacingItems": "Items",
-      "spacingLines": "Lines",
-      "typography": "Typography",
-      "padding": "Padding",
-      "fontSize": "Font Size",
-      "baseFontSize": "Base",
-      "headerScale": "Headers",
-      "headerFontFamily": "Headers",
-      "bodyFontFamily": "Body",
-      "fontNames": {
-        "serif": "Serif",
-        "sans": "Sans",
-        "mono": "Mono",
-        "timesRoman": "Times"
-      },
-      "options": "Options",
-      "compactMode": "Compact Mode",
-      "contactIcons": "Contact Icons",
-      "bulletMarker": "Bullet Marker",
-      "listSeparator": "List Separator",
-      "markerOptions": {
-        "*": "*",
-        "-": "-",
-        ">>": ">>",
-        "->": "->"
-      },
-      "separatorOptions": {
-        "*": "*",
-        "-": "-",
-        ",": "Comma",
-        "|": "Pipe"
-      },
-      "weightOptions": {
-        "light": "Light",
-        "regular": "Regular",
-        "bold": "Bold",
-        "extralight": "Extra Light"
-      },
-      "transformOptions": {
-        "uppercase": "All Caps",
-        "as-written": "As Written",
-        "capitalize": "Title Case"
-      },
-      "elementNames": {
-        "bodyCopy": "Body Copy",
-        "primaryHeading": "Primary Heading",
-        "secondaryHeading": "Secondary Heading",
-        "sectionTitle": "Section Titles",
-        "fullName": "Full Name",
-        "minorCopy": "Minor Copy"
-      },
-      "spacingRows": {
-        "betweenSections": "Between Sections",
-        "titlesContent": "Titles & Content",
-        "primarySecondaryHeadings": "Primary & Secondary Headings",
-        "contentBlocks": "Content Blocks",
-        "listItems": "List Items"
-      },
-      "borderRows": {
-        "aboveHeader": "Above Header",
-        "belowHeader": "Below Header",
-        "sectionTitles": "Section Titles"
-      },
-      "borderEnabled": "Show",
-      "ptUnit": "pt",
-      "effectiveOutput": "Effective Output",
-      "effectiveMargins": "Margins: T{top} B{bottom} L{left} R{right}",
-      "effectiveSectionGap": "Section Gap",
-      "effectiveItemGap": "Item Gap",
-      "effectiveLineHeight": "Line Height",
-      "effectiveListLineHeight": "List Line Height",
-      "effectiveBaseFont": "Base Font",
-      "effectiveHeaderScale": "Header Scale",
-      "effectiveHeaderFont": "Header Font",
-      "effectiveBodyFont": "Body Font",
-      "compactHint": "Compact mode tightens spacing and line height. Margins and base font size stay literal.",
-      "resetDefaults": "Reset to Defaults",
-      "workShowBy": "Show work experience by",
-      "workDatesBy": "Show dates by",
-      "workLocationBy": "Show location by",
-      "workShowByOptions": {
-        "company": "Company",
-        "position": "Position"
-      },
-      "workDatesByOptions": {
-        "company": "Company",
-        "position": "Position",
-        "both": "Both"
-      },
-      "workLocationByOptions": {
-        "company": "Company",
-        "position": "Position",
-        "none": "None"
-      },
-      "educationShowBy": "Show education by",
-      "educationLayout": "Layout",
-      "educationShowByOptions": {
-        "degree": "Degree",
-        "institution": "Institution"
-      },
-      "educationLayoutOptions": {
-        "stacked": "Stacked",
-        "inline": "Inline"
-      },
-      "previewSelectors": {
-        "metaSample": "Sep 2020",
-        "locationSample": "Paris"
-      }
-    },
-    "personalInfoForm": {
-      "placeholders": {
-        "name": "John Doe",
-        "title": "Software Engineer",
-        "email": "john@example.com",
-        "phone": "+1 (555) 000-0000",
-        "location": "City, Country",
-        "website": "portfolio.com",
-        "linkedin": "linkedin.com/in/john",
-        "github": "github.com/john"
-      },
-      "displayAsLink": "Show as link"
-    },
-    "leftPanel": {
-      "editorPanel": "Editor Panel",
-      "coverLetterEditor": "Cover Letter Editor",
-      "outreachEditor": "Outreach Message Editor",
-      "jdMatchAnalysis": "JD Match Analysis",
-      "interviewPrep": "Interview Prep"
-    },
-    "editorModes": {
-      "design": "Design",
-      "content": "Content"
-    },
-    "designTabs": {
-      "presentation": "Presentation",
-      "sections": "Sections",
-      "settings": "Settings",
-      "advanced": "Advanced"
-    },
-    "designGroups": {
-      "controls": "Controls",
-      "styling": "Styling",
-      "heightsPaddings": "Heights & Paddings",
-      "alignmentsLayouts": "Alignments & Layouts",
-      "pageSetup": "Page Setup",
-      "workExperienceSettings": "Work Experience Settings",
-      "educationSettings": "Education Settings",
-      "advancedStyles": "Advanced Styles",
-      "textSizes": "Text Sizes",
-      "textWeights": "Text Weights",
-      "textTransformations": "Text Transformations",
-      "verticalSpacing": "Vertical Spacing",
-      "borders": "Borders",
-      "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
-    },
-    "sectionOrder": {
-      "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
-      "dragToReorder": "Drag to reorder"
-    },
-    "actions": {
-      "saveAsMaster": "Save as Master",
-      "alreadyMaster": "This resume is already a master",
-      "saveMoreOptions": "More save options",
-      "saveAsMasterConfirmTitle": "Save as Master Resume?",
-      "saveAsMasterConfirmDescription": "This resume will become the base used to tailor future job applications. Other masters are kept.",
-      "saveAsMasterConfirmLabel": "Save as Master"
-    },
-    "alerts": {
-      "saveNotAvailable": "Save is only available when editing an existing resume.",
-      "saveFailed": "Failed to save resume. Please try again.",
-      "saveAsMasterSuccess": "Resume saved as master",
-      "saveAsMasterFailed": "Failed to save as master. Please try again.",
-      "coverLetterSaveSuccess": "Cover letter saved",
-      "outreachSaveSuccess": "Outreach message saved",
-      "downloadSuccess": "Resume downloaded",
-      "reloadFailed": "Applied changes, but failed to reload the resume. Please refresh the page.",
-      "downloadNotAvailable": "Download is only available for saved resumes.",
-      "downloadFailed": "Failed to download resume. Please try again.",
-      "coverLetterSaveFailed": "Failed to save cover letter. Please try again.",
-      "coverLetterDownloadRequiresResume": "Save the resume first to download the cover letter.",
-      "coverLetterMissing": "No cover letter available. Enable cover letter generation in Settings and tailor a resume.",
-      "coverLetterDownloadFailed": "Failed to download cover letter: {error}",
-      "outreachSaveFailed": "Failed to save outreach message. Please try again.",
-      "coverLetterGenerateFailed": "Failed to generate cover letter: {error}",
-      "outreachGenerateFailed": "Failed to generate outreach message: {error}",
-      "interviewPrepGenerateFailed": "Failed to generate interview preparation: {error}"
-    },
-    "projectsDialog": {
-      "title": "Add Project from Profile",
-      "description": "Pick a project from your career profile. AI writes the bullet points from its README, or from a short prompt of yours.",
-      "profileProjects": "Profile projects",
-      "searchPlaceholder": "Search projects...",
-      "noProjects": "No projects in your profile yet.",
-      "noProjectsHint": "Add projects in your profile so they can appear here.",
-      "goToProfile": "Go to profile",
-      "startFromScratch": "Start from scratch",
-      "startFromScratchHint": "Add an empty project entry and fill it manually",
-      "readmeAvailable": "README",
-      "noReadme": "No README",
-      "readmeLabel": "Project README",
-      "promptLabel": "Describe what you built",
-      "promptPlaceholder": "e.g. Real-time chat app with WebSockets, Redis pub/sub and 5k concurrent users",
-      "promptHint": "Optional — add a focus or details you want mentioned. AI combines it with the README (when present).",
-      "generate": "Generate bullet points",
-      "regenerate": "Regenerate",
-      "generating": "Generating...",
-      "previewTitle": "AI bullet points",
-      "addToResume": "Add to resume",
-      "back": "Back",
-      "loading": "Loading your projects...",
-      "loadError": "Could not load your projects.",
-      "retry": "Retry",
-      "generateError": "Something went wrong while generating. Please try again.",
-      "allAdded": "All your profile projects are already in this resume.",
-      "allAddedHint": "Add more projects in your profile to see them here.",
-      "showAll": "Show all ({{count}} more)",
-      "showLess": "Show less"
-    },
-    "certificationsDialog": {
-      "title": "Add Certificate from Profile",
-      "description": "Pick a certificate from your career profile to add it to this resume.",
-      "profileCertifications": "Profile certificates",
-      "searchPlaceholder": "Search certificates...",
-      "allAdded": "All your profile certificates are already in this resume.",
-      "noCertificationsHint": "Add certificates in your profile so they can appear here.",
-      "goToProfile": "Go to profile",
-      "loading": "Loading your certificates...",
-      "loadError": "Could not load your certificates.",
-      "retry": "Retry"
-    },
-    "awardsDialog": {
-      "title": "Add Award from Profile",
-      "description": "Pick an award from your career profile to add it to this resume.",
-      "profileAwards": "Profile awards",
-      "searchPlaceholder": "Search awards...",
-      "allAdded": "All your profile awards are already in this resume.",
-      "noAwardsHint": "Add awards in your profile so they can appear here.",
-      "goToProfile": "Go to profile",
-      "loading": "Loading your awards...",
-      "loadError": "Could not load your awards.",
-      "retry": "Retry"
-    }
-  },
-  "enrichment": {
-    "title": "Resume Enhancement",
-    "loading": {
-      "analyzingTitle": "Analyzing your resume...",
-      "analyzingDescription": "Identifying areas that could use more detail",
-      "generatingTitle": "Crafting enhanced descriptions...",
-      "generatingDescription": "Using your answers to improve your resume",
-      "applyingTitle": "Applying enhancements...",
-      "applyingDescription": "Updating your master resume"
-    },
-    "questionProgress": "Question {current} of {total}",
-    "itemType": {
-      "experience": "Experience",
-      "project": "Project"
-    },
-    "shortcutHint": "Press Shift+Enter for new line, Cmd/Ctrl+Enter to continue",
-    "preview": {
-      "title": "Review New Content",
-      "description": "Review the new bullet points that will be added to your resume",
-      "applyButton": "Add to Resume",
-      "keepingLabel": "Keeping",
-      "addingLabel": "Adding",
-      "existingCount": "({count} existing)",
-      "newCount": "({count} new)",
-      "noExistingDescription": "No existing description"
-    },
-    "complete": {
-      "title": "Resume Enhanced!",
-      "updatedCountSingular": "{count} item updated successfully",
-      "updatedCountPlural": "{count} items updated successfully",
-      "updatedFallback": "Your resume has been updated with enhanced descriptions",
-      "doneButton": "Done"
-    },
-    "noImprovements": {
-      "title": "Your resume looks great!",
-      "defaultDescription": "We couldn't find any items that need improvement. Your experience and project descriptions are already well-detailed."
-    },
-    "error": {
-      "title": "Something went wrong",
-      "unexpected": "An unexpected error occurred"
-    }
-  },
-  "tailor": {
-    "aiConnection": {
-      "title": "AI connection",
-      "subtitle": "Test your LLM provider before you start tailoring.",
-      "test": "Test connection",
-      "testing": "Testing…",
-      "retest": "Test again",
-      "notConfigured": "No LLM provider configured",
-      "ok": "Connection healthy",
-      "failed": "Connection failed",
-      "connectedAs": "{provider} · {model}",
-      "latency": "{ms} ms",
-      "gotoSettings": "Open Settings"
-    },
-    "title": "Tailor Resume",
-    "subtitle": "Optimize your resume for a specific job",
-    "heroTitle": "Tailor Your Resume",
-    "selectResume": "Select Resume",
-    "resumePromptDescription": "Choose which master resume to tailor from.",
-    "pasteJobDescription": "Paste Job Description",
-    "pasteJobDescriptionBelow": "Paste Job Description Below",
-    "jobDescriptionPlaceholder": "Paste the job description here...",
-    "promptLabel": "Tailoring intensity",
-    "promptDescription": "Choose how strongly to align your resume to the job description.",
-    "promptOptions": {
-      "nudge": {
-        "label": "Light nudge",
-        "description": "Minimal edits to better align existing experience."
-      },
-      "keywords": {
-        "label": "Keyword enhance",
-        "description": "Blend in relevant keywords without changing role or scope."
-      },
-      "full": {
-        "label": "Full tailor",
-        "description": "Comprehensive tailoring using the job description."
-      },
-      "recruiter": {
-        "label": "Recruiter tailor",
-        "description": "Recruiter-grade tailoring with evidence mapping and ATS readability."
-      }
-    },
-    "analyzeJob": "Analyze Job",
-    "generateTailored": "Generate Tailored Resume",
-    "setupRequiredTitle": "[ SETUP REQUIRED ]",
-    "noApiKeyMessage": "> No API key configured. Resume tailoring requires an LLM provider.",
-    "configureApiKey": "Configure API Key",
-    "configureApiKeyFirst": "Configure API Key First",
-    "charactersCount": "{count} chars",
-    "matchScore": "Match Score",
-    "suggestions": "Suggestions",
-    "keywords": "Keywords to Include",
-    "footerTagline": "AI-POWERED OPTIMIZATION ENGINE",
-    "diffModal": {
-      "title": "Review AI Tailoring Results",
-      "subtitle": "Please carefully review the changes to ensure no false information has been added",
-      "summary": "Change Summary",
-      "skillsAdded": "Skills Added",
-      "skillsRemoved": "Skills Removed",
-      "descriptionsModified": "Descriptions Modified",
-      "certificationsAdded": "Certifications Added",
-      "highRiskChanges": "High Risk Changes",
-      "warningTitle": "Detected {count} high-risk addition(s)",
-      "warningMessage": "Please confirm these additions exist in your original resume or are reflected in your descriptions",
-      "summaryChanges": "Summary Changes",
-      "skillChanges": "Skill Changes",
-      "descriptionChanges": "Experience Description Changes",
-      "experienceChanges": "Experience Entry Changes",
-      "educationChanges": "Education Changes",
-      "projectChanges": "Project Changes",
-      "certificationChanges": "Certification Changes",
-      "languageChanges": "Language Changes",
-      "awardChanges": "Award Changes",
-      "rejectButton": "Reject & Regenerate",
-      "confirmButton": "Confirm & Save"
-    },
-    "regenerateDialog": {
-      "title": "Regenerate tailored resume?",
-      "description": "This will discard the current preview and request a new AI tailoring result.",
-      "confirmLabel": "Regenerate"
-    },
-    "missingDiffDialog": {
-      "title": "Unable to calculate changes",
-      "description": "We could not compute a diff for this resume. This can happen with legacy resumes that lack structured data. You can continue to save the tailored resume or cancel to review later.",
-      "confirmLabel": "Continue without diff"
-    },
-    "errors": {
-      "jobDescriptionTooShort": "Job description is too short. Add more detail and try again.",
-      "apiKeyError": "Your API key isn't working. Check it in Settings.",
-      "rateLimit": "Rate limit reached. Wait about a minute and try again.",
-      "failedToGenerate": "Couldn't generate the resume. Check your API key in Settings, then try again.",
-      "timeout": "The request timed out. Please try again with a shorter job description or check your connection.",
-      "failedToPreview": "Couldn't preview the resume. Check your API key in Settings, then try again.",
-      "failedToConfirm": "Couldn't apply the changes. Please try again."
-    },
-    "projectsPicker": {
-      "title": "Choose Projects for Your Tailored Resume",
-      "subtitle": "These career projects match the job description. Pick up to 4 — the Projects section of your tailored resume will be replaced with your selection.",
-      "matchScore": "Match",
-      "inResume": "Already in resume",
-      "noDescription": "No description could be drafted for this project (LLM unavailable).",
-      "selectHint": "Select up to {count} projects",
-      "skip": "Skip — use top matches automatically",
-      "tailorWithSelection": "Tailor with selection"
-    },
-    "jobIntel": {
-      "shouldApply": {
-        "title": "Should I Apply?",
-        "matchPercent": "Match",
-        "careerRelevance": "Career Relevance",
-        "salaryPotential": "Salary Potential",
-        "competition": "Competition",
-        "companyQuality": "Company Quality",
-        "ghostRisk": "Ghost Risk",
-        "verdict": "Verdict",
-        "biggestGap": "Biggest Gap",
-        "recommendation": "Recommendation",
-        "analyze": "Analyze Job",
-        "analyzing": "Analyzing...",
-        "verdictYes": "Yes — strong match",
-        "verdictConditional": "Conditional — address gaps",
-        "verdictNo": "No — low match",
-        "notAvailable": "n/a"
-      },
-      "redFlags": {
-        "title": "Red Flags",
-        "ghostRisk": "Ghost Risk",
-        "noFlags": "No red flags detected",
-        "info": "Info",
-        "warning": "Warning",
-        "danger": "Danger",
-        "loadFailed": "Could not load red flags."
-      },
-      "jobDna": {
-        "title": "Job DNA",
-        "technical": "Technical Skills",
-        "experience": "Experience Domains",
-        "company": "Company Culture",
-        "matched": "Matched",
-        "missing": "Missing",
-        "extra": "Extra",
-        "overallMatch": "Overall Match",
-        "loadFailed": "Could not load job DNA."
-      },
-      "recommendations": {
-        "title": "Recruiter Recommendations",
-        "generating": "Generating recommendations...",
-        "accept": "Accept",
-        "reject": "Reject",
-        "apply": "Apply",
-        "accepted": "Accepted",
-        "rejected": "Rejected",
-        "applied": "Applied",
-        "regenerate": "Regenerate with feedback",
-        "noRecommendations": "No recommendations yet"
-      }
-    },
-    "hiringProbability": {
-      "title": "Hiring Probability",
-      "skills": "Skills",
-      "experience": "Experience",
-      "seniority": "Seniority",
-      "overall": "Hiring Probability",
-      "loadFailed": "Could not load hiring probability."
-    }
-  },
-  "settings": {
-    "title": "Settings",
-    "subtitle": "Configure your preferences",
-    "aiProvider": "AI Provider",
-    "aiProviderDescription": "Select your preferred AI provider for resume analysis",
-    "apiKey": "API Key",
-    "apiKeyPlaceholder": "Enter your API key",
-    "saveApiKey": "Save API Key",
-    "contentLanguage": "Content Language",
-    "contentLanguageDescription": "Language for generated content (resumes, cover letters)",
-    "uiLanguage": "UI Language",
-    "uiLanguageDescription": "Language for the user interface",
-    "theme": "Theme",
-    "themeDescription": "Choose your preferred color theme",
-    "lightMode": "Light",
-    "darkMode": "Dark",
-    "systemMode": "System",
-    "dangerZone": "Danger Zone",
-    "clearApiKeys": "Clear API Keys",
-    "clearApiKeysDescription": "Removes all stored API keys from the configuration. This action cannot be undone.",
-    "resetDatabase": "Reset Database",
-    "resetDatabaseDescription": "Deletes ALL data including resumes, jobs, and generated content. This action cannot be undone.",
-    "llmConfigurationTitle": "LLM Configuration",
-    "providerLabel": "Provider",
-    "statusCards": {
-      "llm": "LLM",
-      "database": "Database",
-      "resumes": "Resumes",
-      "jobs": "Jobs",
-      "improvements": "Improvements",
-      "masterResume": "Master Resume"
-    },
-    "statusValues": {
-      "healthy": "Healthy",
-      "offline": "Offline",
-      "connected": "Connected",
-      "configured": "Configured",
-      "notSet": "Not set"
-    },
-    "apiKeyMenu": {
-      "buttonLabel": "LLM API",
-      "title": "OpenAI API Key",
-      "description": "Provide your key to enable hosted OpenAI models.",
-      "savedMessage": "API key saved.",
-      "loadError": "Unable to load API key",
-      "updateError": "Unable to update API key"
-    },
-    "setupRequired": {
-      "title": "[ SETUP REQUIRED ]",
-      "description": "> No API key configured. Add your LLM provider API key below to enable resume tailoring."
-    },
-    "systemStatus": {
-      "title": "System Status",
-      "refresh": "Refresh",
-      "unableToConnect": "Can't reach the server",
-      "expectedAt": "Expected at: {apiUrl}",
-      "lastFetched": {
-        "never": "Never",
-        "justNow": "Just now",
-        "minutesAgo": "{minutes}m ago",
-        "hoursAgo": "{hours}h ago"
-      }
-    },
-    "llmConfiguration": {
-      "selectedProvider": "SELECTED: {provider}",
-      "modelLabel": "Model",
-      "defaultModel": "DEFAULT: {model}",
-      "apiKeyLabel": "API Key",
-      "apiKeyOptionalForOllama": "(Optional for Ollama)",
-      "apiKeyOptional": "(Optional)",
-      "apiKeyPlaceholder": "sk-...",
-      "apiKeyNotRequiredPlaceholder": "Not required for local models",
-      "apiKeyOptionalPlaceholder": "Leave blank if your server has no auth",
-      "leaveBlankToKeepExistingKey": "LEAVE BLANK TO KEEP EXISTING KEY",
-      "baseUrlLabel": "Base URL (optional)",
-      "baseUrlPlaceholder": "e.g. https://api.openai.com/v1",
-      "baseUrlDescription": "Override the API base URL to use a proxy/aggregator endpoint. Leave blank to use provider default.",
-      "ollamaServerUrl": "Ollama Server URL",
-      "ollamaServerUrlPlaceholder": "http://localhost:11434",
-      "reasoningEffortLabel": "Reasoning effort",
-      "reasoningEffortAuto": "Auto",
-      "reasoningEffortAutoDesc": "Don't send reasoning_effort — default for max compatibility",
-      "reasoningEffortMinimal": "Minimal",
-      "reasoningEffortLow": "Low",
-      "reasoningEffortMedium": "Medium",
-      "reasoningEffortHigh": "High",
-      "reasoningEffortDescription": "Only affects reasoning-capable models (gpt-5 family, Claude 3.7+, DeepSeek R1, OpenAI o1/o3). Unsupported providers drop this value automatically.",
-      "testConnection": "Test Connection",
-      "errorPrefix": "ERROR: {error}",
-      "connectionSuccessful": "CONNECTION SUCCESSFUL",
-      "connectionFailed": "CONNECTION FAILED",
-      "connectionDetails": "Provider: {provider} | Model: {model}",
-      "testPromptLabel": "TEST PROMPT",
-      "modelOutputLabel": "MODEL OUTPUT",
-      "reasoningContentLabel": "MODEL THINKING",
-      "errorDetailLabel": "ERROR DETAIL",
-      "healthErrors": {
-        "api_key_missing": "API key not configured. Please add a key in Settings.",
-        "health_check_failed": "Health check failed.",
-        "duplicate_v1_path": "Health check failed. The Base URL may contain a duplicate /v1 path.",
-        "not_found_404": "Health check failed. 404 Not Found - check that the Base URL matches the provider.",
-        "html_response": "Health check failed. The Base URL returned HTML; it may be a console URL or an unsupported gateway path."
-      },
-      "healthWarnings": {
-        "empty_content": "LLM returned empty content for the health check."
-      }
-    },
-    "contentGeneration": {
-      "title": "Content Generation",
-      "description": "Enable additional content generation during resume tailoring. When enabled, these documents will be automatically generated alongside your tailored resume.",
-      "coverLetter": {
-        "label": "Cover Letter",
-        "description": "Generate a tailored cover letter alongside your resume"
-      },
-      "outreachMessage": {
-        "label": "Cold Outreach Message",
-        "description": "Generate a networking message for LinkedIn or email"
-      },
-      "customPromptLabel": "Custom prompt (optional)",
-      "customPromptHelp": "Must include these placeholders (each in curly braces): job_description, resume_data, output_language. Leave blank to use the default prompt.",
-      "customPromptResetButton": "Reset to default",
-      "customPromptErrorMissing": "Missing required placeholders: {missing}",
-      "interviewPrep": {
-        "label": "Interview Preparation",
-        "description": "Automatically generate interview preparation alongside saved tailored resumes"
-      },
-      "outreachEmail": {
-        "label": "Composer email prompt (optional)",
-        "help": "Must include these placeholders: output_language, company_name, sender_info, purpose. Leave blank to use the default prompt."
-      }
-    },
-    "promptSettings": {
-      "title": "Prompt Settings",
-      "description": "Choose the default prompt used for resume tailoring.",
-      "defaultLabel": "Default tailoring prompt"
-    },
-    "footer": {
-      "status": {
-        "checking": "Checking...",
-        "ready": "STATUS: READY",
-        "setupRequired": "STATUS: SETUP REQUIRED",
-        "offline": "STATUS: OFFLINE"
-      }
-    },
-    "errors": {
-      "unableToConnectBackend": "Can't reach the server. Make sure it's running.",
-      "apiKeyRequired": "API key is required for the selected provider.",
-      "baseUrlRequired": "{provider} requires a Base URL.",
-      "unknownProvider": "Unknown provider returned from backend: {provider}",
-      "unableToSaveConfiguration": "Unable to save configuration",
-      "failedToClearApiKeys": "Failed to clear API keys. Please try again.",
-      "failedToResetDatabase": "Failed to reset database. Please try again."
-    },
-    "apiKeys": {
-      "savedTitle": "Saved API Keys",
-      "deleteAria": "Delete {provider} key",
-      "deleteConfirmTitle": "Delete API key?",
-      "deleteConfirmDescription": "Remove the saved {provider} API key? You can add it again later."
-    },
-    "email": {
-      "title": "Email Settings",
-      "description": "Configure the SMTP sender used when emailing companies from the Companies page.",
-      "smtpHost": "SMTP Host",
-      "smtpPort": "SMTP Port",
-      "senderEmail": "Sender Email",
-      "senderName": "Sender Name",
-      "senderNamePlaceholder": "Your name",
-      "password": "App Password",
-      "passwordSet": "******** (a password is already set)",
-      "passwordPlaceholder": "Enter your app password",
-      "passwordHint": "Use an app-specific password, not your regular account password.",
-      "useTls": "Use TLS",
-      "useTlsHint": "Enable STARTTLS (e.g. Gmail on port 587). Port 465 always uses implicit TLS.",
-      "save": "Save",
-      "saved": "Saved",
-      "loadFailed": "Could not load email settings.",
-      "saveFailed": "Could not save email settings.",
-      "invalidPort": "Invalid port number.",
-      "togglePasswordVisibility": "Show or hide the app password"
-    }
-  },
-  "resumeViewer": {
-    "resumeNotFound": "Resume not found",
-    "loading": "Loading Resume...",
-    "useTailorFeature": "Use Tailor Feature",
-    "retryProcessing": "Retry Processing",
-    "deleteAndStartOver": "Delete & Start Over",
-    "returnToDashboard": "Return to Dashboard",
-    "enhanceResume": "Enhance Resume",
-    "downloadResume": "Download Resume",
-    "deletedTitle": "Resume Deleted",
-    "deletedDescriptionMaster": "Your master resume has been permanently deleted from the system.",
-    "deletedDescriptionRegular": "The resume has been permanently deleted from the system.",
-    "deleteFailedTitle": "Delete Failed",
-    "errors": {
-      "processingFailed": "We couldn't read your resume. Retry processing, or delete it and upload a different file.",
-      "stillProcessing": "Your resume is still being processed. Wait a few seconds and refresh the page.",
-      "notProcessedYet": "Resume has not been processed yet. Please use the Tailor feature to generate a structured resume.",
-      "noDataAvailable": "No resume data available.",
-      "failedToLoad": "Failed to load resume data.",
-      "failedToDelete": "Failed to delete resume. Please try again."
-    },
-    "titlePlaceholder": "Enter resume title..."
-  },
-  "preview": {
-    "margins": "Margins",
-    "calculating": "Calculating...",
-    "pageBreak": "Page Break",
-    "pageCountSingular": "{count} page",
-    "pageCountPlural": "{count} pages",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out"
-  },
-  "resume": {
-    "personalInfo": {
-      "name": "Full Name",
-      "title": "Job Title",
-      "email": "Email",
-      "phone": "Phone",
-      "location": "Location",
-      "website": "Website",
-      "linkedin": "LinkedIn",
-      "github": "GitHub"
-    },
-    "sections": {
-      "personalInfo": "Personal Info",
-      "summary": "Summary",
-      "experience": "Experience",
-      "education": "Education",
-      "projects": "Projects",
-      "skills": "Skills & Awards",
-      "skillsOnly": "Skills",
-      "certifications": "Training & Certifications",
-      "languages": "Languages",
-      "awards": "Awards",
-      "links": "Links"
-    },
-    "defaults": {
-      "name": "Your Name"
-    },
-    "additional": {
-      "technicalSkills": "Technical Skills"
-    },
-    "additionalLabels": {
-      "technicalSkills": "Technical Skills:",
-      "languages": "Languages:",
-      "certifications": "Certifications:",
-      "awards": "Awards:"
-    }
-  },
-  "coverLetter": {
-    "title": "Cover Letter",
-    "generate": "Generate Cover Letter",
-    "regenerate": "Regenerate",
-    "copyToClipboard": "Copy to Clipboard",
-    "copied": "Copied!",
-    "editor": {
-      "placeholder": "Your cover letter will appear here after tailoring your resume with cover letter generation enabled...",
-      "tip": "TIP: A good cover letter is typically 300-400 words. Edit as needed to personalize."
-    },
-    "preview": {
-      "defaultName": "Your Name",
-      "emptyTitle": "No cover letter content yet.",
-      "emptyDescription": "Enable cover letter generation in Settings, then tailor a resume."
-    },
-    "print": {
-      "emptyContent": "No cover letter content available."
-    }
-  },
-  "outreach": {
-    "title": "Outreach Message",
-    "generate": "Generate Outreach Message",
-    "regenerate": "Regenerate",
-    "copy": "Copy",
-    "copyToClipboard": "Copy to Clipboard",
-    "copied": "Copied!",
-    "editor": {
-      "placeholder": "Your cold outreach message will appear here after tailoring your resume with outreach message generation enabled...",
-      "tip": "TIP: Keep outreach messages brief (100-150 words). Copy and paste to LinkedIn or email."
-    },
-    "preview": {
-      "channels": {
-        "linkedin": "LinkedIn",
-        "email": "Email"
-      },
-      "howToUseTitle": "How to use:",
-      "steps": {
-        "step1": "1. Copy the message using the button above",
-        "step2": "2. Open LinkedIn or your email client",
-        "step3": "3. Paste and personalize as needed",
-        "step4": "4. Send to recruiters or hiring managers"
-      },
-      "emptyTitle": "No outreach message yet.",
-      "emptyDescription": "Enable outreach message generation in Settings, then tailor a resume."
-    }
-  },
-  "errors": {
-    "generic": "Something went wrong. Please try again.",
-    "networkError": "Network error. Please check your connection.",
-    "unauthorized": "Please sign in to continue.",
-    "notFound": "The requested resource was not found.",
-    "validationError": "Some fields need attention. Check the highlighted fields and try again.",
-    "boundary": {
-      "title": "Something Went Wrong",
-      "description": "Something unexpected broke. Try reloading the page — if it keeps happening, let us know.",
-      "tryAgain": "Try Again",
-      "reloadPage": "Reload Page"
-    }
-  },
-  "a11y": {
-    "removeItem": "Remove item",
-    "removeDescription": "Remove this line",
-    "removeFile": "Remove file"
-  },
-  "confirmations": {
-    "deleteResume": "Delete this resume?",
-    "deleteResumeDescription": "The resume will be permanently removed.",
-    "deleteMasterResumeTitle": "Delete Master Resume",
-    "deleteMasterResumeDescription": "Your master resume will be permanently removed.",
-    "deleteResumeFromSystemDescription": "The resume will be permanently removed.",
-    "deleteResumeConfirmLabel": "Delete Resume",
-    "keepResumeCancelLabel": "Keep Resume",
-    "discardChanges": "Discard unsaved changes?",
-    "discardChangesDescription": "You'll lose any work that hasn't been saved.",
-    "clearApiKeys": "Clear All API Keys?",
-    "clearApiKeysDescription": "You'll need to re-enter them before using AI features again.",
-    "resetDatabase": "Reset everything and start over?",
-    "resetDatabaseDescription": "This permanently deletes every resume, job description, and generated document."
-  },
-  "resumeWizard": {
-    "title": "Resume Wizard",
-    "answerLabel": "Your answer",
-    "keepAddingPrompt": "What would you like to add or change?",
-    "readyHint": "You have enough for a solid resume — review and finish whenever you are ready.",
-    "sections": {
-      "intro": "Getting started",
-      "contact": "Contact details",
-      "summary": "Professional summary",
-      "workExperience": "Work experience",
-      "internships": "Internships",
-      "education": "Education",
-      "personalProjects": "Projects",
-      "skills": "Skills",
-      "review": "Review"
-    },
-    "actions": {
-      "continue": "Continue",
-      "skip": "Skip",
-      "back": "Back",
-      "review": "Review & finish",
-      "create": "Create master resume",
-      "keepAdding": "Keep adding",
-      "backToDashboard": "Back to Dashboard"
-    },
-    "preview": {
-      "label": "Live Draft",
-      "empty": "Your resume appears here as you answer.",
-      "unnamed": "Unnamed Resume",
-      "experience": "Experience",
-      "education": "Education",
-      "projects": "Projects",
-      "skills": "Skills"
-    },
-    "errors": {
-      "turnFailed": "The wizard could not save that answer. Try again.",
-      "finalizeFailed": "The wizard could not create your master resume. Try again."
-    },
-    "entry": {
-      "kicker": "Master Resume Setup",
-      "title": "Choose your starting point",
-      "description": "Create your master resume from an existing document or build it step by step with AI guidance.",
-      "upload": {
-        "kicker": "Existing File",
-        "title": "Upload a resume",
-        "description": "Start from a PDF, DOC, or DOCX file and let Taylor parse it into your master profile.",
-        "action": "Upload Resume"
-      },
-      "wizard": {
-        "kicker": "AI Guided",
-        "title": "Build with AI wizard",
-        "description": "Answer focused prompts and let the wizard assemble a strong first master resume draft.",
-        "action": "Start Wizard"
-      }
-    }
-  },
-  "tracker": {
-    "scroll": {
-      "prev": "Scroll left",
-      "next": "Scroll right",
-      "hint": "Scroll for more stages"
-    },
-    "title": "Application Tracker",
-    "subtitle": "Track where each tailored resume stands in your pipeline.",
-    "addApplication": "Add Application",
-    "showOverview": "Overview",
-    "hideOverview": "Hide Overview",
-    "columns": {
-      "saved": "Saved",
-      "applied": "Applied",
-      "no_response": "No Response",
-      "response": "Response",
-      "interview": "Interview",
-      "accepted": "Accepted",
-      "rejected": "Rejected",
-      "empty": "Nothing here yet"
-    },
-    "empty": {
-      "title": "No applications yet",
-      "description": "Tailor a resume to a job, or add one manually, to start tracking."
-    },
-    "card": {
-      "companyUnknown": "Unknown company",
-      "roleUnknown": "Untitled role",
-      "sharedResume": "Shared resume",
-      "selectAria": "Select application",
-      "dragAria": "Drag to reorder"
-    },
-    "modal": {
-      "jobDescription": "Job Description",
-      "noJobDescription": "No job description on file.",
-      "notes": "Notes",
-      "notesPlaceholder": "Add notes about this application…",
-      "rejectionReason": "Rejection reason (for AI career insights)",
-      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
-      "interviewRounds": "Interview rounds",
-      "interviewRoundsPlaceholder": "e.g. 2",
-      "saveNotes": "Save notes",
-      "resumeUnavailable": "The applied resume is no longer available.",
-      "loadFailed": "Could not load this application.",
-      "editResume": "Edit resume"
-    },
-    "bulk": {
-      "selected": "{count} selected",
-      "moveTo": "Move to…",
-      "clear": "Clear",
-      "deleteConfirmTitle": "Delete applications?",
-      "deleteConfirmDescription": "Delete {count} selected application(s)? This cannot be undone."
-    },
-    "manualAdd": {
-      "title": "Add Application",
-      "description": "Track an application by pasting its job description.",
-      "resume": "Resume",
-      "untitledResume": "Untitled resume",
-      "jobDescription": "Job Description",
-      "jobDescriptionPlaceholder": "Paste the job description here…",
-      "company": "Company",
-      "role": "Role",
-      "optional": "Optional",
-      "status": "Status",
-      "submit": "Add",
-      "validation": "Pick a resume and paste a job description.",
-      "failed": "Could not create the application."
-    },
-    "errors": {
-      "loadFailed": "Could not load applications.",
-      "moveFailed": "Could not move the application.",
-      "deleteFailed": "Could not delete the application(s)."
-    }
-  },
-  "companies": {
-    "title": "Company Tracker",
-    "subtitle": "Keep tabs on every company you engage with.",
-    "addCompany": "Add Company",
-    "empty": {
-      "title": "No companies yet",
-      "description": "Track the companies you apply to, contact, or want to keep an eye on.",
-      "noResults": "No companies match your filters",
-      "noResultsHint": "Try adjusting the search or clearing the filters."
-    },
-    "table": {
-      "company": "Company",
-      "phone": "Phone",
-      "industry": "Industry",
-      "size": "Size",
-      "type": "Type",
-      "status": "Status",
-      "yearFounded": "Founded",
-      "links": "Links",
-      "actions": "Actions",
-      "website": "Website",
-      "linkedin": "LinkedIn",
-      "edit": "Edit company",
-      "delete": "Delete company",
-      "editHint": "Click to edit",
-      "viewDetails": "View details",
-      "address": "Address",
-      "email": "Email this company"
-    },
-    "size": {
-      "1-10": "1-10 employees",
-      "11-50": "11-50 employees",
-      "51-200": "51-200 employees",
-      "201-1000": "201-1000 employees",
-      "1000+": "1000+ employees"
-    },
-    "type": {
-      "startup": "Startup",
-      "agency": "Agency",
-      "enterprise": "Enterprise",
-      "nonprofit": "Nonprofit",
-      "education": "Education",
-      "government": "Government",
-      "other": "Other"
-    },
-    "status": {
-      "watching": "Watching",
-      "contacted": "Contacted",
-      "applied": "Applied",
-      "interviewing": "Interviewing",
-      "negotiating": "Negotiating",
-      "won": "Won",
-      "lost": "Lost"
-    },
-    "form": {
-      "addTitle": "Add Company",
-      "editTitle": "Edit Company",
-      "description": "Save contact details and background info for a company you are tracking.",
-      "name": "Company Name",
-      "namePlaceholder": "e.g. Acme Corp",
-      "email": "Email",
-      "phone": "Phone",
-      "address": "Address",
-      "website": "Website",
-      "linkedin": "LinkedIn URL",
-      "industry": "Industry",
-      "size": "Company Size",
-      "type": "Company Type",
-      "status": "Status",
-      "yearFounded": "Year Founded",
-      "optional": "Optional",
-      "none": "None",
-      "validation": "Company name is required.",
-      "invalidYear": "Year must be between 1600 and 2100.",
-      "failed": "Could not save the company.",
-      "save": "Save Changes",
-      "submit": "Add Company"
-    },
-    "delete": {
-      "title": "Delete company?",
-      "description": "Delete {name}? This cannot be undone.",
-      "confirm": "Delete"
-    },
-    "errors": {
-      "loadFailed": "Could not load companies.",
-      "deleteFailed": "Could not delete the company.",
-      "updateFailed": "Could not update the company."
-    },
-    "toolbar": {
-      "all": "All",
-      "search": "Search",
-      "searchPlaceholder": "Search by name, industry or email…",
-      "size": "Size",
-      "type": "Type",
-      "groupBy": "Group by",
-      "groupNone": "No grouping",
-      "groupSize": "Company size",
-      "groupType": "Company type",
-      "groupIndustry": "Industry",
-      "groupStatus": "Company status",
-      "status": "Status",
-      "columns": "Columns",
-      "import": "Import",
-      "export": "Export CSV",
-      "count": "{count} companies"
-    },
-    "import": {
-      "title": "Import companies",
-      "description": "CSV or Excel (.xlsx) upload result",
-      "created": "{count} companies added",
-      "skipped": "{count} already existed (skipped)",
-      "failedCount": "{count} rows failed",
-      "errorRow": "Row {row}: {name} — {error}",
-      "done": "Done",
-      "failed": "Could not import the file.",
-      "mappingTitle": "Map columns",
-      "mappingDescription": "Choose which CSV or Excel column goes into each company field.",
-      "mappingHint": "Only mapped fields are imported. Company name is required.",
-      "mappingAuto": "auto",
-      "mappingNameRequired": "Map the company name column before importing.",
-      "mappingImport": "Import"
-    },
-    "selection": {
-      "count": "{count} selected",
-      "clear": "Clear",
-      "delete": "Delete",
-      "selectAll": "Select all companies on this page",
-      "selectRow": "Select {name}",
-      "deleteTitle": "Delete companies?",
-      "deleteDescription": "Delete {count} selected companies? This cannot be undone."
-    },
-    "details": {
-      "created": "Added",
-      "updated": "Last updated"
-    },
-    "pagination": {
-      "showing": "Showing {from}–{to} of {total}",
-      "previous": "Previous page",
-      "next": "Next page",
-      "page": "Page {count}",
-      "perPage": "{count} per page"
-    },
-    "emailDialog": {
-      "title": "Email Company",
-      "toCompany": "Compose an email to {name}",
-      "description": "Compose and send an email to this company.",
-      "loading": "Loading email settings...",
-      "notConfigured": "Email sending is not configured",
-      "notConfiguredHint": "Set up your SMTP sender in Settings before emailing companies.",
-      "goToSettings": "Go to Settings",
-      "purpose": {
-        "label": "Purpose",
-        "internship": "Internship",
-        "job": "Job application",
-        "cold": "Cold outreach",
-        "custom": "Custom",
-        "customSubject": "What is this email about?",
-        "customPlaceholder": "e.g. Following up after the career fair"
-      },
-      "recipientName": "Recipient name",
-      "recipientPlaceholder": "e.g. Hiring Manager",
-      "subject": "Subject",
-      "subjectPlaceholder": "Enter a subject",
-      "message": "Message",
-      "messagePlaceholder": "Write your message here",
-      "attachment": "Attachment",
-      "chooseFile": "Choose a file",
-      "removeAttachment": "Remove attachment",
-      "generate": "Generate with AI",
-      "send": "Send email",
-      "sent": "Email sent successfully",
-      "errors": {
-        "nameRequired": "A company name is required to generate an email.",
-        "noEmail": "This company has no email address.",
-        "missingFields": "Subject and message are required.",
-        "generateFailed": "Could not generate the email. Please try again.",
-        "sendFailed": "Could not send the email. Check your SMTP settings.",
-        "statusUpdateFailed": "Email sent, but the company status could not be updated."
-      },
-      "resume": "Resume",
-      "resumeHint": "The email is personalized from this resume's profile.",
-      "resumeUntitled": "Untitled resume",
-      "saveDraft": "Save draft",
-      "draftSaved": "Draft saved",
-      "statusUpdated": "Company marked as contacted.",
-      "includeResume": "Include my resume",
-      "additionalInstructions": "Additional instructions for the AI",
-      "additionalInstructionsPlaceholder": "e.g. Keep it under 80 words, mention my Flutter experience, more formal tone",
-      "historyTitle": "Sent emails",
-      "historyEmpty": "No emails sent to this company yet."
-    }
-  },
-  "contacts": {
-    "title": "Contact Tracker",
-    "subtitle": "Keep track of the people in your professional network.",
-    "addContact": "Add Contact",
-    "empty": {
-      "title": "No contacts yet",
-      "description": "Track recruiters, mentors, alumni, and everyone else you want to follow up with.",
-      "noResults": "No contacts match your filters",
-      "noResultsHint": "Try adjusting the search or clearing the filters."
-    },
-    "table": {
-      "name": "Contact",
-      "company": "Company",
-      "location": "Location",
-      "goal": "Goal",
-      "status": "Status",
-      "relationship": "Relationship",
-      "followUpDate": "Follow-up date",
-      "actions": "Actions",
-      "edit": "Edit contact",
-      "delete": "Delete contact",
-      "viewDetails": "View details"
-    },
-    "goal": {
-      "networking": "Networking",
-      "informational_interview": "Informational interview",
-      "request_referral": "Request referral",
-      "research_interviewer": "Research interviewer",
-      "research_career": "Research career"
-    },
-    "status": {
-      "to_contact": "To contact",
-      "follow_up": "Follow up",
-      "meeting_scheduled": "Meeting scheduled",
-      "thank_you_sent": "Thank-you sent"
-    },
-    "relationship": {
-      "self": "Self",
-      "coworker": "Coworker",
-      "friend": "Friend",
-      "family": "Family",
-      "other": "Other",
-      "recruiter": "Recruiter",
-      "mentor": "Mentor",
-      "hiring_manager": "Hiring manager",
-      "alumni": "Alumni"
-    },
-    "form": {
-      "addTitle": "Add Contact",
-      "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
-      "name": "Full name",
-      "namePlaceholder": "e.g. Jane Doe",
-      "company": "Company",
-      "location": "Location",
-      "goal": "Goal",
-      "status": "Status",
-      "relationship": "Relationship",
-      "followUpDate": "Follow-up date",
-      "optional": "Optional",
-      "none": "None",
-      "validation": "Contact name is required.",
-      "invalidDate": "Enter the date as YYYY-MM-DD.",
-      "failed": "Could not save the contact.",
-      "save": "Save Changes",
-      "submit": "Add Contact"
-    },
-    "delete": {
-      "title": "Delete contact?",
-      "description": "Delete {name}? This cannot be undone.",
-      "confirm": "Delete"
-    },
-    "errors": {
-      "loadFailed": "Could not load contacts.",
-      "deleteFailed": "Could not delete the contact.",
-      "updateFailed": "Could not update the contact."
-    },
-    "toolbar": {
-      "all": "All",
-      "search": "Search",
-      "searchPlaceholder": "Search by name, company or location…",
-      "goal": "Goal",
-      "status": "Status",
-      "relationship": "Relationship",
-      "groupBy": "Group by",
-      "groupNone": "No grouping",
-      "groupGoal": "Goal",
-      "groupStatus": "Status",
-      "groupRelationship": "Relationship",
-      "columns": "Columns",
-      "import": "Import",
-      "export": "Export CSV",
-      "count": "{count} contacts"
-    },
-    "import": {
-      "title": "Import contacts",
-      "description": "CSV or Excel (.xlsx) upload result",
-      "created": "{count} contacts added",
-      "skipped": "{count} already existed (skipped)",
-      "failedCount": "{count} rows failed",
-      "errorRow": "Row {row}: {name} — {error}",
-      "done": "Done",
-      "failed": "Could not import the file.",
-      "mappingTitle": "Map columns",
-      "mappingDescription": "Choose which CSV or Excel column goes into each contact field.",
-      "mappingHint": "Only mapped fields are imported. Contact name is required.",
-      "mappingAuto": "auto",
-      "mappingNameRequired": "Map the contact name column before importing.",
-      "mappingImport": "Import"
-    },
-    "selection": {
-      "count": "{count} selected",
-      "clear": "Clear",
-      "delete": "Delete",
-      "selectAll": "Select all contacts on this page",
-      "selectRow": "Select {name}",
-      "deleteTitle": "Delete contacts?",
-      "deleteDescription": "Delete {count} selected contacts? This cannot be undone."
-    },
-    "details": {
-      "created": "Added",
-      "updated": "Last updated",
-      "noCompany": "No company"
-    },
-    "pagination": {
-      "showing": "Showing {from}–{to} of {total}",
-      "previous": "Previous page",
-      "next": "Next page",
-      "page": "Page {count}",
-      "perPage": "{count} per page"
-    }
-  },
-  "interviewPrep": {
-    "title": "Interview Prep",
-    "regenerate": "Regenerate",
-    "unavailableTitle": "Interview Prep Not Available",
-    "loadingContextDescription": "Checking the job context for this tailored resume before generation.",
-    "missingContextDescription": "This tailored resume does not have the saved job context required to generate interview preparation. Re-tailor the resume with a job description to use this workflow.",
-    "saveRequiredDescription": "Save this tailored resume before generating interview preparation.",
-    "focusArea": "Focus area",
-    "suggestedAnswerPoints": "Suggested answer points",
-    "whyItMatters": "Why it matters",
-    "preparationSuggestion": "Preparation suggestion",
-    "sections": {
-      "roleFit": "Role-Fit Analysis",
-      "resumeQuestions": "Resume-Based Questions",
-      "projectFollowUps": "Project Follow-Ups",
-      "skillGaps": "Skill Gaps",
-      "talkingPoints": "Talking Points"
-    }
-  },
-  "profile": {
-    "title": "My Profile",
-    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
-    "header": {
-      "sourceFrom": "From resume"
-    },
-    "currentLocation": {
-      "title": "Current Location",
-      "placeholder": "e.g. Tunis, Tunisia"
-    },
-    "workExperience": {
-      "title": "Work experience",
-      "empty": "No work experience yet. Add entries or import them from a resume.",
-      "add": "Add entry",
-      "edit": "Edit entry",
-      "delete": "Delete entry",
-      "deleteTitle": "Delete this entry?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add work experience",
-      "editTitle": "Edit work experience",
-      "formDescription": "Entries are used by the career advisor and can be imported from a resume.",
-      "role": "Role / title",
-      "company": "Company",
-      "location": "Location",
-      "years": "Years",
-      "description": "Achievements",
-      "descriptionPlaceholder": "One bullet point per line",
-      "roleRequired": "Enter a role or a company.",
-      "save": "Save entry"
-    },
-    "github": {
-      "title": "GitHub repositories",
-      "loading": "Loading GitHub status...",
-      "connectHint": "Connect your GitHub account to view repositories and tailor resumes for open-source contributions.",
-      "connect": "Connect GitHub",
-      "useToken": "Use Personal Access Token",
-      "tokenLabel": "Personal Access Token",
-      "tokenHelpStart": "Create at",
-      "tokenHelpEnd": "with repo + user scopes",
-      "tokenSubmit": "Connect",
-      "connectedAs": "Connected as",
-      "repositories": "repositories",
-      "disconnect": "Disconnect",
-      "noDescription": "No description",
-      "showReadme": "Show README",
-      "hideReadme": "Hide README",
-      "connectTitle": "Connect GitHub"
-    },
-    "tabs": {
-      "profile": "Profile",
-      "skillRoi": "Skill ROI",
-      "education": "Education",
-      "projects": "Projects",
-      "achievements": "Achievements",
-      "experience": "Experience"
-    },
-    "overview": {
-      "totalApplications": "Total applications",
-      "rejectionRate": "Rejection rate",
-      "rejectionRateHint": "Rejected ÷ advanced applications",
-      "appliedToInterview": "Applied → Interview",
-      "interviewToAccepted": "Interview → Accepted",
-      "medianDaysToInterview": "Median days to interview",
-      "medianDaysHint": "Across interview-stage applications",
-      "llmInsights": "AI Insights",
-      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
-      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
-    },
-    "languages": {
-      "title": "Languages",
-      "add": "Add",
-      "empty": "No languages yet.",
-      "placeholder": "e.g. English, French"
-    },
-    "awards": {
-      "title": "Honors & Awards",
-      "add": "Add",
-      "empty": "No honors or awards yet.",
-      "placeholder": "e.g. Dean's List"
-    },
-    "form": {
-      "provision": "Automatic setup",
-      "seedHint": "Copy your name, contact info, summary, skills, work experience, languages and awards from your master resume.",
-      "seeded": "Profile imported from the master resume.",
-      "saved": "Profile saved.",
-      "personalInfo": "Personal info",
-      "name": "Full name",
-      "title": "Job title",
-      "email": "Email",
-      "phone": "Phone",
-      "location": "Location",
-      "website": "Website",
-      "linkedin": "LinkedIn",
-      "github": "GitHub",
-      "summary": "Professional summary",
-      "careerGoals": "Career goals",
-      "targetRoles": "Target roles",
-      "targetLocations": "Target locations",
-      "salaryMin": "Target salary min",
-      "salaryMax": "Target salary max",
-      "seedFromMaster": "Import from master resume",
-      "tagPlaceholder": "Type and press Enter",
-      "uploadDesktop": "Upload from desktop",
-      "uploaded": "Resume uploaded.",
-      "save": "Save profile"
-    },
-    "skills": {
-      "title": "Skills",
-      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
-      "searchPlaceholder": "Search skills",
-      "noResults": "No skills match your search.",
-      "alreadyExists": "This skill already exists in your profile.",
-      "add": "Add skill",
-      "edit": "Edit skill",
-      "delete": "Delete skill",
-      "deleteTitle": "Delete this skill?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add skill",
-      "editTitle": "Edit skill",
-      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
-      "name": "Skill name",
-      "nameRequired": "Skill name is required.",
-      "category": "Category",
-      "proficiency": "Proficiency (1–5)",
-      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
-      "yearsExperience": "Years of experience",
-      "lastUsed": "Last used",
-      "optional": "Optional",
-      "save": "Save skill",
-      "suggestionsButton": "AI suggestions",
-      "suggestionsTitle": "AI skill suggestions",
-      "suggestionsDescription": "Skills you may have forgotten to list, based on your profile.",
-      "suggestionsLoading": "Finding skills you may have forgotten…",
-      "suggestionsEmpty": "No suggestions right now. Add more details to your profile and try again.",
-      "suggestAdd": "Add {name} to your skills",
-      "suggestionsGroupRemembered": "Skills you may have forgotten to list",
-      "suggestionsGroupLearnNext": "Skills worth learning in 2026"
-    },
-    "certifications": {
-      "title": "Certifications",
-      "empty": "No certifications yet.",
-      "add": "Add certification",
-      "edit": "Edit certification",
-      "delete": "Delete certification",
-      "deleteTitle": "Delete this certification?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add certification",
-      "editTitle": "Edit certification",
-      "formDescription": "Certifications strengthen your career advisor memory.",
-      "name": "Certification name",
-      "nameRequired": "Certification name is required.",
-      "issuer": "Issuer",
-      "dateObtained": "Date obtained",
-      "invalidDate": "Use YYYY or YYYY-MM.",
-      "url": "Credential URL",
-      "optional": "Optional",
-      "save": "Save certification"
-    },
-    "roi": {
-      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
-      "refresh": "Refresh",
-      "getAdvice": "Ask AI what to learn",
-      "skill": "Skill",
-      "jobsUnlocked": "Jobs unlocked",
-      "salaryImpact": "Salary impact",
-      "learningEffort": "Learning effort",
-      "roiScore": "ROI score",
-      "noData": "—",
-      "effort": {
-        "low": "Low",
-        "medium": "Medium",
-        "high": "High"
-      },
-      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
-      "advice": "AI Recommendation",
-      "adviceDescription": "Personalized recommendation on which skills to learn next, based on your saved jobs and current skills.",
-      "adviceLoading": "Generating recommendations…",
-      "adviceUnavailable": "No recommendation available right now — configure your LLM API key and save a few jobs to analyze, then try again.",
-      "learnTitle": "Skills to learn",
-      "learnDescription": "Demanded by your saved jobs but missing from your profile — learning these unlocks the most opportunities.",
-      "strengthenTitle": "Skills to strengthen",
-      "strengthenDescription": "You have them, your jobs ask for them, but your proficiency is low — improving these has the highest return.",
-      "resources": "Learning resources",
-      "refreshResources": "Refresh resources",
-      "loadingResources": "Finding resources…",
-      "noResources": "No verified resources yet.",
-      "jobs": "jobs",
-      "youKnow": "You know",
-      "showRest": "Show {count} more skills",
-      "hideRest": "Hide",
-      "restHint": "Already strong or not in demand",
-      "allOnTrack": "No skills need attention — your profile already covers what your saved jobs demand.",
-      "advisorTitle": "Skill Investment Advisor",
-      "advisorDescription": "Which skill gives YOU the highest return? Ranked by jobs unlocked, difficulty and ROI.",
-      "difficulty": "Difficulty",
-      "difficultyEasy": "Easy",
-      "difficultyMedium": "Medium",
-      "difficultyHard": "Hard"
-    },
-    "market": {
-      "title": "Market Position",
-      "description": "Where you stand in the market — percentiles are modeled from your skills, experience and certifications.",
-      "refresh": "Refresh",
-      "domainsTitle": "Position by domain",
-      "skillsTitle": "Position by skill",
-      "percentile": "{ordinal} percentile",
-      "noteEmpty": "Add skills and work experience to see your market position.",
-      "currentRole": "Your position",
-      "specialization": "Specializes in",
-      "picksTitle": "Roles to pick",
-      "picksDescription": "Best-fit roles based on your skills, projects and experience.",
-      "match": "{score}% match",
-      "verdictTitle": "Summary",
-      "readiness": {
-        "strong": "Strong",
-        "adequate": "Adequate",
-        "underqualified": "Underqualified"
-      },
-      "seniority": {
-        "senior": "Senior",
-        "mid": "Mid",
-        "junior": "Junior"
-      },
-      "domains": {
-        "Backend": "Backend",
-        "Frontend": "Frontend",
-        "Cloud & DevOps": "Cloud & DevOps",
-        "Data & ML": "Data & ML",
-        "System Design": "System Design"
-      }
-    },
-    "chat": {
-      "title": "Career Advisor",
-      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
-      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
-      "suggestions": {
-        "q1": "Why am I getting rejected?",
-        "q2": "Which skill should I learn next?",
-        "q3": "How can I improve my interview-to-accepted rate?",
-        "q4": "What salary should I target?"
-      }
-    },
-    "education": {
-      "title": "Education",
-      "add": "Add education",
-      "empty": "No education entries yet. They can be imported from your resume.",
-      "edit": "Edit entry",
-      "delete": "Delete entry",
-      "deleteTitle": "Delete this entry?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add education",
-      "editTitle": "Edit education",
-      "formDescription": "Your academic background, imported from resumes and kept as part of your career graph.",
-      "institution": "Institution",
-      "degree": "Degree",
-      "years": "Years",
-      "description": "Notes",
-      "optional": "Optional",
-      "institutionRequired": "Enter an institution."
-    },
-    "projects": {
-      "title": "Projects",
-      "add": "Add project",
-      "empty": "No projects yet. They can be imported from your resume.",
-      "edit": "Edit project",
-      "delete": "Delete project",
-      "deleteTitle": "Delete this project?",
-      "deleteDescription": "Its linked skills are removed with it.",
-      "addTitle": "Add project",
-      "editTitle": "Edit project",
-      "formDescription": "Personal projects with links to your GitHub / website.",
-      "name": "Project name",
-      "role": "Role",
-      "years": "Years",
-      "github": "GitHub",
-      "website": "Website",
-      "description": "Description",
-      "descriptionAdd": "Add a bullet point",
-      "descriptionEmpty": "No bullet points yet.",
-      "descriptionRemove": "Remove bullet",
-      "optional": "Optional",
-      "nameRequired": "Enter a project name.",
-      "importFromGithub": "Import from GitHub",
-      "importing": "Importing…",
-      "imported": "{count} projects imported from GitHub",
-      "importHint": "Imported projects are stored in your profile — GitHub is not fetched again until you re-import.",
-      "importDialogTitle": "Import projects from GitHub",
-      "importDialogDescription": "Select the repositories to add to your profile.",
-      "importSelected": "Import selected ({count})",
-      "selectAll": "Select all",
-      "noSelection": "Select at least one project to import."
-    },
-    "achievements": {
-      "title": "Achievements",
-      "add": "Add achievement",
-      "empty": "No achievements yet.",
-      "edit": "Edit achievement",
-      "delete": "Delete achievement",
-      "deleteTitle": "Delete this achievement?",
-      "deleteDescription": "This cannot be undone.",
-      "addTitle": "Add achievement",
-      "editTitle": "Edit achievement",
-      "formDescription": "Notable wins, awards or milestones.",
-      "titleLabel": "Title",
-      "description": "Details",
-      "date": "Date",
-      "optional": "Optional",
-      "titleRequired": "Enter a title.",
-      "invalidDate": "Use YYYY or YYYY-MM."
-    }
-  },
-  "interviewPractice": {
-    "title": "Interview Practice Hub",
-    "subtitle": "Sharpen your answers with AI coaching, grounded in your master resume.",
-    "loading": "Loading...",
-    "minutes": "{count} min",
-    "libraryTitle": "Scenario Library",
-    "libraryDescription": "Pick a scenario and practice your answer out loud. You'll get structured feedback.",
-    "practiceStart": "Practice",
-    "practiceAnswerLabel": "Your answer",
-    "practiceAnswerPlaceholder": "Type your answer here as you would say it in the interview...",
-    "resumeGroundingNote": "Feedback is grounded in your master resume - the coach only credits experience that's actually on it.",
-    "practiceGetFeedback": "Get feedback",
-    "practiceScoring": "Scoring your answer...",
-    "practiceAnswerRequired": "Please write your answer first.",
-    "practiceFeedbackError": "Couldn't generate feedback. Try again.",
-    "practiceAgain": "Practice again",
-    "backToLibrary": "Back to library",
-    "scoreLabel": "Score",
-    "strengthsTitle": "What you did well",
-    "improvementsTitle": "Improvements",
-    "recommendedPointsTitle": "Recommended answer points",
-    "followUpsTitle": "Likely follow-up questions",
-    "levels": {
-      "strong": "Strong",
-      "good": "Good",
-      "needs_work": "Needs work"
-    },
-    "customTitle": "Have an idea for a scenario?",
-    "customDescription": "Type any interview question or topic and practice it right away.",
-    "customPlaceholder": "e.g. 'Why should we hire you?' or 'Tell me about your biggest failure'",
-    "customStart": "Start",
-    "upcomingTitle": "Upcoming Interviews",
-    "upcomingDescription": "Interviews you're tracking in your application tracker.",
-    "upcomingViewTracker": "View tracker",
-    "upcomingEmpty": "No upcoming interviews yet - add one in the Application Tracker.",
-    "upcomingUntitled": "Untitled company",
-    "historyTitle": "Practice History",
-    "historyDescription": "Every practice session you've completed.",
-    "historyEmpty": "No practice sessions yet. Pick a scenario above to get started!",
-    "historyAnswerLabel": "Your answer",
-    "historyUnknownDate": "Unknown date",
-    "scenarios": {
-      "tellMeAboutYourself": {
-        "title": "Tell Me About Yourself",
-        "description": "Walk through your background, skills, and what makes you a great fit for the role."
-      },
-      "whyWorkHere": {
-        "title": "Why Do You Want to Work Here?",
-        "description": "Connect the company's mission and work to your own goals and experience."
-      },
-      "careerGaps": {
-        "title": "Career Gaps with Confidence",
-        "description": "Frame employment gaps honestly and positively without over-explaining."
-      },
-      "salaryExpectations": {
-        "title": "Discussing Salary Expectations",
-        "description": "Give a confident, researched range and handle negotiation gracefully."
-      },
-      "weaknesses": {
-        "title": "What Are Your Weaknesses?",
-        "description": "Share a real weakness and show the steps you take to improve it."
-      },
-      "jobSpecific": {
-        "title": "Job-Specific Interview",
-        "description": "Answer a deep technical or role-specific question for the position you're targeting."
-      },
-      "proudestAccomplishment": {
-        "title": "What Accomplishment Are You Most Proud Of?",
-        "description": "Tell a concise, evidence-backed story with impact and measurable results."
-      },
-      "handleConflict": {
-        "title": "How Do You Handle Conflict?",
-        "description": "Show your communication and problem-solving skills in a difficult work situation."
-      }
-    }
-  },
-  "chat": {
-    "title": "AI Career Assistant",
-    "subtitle": "Your personal career command center",
-    "placeholder": "Ask about your career… (Enter to send, Shift+Enter for new line)",
-    "empty": {
-      "title": "How can I help?",
-      "description": "Ask about your career, skills, applications, or get advice on your next move."
-    },
-    "suggestions": {
-      "q1": "Why am I getting rejected?",
-      "q2": "Which skill should I learn next?",
-      "q3": "How can I improve my interview-to-offer rate?",
-      "q4": "What salary should I target?"
-    },
-    "sidebar": {
-      "threads": "Threads",
-      "newThread": "New thread",
-      "loading": "Loading…",
-      "empty": "No threads yet",
-      "messages": "messages",
-      "deleteThread": "Delete thread"
-    },
-    "mode": {
-      "ask": "Ask",
-      "coach": "Coach",
-      "recruiter": "Recruiter",
-      "resumeAnalyst": "Resume"
-    },
-    "confirm": {
-      "pendingAction": "Pending action",
-      "execute": "Execute",
-      "cancel": "Cancel"
-    },
-    "memory": {
-      "saved": "Remembered",
-      "dismiss": "Dismiss"
-    },
-    "context": {
-      "funnel_stats": "Funnel",
-      "skill_roi": "Skill ROI",
-      "market_position": "Market",
-      "ats_audit": "Audit",
-      "evidence": "Evidence",
-      "job": "Job",
-      "info": "Info",
-      "audit": "Audit",
-      "stats": "Stats"
-    }
-  }
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "autosaved": "Auto-saved",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "download": "Download",
+    "loading": "Loading...",
+    "uploading": "Uploading...",
+    "checking": "Checking...",
+    "processing": "Processing...",
+    "generating": "Generating...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "back": "Back",
+    "retry": "Retry",
+    "next": "Next",
+    "continue": "Continue",
+    "finish": "Finish",
+    "optional": "Optional",
+    "close": "Close",
+    "ok": "OK",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "apply": "Apply",
+    "selectOption": "Select an option...",
+    "unknown": "Unknown",
+    "keysCleared": "API keys cleared successfully",
+    "databaseReset": "Database reset successfully",
+    "popupBlocked": "Popup blocked. Please allow popups or open this URL manually: {url}"
+  },
+  "home": {
+    "brandLine1": "Resume",
+    "brandLine2": "Matcher",
+    "docs": "Docs",
+    "launchApp": "Launch App"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "builder": "Resume Builder",
+    "tailor": "Tailor Resume",
+    "settings": "Settings",
+    "backToDashboard": "Back to Dashboard",
+    "goToSettings": "Go to Settings",
+    "applicationTracker": "Application Tracker",
+    "jobSearch": "Job Search",
+    "jobTracking": "Job Tracking",
+    "resumeBuilder": "Resume Builder",
+    "companies": "Company Tracker",
+    "contacts": "Contact Tracker",
+    "profile": "My Profile",
+    "chat": "AI Chat",
+    "createResume": "Create Resume",
+    "interviewPractice": "Interview Practice"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Manage your resumes and job applications",
+    "myResumes": "My Resumes",
+    "noResumes": "No resumes yet",
+    "noResumesDescription": "Upload your first resume to get started",
+    "uploadResume": "Upload Resume",
+    "createNew": "Create New",
+    "lastModified": "Last modified",
+    "actions": "Actions",
+    "preview": "Preview",
+    "viewResume": "View Resume",
+    "editResume": "Edit Resume",
+    "deleteResume": "Delete Resume",
+    "downloadPdf": "Download PDF",
+    "tailorResume": "Tailor for Job",
+    "selectModule": "Select Module",
+    "masterResume": "Master Resume",
+    "tailoredResume": "Tailored Resume",
+    "initializeMasterResume": "Initialize Master Resume",
+    "initializeSequence": "Initialize Sequence",
+    "masters": "Master Resumes",
+    "addAnotherResume": "Add Another Resume",
+    "refreshStatus": "Refresh status",
+    "retryProcessing": "Retry Processing",
+    "retryingProcessing": "Retrying...",
+    "deleteAndReupload": "Delete & Re-upload",
+    "processingFailedHint": "We couldn't read this file. Retry or upload a different one.",
+    "retrySuccess": "Processing succeeded!",
+    "retryFailed": "Retry failed. Try uploading a different file.",
+    "createResume": "Create Resume",
+    "edited": "Edited {date}",
+    "statusLine": "STATUS: {status}",
+    "status": {
+      "checking": "Checking...",
+      "processing": "Processing...",
+      "ready": "Ready",
+      "failed": "Processing failed",
+      "pending": "Pending"
+    },
+    "llmNotConfiguredTitle": "[ LLM NOT CONFIGURED ]",
+    "llmNotConfiguredMessage": "> API keys are missing. Resume tailoring is disabled until configured in settings.",
+    "setupRequiredTitle": "[ SETUP REQUIRED ]",
+    "setupRequiredMessage": "> Configure API key in settings to enable resume tailoring.",
+    "uploadDialog": {
+      "success": "Resume uploaded successfully.",
+      "successMaster": "Resume uploaded and set as master.",
+      "successMissingId": "Upload succeeded but no Resume ID returned.",
+      "parsingFailed": "Resume uploaded but AI parsing failed. You can still tailor it manually.",
+      "failed": "Upload failed.",
+      "dropzoneTitle": "Click or Drag File",
+      "dropzoneSubtitle": "PDF, DOC, DOCX (Max 4MB)",
+      "tryDifferentFile": "Try Different File",
+      "parsingFailedKeepOpen": "AI parsing failed. Try a different file or close this dialog.",
+      "saveAsMaster": "Save as master resume",
+      "saveAsMasterHint": "Use this resume as a base for tailoring multiple job applications."
+    }
+  },
+  "builder": {
+    "title": "Resume Builder",
+    "editMode": "Edit Mode",
+    "previewMode": "Preview Mode",
+    "createAndPreview": "Create & Preview",
+    "unsavedDraft": "Unsaved Draft",
+    "personalInfo": "Personal Information",
+    "summary": "Summary",
+    "experience": "Experience",
+    "education": "Education",
+    "skills": "Skills",
+    "projects": "Projects",
+    "certifications": "Certifications",
+    "languages": "Languages",
+    "awards": "Awards",
+    "addSection": "Add Section",
+    "removeSection": "Remove Section",
+    "saveChanges": "Save Changes",
+    "discardChanges": "Discard Changes",
+    "placeholders": {
+      "summary": "Briefly describe your professional background..."
+    },
+    "contentStats": {
+      "wordsChars": "{wordCount} words / {charCount} chars"
+    },
+    "additionalForm": {
+      "instructions": "Enter items separated by new lines (press Enter for each item).",
+      "placeholders": {
+        "technicalSkills": "React\nTypeScript\nNode.js",
+        "languages": "English\nSpanish",
+        "certifications": "AWS Solution Architect\nGoogle Analytics",
+        "awards": "Employee of the Month\nHackathon Winner"
+      }
+    },
+    "skillsForm": {
+      "instructions": "Add skills as tags, or switch to grouped mode to organize by category.",
+      "groupedMode": "Grouped",
+      "listMode": "List",
+      "addGroup": "Add Group",
+      "removeGroup": "Remove Group",
+      "groupName": "Group Name",
+      "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
+      "skillPlaceholder": "Type a skill and press Enter"
+    },
+    "languagesForm": {
+      "instructions": "Add languages as tags.",
+      "placeholder": "English, Spanish, French"
+    },
+    "customSections": {
+      "dialogTitle": "Add Custom Section",
+      "dialogDescription": "Create a new section for your resume with a custom name and type.",
+      "sectionNameLabel": "Section Name",
+      "sectionNamePlaceholder": "e.g., Publications, Volunteer Work, Certifications",
+      "sectionTypeLabel": "Section Type",
+      "addCustomSectionButton": "Add Custom Section",
+      "sectionTypes": {
+        "textBlockLabel": "Text Block",
+        "textBlockDescription": "Single text area (like Summary)",
+        "itemListLabel": "Item List",
+        "itemListDescription": "Multiple entries with details (like Experience)",
+        "stringListLabel": "Skill List",
+        "stringListDescription": "Simple list of items (like Skills)"
+      },
+      "contentLabel": "Content",
+      "contentPlaceholder": "Enter content for {name}...",
+      "defaultTextPlaceholder": "Enter text content...",
+      "entryLabel": "Entry",
+      "addEntryLabel": "Add Entry",
+      "itemsLabel": "Items",
+      "itemsPlaceholder": "Enter items, one per line",
+      "unknownSectionType": "Unknown section type: {type}",
+      "unknownDefaultSection": "Unknown default section: {section}"
+    },
+    "sectionHeader": {
+      "renameSection": "Rename section",
+      "customTag": "Custom",
+      "hiddenFromPdfTag": "Hidden from PDF",
+      "hideSection": "Hide section",
+      "showSection": "Show section",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "deleteSection": "Delete section",
+      "deleteTitle": "Delete Section",
+      "deleteDescription": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
+    },
+    "previewTabs": {
+      "resume": "RESUME",
+      "coverLetter": "COVER LETTER",
+      "outreach": "OUTREACH MAIL",
+      "jdMatch": "JD MATCH",
+      "interviewPrep": "INTERVIEW PREP"
+    },
+    "footer": {
+      "moduleLabel": "Resume Builder Module",
+      "singleColumn": "Single Column",
+      "twoColumn": "Two Column"
+    },
+    "pageSize": {
+      "usLetter": "US Letter"
+    },
+    "generatePrompt": {
+      "notAvailableTitle": "{title} Not Available",
+      "notAvailableDescription": "To generate {title}, first tailor your resume with a job description.",
+      "goToDashboard": "Go to Dashboard",
+      "generateTitle": "Generate {title}",
+      "coverLetterDescription": "Generate a tailored cover letter based on your resume and job description.",
+      "outreachDescription": "Generate a concise outreach message for LinkedIn or email based on your resume and job description.",
+      "generateButton": "Generate {title}",
+      "coverLetterFooter": "Tip: tailor first for best results.",
+      "outreachFooter": "Tip: keep it short and personalized.",
+      "interviewPrepDescription": "Generate role-specific interview preparation based on your tailored resume and job description.",
+      "interviewPrepFooter": "Tip: use this after tailoring to prepare truthful, resume-grounded answers."
+    },
+    "regenerateDialog": {
+      "title": "Regenerate {title}?",
+      "description": "This will replace your current {title} with a newly generated one. Any edits you've made will be lost.",
+      "instructionLabel": "Additional instructions (optional)",
+      "instructionPlaceholder": "e.g. Focus on my Python backend experience"
+    },
+    "regenerate": {
+      "buttonLabel": "AI Regenerate",
+      "stepLabel": "Step {current} of {total}",
+      "selectDialog": {
+        "title": "Select Items to Regenerate",
+        "subtitle": "Choose which parts of your resume you want to improve",
+        "experience": "Work Experience",
+        "projects": "Projects",
+        "skills": "Technical Skills",
+        "summary": "Professional Summary",
+        "noItemsSelected": "Please select at least one item",
+        "noItemsAvailable": "No items available to regenerate. Add experience, projects, skills, or a summary first.",
+        "itemCount": {
+          "one": "{count} item",
+          "other": "{count} items"
+        },
+        "continueButton": "Continue"
+      },
+      "instructionDialog": {
+        "title": "What Would You Like to Improve?",
+        "subtitle": "Provide specific feedback to guide the AI",
+        "defaultInstruction": "Improve the content with stronger action verbs and quantifiable impact where available.",
+        "selectedItems": "Selected Items",
+        "placeholder": "Example: Add more quantifiable metrics, emphasize leadership skills, use more action verbs...",
+        "hint": "Be specific about what you're not satisfied with",
+        "backButton": "Back",
+        "generateButton": "Generate"
+      },
+      "diffPreview": {
+        "title": "Preview Changes",
+        "subtitle": "Review the regenerated content before applying",
+        "expandItem": "Expand {item}",
+        "collapseItem": "Collapse {item}",
+        "partialFailures": "Some items couldn't be regenerated ({count}). You can still review and apply the successful ones.",
+        "changesCount": "{count} items modified",
+        "rejectButton": "Reject & Regenerate",
+        "acceptButton": "Accept Changes",
+        "originalLabel": "Original",
+        "newLabel": "New",
+        "noContent": "No content",
+        "applying": "Applying...",
+        "loading": "Generating improved content..."
+      },
+      "errors": {
+        "generationFailed": "Failed to generate content. Please try again.",
+        "applyFailed": "Failed to apply changes. Please try again.",
+        "resumeChanged": "Resume content changed since regeneration. Please regenerate and try again.",
+        "noChangesToApply": "No changes to apply.",
+        "networkError": "Network error. Please check your connection."
+      }
+    },
+    "jdMatch": {
+      "yourResume": "Your Resume",
+      "matchingKeywordsHighlighted": "(matching keywords highlighted)",
+      "jobDescriptionTitle": "Job Description",
+      "at": "at",
+      "atSeparator": " at ",
+      "roleSeparator": "-",
+      "aboutTitle": "About JD Match",
+      "aboutDescription": "This view shows how well your resume matches the job description. Keywords from the JD are highlighted in yellow on your resume, helping you see which skills and terms are already covered.",
+      "highlightedKeywordsTitle": "Highlighted Keywords",
+      "highlightedKeywordsDescriptionTemplate": "Words highlighted in __COLOR__ appear in both the job description and your resume. A higher match rate suggests better alignment with the job requirements.",
+      "highlightedKeywordsDescriptionPrefix": "Words highlighted in",
+      "highlightColor": "yellow",
+      "highlightedKeywordsDescriptionSuffix": "appear in both the job description and your resume. A higher match rate suggests better alignment with the job requirements.",
+      "tipsTitle": "Tips",
+      "tips": {
+        "items": {
+          "addMissingKeywords": "Use the Resume tab to add missing keywords",
+          "focusTechnicalSkills": "Focus on technical skills and tools mentioned in the JD",
+          "matchActionVerbs": "Match action verbs from the job requirements"
+        }
+      },
+      "stats": {
+        "keywordsExtracted": "{count} keywords extracted",
+        "matchesFound": "{count} matches found",
+        "matchRateLabel": "Match Rate:"
+      }
+    },
+    "genericItemForm": {
+      "itemLabel": "Item",
+      "addItemLabel": "Add {label}",
+      "fields": {
+        "title": "Title",
+        "organization": "Organization",
+        "location": "Location",
+        "years": "Years",
+        "descriptionPoints": "Description Points"
+      },
+      "actions": {
+        "addPoint": "Add Point",
+        "togglePointStyle": "Toggle bullet marker"
+      },
+      "placeholders": {
+        "title": "Title",
+        "organization": "Organization",
+        "location": "Location",
+        "years": "Jan 2020 - Present",
+        "description": "Describe your contribution..."
+      },
+      "noEntries": "// NO {label} ENTRIES",
+      "addFirstItem": "Add First {label}"
+    },
+    "forms": {
+      "experience": {
+        "addJob": "Add Job",
+        "addFirstJob": "Add First Job",
+        "fields": {
+          "jobTitle": "Job Title",
+          "company": "Company"
+        },
+        "placeholders": {
+          "jobTitle": "Senior Developer",
+          "company": "Tech Corp",
+          "location": "Remote / City",
+          "years": "Jan 2020 - Present",
+          "description": "Describe your achievement..."
+        }
+      },
+      "education": {
+        "addSchool": "Add School",
+        "addFirstSchool": "Add First School",
+        "fields": {
+          "institution": "Institution",
+          "degree": "Degree",
+          "description": "Description",
+          "descriptionOptional": "Description (Optional)"
+        },
+        "placeholders": {
+          "institution": "University Name",
+          "degree": "Bachelor of Science",
+          "years": "Aug 2016 - May 2020",
+          "description": "Additional details..."
+        }
+      },
+      "projects": {
+        "addProject": "Add Project",
+        "addFirstProject": "Add First Project",
+        "fields": {
+          "projectName": "Project Name",
+          "role": "Role",
+          "website": "Website"
+        },
+        "placeholders": {
+          "projectName": "Taylor",
+          "role": "Creator",
+          "years": "Mar 2023",
+          "github": "github.com/username/project",
+          "website": "https://project-demo.com",
+          "description": "Project detail..."
+        }
+      },
+      "certifications": {
+        "addCertificate": "Add Certificate",
+        "addManually": "Add manually",
+        "noCertificates": "No certificates yet. Add them from your profile or manually.",
+        "fields": {
+          "certificate": "Certificate"
+        },
+        "placeholders": {
+          "certificate": "e.g. AWS Certified Solutions Architect — Amazon (2023)"
+        }
+      },
+      "awards": {
+        "addAward": "Add Award",
+        "addManually": "Add manually",
+        "noAwards": "No awards yet. Add them from your profile or manually.",
+        "fields": {
+          "award": "Award"
+        },
+        "placeholders": {
+          "award": "e.g. Employee of the Month — Company (2024)"
+        }
+      }
+    },
+    "formatting": {
+      "panelTitle": "Template & Formatting",
+      "template": "Template",
+      "templates": {
+        "swissSingle": {
+          "name": "Single Column",
+          "description": "Traditional full-width layout with maximum content density"
+        },
+        "swissTwoColumn": {
+          "name": "Two Column",
+          "description": "Experience-focused main column with sidebar for skills"
+        },
+        "modern": {
+          "name": "Modern",
+          "description": "Colorful accents with customizable theme colors"
+        },
+        "modernTwoColumn": {
+          "name": "Modern Two Column",
+          "description": "Two-column layout with modern colorful accents and themes"
+        },
+        "latex": {
+          "name": "LaTeX",
+          "description": "Classic serif academic layout with ruled section headers"
+        },
+        "clean": {
+          "name": "Clean",
+          "description": "Minimal sans layout with large understated section headers"
+        },
+        "vivid": {
+          "name": "Vivid",
+          "description": "Colorful two-column layout with accent headers and arrow bullets"
+        }
+      },
+      "accentColor": "Accent Color",
+      "accentColors": {
+        "blue": "Blue",
+        "green": "Green",
+        "orange": "Orange",
+        "red": "Red",
+        "custom": "Custom"
+      },
+      "dateFormat": "Date Format",
+      "dateFormats": {
+        "short": "Short name (Sep 2020)",
+        "long": "Long name (September 2020)",
+        "mmmyyyy": "Number (MMM/YYYY)",
+        "years": "Years (2020 - 2024)"
+      },
+      "lineHeight": "Line Height",
+      "listLineHeight": "List Line Height",
+      "headerAlignment": "Header Alignment",
+      "dateAlignment": "Date Alignment",
+      "locationAlignment": "Location Alignment",
+      "alignmentOptions": {
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      },
+      "skillsLayout": "Skills Layout",
+      "skillsLayoutOptions": {
+        "comma": "Comma separated",
+        "list": "Line separated",
+        "columns": "Columns"
+      },
+      "marginUnit": "Units",
+      "marginUnits": {
+        "mm": "Millimeters (mm)",
+        "percent": "Percent of page"
+      },
+      "pageSize": "Page Size",
+      "margins": "Margins",
+      "margin": {
+        "top": "Top",
+        "bottom": "Bottom",
+        "left": "Left",
+        "right": "Right"
+      },
+      "spacing": "Spacing",
+      "spacingSection": "Section",
+      "spacingItems": "Items",
+      "spacingLines": "Lines",
+      "typography": "Typography",
+      "padding": "Padding",
+      "fontSize": "Font Size",
+      "baseFontSize": "Base",
+      "headerScale": "Headers",
+      "headerFontFamily": "Headers",
+      "bodyFontFamily": "Body",
+      "fontNames": {
+        "serif": "Serif",
+        "sans": "Sans",
+        "mono": "Mono",
+        "timesRoman": "Times"
+      },
+      "options": "Options",
+      "compactMode": "Compact Mode",
+      "contactIcons": "Contact Icons",
+      "bulletMarker": "Bullet Marker",
+      "listSeparator": "List Separator",
+      "markerOptions": {
+        "*": "*",
+        "-": "-",
+        ">>": ">>",
+        "->": "->"
+      },
+      "separatorOptions": {
+        "*": "*",
+        "-": "-",
+        ",": "Comma",
+        "|": "Pipe"
+      },
+      "weightOptions": {
+        "light": "Light",
+        "regular": "Regular",
+        "bold": "Bold",
+        "extralight": "Extra Light"
+      },
+      "transformOptions": {
+        "uppercase": "All Caps",
+        "as-written": "As Written",
+        "capitalize": "Title Case"
+      },
+      "elementNames": {
+        "bodyCopy": "Body Copy",
+        "primaryHeading": "Primary Heading",
+        "secondaryHeading": "Secondary Heading",
+        "sectionTitle": "Section Titles",
+        "fullName": "Full Name",
+        "minorCopy": "Minor Copy"
+      },
+      "spacingRows": {
+        "betweenSections": "Between Sections",
+        "titlesContent": "Titles & Content",
+        "primarySecondaryHeadings": "Primary & Secondary Headings",
+        "contentBlocks": "Content Blocks",
+        "listItems": "List Items"
+      },
+      "borderRows": {
+        "aboveHeader": "Above Header",
+        "belowHeader": "Below Header",
+        "sectionTitles": "Section Titles"
+      },
+      "borderEnabled": "Show",
+      "ptUnit": "pt",
+      "effectiveOutput": "Effective Output",
+      "effectiveMargins": "Margins: T{top} B{bottom} L{left} R{right}",
+      "effectiveSectionGap": "Section Gap",
+      "effectiveItemGap": "Item Gap",
+      "effectiveLineHeight": "Line Height",
+      "effectiveListLineHeight": "List Line Height",
+      "effectiveBaseFont": "Base Font",
+      "effectiveHeaderScale": "Header Scale",
+      "effectiveHeaderFont": "Header Font",
+      "effectiveBodyFont": "Body Font",
+      "compactHint": "Compact mode tightens spacing and line height. Margins and base font size stay literal.",
+      "resetDefaults": "Reset to Defaults",
+      "workShowBy": "Show work experience by",
+      "workDatesBy": "Show dates by",
+      "workLocationBy": "Show location by",
+      "workShowByOptions": {
+        "company": "Company",
+        "position": "Position"
+      },
+      "workDatesByOptions": {
+        "company": "Company",
+        "position": "Position",
+        "both": "Both"
+      },
+      "workLocationByOptions": {
+        "company": "Company",
+        "position": "Position",
+        "none": "None"
+      },
+      "educationShowBy": "Show education by",
+      "educationLayout": "Layout",
+      "educationShowByOptions": {
+        "degree": "Degree",
+        "institution": "Institution"
+      },
+      "educationLayoutOptions": {
+        "stacked": "Stacked",
+        "inline": "Inline"
+      },
+      "previewSelectors": {
+        "metaSample": "Sep 2020",
+        "locationSample": "Paris"
+      }
+    },
+    "personalInfoForm": {
+      "placeholders": {
+        "name": "John Doe",
+        "title": "Software Engineer",
+        "email": "john@example.com",
+        "phone": "+1 (555) 000-0000",
+        "location": "City, Country",
+        "website": "portfolio.com",
+        "linkedin": "linkedin.com/in/john",
+        "github": "github.com/john"
+      },
+      "displayAsLink": "Show as link"
+    },
+    "leftPanel": {
+      "editorPanel": "Editor Panel",
+      "coverLetterEditor": "Cover Letter Editor",
+      "outreachEditor": "Outreach Message Editor",
+      "jdMatchAnalysis": "JD Match Analysis",
+      "interviewPrep": "Interview Prep"
+    },
+    "editorModes": {
+      "design": "Design",
+      "content": "Content"
+    },
+    "designTabs": {
+      "presentation": "Presentation",
+      "sections": "Sections",
+      "settings": "Settings",
+      "advanced": "Advanced"
+    },
+    "designGroups": {
+      "controls": "Controls",
+      "styling": "Styling",
+      "heightsPaddings": "Heights & Paddings",
+      "alignmentsLayouts": "Alignments & Layouts",
+      "pageSetup": "Page Setup",
+      "workExperienceSettings": "Work Experience Settings",
+      "educationSettings": "Education Settings",
+      "advancedStyles": "Advanced Styles",
+      "textSizes": "Text Sizes",
+      "textWeights": "Text Weights",
+      "textTransformations": "Text Transformations",
+      "verticalSpacing": "Vertical Spacing",
+      "borders": "Borders",
+      "comingSoon": "Coming soon",
+      "comingSoonHint": "These settings are not available yet."
+    },
+    "sectionOrder": {
+      "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
+      "dragToReorder": "Drag to reorder"
+    },
+    "actions": {
+      "saveAsMaster": "Save as Master",
+      "alreadyMaster": "This resume is already a master",
+      "saveMoreOptions": "More save options",
+      "saveAsMasterConfirmTitle": "Save as Master Resume?",
+      "saveAsMasterConfirmDescription": "This resume will become the base used to tailor future job applications. Other masters are kept.",
+      "saveAsMasterConfirmLabel": "Save as Master"
+    },
+    "alerts": {
+      "saveNotAvailable": "Save is only available when editing an existing resume.",
+      "saveFailed": "Failed to save resume. Please try again.",
+      "saveAsMasterSuccess": "Resume saved as master",
+      "saveAsMasterFailed": "Failed to save as master. Please try again.",
+      "coverLetterSaveSuccess": "Cover letter saved",
+      "outreachSaveSuccess": "Outreach message saved",
+      "downloadSuccess": "Resume downloaded",
+      "reloadFailed": "Applied changes, but failed to reload the resume. Please refresh the page.",
+      "downloadNotAvailable": "Download is only available for saved resumes.",
+      "downloadFailed": "Failed to download resume. Please try again.",
+      "coverLetterSaveFailed": "Failed to save cover letter. Please try again.",
+      "coverLetterDownloadRequiresResume": "Save the resume first to download the cover letter.",
+      "coverLetterMissing": "No cover letter available. Enable cover letter generation in Settings and tailor a resume.",
+      "coverLetterDownloadFailed": "Failed to download cover letter: {error}",
+      "outreachSaveFailed": "Failed to save outreach message. Please try again.",
+      "coverLetterGenerateFailed": "Failed to generate cover letter: {error}",
+      "outreachGenerateFailed": "Failed to generate outreach message: {error}",
+      "interviewPrepGenerateFailed": "Failed to generate interview preparation: {error}"
+    },
+    "projectsDialog": {
+      "title": "Add Project from Profile",
+      "description": "Pick a project from your career profile. AI writes the bullet points from its README, or from a short prompt of yours.",
+      "profileProjects": "Profile projects",
+      "searchPlaceholder": "Search projects...",
+      "noProjects": "No projects in your profile yet.",
+      "noProjectsHint": "Add projects in your profile so they can appear here.",
+      "goToProfile": "Go to profile",
+      "startFromScratch": "Start from scratch",
+      "startFromScratchHint": "Add an empty project entry and fill it manually",
+      "readmeAvailable": "README",
+      "noReadme": "No README",
+      "readmeLabel": "Project README",
+      "promptLabel": "Describe what you built",
+      "promptPlaceholder": "e.g. Real-time chat app with WebSockets, Redis pub/sub and 5k concurrent users",
+      "promptHint": "Optional — add a focus or details you want mentioned. AI combines it with the README (when present).",
+      "generate": "Generate bullet points",
+      "regenerate": "Regenerate",
+      "generating": "Generating...",
+      "previewTitle": "AI bullet points",
+      "addToResume": "Add to resume",
+      "back": "Back",
+      "loading": "Loading your projects...",
+      "loadError": "Could not load your projects.",
+      "retry": "Retry",
+      "generateError": "Something went wrong while generating. Please try again.",
+      "allAdded": "All your profile projects are already in this resume.",
+      "allAddedHint": "Add more projects in your profile to see them here.",
+      "showAll": "Show all ({{count}} more)",
+      "showLess": "Show less"
+    },
+    "certificationsDialog": {
+      "title": "Add Certificate from Profile",
+      "description": "Pick a certificate from your career profile to add it to this resume.",
+      "profileCertifications": "Profile certificates",
+      "searchPlaceholder": "Search certificates...",
+      "allAdded": "All your profile certificates are already in this resume.",
+      "noCertificationsHint": "Add certificates in your profile so they can appear here.",
+      "goToProfile": "Go to profile",
+      "loading": "Loading your certificates...",
+      "loadError": "Could not load your certificates.",
+      "retry": "Retry"
+    },
+    "awardsDialog": {
+      "title": "Add Award from Profile",
+      "description": "Pick an award from your career profile to add it to this resume.",
+      "profileAwards": "Profile awards",
+      "searchPlaceholder": "Search awards...",
+      "allAdded": "All your profile awards are already in this resume.",
+      "noAwardsHint": "Add awards in your profile so they can appear here.",
+      "goToProfile": "Go to profile",
+      "loading": "Loading your awards...",
+      "loadError": "Could not load your awards.",
+      "retry": "Retry"
+    }
+  },
+  "enrichment": {
+    "title": "Resume Enhancement",
+    "loading": {
+      "analyzingTitle": "Analyzing your resume...",
+      "analyzingDescription": "Identifying areas that could use more detail",
+      "generatingTitle": "Crafting enhanced descriptions...",
+      "generatingDescription": "Using your answers to improve your resume",
+      "applyingTitle": "Applying enhancements...",
+      "applyingDescription": "Updating your master resume"
+    },
+    "questionProgress": "Question {current} of {total}",
+    "itemType": {
+      "experience": "Experience",
+      "project": "Project"
+    },
+    "shortcutHint": "Press Shift+Enter for new line, Cmd/Ctrl+Enter to continue",
+    "preview": {
+      "title": "Review New Content",
+      "description": "Review the new bullet points that will be added to your resume",
+      "applyButton": "Add to Resume",
+      "keepingLabel": "Keeping",
+      "addingLabel": "Adding",
+      "existingCount": "({count} existing)",
+      "newCount": "({count} new)",
+      "noExistingDescription": "No existing description"
+    },
+    "complete": {
+      "title": "Resume Enhanced!",
+      "updatedCountSingular": "{count} item updated successfully",
+      "updatedCountPlural": "{count} items updated successfully",
+      "updatedFallback": "Your resume has been updated with enhanced descriptions",
+      "doneButton": "Done"
+    },
+    "noImprovements": {
+      "title": "Your resume looks great!",
+      "defaultDescription": "We couldn't find any items that need improvement. Your experience and project descriptions are already well-detailed."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "unexpected": "An unexpected error occurred"
+    }
+  },
+  "tailor": {
+    "aiConnection": {
+      "title": "AI connection",
+      "subtitle": "Test your LLM provider before you start tailoring.",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "retest": "Test again",
+      "notConfigured": "No LLM provider configured",
+      "ok": "Connection healthy",
+      "failed": "Connection failed",
+      "connectedAs": "{provider} · {model}",
+      "latency": "{ms} ms",
+      "gotoSettings": "Open Settings"
+    },
+    "title": "Tailor Resume",
+    "subtitle": "Optimize your resume for a specific job",
+    "heroTitle": "Tailor Your Resume",
+    "selectResume": "Select Resume",
+    "resumePromptDescription": "Choose which master resume to tailor from.",
+    "pasteJobDescription": "Paste Job Description",
+    "pasteJobDescriptionBelow": "Paste Job Description Below",
+    "jobDescriptionPlaceholder": "Paste the job description here...",
+    "promptLabel": "Tailoring intensity",
+    "promptDescription": "Choose how strongly to align your resume to the job description.",
+    "promptOptions": {
+      "nudge": {
+        "label": "Light nudge",
+        "description": "Minimal edits to better align existing experience."
+      },
+      "keywords": {
+        "label": "Keyword enhance",
+        "description": "Blend in relevant keywords without changing role or scope."
+      },
+      "full": {
+        "label": "Full tailor",
+        "description": "Comprehensive tailoring using the job description."
+      },
+      "recruiter": {
+        "label": "Recruiter tailor",
+        "description": "Recruiter-grade tailoring with evidence mapping and ATS readability."
+      }
+    },
+    "analyzeJob": "Analyze Job",
+    "generateTailored": "Generate Tailored Resume",
+    "setupRequiredTitle": "[ SETUP REQUIRED ]",
+    "noApiKeyMessage": "> No API key configured. Resume tailoring requires an LLM provider.",
+    "configureApiKey": "Configure API Key",
+    "configureApiKeyFirst": "Configure API Key First",
+    "charactersCount": "{count} chars",
+    "matchScore": "Match Score",
+    "suggestions": "Suggestions",
+    "keywords": "Keywords to Include",
+    "footerTagline": "AI-POWERED OPTIMIZATION ENGINE",
+    "diffModal": {
+      "title": "Review AI Tailoring Results",
+      "subtitle": "Please carefully review the changes to ensure no false information has been added",
+      "summary": "Change Summary",
+      "skillsAdded": "Skills Added",
+      "skillsRemoved": "Skills Removed",
+      "descriptionsModified": "Descriptions Modified",
+      "certificationsAdded": "Certifications Added",
+      "highRiskChanges": "High Risk Changes",
+      "warningTitle": "Detected {count} high-risk addition(s)",
+      "warningMessage": "Please confirm these additions exist in your original resume or are reflected in your descriptions",
+      "summaryChanges": "Summary Changes",
+      "skillChanges": "Skill Changes",
+      "descriptionChanges": "Experience Description Changes",
+      "experienceChanges": "Experience Entry Changes",
+      "educationChanges": "Education Changes",
+      "projectChanges": "Project Changes",
+      "certificationChanges": "Certification Changes",
+      "languageChanges": "Language Changes",
+      "awardChanges": "Award Changes",
+      "rejectButton": "Reject & Regenerate",
+      "confirmButton": "Confirm & Save"
+    },
+    "regenerateDialog": {
+      "title": "Regenerate tailored resume?",
+      "description": "This will discard the current preview and request a new AI tailoring result.",
+      "confirmLabel": "Regenerate"
+    },
+    "missingDiffDialog": {
+      "title": "Unable to calculate changes",
+      "description": "We could not compute a diff for this resume. This can happen with legacy resumes that lack structured data. You can continue to save the tailored resume or cancel to review later.",
+      "confirmLabel": "Continue without diff"
+    },
+    "errors": {
+      "jobDescriptionTooShort": "Job description is too short. Add more detail and try again.",
+      "apiKeyError": "Your API key isn't working. Check it in Settings.",
+      "rateLimit": "Rate limit reached. Wait about a minute and try again.",
+      "failedToGenerate": "Couldn't generate the resume. Check your API key in Settings, then try again.",
+      "timeout": "The request timed out. Please try again with a shorter job description or check your connection.",
+      "failedToPreview": "Couldn't preview the resume. Check your API key in Settings, then try again.",
+      "failedToConfirm": "Couldn't apply the changes. Please try again."
+    },
+    "projectsPicker": {
+      "title": "Choose Projects for Your Tailored Resume",
+      "subtitle": "These career projects match the job description. Pick up to 4 — the Projects section of your tailored resume will be replaced with your selection.",
+      "matchScore": "Match",
+      "inResume": "Already in resume",
+      "noDescription": "No description could be drafted for this project (LLM unavailable).",
+      "selectHint": "Select up to {count} projects",
+      "skip": "Skip — use top matches automatically",
+      "tailorWithSelection": "Tailor with selection"
+    },
+    "jobIntel": {
+      "shouldApply": {
+        "title": "Should I Apply?",
+        "matchPercent": "Match",
+        "careerRelevance": "Career Relevance",
+        "salaryPotential": "Salary Potential",
+        "competition": "Competition",
+        "companyQuality": "Company Quality",
+        "ghostRisk": "Ghost Risk",
+        "verdict": "Verdict",
+        "biggestGap": "Biggest Gap",
+        "recommendation": "Recommendation",
+        "analyze": "Analyze Job",
+        "analyzing": "Analyzing...",
+        "verdictYes": "Yes — strong match",
+        "verdictConditional": "Conditional — address gaps",
+        "verdictNo": "No — low match",
+        "notAvailable": "n/a"
+      },
+      "redFlags": {
+        "title": "Red Flags",
+        "ghostRisk": "Ghost Risk",
+        "noFlags": "No red flags detected",
+        "info": "Info",
+        "warning": "Warning",
+        "danger": "Danger",
+        "loadFailed": "Could not load red flags."
+      },
+      "jobDna": {
+        "title": "Job DNA",
+        "technical": "Technical Skills",
+        "experience": "Experience Domains",
+        "company": "Company Culture",
+        "matched": "Matched",
+        "missing": "Missing",
+        "extra": "Extra",
+        "overallMatch": "Overall Match",
+        "loadFailed": "Could not load job DNA."
+      },
+      "recommendations": {
+        "title": "Recruiter Recommendations",
+        "generating": "Generating recommendations...",
+        "accept": "Accept",
+        "reject": "Reject",
+        "apply": "Apply",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "applied": "Applied",
+        "regenerate": "Regenerate with feedback",
+        "noRecommendations": "No recommendations yet"
+      }
+    },
+    "hiringProbability": {
+      "title": "Hiring Probability",
+      "skills": "Skills",
+      "experience": "Experience",
+      "seniority": "Seniority",
+      "overall": "Hiring Probability",
+      "loadFailed": "Could not load hiring probability."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your preferences",
+    "aiProvider": "AI Provider",
+    "aiProviderDescription": "Select your preferred AI provider for resume analysis",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter your API key",
+    "saveApiKey": "Save API Key",
+    "contentLanguage": "Content Language",
+    "contentLanguageDescription": "Language for generated content (resumes, cover letters)",
+    "uiLanguage": "UI Language",
+    "uiLanguageDescription": "Language for the user interface",
+    "theme": "Theme",
+    "themeDescription": "Choose your preferred color theme",
+    "lightMode": "Light",
+    "darkMode": "Dark",
+    "systemMode": "System",
+    "dangerZone": "Danger Zone",
+    "clearApiKeys": "Clear API Keys",
+    "clearApiKeysDescription": "Removes all stored API keys from the configuration. This action cannot be undone.",
+    "resetDatabase": "Reset Database",
+    "resetDatabaseDescription": "Deletes ALL data including resumes, jobs, and generated content. This action cannot be undone.",
+    "llmConfigurationTitle": "LLM Configuration",
+    "providerLabel": "Provider",
+    "statusCards": {
+      "llm": "LLM",
+      "database": "Database",
+      "resumes": "Resumes",
+      "jobs": "Jobs",
+      "improvements": "Improvements",
+      "masterResume": "Master Resume"
+    },
+    "statusValues": {
+      "healthy": "Healthy",
+      "offline": "Offline",
+      "connected": "Connected",
+      "configured": "Configured",
+      "notSet": "Not set"
+    },
+    "apiKeyMenu": {
+      "buttonLabel": "LLM API",
+      "title": "OpenAI API Key",
+      "description": "Provide your key to enable hosted OpenAI models.",
+      "savedMessage": "API key saved.",
+      "loadError": "Unable to load API key",
+      "updateError": "Unable to update API key"
+    },
+    "setupRequired": {
+      "title": "[ SETUP REQUIRED ]",
+      "description": "> No API key configured. Add your LLM provider API key below to enable resume tailoring."
+    },
+    "systemStatus": {
+      "title": "System Status",
+      "refresh": "Refresh",
+      "unableToConnect": "Can't reach the server",
+      "expectedAt": "Expected at: {apiUrl}",
+      "lastFetched": {
+        "never": "Never",
+        "justNow": "Just now",
+        "minutesAgo": "{minutes}m ago",
+        "hoursAgo": "{hours}h ago"
+      }
+    },
+    "llmConfiguration": {
+      "selectedProvider": "SELECTED: {provider}",
+      "modelLabel": "Model",
+      "defaultModel": "DEFAULT: {model}",
+      "apiKeyLabel": "API Key",
+      "apiKeyOptionalForOllama": "(Optional for Ollama)",
+      "apiKeyOptional": "(Optional)",
+      "apiKeyPlaceholder": "sk-...",
+      "apiKeyNotRequiredPlaceholder": "Not required for local models",
+      "apiKeyOptionalPlaceholder": "Leave blank if your server has no auth",
+      "leaveBlankToKeepExistingKey": "LEAVE BLANK TO KEEP EXISTING KEY",
+      "baseUrlLabel": "Base URL (optional)",
+      "baseUrlPlaceholder": "e.g. https://api.openai.com/v1",
+      "baseUrlDescription": "Override the API base URL to use a proxy/aggregator endpoint. Leave blank to use provider default.",
+      "ollamaServerUrl": "Ollama Server URL",
+      "ollamaServerUrlPlaceholder": "http://localhost:11434",
+      "reasoningEffortLabel": "Reasoning effort",
+      "reasoningEffortAuto": "Auto",
+      "reasoningEffortAutoDesc": "Don't send reasoning_effort — default for max compatibility",
+      "reasoningEffortMinimal": "Minimal",
+      "reasoningEffortLow": "Low",
+      "reasoningEffortMedium": "Medium",
+      "reasoningEffortHigh": "High",
+      "reasoningEffortDescription": "Only affects reasoning-capable models (gpt-5 family, Claude 3.7+, DeepSeek R1, OpenAI o1/o3). Unsupported providers drop this value automatically.",
+      "testConnection": "Test Connection",
+      "errorPrefix": "ERROR: {error}",
+      "connectionSuccessful": "CONNECTION SUCCESSFUL",
+      "connectionFailed": "CONNECTION FAILED",
+      "connectionDetails": "Provider: {provider} | Model: {model}",
+      "testPromptLabel": "TEST PROMPT",
+      "modelOutputLabel": "MODEL OUTPUT",
+      "reasoningContentLabel": "MODEL THINKING",
+      "errorDetailLabel": "ERROR DETAIL",
+      "healthErrors": {
+        "api_key_missing": "API key not configured. Please add a key in Settings.",
+        "health_check_failed": "Health check failed.",
+        "duplicate_v1_path": "Health check failed. The Base URL may contain a duplicate /v1 path.",
+        "not_found_404": "Health check failed. 404 Not Found - check that the Base URL matches the provider.",
+        "html_response": "Health check failed. The Base URL returned HTML; it may be a console URL or an unsupported gateway path."
+      },
+      "healthWarnings": {
+        "empty_content": "LLM returned empty content for the health check."
+      }
+    },
+    "contentGeneration": {
+      "title": "Content Generation",
+      "description": "Enable additional content generation during resume tailoring. When enabled, these documents will be automatically generated alongside your tailored resume.",
+      "coverLetter": {
+        "label": "Cover Letter",
+        "description": "Generate a tailored cover letter alongside your resume"
+      },
+      "outreachMessage": {
+        "label": "Cold Outreach Message",
+        "description": "Generate a networking message for LinkedIn or email"
+      },
+      "customPromptLabel": "Custom prompt (optional)",
+      "customPromptHelp": "Must include these placeholders (each in curly braces): job_description, resume_data, output_language. Leave blank to use the default prompt.",
+      "customPromptResetButton": "Reset to default",
+      "customPromptErrorMissing": "Missing required placeholders: {missing}",
+      "interviewPrep": {
+        "label": "Interview Preparation",
+        "description": "Automatically generate interview preparation alongside saved tailored resumes"
+      },
+      "outreachEmail": {
+        "label": "Composer email prompt (optional)",
+        "help": "Must include these placeholders: output_language, company_name, sender_info, purpose. Leave blank to use the default prompt."
+      }
+    },
+    "promptSettings": {
+      "title": "Prompt Settings",
+      "description": "Choose the default prompt used for resume tailoring.",
+      "defaultLabel": "Default tailoring prompt"
+    },
+    "footer": {
+      "status": {
+        "checking": "Checking...",
+        "ready": "STATUS: READY",
+        "setupRequired": "STATUS: SETUP REQUIRED",
+        "offline": "STATUS: OFFLINE"
+      }
+    },
+    "errors": {
+      "unableToConnectBackend": "Can't reach the server. Make sure it's running.",
+      "apiKeyRequired": "API key is required for the selected provider.",
+      "baseUrlRequired": "{provider} requires a Base URL.",
+      "unknownProvider": "Unknown provider returned from backend: {provider}",
+      "unableToSaveConfiguration": "Unable to save configuration",
+      "failedToClearApiKeys": "Failed to clear API keys. Please try again.",
+      "failedToResetDatabase": "Failed to reset database. Please try again."
+    },
+    "apiKeys": {
+      "savedTitle": "Saved API Keys",
+      "deleteAria": "Delete {provider} key",
+      "deleteConfirmTitle": "Delete API key?",
+      "deleteConfirmDescription": "Remove the saved {provider} API key? You can add it again later."
+    },
+    "email": {
+      "title": "Email Settings",
+      "description": "Configure the SMTP sender used when emailing companies from the Companies page.",
+      "smtpHost": "SMTP Host",
+      "smtpPort": "SMTP Port",
+      "senderEmail": "Sender Email",
+      "senderName": "Sender Name",
+      "senderNamePlaceholder": "Your name",
+      "password": "App Password",
+      "passwordSet": "******** (a password is already set)",
+      "passwordPlaceholder": "Enter your app password",
+      "passwordHint": "Use an app-specific password, not your regular account password.",
+      "useTls": "Use TLS",
+      "useTlsHint": "Enable STARTTLS (e.g. Gmail on port 587). Port 465 always uses implicit TLS.",
+      "save": "Save",
+      "saved": "Saved",
+      "loadFailed": "Could not load email settings.",
+      "saveFailed": "Could not save email settings.",
+      "invalidPort": "Invalid port number.",
+      "togglePasswordVisibility": "Show or hide the app password"
+    }
+  },
+  "resumeViewer": {
+    "resumeNotFound": "Resume not found",
+    "loading": "Loading Resume...",
+    "useTailorFeature": "Use Tailor Feature",
+    "retryProcessing": "Retry Processing",
+    "deleteAndStartOver": "Delete & Start Over",
+    "returnToDashboard": "Return to Dashboard",
+    "enhanceResume": "Enhance Resume",
+    "downloadResume": "Download Resume",
+    "deletedTitle": "Resume Deleted",
+    "deletedDescriptionMaster": "Your master resume has been permanently deleted from the system.",
+    "deletedDescriptionRegular": "The resume has been permanently deleted from the system.",
+    "deleteFailedTitle": "Delete Failed",
+    "errors": {
+      "processingFailed": "We couldn't read your resume. Retry processing, or delete it and upload a different file.",
+      "stillProcessing": "Your resume is still being processed. Wait a few seconds and refresh the page.",
+      "notProcessedYet": "Resume has not been processed yet. Please use the Tailor feature to generate a structured resume.",
+      "noDataAvailable": "No resume data available.",
+      "failedToLoad": "Failed to load resume data.",
+      "failedToDelete": "Failed to delete resume. Please try again."
+    },
+    "titlePlaceholder": "Enter resume title..."
+  },
+  "preview": {
+    "margins": "Margins",
+    "calculating": "Calculating...",
+    "pageBreak": "Page Break",
+    "pageCountSingular": "{count} page",
+    "pageCountPlural": "{count} pages",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
+  },
+  "resume": {
+    "personalInfo": {
+      "name": "Full Name",
+      "title": "Job Title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub"
+    },
+    "sections": {
+      "personalInfo": "Personal Info",
+      "summary": "Summary",
+      "experience": "Experience",
+      "education": "Education",
+      "projects": "Projects",
+      "skills": "Skills",
+      "skillsOnly": "Skills",
+      "certifications": "Training & Certifications",
+      "languages": "Languages",
+      "awards": "Awards",
+      "links": "Links"
+    },
+    "defaults": {
+      "name": "Your Name"
+    },
+    "additional": {
+      "technicalSkills": "Technical Skills"
+    },
+    "additionalLabels": {
+      "technicalSkills": "Technical Skills:",
+      "languages": "Languages:",
+      "certifications": "Certifications:",
+      "awards": "Awards:"
+    }
+  },
+  "coverLetter": {
+    "title": "Cover Letter",
+    "generate": "Generate Cover Letter",
+    "regenerate": "Regenerate",
+    "copyToClipboard": "Copy to Clipboard",
+    "copied": "Copied!",
+    "editor": {
+      "placeholder": "Your cover letter will appear here after tailoring your resume with cover letter generation enabled...",
+      "tip": "TIP: A good cover letter is typically 300-400 words. Edit as needed to personalize."
+    },
+    "preview": {
+      "defaultName": "Your Name",
+      "emptyTitle": "No cover letter content yet.",
+      "emptyDescription": "Enable cover letter generation in Settings, then tailor a resume."
+    },
+    "print": {
+      "emptyContent": "No cover letter content available."
+    }
+  },
+  "outreach": {
+    "title": "Outreach Message",
+    "generate": "Generate Outreach Message",
+    "regenerate": "Regenerate",
+    "copy": "Copy",
+    "copyToClipboard": "Copy to Clipboard",
+    "copied": "Copied!",
+    "editor": {
+      "placeholder": "Your cold outreach message will appear here after tailoring your resume with outreach message generation enabled...",
+      "tip": "TIP: Keep outreach messages brief (100-150 words). Copy and paste to LinkedIn or email."
+    },
+    "preview": {
+      "channels": {
+        "linkedin": "LinkedIn",
+        "email": "Email"
+      },
+      "howToUseTitle": "How to use:",
+      "steps": {
+        "step1": "1. Copy the message using the button above",
+        "step2": "2. Open LinkedIn or your email client",
+        "step3": "3. Paste and personalize as needed",
+        "step4": "4. Send to recruiters or hiring managers"
+      },
+      "emptyTitle": "No outreach message yet.",
+      "emptyDescription": "Enable outreach message generation in Settings, then tailor a resume."
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "networkError": "Network error. Please check your connection.",
+    "unauthorized": "Please sign in to continue.",
+    "notFound": "The requested resource was not found.",
+    "validationError": "Some fields need attention. Check the highlighted fields and try again.",
+    "boundary": {
+      "title": "Something Went Wrong",
+      "description": "Something unexpected broke. Try reloading the page — if it keeps happening, let us know.",
+      "tryAgain": "Try Again",
+      "reloadPage": "Reload Page"
+    }
+  },
+  "a11y": {
+    "removeItem": "Remove item",
+    "removeDescription": "Remove this line",
+    "removeFile": "Remove file"
+  },
+  "confirmations": {
+    "deleteResume": "Delete this resume?",
+    "deleteResumeDescription": "The resume will be permanently removed.",
+    "deleteMasterResumeTitle": "Delete Master Resume",
+    "deleteMasterResumeDescription": "Your master resume will be permanently removed.",
+    "deleteResumeFromSystemDescription": "The resume will be permanently removed.",
+    "deleteResumeConfirmLabel": "Delete Resume",
+    "keepResumeCancelLabel": "Keep Resume",
+    "discardChanges": "Discard unsaved changes?",
+    "discardChangesDescription": "You'll lose any work that hasn't been saved.",
+    "clearApiKeys": "Clear All API Keys?",
+    "clearApiKeysDescription": "You'll need to re-enter them before using AI features again.",
+    "resetDatabase": "Reset everything and start over?",
+    "resetDatabaseDescription": "This permanently deletes every resume, job description, and generated document."
+  },
+  "resumeWizard": {
+    "title": "Resume Wizard",
+    "answerLabel": "Your answer",
+    "keepAddingPrompt": "What would you like to add or change?",
+    "readyHint": "You have enough for a solid resume — review and finish whenever you are ready.",
+    "sections": {
+      "intro": "Getting started",
+      "contact": "Contact details",
+      "summary": "Professional summary",
+      "workExperience": "Work experience",
+      "internships": "Internships",
+      "education": "Education",
+      "personalProjects": "Projects",
+      "skills": "Skills",
+      "review": "Review"
+    },
+    "actions": {
+      "continue": "Continue",
+      "skip": "Skip",
+      "back": "Back",
+      "review": "Review & finish",
+      "create": "Create master resume",
+      "keepAdding": "Keep adding",
+      "backToDashboard": "Back to Dashboard"
+    },
+    "preview": {
+      "label": "Live Draft",
+      "empty": "Your resume appears here as you answer.",
+      "unnamed": "Unnamed Resume",
+      "experience": "Experience",
+      "education": "Education",
+      "projects": "Projects",
+      "skills": "Skills"
+    },
+    "errors": {
+      "turnFailed": "The wizard could not save that answer. Try again.",
+      "finalizeFailed": "The wizard could not create your master resume. Try again."
+    },
+    "entry": {
+      "kicker": "Master Resume Setup",
+      "title": "Choose your starting point",
+      "description": "Create your master resume from an existing document or build it step by step with AI guidance.",
+      "upload": {
+        "kicker": "Existing File",
+        "title": "Upload a resume",
+        "description": "Start from a PDF, DOC, or DOCX file and let Taylor parse it into your master profile.",
+        "action": "Upload Resume"
+      },
+      "wizard": {
+        "kicker": "AI Guided",
+        "title": "Build with AI wizard",
+        "description": "Answer focused prompts and let the wizard assemble a strong first master resume draft.",
+        "action": "Start Wizard"
+      }
+    }
+  },
+  "tracker": {
+    "scroll": {
+      "prev": "Scroll left",
+      "next": "Scroll right",
+      "hint": "Scroll for more stages"
+    },
+    "title": "Application Tracker",
+    "subtitle": "Track where each tailored resume stands in your pipeline.",
+    "addApplication": "Add Application",
+    "showOverview": "Overview",
+    "hideOverview": "Hide Overview",
+    "columns": {
+      "saved": "Saved",
+      "applied": "Applied",
+      "no_response": "No Response",
+      "response": "Response",
+      "interview": "Interview",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "empty": "Nothing here yet"
+    },
+    "empty": {
+      "title": "No applications yet",
+      "description": "Tailor a resume to a job, or add one manually, to start tracking."
+    },
+    "card": {
+      "companyUnknown": "Unknown company",
+      "roleUnknown": "Untitled role",
+      "sharedResume": "Shared resume",
+      "selectAria": "Select application",
+      "dragAria": "Drag to reorder"
+    },
+    "modal": {
+      "jobDescription": "Job Description",
+      "noJobDescription": "No job description on file.",
+      "notes": "Notes",
+      "notesPlaceholder": "Add notes about this application…",
+      "rejectionReason": "Rejection reason (for AI career insights)",
+      "rejectionReasonPlaceholder": "e.g. No direct experience with the required stack",
+      "interviewRounds": "Interview rounds",
+      "interviewRoundsPlaceholder": "e.g. 2",
+      "saveNotes": "Save notes",
+      "resumeUnavailable": "The applied resume is no longer available.",
+      "loadFailed": "Could not load this application.",
+      "editResume": "Edit resume"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "moveTo": "Move to…",
+      "clear": "Clear",
+      "deleteConfirmTitle": "Delete applications?",
+      "deleteConfirmDescription": "Delete {count} selected application(s)? This cannot be undone."
+    },
+    "manualAdd": {
+      "title": "Add Application",
+      "description": "Track an application by pasting its job description.",
+      "resume": "Resume",
+      "untitledResume": "Untitled resume",
+      "jobDescription": "Job Description",
+      "jobDescriptionPlaceholder": "Paste the job description here…",
+      "company": "Company",
+      "role": "Role",
+      "optional": "Optional",
+      "status": "Status",
+      "submit": "Add",
+      "validation": "Pick a resume and paste a job description.",
+      "failed": "Could not create the application."
+    },
+    "errors": {
+      "loadFailed": "Could not load applications.",
+      "moveFailed": "Could not move the application.",
+      "deleteFailed": "Could not delete the application(s)."
+    }
+  },
+  "companies": {
+    "title": "Company Tracker",
+    "subtitle": "Keep tabs on every company you engage with.",
+    "addCompany": "Add Company",
+    "empty": {
+      "title": "No companies yet",
+      "description": "Track the companies you apply to, contact, or want to keep an eye on.",
+      "noResults": "No companies match your filters",
+      "noResultsHint": "Try adjusting the search or clearing the filters."
+    },
+    "table": {
+      "company": "Company",
+      "phone": "Phone",
+      "industry": "Industry",
+      "size": "Size",
+      "type": "Type",
+      "status": "Status",
+      "yearFounded": "Founded",
+      "links": "Links",
+      "actions": "Actions",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "edit": "Edit company",
+      "delete": "Delete company",
+      "editHint": "Click to edit",
+      "viewDetails": "View details",
+      "address": "Address",
+      "email": "Email this company"
+    },
+    "size": {
+      "1-10": "1-10 employees",
+      "11-50": "11-50 employees",
+      "51-200": "51-200 employees",
+      "201-1000": "201-1000 employees",
+      "1000+": "1000+ employees"
+    },
+    "type": {
+      "startup": "Startup",
+      "agency": "Agency",
+      "enterprise": "Enterprise",
+      "nonprofit": "Nonprofit",
+      "education": "Education",
+      "government": "Government",
+      "other": "Other"
+    },
+    "status": {
+      "watching": "Watching",
+      "contacted": "Contacted",
+      "applied": "Applied",
+      "interviewing": "Interviewing",
+      "negotiating": "Negotiating",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "form": {
+      "addTitle": "Add Company",
+      "editTitle": "Edit Company",
+      "description": "Save contact details and background info for a company you are tracking.",
+      "name": "Company Name",
+      "namePlaceholder": "e.g. Acme Corp",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "website": "Website",
+      "linkedin": "LinkedIn URL",
+      "industry": "Industry",
+      "size": "Company Size",
+      "type": "Company Type",
+      "status": "Status",
+      "yearFounded": "Year Founded",
+      "optional": "Optional",
+      "none": "None",
+      "validation": "Company name is required.",
+      "invalidYear": "Year must be between 1600 and 2100.",
+      "failed": "Could not save the company.",
+      "save": "Save Changes",
+      "submit": "Add Company"
+    },
+    "delete": {
+      "title": "Delete company?",
+      "description": "Delete {name}? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "loadFailed": "Could not load companies.",
+      "deleteFailed": "Could not delete the company.",
+      "updateFailed": "Could not update the company."
+    },
+    "toolbar": {
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Search by name, industry or email…",
+      "filters": "Filters",
+      "clearFilters": "Clear filters",
+      "size": "Size",
+      "type": "Type",
+      "groupBy": "Group by",
+      "groupNone": "No grouping",
+      "groupSize": "Company size",
+      "groupType": "Company type",
+      "groupIndustry": "Industry",
+      "groupStatus": "Company status",
+      "sortBy": "Sort by",
+      "sortDateDesc": "Newest first",
+      "sortDateAsc": "Oldest first",
+      "status": "Status",
+      "columns": "Columns",
+      "import": "Import",
+      "export": "Export CSV",
+      "count": "{count} companies"
+    },
+    "import": {
+      "title": "Import companies",
+      "description": "CSV or Excel (.xlsx) upload result",
+      "created": "{count} companies added",
+      "skipped": "{count} already existed (skipped)",
+      "failedCount": "{count} rows failed",
+      "errorRow": "Row {row}: {name} — {error}",
+      "done": "Done",
+      "failed": "Could not import the file.",
+      "mappingTitle": "Map columns",
+      "mappingDescription": "Choose which CSV or Excel column goes into each company field.",
+      "mappingHint": "Only mapped fields are imported. Company name is required.",
+      "mappingAuto": "auto",
+      "mappingNameRequired": "Map the company name column before importing.",
+      "mappingImport": "Import"
+    },
+    "selection": {
+      "count": "{count} selected",
+      "clear": "Clear",
+      "sendEmail": "Send Email",
+      "delete": "Delete",
+      "selectAll": "Select all companies on this page",
+      "selectRow": "Select {name}",
+      "deleteTitle": "Delete companies?",
+      "deleteDescription": "Delete {count} selected companies? This cannot be undone."
+    },
+    "details": {
+      "created": "Added",
+      "updated": "Last updated"
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {count}",
+      "perPage": "{count} per page"
+    },
+    "emailDialog": {
+      "title": "Email Company",
+      "toCompany": "Compose an email to {name}",
+      "description": "Compose and send an email to this company.",
+      "loading": "Loading email settings...",
+      "notConfigured": "Email sending is not configured",
+      "notConfiguredHint": "Set up your SMTP sender in Settings before emailing companies.",
+      "goToSettings": "Go to Settings",
+      "purpose": {
+        "label": "Purpose",
+        "internship": "Internship",
+        "job": "Job application",
+        "cold": "Cold outreach",
+        "custom": "Custom",
+        "customSubject": "What is this email about?",
+        "customPlaceholder": "e.g. Following up after the career fair"
+      },
+      "recipientName": "Recipient name",
+      "recipientPlaceholder": "e.g. Hiring Manager",
+      "subject": "Subject",
+      "subjectPlaceholder": "Enter a subject",
+      "message": "Message",
+      "messagePlaceholder": "Write your message here",
+      "attachment": "Attachment",
+      "chooseFile": "Choose a file",
+      "removeAttachment": "Remove attachment",
+      "generate": "Generate with AI",
+      "send": "Send email",
+      "sent": "Email sent successfully",
+      "errors": {
+        "nameRequired": "A company name is required to generate an email.",
+        "noEmail": "This company has no email address.",
+        "missingFields": "Subject and message are required.",
+        "generateFailed": "Could not generate the email. Please try again.",
+        "sendFailed": "Could not send the email. Check your SMTP settings.",
+        "statusUpdateFailed": "Email sent, but the company status could not be updated."
+      },
+      "resume": "Resume",
+      "resumeHint": "The email is personalized from this resume's profile.",
+      "resumeUntitled": "Untitled resume",
+      "saveDraft": "Save draft",
+      "draftSaved": "Draft saved",
+      "statusUpdated": "Company marked as contacted.",
+      "includeResume": "Include my resume",
+      "additionalInstructions": "Additional instructions for the AI",
+      "additionalInstructionsPlaceholder": "e.g. Keep it under 80 words, mention my Flutter experience, more formal tone",
+      "historyTitle": "Sent emails",
+      "historyEmpty": "No emails sent to this company yet."
+    },
+    "bulkEmail": {
+      "title": "Bulk Email",
+      "description": "Send personalized AI-generated emails to {count} companies. Each email will be researched and customized.",
+      "stepConfigure": "Configure",
+      "stepResearch": "Research",
+      "stepGenerate": "Generate",
+      "stepPreview": "Preview",
+      "stepSending": "Sending",
+      "purposeLabel": "Email Purpose",
+      "instructionLabel": "Additional Instructions",
+      "instructionPlaceholder": "e.g., Mention my 5 years of experience, keep it under 100 words",
+      "generateAll": "Generate All",
+      "researchingAll": "Researching companies...",
+      "researching": "Researching {company}...",
+      "researchSources": "Sources found: {sources}",
+      "generating": "Generating personalized emails...",
+      "sendAll": "Send All",
+      "edit": "Edit",
+      "skip": "Skip",
+      "ready": "{count} ready",
+      "skipped": "{count} skipped (no email)",
+      "progress": "{sent} of {total} sent",
+      "done": "All emails sent!",
+      "close": "Close",
+      "research": "Research",
+      "researchSummary": "Research Summary",
+      "regen": "Regenerate",
+      "regenTarget": "What to regenerate",
+      "regenBoth": "Both",
+      "regenSubject": "Subject only",
+      "regenBody": "Body only",
+      "regenInstruction": "Additional instructions for this company",
+      "regenPlaceholder": "e.g., Make it more formal, mention React experience...",
+      "regenenerating": "Regenerating email...",
+      "websiteContent": "Website",
+      "linkedinContent": "LinkedIn",
+      "hiringSignals": "Hiring Signals",
+      "back": "Back"
+    },
+    "approval": {
+      "title": "Add company to database?",
+      "description": "Detected \"{company}\" from the job description. Add it to your companies?",
+      "name": "Company",
+      "website": "Website",
+      "industry": "Industry",
+      "addButton": "Add Company",
+      "dismissButton": "Not now",
+      "success": "Company added successfully"
+    },
+    "nav": {
+      "companies": "Companies",
+      "contacts": "Contacts"
+    }
+  },
+  "contacts": {
+    "title": "Contact Tracker",
+    "subtitle": "Keep track of the people in your professional network.",
+    "addContact": "Add Contact",
+    "empty": {
+      "title": "No contacts yet",
+      "description": "Track recruiters, mentors, alumni, and everyone else you want to follow up with.",
+      "noResults": "No contacts match your filters",
+      "noResultsHint": "Try adjusting the search or clearing the filters."
+    },
+    "table": {
+      "name": "Contact",
+      "company": "Company",
+      "location": "Location",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "followUpDate": "Follow-up date",
+      "actions": "Actions",
+      "edit": "Edit contact",
+      "delete": "Delete contact",
+      "viewDetails": "View details",
+      "email": "Email",
+      "sendEmail": "Send email",
+      "noEmail": "No email",
+      "description": "Description",
+      "linkedinUrl": "LinkedIn",
+      "websiteUrl": "Website"
+    },
+    "goal": {
+      "networking": "Networking",
+      "informational_interview": "Informational interview",
+      "request_referral": "Request referral",
+      "research_interviewer": "Research interviewer",
+      "research_career": "Research career"
+    },
+    "status": {
+      "to_contact": "To contact",
+      "follow_up": "Follow up",
+      "meeting_scheduled": "Meeting scheduled",
+      "thank_you_sent": "Thank-you sent",
+      "contacted": "Contacted"
+    },
+    "relationship": {
+      "self": "Self",
+      "coworker": "Coworker",
+      "friend": "Friend",
+      "family": "Family",
+      "other": "Other",
+      "recruiter": "Recruiter",
+      "mentor": "Mentor",
+      "hiring_manager": "Hiring manager",
+      "alumni": "Alumni"
+    },
+    "form": {
+      "addTitle": "Add Contact",
+      "editTitle": "Edit Contact",
+      "description": "Save the details of a person in your professional network.",
+      "name": "Full name",
+      "namePlaceholder": "e.g. Jane Doe",
+      "company": "Company",
+      "location": "Location",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "followUpDate": "Follow-up date",
+      "optional": "Optional",
+      "none": "None",
+      "validation": "Contact name is required.",
+      "invalidDate": "Enter the date as YYYY-MM-DD.",
+      "failed": "Could not save the contact.",
+      "save": "Save Changes",
+      "submit": "Add Contact",
+      "email": "Email",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional notes about this contact…",
+      "linkedinUrl": "LinkedIn URL",
+      "linkedinUrlPlaceholder": "https://linkedin.com/in/…",
+      "websiteUrl": "Website URL",
+      "websiteUrlPlaceholder": "https://…"
+    },
+    "delete": {
+      "title": "Delete contact?",
+      "description": "Delete {name}? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "loadFailed": "Could not load contacts.",
+      "deleteFailed": "Could not delete the contact.",
+      "updateFailed": "Could not update the contact."
+    },
+    "toolbar": {
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Search by name, company or location…",
+      "goal": "Goal",
+      "status": "Status",
+      "relationship": "Relationship",
+      "groupBy": "Group by",
+      "groupNone": "No grouping",
+      "groupGoal": "Goal",
+      "groupStatus": "Status",
+      "groupRelationship": "Relationship",
+      "columns": "Columns",
+      "import": "Import",
+      "export": "Export CSV",
+      "count": "{count} contacts",
+      "date": "Follow-up date",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "dateOverdue": "Overdue",
+      "dateDueSoon": "Due within 7 days",
+      "dateUpcoming": "After 7 days",
+      "dateNone": "No date set",
+      "clearFilters": "Clear filters",
+      "filters": "Filters",
+      "clearSearch": "Clear search",
+      "dateRange": "Date range"
+    },
+    "import": {
+      "title": "Import contacts",
+      "description": "CSV or Excel (.xlsx) upload result",
+      "created": "{count} contacts added",
+      "skipped": "{count} already existed (skipped)",
+      "failedCount": "{count} rows failed",
+      "errorRow": "Row {row}: {name} — {error}",
+      "done": "Done",
+      "failed": "Could not import the file.",
+      "mappingTitle": "Map columns",
+      "mappingDescription": "Choose which CSV or Excel column goes into each contact field.",
+      "mappingHint": "Only mapped fields are imported. Contact name is required.",
+      "mappingAuto": "auto",
+      "mappingNameRequired": "Map the contact name column before importing.",
+      "mappingImport": "Import"
+    },
+    "selection": {
+      "count": "{count} selected",
+      "clear": "Clear",
+      "delete": "Delete",
+      "selectAll": "Select all contacts on this page",
+      "selectRow": "Select {name}",
+      "deleteTitle": "Delete contacts?",
+      "deleteDescription": "Delete {count} selected contacts? This cannot be undone.",
+      "sendEmail": "Send email"
+    },
+    "details": {
+      "created": "Added",
+      "updated": "Last updated",
+      "noCompany": "No company"
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {count}",
+      "perPage": "{count} per page"
+    },
+    "emailDialog": {
+      "title": "Email Contact",
+      "description": "Compose and send an email to this contact.",
+      "noEmail": "This contact has no email address.",
+      "recipientEmail": "Recipient email",
+      "statusUpdated": "Contact marked as contacted.",
+      "toContact": "Compose an email to {name}",
+      "send": "Send email"
+    },
+    "bulkEmail": {
+      "title": "Bulk Email",
+      "description": "Send personalized AI-generated emails to {count} contacts.",
+      "generating": "Generating personalized emails...",
+      "previewHint": "Review and edit each email before sending. Skipped contacts will not be emailed.",
+      "noEmail": "No email",
+      "sending": "Sending emails...",
+      "progress": "{sent} of {total} sent",
+      "done": "All emails sent!",
+      "sentOk": "Sent",
+      "doneToast": "Emails sent",
+      "generate": "Generate Emails",
+      "sendAll": "Send All"
+    },
+    "nav": {
+      "companies": "Companies",
+      "contacts": "Contacts"
+    }
+  },
+  "interviewPrep": {
+    "title": "Interview Prep",
+    "regenerate": "Regenerate",
+    "unavailableTitle": "Interview Prep Not Available",
+    "loadingContextDescription": "Checking the job context for this tailored resume before generation.",
+    "missingContextDescription": "This tailored resume does not have the saved job context required to generate interview preparation. Re-tailor the resume with a job description to use this workflow.",
+    "saveRequiredDescription": "Save this tailored resume before generating interview preparation.",
+    "focusArea": "Focus area",
+    "suggestedAnswerPoints": "Suggested answer points",
+    "whyItMatters": "Why it matters",
+    "preparationSuggestion": "Preparation suggestion",
+    "sections": {
+      "roleFit": "Role-Fit Analysis",
+      "resumeQuestions": "Resume-Based Questions",
+      "projectFollowUps": "Project Follow-Ups",
+      "skillGaps": "Skill Gaps",
+      "talkingPoints": "Talking Points"
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "header": {
+      "sourceFrom": "From resume"
+    },
+    "currentLocation": {
+      "title": "Current Location",
+      "placeholder": "e.g. Tunis, Tunisia"
+    },
+    "workExperience": {
+      "title": "Work experience",
+      "empty": "No work experience yet. Add entries or import them from a resume.",
+      "add": "Add entry",
+      "edit": "Edit entry",
+      "delete": "Delete entry",
+      "deleteTitle": "Delete this entry?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add work experience",
+      "editTitle": "Edit work experience",
+      "formDescription": "Entries are used by the career advisor and can be imported from a resume.",
+      "role": "Role / title",
+      "company": "Company",
+      "location": "Location",
+      "years": "Years",
+      "description": "Achievements",
+      "descriptionPlaceholder": "One bullet point per line",
+      "roleRequired": "Enter a role or a company.",
+      "save": "Save entry"
+    },
+    "github": {
+      "title": "GitHub repositories",
+      "loading": "Loading GitHub status...",
+      "connectHint": "Connect your GitHub account to view repositories and tailor resumes for open-source contributions.",
+      "connect": "Connect GitHub",
+      "useToken": "Use Personal Access Token",
+      "tokenLabel": "Personal Access Token",
+      "tokenHelpStart": "Create at",
+      "tokenHelpEnd": "with repo + user scopes",
+      "tokenSubmit": "Connect",
+      "connectedAs": "Connected as",
+      "repositories": "repositories",
+      "disconnect": "Disconnect",
+      "noDescription": "No description",
+      "showReadme": "Show README",
+      "hideReadme": "Hide README",
+      "connectTitle": "Connect GitHub"
+    },
+    "tabs": {
+      "profile": "Profile",
+      "skillRoi": "Skill ROI",
+      "education": "Education",
+      "projects": "Projects",
+      "achievements": "Achievements",
+      "experience": "Experience"
+    },
+    "overview": {
+      "totalApplications": "Total applications",
+      "rejectionRate": "Rejection rate",
+      "rejectionRateHint": "Rejected ÷ advanced applications",
+      "appliedToInterview": "Applied → Interview",
+      "interviewToAccepted": "Interview → Accepted",
+      "medianDaysToInterview": "Median days to interview",
+      "medianDaysHint": "Across interview-stage applications",
+      "llmInsights": "AI Insights",
+      "insightsEmpty": "Add an API key in Settings to generate personalized insights about your rejections.",
+      "noData": "No application data yet. Start tracking applications to unlock funnel insights."
+    },
+    "languages": {
+      "title": "Languages",
+      "add": "Add",
+      "empty": "No languages yet.",
+      "placeholder": "e.g. English, French"
+    },
+    "awards": {
+      "title": "Honors & Awards",
+      "add": "Add",
+      "empty": "No honors or awards yet.",
+      "placeholder": "e.g. Dean's List"
+    },
+    "form": {
+      "provision": "Automatic setup",
+      "seedHint": "Copy your name, contact info, summary, skills, work experience, languages and awards from your master resume.",
+      "seeded": "Profile imported from the master resume.",
+      "saved": "Profile saved.",
+      "personalInfo": "Personal info",
+      "name": "Full name",
+      "title": "Job title",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "summary": "Professional summary",
+      "careerGoals": "Career goals",
+      "targetRoles": "Target roles",
+      "targetLocations": "Target locations",
+      "salaryMin": "Target salary min",
+      "salaryMax": "Target salary max",
+      "seedFromMaster": "Import from master resume",
+      "tagPlaceholder": "Type and press Enter",
+      "uploadDesktop": "Upload from desktop",
+      "uploaded": "Resume uploaded.",
+      "save": "Save profile"
+    },
+    "skills": {
+      "title": "Skills",
+      "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
+      "searchPlaceholder": "Search skills",
+      "noResults": "No skills match your search.",
+      "alreadyExists": "This skill already exists in your profile.",
+      "duplicateWarning": "\"{name}\" already exists in your profile. You can edit it from the list below.",
+      "add": "Add skill",
+      "edit": "Edit skill",
+      "delete": "Delete skill",
+      "deleteTitle": "Delete this skill?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add skill",
+      "editTitle": "Edit skill",
+      "formDescription": "Skills feed the ROI engine and the career advisor memory.",
+      "name": "Skill name",
+      "nameRequired": "Skill name is required.",
+      "category": "Category",
+      "proficiency": "Proficiency (1–5)",
+      "invalidProficiency": "Proficiency must be a whole number between 1 and 5.",
+      "yearsExperience": "Years of experience",
+      "lastUsed": "Last used",
+      "optional": "Optional",
+      "save": "Save skill",
+      "suggestionsButton": "AI suggestions",
+      "suggestionsTitle": "AI skill suggestions",
+      "suggestionsDescription": "Skills you may have forgotten to list, based on your profile.",
+      "suggestionsLoading": "Finding skills you may have forgotten…",
+      "suggestionsEmpty": "No suggestions right now. Add more details to your profile and try again.",
+      "suggestAdd": "Add {name} to your skills",
+      "suggestionsGroupRemembered": "Skills you may have forgotten to list",
+      "suggestionsGroupLearnNext": "Skills worth learning in 2026"
+    },
+    "certifications": {
+      "title": "Certifications",
+      "empty": "No certifications yet.",
+      "add": "Add certification",
+      "edit": "Edit certification",
+      "delete": "Delete certification",
+      "deleteTitle": "Delete this certification?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add certification",
+      "editTitle": "Edit certification",
+      "formDescription": "Certifications strengthen your career advisor memory.",
+      "name": "Certification name",
+      "nameRequired": "Certification name is required.",
+      "issuer": "Issuer",
+      "dateObtained": "Date obtained",
+      "invalidDate": "Use YYYY or YYYY-MM.",
+      "url": "Credential URL",
+      "optional": "Optional",
+      "save": "Save certification"
+    },
+    "roi": {
+      "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
+      "refresh": "Refresh",
+      "getAdvice": "Ask AI what to learn",
+      "skill": "Skill",
+      "jobsUnlocked": "Jobs unlocked",
+      "salaryImpact": "Salary impact",
+      "learningEffort": "Learning effort",
+      "roiScore": "ROI score",
+      "noData": "—",
+      "effort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "formula": "ROI = 35% jobs unlocked + 25% salary impact + 20% learning ease + 20% existing knowledge.",
+      "advice": "AI Recommendation",
+      "adviceDescription": "Personalized recommendation on which skills to learn next, based on your saved jobs and current skills.",
+      "adviceLoading": "Generating recommendations…",
+      "adviceUnavailable": "No recommendation available right now — configure your LLM API key and save a few jobs to analyze, then try again.",
+      "learnTitle": "Skills to learn",
+      "learnDescription": "Demanded by your saved jobs but missing from your profile — learning these unlocks the most opportunities.",
+      "strengthenTitle": "Skills to strengthen",
+      "strengthenDescription": "You have them, your jobs ask for them, but your proficiency is low — improving these has the highest return.",
+      "resources": "Learning resources",
+      "refreshResources": "Refresh resources",
+      "loadingResources": "Finding resources…",
+      "noResources": "No verified resources yet.",
+      "jobs": "jobs",
+      "youKnow": "You know",
+      "showRest": "Show {count} more skills",
+      "hideRest": "Hide",
+      "restHint": "Already strong or not in demand",
+      "allOnTrack": "No skills need attention — your profile already covers what your saved jobs demand.",
+      "advisorTitle": "Skill Investment Advisor",
+      "advisorDescription": "Which skill gives YOU the highest return? Ranked by jobs unlocked, difficulty and ROI.",
+      "difficulty": "Difficulty",
+      "difficultyEasy": "Easy",
+      "difficultyMedium": "Medium",
+      "difficultyHard": "Hard"
+    },
+    "market": {
+      "title": "Market Position",
+      "description": "Where you stand in the market — percentiles are modeled from your skills, experience and certifications.",
+      "refresh": "Refresh",
+      "domainsTitle": "Position by domain",
+      "skillsTitle": "Position by skill",
+      "percentile": "{ordinal} percentile",
+      "noteEmpty": "Add skills and work experience to see your market position.",
+      "currentRole": "Your position",
+      "specialization": "Specializes in",
+      "picksTitle": "Roles to pick",
+      "picksDescription": "Best-fit roles based on your skills, projects and experience.",
+      "match": "{score}% match",
+      "verdictTitle": "Summary",
+      "readiness": {
+        "strong": "Strong",
+        "adequate": "Adequate",
+        "underqualified": "Underqualified"
+      },
+      "seniority": {
+        "senior": "Senior",
+        "mid": "Mid",
+        "junior": "Junior"
+      },
+      "domains": {
+        "Backend": "Backend",
+        "Frontend": "Frontend",
+        "Cloud & DevOps": "Cloud & DevOps",
+        "Data & ML": "Data & ML",
+        "System Design": "System Design"
+      }
+    },
+    "chat": {
+      "title": "Career Advisor",
+      "empty": "Ask anything about your career: your applications, rejections, skill gaps, salary targets or saved job market.",
+      "placeholder": "Ask about your career… (Enter to send, Shift+Enter for a new line)",
+      "suggestions": {
+        "q1": "Why am I getting rejected?",
+        "q2": "Which skill should I learn next?",
+        "q3": "How can I improve my interview-to-accepted rate?",
+        "q4": "What salary should I target?"
+      }
+    },
+    "education": {
+      "title": "Education",
+      "add": "Add education",
+      "empty": "No education entries yet. They can be imported from your resume.",
+      "edit": "Edit entry",
+      "delete": "Delete entry",
+      "deleteTitle": "Delete this entry?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add education",
+      "editTitle": "Edit education",
+      "formDescription": "Your academic background, imported from resumes and kept as part of your career graph.",
+      "institution": "Institution",
+      "degree": "Degree",
+      "years": "Years",
+      "description": "Notes",
+      "optional": "Optional",
+      "institutionRequired": "Enter an institution."
+    },
+    "projects": {
+      "title": "Projects",
+      "add": "Add project",
+      "empty": "No projects yet. They can be imported from your resume.",
+      "edit": "Edit project",
+      "delete": "Delete project",
+      "deleteTitle": "Delete this project?",
+      "deleteDescription": "Its linked skills are removed with it.",
+      "addTitle": "Add project",
+      "editTitle": "Edit project",
+      "formDescription": "Personal projects with links to your GitHub / website.",
+      "name": "Project name",
+      "role": "Role",
+      "years": "Years",
+      "github": "GitHub",
+      "website": "Website",
+      "description": "Description",
+      "descriptionAdd": "Add a bullet point",
+      "descriptionEmpty": "No bullet points yet.",
+      "descriptionRemove": "Remove bullet",
+      "optional": "Optional",
+      "nameRequired": "Enter a project name.",
+      "importFromGithub": "Import from GitHub",
+      "importing": "Importing…",
+      "imported": "{count} projects imported from GitHub",
+      "importHint": "Imported projects are stored in your profile — GitHub is not fetched again until you re-import.",
+      "importDialogTitle": "Import projects from GitHub",
+      "importDialogDescription": "Select the repositories to add to your profile.",
+      "importSelected": "Import selected ({count})",
+      "selectAll": "Select all",
+      "noSelection": "Select at least one project to import.",
+      "search": "Search projects…",
+      "noResults": "No projects match your search.",
+      "repoSearch": "Search repositories…",
+      "noRepoResults": "No repositories match your search."
+    },
+    "achievements": {
+      "title": "Achievements",
+      "add": "Add achievement",
+      "empty": "No achievements yet.",
+      "edit": "Edit achievement",
+      "delete": "Delete achievement",
+      "deleteTitle": "Delete this achievement?",
+      "deleteDescription": "This cannot be undone.",
+      "addTitle": "Add achievement",
+      "editTitle": "Edit achievement",
+      "formDescription": "Notable wins, awards or milestones.",
+      "titleLabel": "Title",
+      "description": "Details",
+      "date": "Date",
+      "optional": "Optional",
+      "titleRequired": "Enter a title.",
+      "invalidDate": "Use YYYY or YYYY-MM."
+    }
+  },
+  "interviewPractice": {
+    "title": "Interview Practice Hub",
+    "subtitle": "Sharpen your answers with AI coaching, grounded in your master resume.",
+    "loading": "Loading...",
+    "minutes": "{count} min",
+    "libraryTitle": "Scenario Library",
+    "libraryDescription": "Pick a scenario and practice your answer out loud. You'll get structured feedback.",
+    "practiceStart": "Practice",
+    "practiceAnswerLabel": "Your answer",
+    "practiceAnswerPlaceholder": "Type your answer here as you would say it in the interview...",
+    "resumeGroundingNote": "Feedback is grounded in your master resume - the coach only credits experience that's actually on it.",
+    "practiceGetFeedback": "Get feedback",
+    "practiceScoring": "Scoring your answer...",
+    "practiceAnswerRequired": "Please write your answer first.",
+    "practiceFeedbackError": "Couldn't generate feedback. Try again.",
+    "practiceAgain": "Practice again",
+    "backToLibrary": "Back to library",
+    "scoreLabel": "Score",
+    "strengthsTitle": "What you did well",
+    "improvementsTitle": "Improvements",
+    "recommendedPointsTitle": "Recommended answer points",
+    "followUpsTitle": "Likely follow-up questions",
+    "levels": {
+      "strong": "Strong",
+      "good": "Good",
+      "needs_work": "Needs work"
+    },
+    "customTitle": "Have an idea for a scenario?",
+    "customDescription": "Type any interview question or topic and practice it right away.",
+    "customPlaceholder": "e.g. 'Why should we hire you?' or 'Tell me about your biggest failure'",
+    "customStart": "Start",
+    "upcomingTitle": "Upcoming Interviews",
+    "upcomingDescription": "Interviews you're tracking in your application tracker.",
+    "upcomingViewTracker": "View tracker",
+    "upcomingEmpty": "No upcoming interviews yet - add one in the Application Tracker.",
+    "upcomingUntitled": "Untitled company",
+    "historyTitle": "Practice History",
+    "historyDescription": "Every practice session you've completed.",
+    "historyEmpty": "No practice sessions yet. Pick a scenario above to get started!",
+    "historyAnswerLabel": "Your answer",
+    "historyUnknownDate": "Unknown date",
+    "scenarios": {
+      "tellMeAboutYourself": {
+        "title": "Tell Me About Yourself",
+        "description": "Walk through your background, skills, and what makes you a great fit for the role."
+      },
+      "whyWorkHere": {
+        "title": "Why Do You Want to Work Here?",
+        "description": "Connect the company's mission and work to your own goals and experience."
+      },
+      "careerGaps": {
+        "title": "Career Gaps with Confidence",
+        "description": "Frame employment gaps honestly and positively without over-explaining."
+      },
+      "salaryExpectations": {
+        "title": "Discussing Salary Expectations",
+        "description": "Give a confident, researched range and handle negotiation gracefully."
+      },
+      "weaknesses": {
+        "title": "What Are Your Weaknesses?",
+        "description": "Share a real weakness and show the steps you take to improve it."
+      },
+      "jobSpecific": {
+        "title": "Job-Specific Interview",
+        "description": "Answer a deep technical or role-specific question for the position you're targeting."
+      },
+      "proudestAccomplishment": {
+        "title": "What Accomplishment Are You Most Proud Of?",
+        "description": "Tell a concise, evidence-backed story with impact and measurable results."
+      },
+      "handleConflict": {
+        "title": "How Do You Handle Conflict?",
+        "description": "Show your communication and problem-solving skills in a difficult work situation."
+      }
+    }
+  },
+  "chat": {
+    "title": "AI Career Assistant",
+    "subtitle": "Your personal career command center",
+    "placeholder": "Ask about your career… (Enter to send, Shift+Enter for new line)",
+    "empty": {
+      "title": "How can I help?",
+      "description": "Ask about your career, skills, applications, or get advice on your next move."
+    },
+    "suggestions": {
+      "q1": "Why am I getting rejected?",
+      "q2": "Which skill should I learn next?",
+      "q3": "How can I improve my interview-to-offer rate?",
+      "q4": "What salary should I target?"
+    },
+    "sidebar": {
+      "threads": "Threads",
+      "newThread": "New thread",
+      "loading": "Loading…",
+      "empty": "No threads yet",
+      "messages": "messages",
+      "deleteThread": "Delete thread"
+    },
+    "mode": {
+      "ask": "Ask",
+      "agent": "Agent",
+      "search": "Search"
+    },
+    "skill": {
+      "coach": "Career Coach",
+      "recruiter": "Recruiter",
+      "resumeAnalyst": "Resume Analyst"
+    },
+    "confirm": {
+      "pendingAction": "Pending action",
+      "execute": "Execute",
+      "cancel": "Cancel",
+      "searchConfirm": "I'll search for jobs. Click Execute to start."
+    },
+    "memory": {
+      "saved": "Remembered",
+      "dismiss": "Dismiss"
+    },
+    "context": {
+      "funnel_stats": "Funnel",
+      "skill_roi": "Skill ROI",
+      "market_position": "Market",
+      "ats_audit": "Audit",
+      "evidence": "Evidence",
+      "job": "Job",
+      "info": "Info",
+      "audit": "Audit",
+      "stats": "Stats"
+    }
+  }
 }

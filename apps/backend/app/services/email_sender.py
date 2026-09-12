@@ -42,6 +42,31 @@ class OutgoingEmail:
     attachments: list[EmailAttachment] = field(default_factory=list)
 
 
+def _markdown_to_html(md_text: str) -> str:
+    """Convert markdown text to simple HTML for email bodies."""
+    try:
+        import markdown
+
+        html = markdown.markdown(
+            md_text,
+            extensions=["extra", "nl2br"],
+        )
+        return html
+    except ImportError:
+        # Fallback: minimal conversion
+        import re
+
+        text = md_text
+        # Bold: **text** -> <strong>text</strong>
+        text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+        # Links: [text](url) -> <a href="url">text</a>
+        text = re.sub(r"\[(.+?)\]\((.+?)\)", r'<a href="\2">\1</a>', text)
+        # Paragraphs: double newline -> paragraph break
+        text = text.replace("\n\n", "</p><p>")
+        text = f"<p>{text}</p>"
+        return text
+
+
 def _build_message(cfg: EmailDeliveryConfig, email: OutgoingEmail) -> EmailMessage:
     """Build an EmailMessage from config + outgoing email (with optional attachments)."""
     msg = EmailMessage()
@@ -54,7 +79,11 @@ def _build_message(cfg: EmailDeliveryConfig, email: OutgoingEmail) -> EmailMessa
     msg["To"] = (
         formataddr((email.to_name, email.to_email)) if email.to_name else email.to_email
     )
+
+    # Set both plain text (fallback) and HTML (for clickable links)
     msg.set_content(email.body)
+    html_body = _markdown_to_html(email.body)
+    msg.add_alternative(html_body, subtype="html")
 
     for attachment in email.attachments:
         maintype, sep, subtype = (attachment.content_type or "application/octet-stream").partition("/")

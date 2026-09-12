@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import Plus from 'lucide-react/dist/esm/icons/plus';
@@ -51,6 +51,161 @@ const SKILL_CATEGORY_OPTIONS = [
   { id: 'Architecture', label: 'Architecture' },
   { id: 'AI/LLM', label: 'AI/LLM' },
   { id: 'Tools', label: 'Tools' },
+];
+
+/** Known tech skills for autocomplete suggestions (mirrors backend skill_presentation.py). */
+const KNOWN_SKILLS: string[] = [
+  'Python',
+  'JavaScript',
+  'TypeScript',
+  'Java',
+  'C',
+  'C++',
+  'C#',
+  'Go',
+  'Golang',
+  'Rust',
+  'Ruby',
+  'PHP',
+  'Swift',
+  'Kotlin',
+  'Dart',
+  'Scala',
+  'SQL',
+  'React',
+  'React.js',
+  'ReactJS',
+  'Next.js',
+  'NextJS',
+  'Vue',
+  'Vue.js',
+  'Angular',
+  'Svelte',
+  'Flutter',
+  'React Native',
+  'Tailwind CSS',
+  'Tailwind',
+  'CSS',
+  'CSS3',
+  'HTML',
+  'HTML5',
+  'Redux',
+  'Zustand',
+  'jQuery',
+  'Bootstrap',
+  'Webpack',
+  'Vite',
+  'Framer Motion',
+  'RxJS',
+  'Node.js',
+  'NodeJS',
+  'Express',
+  'Express.js',
+  'NestJS',
+  'Django',
+  'FastAPI',
+  'Flask',
+  'Spring Boot',
+  'Spring',
+  '.NET',
+  '.NET Framework',
+  'ASP.NET Core',
+  'ASP.NET',
+  'Ruby on Rails',
+  'Laravel',
+  'Symfony',
+  'GraphQL',
+  'REST',
+  'REST API',
+  'gRPC',
+  'PostgreSQL',
+  'Postgres',
+  'MySQL',
+  'SQLite',
+  'SQL Server',
+  'MongoDB',
+  'Redis',
+  'Elasticsearch',
+  'DynamoDB',
+  'Firebase',
+  'Supabase',
+  'Prisma',
+  'TypeORM',
+  'SQLAlchemy',
+  'Cassandra',
+  'AWS',
+  'AWS Lambda',
+  'Azure',
+  'Google Cloud',
+  'GCP',
+  'Docker',
+  'Kubernetes',
+  'K8s',
+  'Terraform',
+  'GitHub Actions',
+  'CI/CD',
+  'Jenkins',
+  'Ansible',
+  'Nginx',
+  'Serverless',
+  'Vercel',
+  'Netlify',
+  'Helm',
+  'Microservices',
+  'Clean Architecture',
+  'Design Patterns',
+  'SOLID',
+  'Event-Driven',
+  'Message Queues',
+  'Kafka',
+  'RabbitMQ',
+  'System Design',
+  'Monorepo',
+  'API Design',
+  'Domain-Driven Design',
+  'DDD',
+  'CQRS',
+  'MVC',
+  'Machine Learning',
+  'ML',
+  'Deep Learning',
+  'LLM',
+  'LangChain',
+  'LangGraph',
+  'RAG',
+  'OpenAI',
+  'PyTorch',
+  'TensorFlow',
+  'Hugging Face',
+  'Fine-Tuning',
+  'Prompt Engineering',
+  'Vector Databases',
+  'Agents',
+  'Data Science',
+  'Git',
+  'GitHub',
+  'GitLab',
+  'Bitbucket',
+  'Linux',
+  'Bash',
+  'Postman',
+  'Jira',
+  'Figma',
+  'VS Code',
+  'WebStorm',
+  'npm',
+  'Yarn',
+  'pnpm',
+  'Docker Compose',
+  'Playwright',
+  'Jest',
+  'Cypress',
+  'Pytest',
+  'ESLint',
+  'Prettier',
+  'Agile',
+  'Scrum',
+  'Testing',
 ];
 
 function ProficiencyBar({ value }: { value: number | null }) {
@@ -380,6 +535,7 @@ export function ExperienceTab({ bundle, onChanged }: ExperienceTabProps) {
         open={skillDialogOpen}
         onOpenChange={setSkillDialogOpen}
         skill={editingSkill}
+        existingSkills={bundle.skills.map((s) => s.name)}
         error={skillError}
         onSubmit={handleSkillSaved}
       />
@@ -532,6 +688,7 @@ interface SkillFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   skill: CareerSkill | null;
+  existingSkills: string[];
   error: string | null;
   onSubmit: (payload: {
     name: string;
@@ -548,7 +705,14 @@ function validateProficiency(value: string): boolean {
   return Number.isInteger(n) && n >= 1 && n <= 5;
 }
 
-function SkillFormDialog({ open, onOpenChange, skill, error, onSubmit }: SkillFormDialogProps) {
+function SkillFormDialog({
+  open,
+  onOpenChange,
+  skill,
+  existingSkills,
+  error,
+  onSubmit,
+}: SkillFormDialogProps) {
   const { t } = useTranslations();
   const editing = Boolean(skill);
   const [name, setName] = useState('');
@@ -558,6 +722,34 @@ function SkillFormDialog({ open, onOpenChange, skill, error, onSubmit }: SkillFo
   const [lastUsed, setLastUsed] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const existingSet = React.useMemo(
+    () => new Set(existingSkills.map((s) => s.toLowerCase())),
+    [existingSkills]
+  );
+
+  const isDuplicate = name.trim() !== '' && !editing && existingSet.has(name.trim().toLowerCase());
+
+  const computeSuggestions = useCallback(
+    (query: string) => {
+      if (!query.trim()) {
+        setSuggestions([]);
+        return;
+      }
+      const q = query.toLowerCase();
+      const existingSetLocal = new Set(existingSkills.map((s) => s.toLowerCase()));
+      const matches = KNOWN_SKILLS.filter(
+        (s) => s.toLowerCase().includes(q) && !existingSetLocal.has(s.toLowerCase())
+      ).slice(0, 8);
+      setSuggestions(matches);
+      setHighlightIdx(-1);
+    },
+    [existingSkills]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -575,7 +767,28 @@ function SkillFormDialog({ open, onOpenChange, skill, error, onSubmit }: SkillFo
     );
     setLastUsed(skill?.last_used ?? '');
     setValidation(null);
+    setSuggestions([]);
+    setHighlightIdx(-1);
   }, [open, skill]);
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === 'Enter' && highlightIdx >= 0) {
+      e.preventDefault();
+      setName(suggestions[highlightIdx]);
+      setSuggestions([]);
+      setHighlightIdx(-1);
+    } else if (e.key === 'Escape') {
+      setSuggestions([]);
+      setHighlightIdx(-1);
+    }
+  };
 
   // Include the current category when it is not one of the standard options,
   // so editing a legacy/custom category keeps its value visible.
@@ -618,7 +831,50 @@ function SkillFormDialog({ open, onOpenChange, skill, error, onSubmit }: SkillFo
         <div className="max-h-[60vh] space-y-4 overflow-y-auto p-6">
           <div className="space-y-1">
             <Label>{t('profile.skills.name')}</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <div className="relative">
+              <Input
+                ref={nameRef}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  computeSuggestions(e.target.value);
+                }}
+                onKeyDown={handleNameKeyDown}
+                onBlur={() => setTimeout(() => setSuggestions([]), 150)}
+                autoComplete="off"
+              />
+              {suggestions.length > 0 && (
+                <div
+                  ref={suggestionsRef}
+                  className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-[#e6e3dc] bg-white shadow-sw-md"
+                >
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setName(s);
+                        setSuggestions([]);
+                      }}
+                      onMouseEnter={() => setHighlightIdx(i)}
+                      className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors ${
+                        i === highlightIdx
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-ink hover:bg-secondary/60'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {isDuplicate && (
+              <p className="text-xs text-amber-600">
+                {t('profile.skills.duplicateWarning', { name: name.trim() })}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -745,13 +1001,9 @@ function SkillSuggestionsDialog({
                           className="flex items-center justify-between gap-3 py-2.5"
                         >
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold text-ink">
-                              {suggestion.name}
-                            </div>
+                            <div className="text-sm font-semibold text-ink">{suggestion.name}</div>
                             {suggestion.reason && (
-                              <p className="mt-0.5 text-xs text-ink-soft">
-                                {suggestion.reason}
-                              </p>
+                              <p className="mt-0.5 text-xs text-ink-soft">{suggestion.reason}</p>
                             )}
                           </div>
                           <Button

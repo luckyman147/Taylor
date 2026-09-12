@@ -125,3 +125,124 @@ export async function fetchGitHubRepos(): Promise<GitHubReposResponse> {
     return res.json();
   });
 }
+
+// ── Custom MCP Server Management ────────────────────────────────────
+
+export interface MCPServer {
+  server_id: string;
+  name: string;
+  display_name: string | null;
+  url: string | null;
+  transport: string;
+  server_type: string;
+  enabled: boolean;
+  status: string;
+  error_message: string | null;
+  tools_json: string | null;
+  last_connected_at: string | null;
+  health_last_success: string | null;
+  health_last_failure: string | null;
+  health_consecutive_failures: number;
+  health_avg_latency_ms: number;
+  health_total_calls: number;
+  health_success_calls: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MCPTool {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  server_id: string;
+  server_name: string;
+}
+
+export async function fetchMCPServers(): Promise<MCPServer[]> {
+  const res = await apiFetch('/mcp/servers');
+  if (!res.ok) throw new Error('Failed to fetch MCP servers');
+  return res.json();
+}
+
+export async function createMCPServer(data: {
+  name: string;
+  url?: string;
+  transport?: string;
+  display_name?: string;
+}): Promise<MCPServer> {
+  const res = await apiPost('/mcp/servers', data);
+  if (!res.ok) throw new Error('Failed to create MCP server');
+  return res.json();
+}
+
+export async function updateMCPServer(
+  serverId: string,
+  data: { url?: string; transport?: string; display_name?: string; enabled?: boolean }
+): Promise<MCPServer> {
+  const res = await apiFetch(`/mcp/servers/${serverId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update MCP server');
+  return res.json();
+}
+
+export async function deleteMCPServer(serverId: string): Promise<void> {
+  const res = await apiFetch(`/mcp/servers/${serverId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete MCP server');
+}
+
+export async function connectMCPServer(
+  serverId: string
+): Promise<{ connected: boolean; tools: MCPTool[] }> {
+  const res = await apiPost(`/mcp/servers/${serverId}/connect`, {});
+  if (!res.ok) throw new Error('Failed to connect to MCP server');
+  return res.json();
+}
+
+export async function disconnectMCPServer(serverId: string): Promise<void> {
+  await apiPost(`/mcp/servers/${serverId}/disconnect`, {});
+}
+
+export async function fetchMCPServerHealth(
+  serverId: string
+): Promise<{
+  server_id: string;
+  health_score: number;
+  healthy: boolean;
+  consecutive_failures: number;
+}> {
+  const res = await apiFetch(`/mcp/servers/${serverId}/health`);
+  if (!res.ok) throw new Error('Failed to fetch server health');
+  return res.json();
+}
+
+export async function resetMCPServerHealth(serverId: string): Promise<void> {
+  await apiPost(`/mcp/servers/${serverId}/reset-health`, {});
+}
+
+export async function storeMCPCredential(
+  serverId: string,
+  data: { auth_type: string; auth_config: Record<string, unknown> }
+): Promise<{ credential_id: string }> {
+  const res = await apiPost(`/mcp/servers/${serverId}/credentials`, data);
+  if (!res.ok) throw new Error('Failed to store credential');
+  return res.json();
+}
+
+export async function fetchMCPTools(): Promise<MCPTool[]> {
+  const res = await apiFetch('/mcp/tools');
+  if (!res.ok) throw new Error('Failed to fetch MCP tools');
+  return res.json();
+}
+
+export async function discoverMCPTools(): Promise<{
+  servers: number;
+  total_tools: number;
+  tools_by_server: Record<string, number>;
+}> {
+  const res = await apiPost('/mcp/discover', {});
+  if (!res.ok) throw new Error('Failed to discover tools');
+  return res.json();
+}

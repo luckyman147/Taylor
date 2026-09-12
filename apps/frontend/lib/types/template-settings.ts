@@ -80,12 +80,7 @@ export type BulletMarker = '•' | '*' | '-' | '>>' | '->';
 export type ListSeparator = '*' | '-' | ',' | '|';
 
 export type TextStyleTarget =
-  | 'bodyCopy'
-  | 'primaryHeading'
-  | 'secondaryHeading'
-  | 'sectionTitle'
-  | 'fullName'
-  | 'minorCopy';
+  'bodyCopy' | 'primaryHeading' | 'secondaryHeading' | 'sectionTitle' | 'fullName' | 'minorCopy';
 
 export type TextWeightOption = 'light' | 'regular' | 'bold' | 'extralight';
 export type TextTransformOption = 'uppercase' | 'as-written' | 'capitalize';
@@ -191,6 +186,7 @@ export interface TemplateSettings {
   compactMode: boolean; // Apply tighter spacing across the board
   showContactIcons: boolean; // Show icons next to contact info
   accentColor: AccentColor; // Accent color for Modern template
+  customAccentColor: string | null; // Custom hex accent color (overrides preset when set)
   advanced: AdvancedSettings; // Advanced styles, sizes, weights, transforms, spacing & borders
 }
 
@@ -214,6 +210,7 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
   compactMode: false,
   showContactIcons: false,
   accentColor: 'blue',
+  customAccentColor: null,
   advanced: DEFAULT_ADVANCED_SETTINGS,
 };
 
@@ -398,8 +395,11 @@ export function settingsToCssVars(settings?: TemplateSettings): React.CSSPropert
       ? `${mmToPx((page.width * s.margins.right) / 100)}px`
       : `${s.margins.right}mm`;
 
-  // Get accent colors for Modern template
-  const accentColors = ACCENT_COLOR_MAP[s.accentColor];
+  // Get accent colors — custom hex overrides the named preset
+  const presetAccent = ACCENT_COLOR_MAP[s.accentColor];
+  const accentColors = s.customAccentColor
+    ? { primary: s.customAccentColor, light: s.customAccentColor + '20', name: presetAccent.name }
+    : presetAccent;
 
   // Advanced settings (named text sizes, weights, transforms, spacing, borders)
   const advanced = s.advanced;

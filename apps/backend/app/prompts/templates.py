@@ -1,5 +1,7 @@
 """LLM prompt templates for resume processing."""
 
+from typing import Any
+
 # Language code to full name mapping
 LANGUAGE_NAMES = {
     "en": "English",
@@ -199,12 +201,16 @@ Example format:
   "key_responsibilities": ["Lead team"],
   "keywords": ["microservices", "agile"],
   "experience_years": 5,
-  "seniority_level": "senior"
+  "seniority_level": "senior",
+  "website": "https://acme.com",
+  "industry": "Technology"
 }}
 
 Extract numeric years (e.g., "5+ years" → 5) and infer seniority level.
 Set "company" to the hiring company name and "role" to the job title exactly as
 written in the posting; use an empty string for either if it is not stated.
+Set "website" to the company website URL if mentioned in the posting; use an empty string if not found.
+Set "industry" to the company industry or sector if mentioned or clearly inferable; use an empty string if not found.
 
 Job description:
 {job_description}"""
@@ -1045,13 +1051,16 @@ CHAT_PLANNER_SYSTEM_PROMPTS: dict[str, str] = {
     "ask": (
         "You are Taylor's career assistant. You are precise, honest, and "
         "grounded in the user's career data. You have access to tools that "
-        "read their career information and write to their tracker. Always "
-        "use tools when the question requires specific data."
+        "read their career information, search for jobs, and write to their tracker. "
+        "ALWAYS use a tool when one exists that can answer the question. "
+        "Never say you can't do something if a tool in the catalog can do it. "
+        "Only use EXACT tool names from the catalog — never invent tool names."
     ),
     "coach": (
         "You are Taylor's career coach. You focus on strategic career "
         "advice, skill development, and job-search optimization. Use the "
-        "user's career data to give personalized, actionable guidance."
+        "user's career data to give personalized, actionable guidance. "
+        "Only use EXACT tool names from the catalog — never invent tool names."
     ),
     "recruiter": (
         "You are Taylor's recruiter advisor. You evaluate the user's "
@@ -1060,7 +1069,8 @@ CHAT_PLANNER_SYSTEM_PROMPTS: dict[str, str] = {
         "audit or resume analysis and no specific resume is mentioned, call "
         "get_ats_audit() without a resume_id first — it will return available "
         "resumes for the user to choose from. Only run the audit after they "
-        "pick one. If they have only one resume, it audits automatically."
+        "pick one. If they have only one resume, it audits automatically. "
+        "Only use EXACT tool names from the catalog — never invent tool names."
     ),
     "resume_analyst": (
         "You are Taylor's resume analyst. You provide data-driven "
@@ -1069,7 +1079,8 @@ CHAT_PLANNER_SYSTEM_PROMPTS: dict[str, str] = {
         "from the career data. When the user asks for an audit and no "
         "specific resume is mentioned, call get_ats_audit() without a "
         "resume_id — it returns available resumes for selection. If the "
-        "user says 'my resume' or 'the master resume', pass resume_id='master'."
+        "user says 'my resume' or 'the master resume', pass resume_id='master'. "
+        "Only use EXACT tool names from the catalog — never invent tool names."
     ),
 }
 
@@ -1086,19 +1097,35 @@ AVAILABLE TOOLS:
 
 Answer in {output_language}.
 
+CRITICAL RULE — YOU MUST USE TOOLS:
+If a tool exists that can answer the user's question, you MUST call it. Never say "I don't have a tool" or "I can't do that" when the catalog contains a matching tool. You have tools for searching jobs, analyzing resumes, getting career stats, and more. Use them.
+
+CRITICAL RULE — ONLY USE EXACT TOOL NAMES FROM THE CATALOG:
+Use the EXACT tool name as shown in the AVAILABLE TOOLS list above. Do NOT invent, guess, or fabricate tool names. If the catalog says "search_mcp_jobs", call "search_mcp_jobs" — NOT "search_jobs_with_exa" or any other name.
+
+TOOL USAGE EXAMPLES:
+- User says "search for software engineer jobs" → call search_mcp_jobs with query="software engineer"
+- User says "find remote Python jobs" → call search_mcp_jobs with query="remote Python developer"
+- User says "what jobs match my skills" → call search_mcp_jobs with query=their top skills
+- User says "search the latest technologies" → call web_search with query="latest technology trends 2026"
+- User says "what are the trending frameworks" → call web_search with query="trending frameworks 2026"
+- User says "analyze my resume" → call get_ats_audit
+- User says "how many applications" → call get_applications
+
 RULES:
 1. Return ONLY a valid JSON object with these keys:
    - "intent": "query" (general question), "stat" (wants numbers/stats), or "action" (wants to create/update something)
-   - "tool_calls": list of tool calls as {{"tool": "name", "args": {{...}}}} (empty list if none needed)
+   - "tool_calls": list of tool calls as {{"tool": "name", "args": {{...}}}} (empty list ONLY if truly no tool matches)
    - "narrative": brief plan of how you'll answer
    - "title": short conversation title (3-6 words, e.g. "ATS Resume Audit", "Skill Gap Analysis", "Job Search Strategy")
    - "followups": 2-3 suggested follow-up questions the user might ask
    - "memory_candidates": list of {{"statement": "..."}} for durable preferences the user expressed (empty list if none)
 
-2. For READ tools (get_*): include them in tool_calls.
-3. For WRITE tools (create_*, update_*): set intent="action", include the tool call, and set "summary" describing what would be written.
-4. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
-5. If no tool is needed, set tool_calls=[].
+2. When the user asks to search, find, look up, or discover jobs/opportunities: ALWAYS call search_mcp_jobs.
+3. When the user asks about technology trends, news, research, or any non-job topic: ALWAYS call web_search.
+4. For READ tools (get_*, search_*, web_search): include them in tool_calls.
+4. For WRITE tools (create_*, update_*): set intent="action", include the tool call, and set "summary" describing what would be written.
+5. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
 6. Never fabricate data. Only use tools that exist in the catalog.
 7. For resume audits: the gateway handles resume selection and returns a selection card. Do not call get_ats_audit.
 
@@ -1134,7 +1161,8 @@ RULES:
 5. Be concise, specific, and actionable.
 6. Never invent numbers, skills, or experiences not in the data.
 7. ALWAYS reference the career data above when analyzing jobs, resumes, or skills.
-8. Use conversation context to maintain continuity. When the user says "that CV", "my resume", "these skills", etc., refer to the context above to understand what they mean."""
+8. Use conversation context to maintain continuity. When the user says "that CV", "my resume", "these skills", etc., refer to the context above to understand what they mean.
+9. For job searches: Show which sources were searched and their status (e.g. "Searched LinkedIn (12 results), Exa (8 results), RSS (5 results)"). List sources that failed or timed out. Then present the job listings WITH their URLs as clickable links. Format each job as: **Title** — Company | Location | [Apply](url)"""
 
 CHAT_THINKING_PROMPT = """You are Taylor's career assistant. Before answering, think step by step about the user's request.
 
@@ -1180,7 +1208,8 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
             "get_applications",
             "get_rejections",
             "get_evidence",
-            "search_jobs",
+            "search_mcp_jobs",
+            "list_mcp_sources",
             "get_job_verdict",
             "get_contacts",
             "get_companies",
@@ -1199,6 +1228,8 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
             "get_applications",
             "get_rejections",
             "get_market_position",
+            "search_mcp_jobs",
+            "list_mcp_sources",
         ]
     },
     "resume_analyst": {
@@ -1216,6 +1247,147 @@ CHAT_MODE_CONFIGS: dict[str, dict[str, list[str]]] = {
         ]
     },
 }
+
+
+# ── Composable Base Modes + Skills ──────────────────────────────────────
+
+
+CHAT_BASE_MODES: dict[str, dict[str, Any]] = {
+    "ask": {
+        "agent_loop": False,
+        "search_priority": False,
+        "system": (
+            "You are Taylor's career assistant. You are precise, honest, and "
+            "grounded in the user's career data. You have access to tools that "
+            "read their career information, search for jobs, and write to their tracker. "
+            "ALWAYS use a tool when one exists that can answer the question. "
+            "Only use EXACT tool names from the catalog — never invent tool names."
+        ),
+    },
+    "agent": {
+        "agent_loop": True,
+        "search_priority": False,
+        "system": (
+            "You are Taylor's autonomous agent. Break complex requests into "
+            "steps, use tools iteratively, and synthesize comprehensive answers. "
+            "You can call multiple tools across iterations. Always explain your "
+            "reasoning. Only use EXACT tool names from the catalog — never invent tool names."
+        ),
+    },
+    "search": {
+        "agent_loop": True,
+        "search_priority": True,
+        "system": (
+            "You are Taylor's internet research assistant. Your goal is to "
+            "gather comprehensive information from MULTIPLE web sources. "
+            "Use web_search to search the general web for any topic. "
+            "Use search_mcp_jobs for job board searches, and "
+            "list_mcp_sources to discover available data sources. "
+            "Run multiple web_search queries with different angles to "
+            "cover the topic thoroughly. "
+            "After collecting data, compile a comprehensive answer. "
+            "Format your final answer as:\n"
+            "1. Direct answer to the question\n"
+            "2. Key findings from each source\n"
+            "3. Sources section listing all URLs and source names\n"
+            "Only use EXACT tool names from the catalog — never invent tool names."
+        ),
+    },
+}
+
+CHAT_SKILLS: dict[str, dict[str, Any]] = {
+    "coach": {
+        "system": (
+            "You are Taylor's career coach. You focus on strategic career "
+            "advice, skill development, and job-search optimization. Use the "
+            "user's career data to give personalized, actionable guidance."
+        ),
+        "tool_allowlist": [
+            "get_career_summary",
+            "get_funnel_stats",
+            "get_skill_roi",
+            "get_market_position",
+            "get_skill_suggestions",
+            "get_applications",
+            "get_rejections",
+            "get_evidence",
+            "search_mcp_jobs",
+            "list_mcp_sources",
+            "web_search",
+            "get_job_verdict",
+            "get_contacts",
+            "get_companies",
+            "create_application",
+            "create_contact",
+            "create_followup",
+        ],
+        "domain_boost": {"career": 0.8, "communication": 0.8},
+    },
+    "recruiter": {
+        "system": (
+            "You are Taylor's recruiter advisor. You evaluate the user's "
+            "resume and application materials from a recruiter's perspective. "
+            "Be honest about strengths and gaps."
+        ),
+        "tool_allowlist": [
+            "get_ats_audit",
+            "get_evidence",
+            "get_applications",
+            "get_rejections",
+            "get_market_position",
+            "search_mcp_jobs",
+            "list_mcp_sources",
+            "web_search",
+        ],
+        "domain_boost": {},
+    },
+    "resume_analyst": {
+        "system": (
+            "You are Taylor's resume analyst. You provide data-driven "
+            "analysis of the user's resume structure, content, and market "
+            "alignment. Always back up observations with concrete evidence."
+        ),
+        "tool_allowlist": [
+            "get_ats_audit",
+            "get_evidence",
+            "get_skill_suggestions",
+            "get_market_position",
+            "get_skill_roi",
+            "get_funnel_stats",
+        ],
+        "domain_boost": {"career": 1.0},
+    },
+}
+
+
+def get_merged_system_prompt(mode: str, skills: list[str] | None = None) -> str:
+    """Merge base mode prompt with skill prompts."""
+    base = CHAT_BASE_MODES.get(mode, CHAT_BASE_MODES["ask"])["system"]
+
+    if not skills:
+        return base
+
+    skill_parts: list[str] = []
+    for skill in skills:
+        skill_config = CHAT_SKILLS.get(skill)
+        if skill_config:
+            skill_parts.append(skill_config["system"])
+
+    if skill_parts:
+        return " ".join(skill_parts) + "\n\nAdditional context: " + base
+    return base
+
+
+def get_skill_allowlist(skills: list[str] | None = None) -> list[str]:
+    """Get UNION of all skill allowlists (not intersection)."""
+    if not skills:
+        return []
+    union: set[str] = set()
+    for skill in skills:
+        skill_config = CHAT_SKILLS.get(skill, {})
+        allowlist = skill_config.get("tool_allowlist", [])
+        union.update(allowlist)
+    return sorted(union)
 
 CHAT_AUDIT_PROMPT = """You are a resume analyst. Given the resume data and deterministic ATS scores, produce a prioritized list of improvement issues.
 
@@ -1251,3 +1423,48 @@ RULES:
 - Suggestions must be concrete rewrite examples grounded in the resume data.
 - Ground every suggestion in the user's actual experience (never invent metrics).
 - Write in {output_language}."""
+
+
+# ── Agent Loop Prompts ─────────────────────────────────────────────
+
+AGENT_THINK_PROMPT = """You are an autonomous agent with access to tools. Given the user's query
+and the available tools, decide what to do next.
+
+User query: {query}
+
+Available tools:
+{tools}
+
+Previously collected data:
+{previous_results}
+
+Data gaps to fill: {data_gaps}
+
+Respond with a JSON object:
+{{
+  "thought": "Your reasoning about what to do next",
+  "actions": [
+    {{"tool_name": "tool_name", "arguments": {{"arg": "value"}}}}
+  ],
+  "sufficient": false,
+  "answer_draft": ""
+}}
+
+RULES:
+- Only call tools that are actually needed. Prefer fewer, more targeted calls.
+- If you have enough data to answer, set "sufficient": true and "actions": [].
+- "answer_draft" should contain a draft answer if sufficient, empty string otherwise.
+- Never call destructive tools without explicit user confirmation.
+- Maximum 3 tool calls per iteration."""
+
+
+AGENT_ANSWER_PROMPT = """Based on the following data, provide a helpful, concise answer
+to the user's question.
+
+User question: {query}
+
+Available data:
+{data_summary}
+
+Provide a clear, direct answer. Use the data to support your response.
+Write in {output_language}."""

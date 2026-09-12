@@ -27,6 +27,7 @@ import UserRound from 'lucide-react/dist/esm/icons/user-round';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import Smartphone from 'lucide-react/dist/esm/icons/smartphone';
+import GraduationCap from 'lucide-react/dist/esm/icons/graduation-cap';
 
 import {
   fetchResume,
@@ -337,7 +338,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen ">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 py-10">
         {/* LLM Config Warning */}
         {masters.length > 0 && !isLlmConfigured && !statusLoading && (
           <div className="border border-ink bg-[#fbf6e9] p-4 mb-8 flex items-center justify-between">
@@ -536,7 +537,7 @@ export default function DashboardPage() {
           <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft mb-4">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <Link href="/tailor" className={!isTailorEnabled ? 'pointer-events-none' : ''}>
               <div
                 className={`h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm transition-all ${
@@ -578,6 +579,17 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm font-bold uppercase text-ink">{t('nav.contacts')}</p>
                   <p className="text-xs text-steel-grey mt-0.5">Manage your contacts</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/interview-practice">
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <GraduationCap className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">
+                    {t('nav.interviewPractice')}
+                  </p>
+                  <p className="text-xs text-steel-grey mt-0.5">Practice interviews</p>
                 </div>
               </div>
             </Link>

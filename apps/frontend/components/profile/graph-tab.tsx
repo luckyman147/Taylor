@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import Plus from 'lucide-react/dist/esm/icons/plus';
+import Search from 'lucide-react/dist/esm/icons/search';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -66,6 +67,7 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [expandedReadmes, setExpandedReadmes] = useState<Set<string>>(new Set());
+  const [projectSearch, setProjectSearch] = useState('');
 
   const refresh = async () => {
     onChanged(await getProfile());
@@ -149,15 +151,25 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
     }
   };
 
+  const [deleting, setDeleting] = useState(false);
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     const { kind, id } = deleteTarget;
-    if (kind === 'education') await deleteEducation(id);
-    else if (kind === 'projects') await deleteProject(id);
-    else if (kind === 'achievements') await deleteAchievement(id);
-    else await deleteCertification(id);
-    await refresh();
-    setDeleteTarget(null);
+    setDeleting(true);
+    setError(null);
+    try {
+      if (kind === 'education') await deleteEducation(id);
+      else if (kind === 'projects') await deleteProject(id);
+      else if (kind === 'achievements') await deleteAchievement(id);
+      else await deleteCertification(id);
+      await refresh();
+      setDeleteTarget(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const openDialog = (kind: 'education' | 'projects' | 'achievements', item: unknown | null) => {
@@ -376,9 +388,13 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
               </div>
               <div className="flex items-center gap-2">
                 <GitHubImportButton
-                  onImported={(result) =>
-                    setImportNotice(t('profile.projects.imported', { count: String(result.total) }))
-                  }
+                  onImported={async (result) => {
+                    setImportNotice(
+                      t('profile.projects.imported', { count: String(result.total) })
+                    );
+                    await refresh();
+                    setTimeout(() => setImportNotice(null), 5000);
+                  }}
                 />
                 <Button size="sm" onClick={() => openDialog('projects', null)}>
                   <Plus className="h-4 w-4" />
@@ -391,12 +407,42 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
                 {importNotice} — {t('profile.projects.importHint')}
               </p>
             )}
+            {bundle.projects.length > 0 && (
+              <div className="relative mb-3">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+                <Input
+                  placeholder={t('profile.projects.search')}
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                  className="h-9 rounded-xl border-[#e6e3dc] pl-9 text-xs"
+                />
+              </div>
+            )}
             {bundle.projects.length === 0 ? (
               <p className="text-sm text-ink-soft">{t('profile.projects.empty')}</p>
             ) : (
-              <div className="divide-y divide-[#f0ece4]">
-                {bundle.projects.map((p) => renderRow('projects', p))}
-              </div>
+              (() => {
+                const filtered = projectSearch.trim()
+                  ? bundle.projects.filter((p) => {
+                      const q = projectSearch.toLowerCase();
+                      return (
+                        p.name.toLowerCase().includes(q) ||
+                        (p.role && p.role.toLowerCase().includes(q)) ||
+                        (p.github && p.github.toLowerCase().includes(q)) ||
+                        (p.website && p.website.toLowerCase().includes(q)) ||
+                        (p.description && p.description.some((d) => d.toLowerCase().includes(q))) ||
+                        (p.languages && p.languages.some((l) => l.toLowerCase().includes(q)))
+                      );
+                    })
+                  : bundle.projects;
+                return filtered.length === 0 ? (
+                  <p className="text-sm text-ink-soft">{t('profile.projects.noResults')}</p>
+                ) : (
+                  <div className="divide-y divide-[#f0ece4]">
+                    {filtered.map((p) => renderRow('projects', p))}
+                  </div>
+                );
+              })()
             )}
           </section>
         </>
@@ -512,6 +558,7 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
                 : t('profile.certifications.deleteDescription')
         }
         confirmLabel={t('common.delete')}
+        confirmLoading={deleting}
         onConfirm={() => void confirmDelete()}
       />
       <ConfirmDialog
@@ -627,14 +674,17 @@ function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDia
     }
     setSubmitting(true);
     setValidation(null);
-    if (kind === 'education') {
-      await onSubmit({ institution, degree, years, description });
-    } else if (kind === 'projects') {
-      await onSubmit({ name, role, years, github, website, description: bullets });
-    } else {
-      await onSubmit({ title, description, date });
+    try {
+      if (kind === 'education') {
+        await onSubmit({ institution, degree, years, description });
+      } else if (kind === 'projects') {
+        await onSubmit({ name, role, years, github, website, description: bullets });
+      } else {
+        await onSubmit({ title, description, date });
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const errorText = validation ?? error;

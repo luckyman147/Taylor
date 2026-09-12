@@ -139,16 +139,64 @@ class LinkedInAdapter(BaseMCPAdapter):
                     await session.initialize()
                     result = await session.call_tool("search_jobs", arguments=args)
 
-                    for item in result.content:
-                        if hasattr(item, "text"):
-                            data = json.loads(item.text)
+                    logger.debug(
+                        "LinkedIn MCP search_jobs result: %d content items, "
+                        "is_error=%s",
+                        len(result.content),
+                        getattr(result, "isError", None),
+                    )
+
+                    for idx, item in enumerate(result.content):
+                        has_text = hasattr(item, "text")
+                        logger.debug(
+                            "LinkedIn MCP content[%d]: type=%s, has_text=%s",
+                            idx,
+                            type(item).__name__,
+                            has_text,
+                        )
+                        if has_text:
+                            raw_text = item.text[:2000]
+                            logger.debug(
+                                "LinkedIn MCP content[%d] text (first 2000 chars): %s",
+                                idx,
+                                raw_text,
+                            )
+                            try:
+                                data = json.loads(item.text)
+                            except json.JSONDecodeError as exc:
+                                logger.warning(
+                                    "LinkedIn MCP content[%d] JSON parse failed: %s",
+                                    idx,
+                                    exc,
+                                )
+                                continue
+
                             refs = data.get("references", {}).get("search_results", [])
+                            if not refs:
+                                logger.debug(
+                                    "LinkedIn MCP content[%d] top-level keys: %s, "
+                                    "references keys: %s",
+                                    idx,
+                                    list(data.keys()),
+                                    list(data.get("references", {}).keys()),
+                                )
                             job_ids = []
+                            ref_kinds = []
                             for ref in refs:
+                                ref_kinds.append(ref.get("kind", "none"))
                                 if ref.get("kind") == "job":
                                     job_id = ref.get("url", "").rstrip("/").split("/")[-1]
                                     if job_id:
                                         job_ids.append((job_id, ref.get("text", "Unknown")))
+
+                            logger.debug(
+                                "LinkedIn MCP parsed %d refs, kinds=%s, "
+                                "extracted %d job_ids: %s",
+                                len(refs),
+                                ref_kinds,
+                                len(job_ids),
+                                [jid for jid, _ in job_ids],
+                            )
 
                             # Fetch details for first 5 jobs to get company names
                             jobs: list[JobListing] = []

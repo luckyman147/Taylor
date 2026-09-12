@@ -1,5 +1,15 @@
 """Pydantic schemas for request/response models."""
 
+from app.schemas.agent_events import (
+    AgentEvent,
+    AgentStatus,
+    AgentStatusEvent,
+    RecoveryEvent,
+    ToolExecStatus,
+    ToolExecutionEvent,
+    TurnCompleteEvent,
+    serialize_event,
+)
 from app.schemas.github import (
     GitHubRepo,
     GitHubReposResponse,
@@ -102,6 +112,7 @@ from app.schemas.applications import (
     BulkDelete,
     BulkStatusUpdate,
     ManualApplicationCreate,
+    SaveJobFromChatRequest,
 )
 from app.schemas.companies import (
     CompanyActionResponse,
@@ -240,12 +251,21 @@ __all__ = [
     "GenerateInterviewPrepResponse",
     "HealthResponse",
     "StatusResponse",
+    "AgentStatus",
+    "AgentStatusEvent",
+    "ToolExecStatus",
+    "ToolExecutionEvent",
+    "RecoveryEvent",
+    "TurnCompleteEvent",
+    "AgentEvent",
+    "serialize_event",
     "ApplicationStatus",
     "APPLICATION_STATUS_ORDER",
     "ApplicationResponse",
     "ApplicationDetailResponse",
     "ApplicationListResponse",
     "ManualApplicationCreate",
+    "SaveJobFromChatRequest",
     "ApplicationUpdate",
     "BulkStatusUpdate",
     "BulkDelete",

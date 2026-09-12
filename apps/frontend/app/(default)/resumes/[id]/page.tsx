@@ -32,10 +32,12 @@ import {
   MessagesSquare,
 } from 'lucide-react';
 import { EnrichmentModal } from '@/components/enrichment/enrichment-modal';
+import { CompanyApprovalDialog } from '@/components/contacts/company-approval-dialog';
 import { useTranslations } from '@/lib/i18n';
 import { withLocalizedDefaultSections } from '@/lib/utils/section-helpers';
 import { useLanguage } from '@/lib/context/language-context';
 import { downloadBlobAsFile, openUrlInNewTab, sanitizeFilename } from '@/lib/utils/download';
+import { listCompanies } from '@/lib/api/companies';
 
 type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
@@ -64,6 +66,13 @@ export default function ResumeViewerPage() {
   const [jobDescription, setJobDescription] = useState<string | null>(null);
   const [templateSettings, setTemplateSettings] =
     useState<TemplateSettings>(DEFAULT_TEMPLATE_SETTINGS);
+
+  // Company approval state
+  const [extractedCompany, setExtractedCompany] = useState<string>('');
+  const [extractedWebsite, setExtractedWebsite] = useState<string>('');
+  const [extractedIndustry, setExtractedIndustry] = useState<string>('');
+  const [showCompanyApproval, setShowCompanyApproval] = useState(false);
+  const [companyDismissed, setCompanyDismissed] = useState(false);
 
   const resumeId = params?.id as string;
 
@@ -119,6 +128,32 @@ export default function ResumeViewerPage() {
           try {
             const jd = await fetchJobDescription(resumeId);
             setJobDescription(jd.content);
+
+            // Check if company from JD needs to be added to companies DB
+            if (jd.company) {
+              setExtractedCompany(jd.company);
+              setExtractedWebsite(jd.website || '');
+              setExtractedIndustry(jd.industry || '');
+
+              // Check if dismissed in a previous session
+              const dismissKey = `company_approval_dismissed_${resumeId}`;
+              const wasDismissed = localStorage.getItem(dismissKey) === 'true';
+              if (!wasDismissed) {
+                // Check if company already exists in DB
+                try {
+                  const { companies } = await listCompanies();
+                  const companyExists = companies.some(
+                    (c) => c.name.toLowerCase() === jd.company.toLowerCase()
+                  );
+                  if (!companyExists) {
+                    setShowCompanyApproval(true);
+                  }
+                } catch {
+                  // If companies fetch fails, show dialog anyway — non-blocking
+                  setShowCompanyApproval(true);
+                }
+              }
+            }
           } catch {
             // Job description not available
           }
@@ -546,6 +581,30 @@ export default function ResumeViewerPage() {
           isOpen={showEnrichmentModal}
           onClose={() => setShowEnrichmentModal(false)}
           onComplete={handleEnrichmentComplete}
+        />
+      )}
+
+      {/* Company Approval Dialog - After tailoring a resume */}
+      {extractedCompany && (
+        <CompanyApprovalDialog
+          open={showCompanyApproval}
+          onOpenChange={(open) => {
+            if (!open) {
+              // Mark as dismissed so it doesn't show again
+              const dismissKey = `company_approval_dismissed_${resumeId}`;
+              localStorage.setItem(dismissKey, 'true');
+              setCompanyDismissed(true);
+            }
+            setShowCompanyApproval(open);
+          }}
+          company={extractedCompany}
+          website={extractedWebsite}
+          industry={extractedIndustry}
+          onAdded={() => {
+            // Clear dismissed flag since we successfully added
+            const dismissKey = `company_approval_dismissed_${resumeId}`;
+            localStorage.removeItem(dismissKey);
+          }}
         />
       )}
     </div>

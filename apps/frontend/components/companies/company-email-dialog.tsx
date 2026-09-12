@@ -40,6 +40,7 @@ import { useToast } from '@/components/ui/toast';
 import { useTranslations } from '@/lib/i18n';
 import { useLanguage } from '@/lib/context/language-context';
 import { cn } from '@/lib/utils';
+import { MarkdownToolbar } from '@/components/common/markdown-toolbar';
 
 interface CompanyEmailDialogProps {
   open: boolean;
@@ -123,6 +124,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentName, setAttachmentName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
@@ -577,10 +579,18 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wider text-ink-soft">
-                  {t('companies.emailDialog.message')}
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wider text-ink-soft">
+                    {t('companies.emailDialog.message')}
+                  </Label>
+                  <MarkdownToolbar
+                    textareaRef={bodyTextareaRef}
+                    value={body}
+                    onChange={setBody}
+                  />
+                </div>
                 <Textarea
+                  ref={bodyTextareaRef}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder={t('companies.emailDialog.messagePlaceholder')}

@@ -1,11 +1,12 @@
 """Chat Command Center — orchestrator.
 
-Two-phase planner: read tools execute immediately, write tools return
-pending_action. In-memory pending store (single-worker assumption).
+Intent-based routing: classifies user intent, then routes to the appropriate
+handler (job search, profile, resume audit, or general planner).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -18,16 +19,21 @@ from app.database import db
 from app.llm import complete, complete_json, get_llm_config, get_model_name
 from app.prompts import (
     CHAT_ANSWER_PROMPT,
+    CHAT_BASE_MODES,
     CHAT_PLANNER_PROMPT,
     CHAT_PLANNER_SYSTEM_PROMPTS,
     CHAT_THINKING_PROMPT,
     get_language_name,
+    get_merged_system_prompt,
 )
 from app.services.chat_tools import (
     ToolRequiresConfirmation,
     execute_tool,
     get_tool_catalog_json,
 )
+from app.services.chat_gateway import ChatIntent
+from app.agent.runner import agent_runner
+from app.agent.budget import BudgetConfig
 
 logger = logging.getLogger(__name__)
 
@@ -65,15 +71,96 @@ def _get_pending(token: str) -> dict[str, Any] | None:
     _cleanup_pending()
     entry = _pending_store.get(token)
     if entry is None:
+        logger.warning("Pending token %s not found (may have expired or server restarted)", token[:8])
         return None
     if time.time() - entry["created_at"] > _PENDING_TTL:
         _pending_store.pop(token, None)
+        logger.warning("Pending token %s expired", token[:8])
         return None
     return entry
 
 
 def _remove_pending(token: str) -> None:
     _pending_store.pop(token, None)
+
+
+# ---------------------------------------------------------------------------
+# Job search parameter extraction (regex only)
+# ---------------------------------------------------------------------------
+
+_ROLE_PATTERN = re.compile(
+    r"(?:find|search|look\s+for|hiring|show\s+me)\s+"
+    r"(?:me\s+)?(?:some\s+)?(?:a\s+)?"
+    r"(.+?)(?:\s+(?:in|at|near|from|jobs?|positions?|roles?|openings?|vacancies?))",
+    re.IGNORECASE,
+)
+
+_LOCATION_PATTERN = re.compile(
+    r"\b(?:in|at|near|from)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+)
+
+_REMOTE_PATTERN = re.compile(
+    r"\b(remote|work\s+from\s+home|wfh|hybrid|onsite|on-site)\b",
+    re.IGNORECASE,
+)
+
+_SENIORITY_PATTERN = re.compile(
+    r"\b(junior|senior|lead|principal|staff|intern|entry[- ]level|mid[- ]level|chief|head)\b",
+    re.IGNORECASE,
+)
+
+_SKILLS_PATTERN = re.compile(
+    r"\b(python|javascript|typescript|react|angular|vue|node\.?js|java|go|rust|"
+    r"django|fastapi|flask|spring|sql|postgresql|mongodb|docker|kubernetes|aws|"
+    r"gcp|azure|terraform|graphql|rest|figma|tailwind|css|html)\b",
+    re.IGNORECASE,
+)
+
+
+def _extract_job_params(message: str) -> dict[str, Any]:
+    """Extract job search parameters from user message using regex."""
+    params: dict[str, Any] = {}
+
+    role_match = _ROLE_PATTERN.search(message)
+    if role_match:
+        role = role_match.group(1).strip()
+        role = re.sub(r"\s+(and|or|with|that|who|the)$", "", role, flags=re.IGNORECASE)
+        if len(role) > 3:
+            params["role"] = role
+
+    loc_match = _LOCATION_PATTERN.search(message)
+    if loc_match:
+        params["location"] = loc_match.group(1)
+
+    remote_match = _REMOTE_PATTERN.search(message)
+    if remote_match:
+        params["remote"] = remote_match.group(1).lower()
+
+    sen_match = _SENIORITY_PATTERN.search(message)
+    if sen_match:
+        params["seniority"] = sen_match.group(1).lower()
+
+    skills = _SKILLS_PATTERN.findall(message)
+    if skills:
+        params["skills"] = list(set(s.lower() for s in skills))
+
+    return params
+
+
+def _build_search_query(params: dict[str, Any]) -> str:
+    """Build a search query from extracted params."""
+    parts = []
+    if params.get("role"):
+        parts.append(params["role"])
+    if params.get("skills"):
+        parts.extend(params["skills"])
+    if params.get("seniority"):
+        parts.append(params["seniority"])
+    if params.get("location"):
+        parts.append(params["location"])
+    if params.get("remote") in ("remote", "work from home", "wfh"):
+        parts.append("remote")
+    return " ".join(parts) if parts else "software engineer"
 
 
 # ---------------------------------------------------------------------------
@@ -180,19 +267,32 @@ def _build_conversation_context(messages: list[dict[str, Any]]) -> str:
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-async def run_turn(
+async def _run_turn_core(
     thread_id: str,
     user_message: str,
+    resume_id: str | None,
+    _emit,
+    _try_agent_loop_fn,
 ) -> dict[str, Any]:
-    """Execute a full chat turn: plan → tool calls → answer.
+    """Shared chat turn logic: gateway → agent loop → planner → tools → answer.
 
-    Returns a dict matching TurnResponse schema.
+    _emit: async callback for streaming events (no-op in non-streaming path).
+    _try_agent_loop_fn: async callable for the agent loop (streaming or not).
     """
+    from app.schemas.agent_events import (
+        AgentStatusEvent,
+        AgentStatus,
+        ToolExecutionEvent,
+        ToolExecStatus,
+        TurnCompleteEvent,
+    )
+
     thread = await db.get_chat_thread(thread_id)
     if not thread:
         raise ValueError(f"Thread {thread_id} not found")
 
     mode = thread.get("mode", "ask")
+    skills = thread.get("skills", [])
     language = get_content_language()
     output_language = get_language_name(language)
 
@@ -202,11 +302,23 @@ async def run_turn(
 
     # --- Gateway: fast intent classification (no LLM call) ---
     from app.services.chat_gateway import classify_intent
-    gateway = await classify_intent(user_message)
+    gateway = await classify_intent(user_message, resume_id=resume_id)
 
+    # --- Intent-based routing ---
+    if gateway.intent == ChatIntent.JOB_SEARCH:
+        return await _handle_job_search(
+            thread_id, user_message, gateway, _emit, messages, memories,
+        )
+
+    if gateway.intent in (ChatIntent.PROFILE, ChatIntent.APPLICATIONS,
+                          ChatIntent.SKILLS, ChatIntent.MARKET):
+        return await _handle_direct_tool(
+            thread_id, user_message, gateway, _emit, messages, memories,
+        )
+
+    # --- Resume audit: selection flow ---
     if gateway.needs_selection:
-        # Multiple resumes — return selection card, skip planner entirely
-        await db.add_chat_message(thread_id, "user", user_message)
+        await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
         selection_card = {
             "kind": "resume_selection",
             "data": {
@@ -225,7 +337,7 @@ async def run_turn(
         }
         assistant_content = "Which resume would you like me to audit?"
         await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
-        return {
+        result = {
             "assistant_content": assistant_content,
             "cards": envelope["cards"],
             "actions": envelope["actions"],
@@ -235,6 +347,8 @@ async def run_turn(
             "followups": envelope["followups"],
             "sources": [],
         }
+        await _emit(TurnCompleteEvent(data=result))
+        return result
 
     # If gateway determined a specific resume, inject it into context
     gateway_context = ""
@@ -242,7 +356,6 @@ async def run_turn(
     if gateway.resume_id:
         gateway_context = f"\n[GATEWAY: User wants to audit resume_id={gateway.resume_id}. Call get_ats_audit with resume_id='{gateway.resume_id}'.]"
         logger.info("Gateway context injected: resume_id=%s", gateway.resume_id)
-        # Fetch resume for filename
         try:
             _resume = await db.get_resume(gateway.resume_id)
             if _resume:
@@ -250,15 +363,46 @@ async def run_turn(
         except Exception:
             gateway_resume_filename = "Resume"
 
-    # --- End gateway ---
+    # --- Agent Loop ---
+    await _emit(AgentStatusEvent(status=AgentStatus.DISCOVERING_TOOLS, message="Finding the best tools for your request..."))
 
-    catalog_json = get_tool_catalog_json(mode=mode)
-    tool_catalog_text = ", ".join(
-        f"{t['name']}{'(' + ', '.join(p for p, s in t['params'].items() if s.get('required')) + ')' if t['params'] else ''}"
+    agent_result = await _try_agent_loop_fn(user_message, mode, skills, thread_id, messages, memories)
+    if agent_result is not None:
+        await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
+        envelope = {
+            "cards": agent_result.get("cards", []),
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "followups": ["Tell me more", "What else can you do?"],
+            "sources": [],
+        }
+        await db.add_chat_message(thread_id, "assistant", agent_result["answer"], envelope=envelope)
+        config = get_llm_config()
+        result = {
+            "assistant_content": agent_result["answer"],
+            "cards": envelope["cards"],
+            "actions": envelope["actions"],
+            "stats": None,
+            "pending_action": None,
+            "memory_candidates": [],
+            "followups": envelope["followups"],
+            "sources": [],
+            "model_info": {"provider": config.provider, "model": config.model},
+        }
+        await _emit(TurnCompleteEvent(data=result))
+        return result
+
+    # --- Standard Planner Path ---
+    catalog_json = get_tool_catalog_json(mode=mode, skills=skills)
+    tool_catalog_text = "\n".join(
+        f"- {t['name']}{'(' + ', '.join(p for p, s in t['params'].items() if s.get('required')) + ')' if t['params'] else ''}: {t.get('description', '')}"
         for t in catalog_json
     )
 
     # Phase 1: Plan
+    await _emit(AgentStatusEvent(status=AgentStatus.PLANNING, message="Planning which tools to use..."))
+
     planner_prompt = CHAT_PLANNER_PROMPT.format(
         active_memories=_format_memories(memories),
         history=_format_history(messages),
@@ -266,28 +410,33 @@ async def run_turn(
         output_language=output_language,
     ) + gateway_context
 
-    system_prompt = CHAT_PLANNER_SYSTEM_PROMPTS.get(mode, CHAT_PLANNER_SYSTEM_PROMPTS["ask"])
+    from app.prompts import get_merged_system_prompt
+    system_prompt = get_merged_system_prompt(mode, skills)
 
-    plan = await complete_json(
-        prompt=planner_prompt,
-        system_prompt=system_prompt,
-        schema_type="chat_plan",
-    )
+    try:
+        plan = await complete_json(
+            prompt=planner_prompt,
+            system_prompt=system_prompt,
+            schema_type="chat_plan",
+        )
+    except Exception as e:
+        logger.warning("Planner LLM failed, falling back to no-tool answer: %s", e)
+        plan = {"tool_calls": [], "followups": [], "memory_candidates": [], "title": ""}
 
     tool_calls = plan.get("tool_calls", [])
-    narrative = plan.get("narrative", "")
     followups = plan.get("followups", [])
     memory_candidates = plan.get("memory_candidates", [])
     plan_title = plan.get("title", "")
 
-    # Auto-title: update thread title from planner on first message
     if plan_title and len(messages) <= 1:
         try:
             await db.update_chat_thread(thread_id, title=plan_title[:80])
         except Exception:
             pass
 
-    # Phase 2: Execute read tools
+    # Phase 2: Execute tools
+    await _emit(AgentStatusEvent(status=AgentStatus.EXECUTING, message=f"Running {len(tool_calls)} tool(s)..."))
+
     tool_results: dict[str, Any] = {}
     stats: dict[str, Any] | None = None
     pending_action: dict[str, Any] | None = None
@@ -298,35 +447,35 @@ async def run_turn(
         if not tool_name:
             continue
 
+        await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.RUNNING))
+
         try:
             result = await execute_tool(tool_name, tool_args)
             tool_results[tool_name] = result
-            # Surface stats if the tool produced numeric data
+            await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.SUCCESS))
             if _is_stats_tool(tool_name):
                 stats = result
         except ToolRequiresConfirmation as e:
-            # Write tool → store pending, don't execute yet
             token = _store_pending(e.tool, e.args, e.summary)
             pending_action = {
                 "token": token,
                 "tool": e.tool,
                 "summary": e.summary,
             }
+            await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.SUCCESS, message="Pending confirmation"))
         except Exception as e:
             logger.warning("Tool %s failed: %s", tool_name, e)
             tool_results[tool_name] = {"error": str(e)}
+            await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.FAILED, message=str(e)))
 
-    # Phase 2.5: Retrieve RAG context for the answer
+    # Phase 2.5: RAG
+    await _emit(AgentStatusEvent(status=AgentStatus.EVALUATING, message="Gathering additional context..."))
+
     rag_context = ""
     try:
         from app.services.rag import rag_index
         from app.services.rag import build_context_block
-        rag_results = await rag_index.query(
-            user_message,
-            top_k=3,
-            rerank=True,
-        )
-        # Convert to (Chunk, score) tuples for context builder
+        rag_results = await rag_index.query(user_message, top_k=3, rerank=True)
         rag_input = {}
         for source_type, items in rag_results.items():
             rag_input[source_type] = items
@@ -335,12 +484,12 @@ async def run_turn(
         pass
 
     # Phase 3: Generate answer (two-pass: think → answer)
-    # Build compact career data for the answer prompt
+    await _emit(AgentStatusEvent(status=AgentStatus.GENERATING_ANSWER, message="Preparing your answer..."))
+
     career_data = await _build_career_context()
     resume_context = f"\nRESUME BEING ANALYZED: {gateway_resume_filename} (id={gateway.resume_id})" if gateway.resume_id else ""
     conversation_ctx = _build_conversation_context(messages)
 
-    # Pass 1: Think deeply about the request
     thinking_prompt = CHAT_THINKING_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
@@ -351,14 +500,18 @@ async def run_turn(
         mode=mode,
         output_language=output_language,
     )
-    thinking = await complete(
-        prompt=thinking_prompt,
-        system_prompt=system_prompt,
-        max_tokens=2048,
-        temperature=0.5,
-    )
 
-    # Pass 2: Generate polished answer using the thinking
+    try:
+        thinking = await complete(
+            prompt=thinking_prompt,
+            system_prompt=system_prompt,
+            max_tokens=2048,
+            temperature=0.5,
+        )
+    except Exception as e:
+        logger.warning("Thinking pass failed: %s", e)
+        thinking = ""
+
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
@@ -371,13 +524,20 @@ async def run_turn(
     )
     answer_with_thinking = f"{answer_prompt}\n\nYOUR DETAILED ANALYSIS:\n{thinking}\n\nNow generate the final polished answer based on your analysis above. Be thorough, specific, and actionable."
 
-    assistant_content = await complete(
-        prompt=answer_with_thinking,
-        system_prompt=system_prompt,
-    )
+    try:
+        assistant_content = await complete(
+            prompt=answer_with_thinking,
+            system_prompt=system_prompt,
+        )
+    except Exception as e:
+        logger.error("Answer generation failed: %s", e)
+        assistant_content = (
+            "I wasn't able to generate a complete answer right now. "
+            "Please try again in a moment, or check your API configuration."
+        )
 
     # Persist user message
-    await db.add_chat_message(thread_id, "user", user_message)
+    await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
 
     # Build envelope for assistant message
     cards = _build_cards(tool_results, stats)
@@ -396,18 +556,13 @@ async def run_turn(
     await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
 
     # Process memory candidates (dedup, cap at 3)
-    saved_memories = await _process_memory_candidates(
-        memory_candidates, thread_id
-    )
+    saved_memories = await _process_memory_candidates(memory_candidates, thread_id)
 
     # Include model info
     config = get_llm_config()
-    model_info = {
-        "provider": config.provider,
-        "model": config.model,
-    }
+    model_info = {"provider": config.provider, "model": config.model}
 
-    return {
+    result = {
         "assistant_content": assistant_content,
         "cards": envelope["cards"],
         "actions": envelope["actions"],
@@ -418,6 +573,351 @@ async def run_turn(
         "sources": envelope["sources"],
         "model_info": model_info,
     }
+    await _emit(TurnCompleteEvent(data=result))
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Intent handlers
+# ---------------------------------------------------------------------------
+
+async def _handle_job_search(
+    thread_id: str,
+    user_message: str,
+    gateway: Any,
+    _emit,
+    messages: list[dict[str, Any]],
+    memories: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Handle job search intent: extract params → confirm → search."""
+    from app.schemas.agent_events import AgentStatusEvent, AgentStatus, TurnCompleteEvent
+
+    params = _extract_job_params(user_message)
+
+    # If vague — show interactive search form
+    if not params.get("role") and not params.get("skills"):
+        await _emit(AgentStatusEvent(
+            status=AgentStatus.THINKING,
+            message="What kind of role are you looking for?",
+        ))
+
+        assistant_content = (
+            "Use the form below to describe the role, location, and skills you're looking for. "
+            "You can pick from the suggestions or type your own."
+        )
+
+        await db.add_chat_message(thread_id, "user", user_message)
+        envelope = {
+            "cards": [{"kind": "job_search_form", "data": {}}],
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "followups": [],
+            "sources": [],
+        }
+        await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
+
+        result = {
+            "assistant_content": assistant_content,
+            "cards": [{"kind": "job_search_form", "data": {}}],
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "memory_candidates": [],
+            "followups": [],
+            "sources": [],
+        }
+        await _emit(TurnCompleteEvent(data=result))
+        return result
+
+    # Params extracted — stage for confirmation
+    query = _build_search_query(params)
+
+    summary_parts = [f"Search for: {query}"]
+    if params.get("role"):
+        summary_parts.append(f"Role: {params['role']}")
+    if params.get("location"):
+        summary_parts.append(f"Location: {params['location']}")
+    if params.get("skills"):
+        summary_parts.append(f"Skills: {', '.join(params['skills'])}")
+    summary_parts.append("Sources: LinkedIn, Exa, RSS, RemoteOK, Keejob")
+
+    token = _store_pending(
+        tool="search_mcp_jobs",
+        args={
+            "query": query,
+            "limit": 10,
+            "seniority": params.get("seniority", ""),
+            "location": params.get("location", ""),
+            "remote": params.get("remote", ""),
+        },
+        summary=" | ".join(summary_parts),
+    )
+
+    await _emit(AgentStatusEvent(
+        status=AgentStatus.DISCOVERING_TOOLS,
+        message=f"Found search parameters for {params.get('role', 'jobs')}...",
+    ))
+
+    # Build confirmation message
+    role_display = params.get("role", "jobs")
+    location_display = f" in **{params['location']}**" if params.get("location") else ""
+    skills_display = f" matching **{', '.join(params['skills'])}**" if params.get("skills") else ""
+    remote_display = " (**remote**)" if params.get("remote") in ("remote", "work from home", "wfh") else ""
+
+    assistant_content = (
+        f"I'll search for **{role_display}** jobs{location_display}{skills_display}{remote_display} "
+        f"across LinkedIn, Exa, RSS feeds, RemoteOK, and Keejob. "
+        f"Click **Execute** to start the search."
+    )
+
+    await db.add_chat_message(thread_id, "user", user_message)
+    pending_action = {
+        "token": token,
+        "tool": "search_mcp_jobs",
+        "summary": " | ".join(summary_parts),
+    }
+    envelope = {
+        "cards": [],
+        "actions": [],
+        "stats": None,
+        "pending_action": pending_action,
+        "followups": [
+            f"Search for {role_display} in another location",
+            "Filter by remote only",
+            "Show job market trends",
+        ],
+        "sources": [],
+    }
+    await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
+
+    result = {
+        "assistant_content": assistant_content,
+        "cards": [],
+        "actions": [],
+        "stats": None,
+        "pending_action": pending_action,
+        "memory_candidates": [],
+        "followups": envelope["followups"],
+        "sources": [],
+    }
+    await _emit(TurnCompleteEvent(data=result))
+    return result
+
+
+async def _handle_direct_tool(
+    thread_id: str,
+    user_message: str,
+    gateway: Any,
+    _emit,
+    messages: list[dict[str, Any]],
+    memories: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Handle intents that map directly to specific tools (profile, applications, skills, market)."""
+    from app.schemas.agent_events import AgentStatusEvent, AgentStatus, TurnCompleteEvent
+
+    await _emit(AgentStatusEvent(
+        status=AgentStatus.RETRIEVING_CONTEXT,
+        message="Loading your data...",
+    ))
+
+    tool_results: dict[str, Any] = {}
+    for tool_name in gateway.preferred_tools:
+        try:
+            result = await execute_tool(tool_name, {})
+            tool_results[tool_name] = result
+        except Exception as e:
+            logger.warning("Direct tool %s failed: %s", tool_name, e)
+            tool_results[tool_name] = {"error": str(e)}
+
+    await _emit(AgentStatusEvent(
+        status=AgentStatus.GENERATING_ANSWER,
+        message="Preparing your answer...",
+    ))
+
+    language = get_content_language()
+    output_language = get_language_name(language)
+    career_data = await _build_career_context()
+    conversation_ctx = _build_conversation_context(messages)
+    system_prompt = get_merged_system_prompt("ask", [])
+
+    tool_summary = json.dumps(tool_results, ensure_ascii=False, default=str)
+
+    answer_prompt = CHAT_ANSWER_PROMPT.format(
+        user_message=user_message,
+        conversation_context=conversation_ctx,
+        career_data=career_data,
+        tool_stats=tool_summary,
+        rag_context="",
+        active_memories=_format_memories(memories),
+        mode="ask",
+        output_language=output_language,
+    )
+
+    try:
+        assistant_content = await complete(
+            prompt=answer_prompt,
+            system_prompt=system_prompt,
+            max_tokens=2048,
+            temperature=0.5,
+        )
+    except Exception as e:
+        logger.error("Direct tool answer LLM failed: %s", e)
+        assistant_content = (
+            f"Here's what I found:\n\n"
+            f"```json\n{tool_summary[:2000]}\n```\n\n"
+            f"(Generated without AI summarization)"
+        )
+
+    await db.add_chat_message(thread_id, "user", user_message)
+    cards = _build_cards(tool_results, None)
+    envelope = {
+        "cards": cards,
+        "actions": [],
+        "stats": None,
+        "pending_action": None,
+        "followups": [],
+        "sources": _extract_sources(tool_results),
+    }
+    await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
+
+    config = get_llm_config()
+    result = {
+        "assistant_content": assistant_content,
+        "cards": cards,
+        "actions": [],
+        "stats": None,
+        "pending_action": None,
+        "memory_candidates": [],
+        "followups": [],
+        "sources": envelope["sources"],
+        "model_info": {"provider": config.provider, "model": config.model},
+    }
+    await _emit(TurnCompleteEvent(data=result))
+    return result
+
+
+async def run_turn(
+    thread_id: str,
+    user_message: str,
+    resume_id: str | None = None,
+) -> dict[str, Any]:
+    """Execute a full chat turn: plan → tool calls → answer.
+
+    Returns a dict matching TurnResponse schema.
+    """
+
+    async def _noop_emit(_event):
+        pass
+
+    return await _run_turn_core(thread_id, user_message, resume_id, _emit=_noop_emit, _try_agent_loop_fn=_try_agent_loop)
+
+
+# ---------------------------------------------------------------------------
+# Streaming turn (SSE)
+# ---------------------------------------------------------------------------
+
+async def run_turn_stream(
+    thread_id: str,
+    user_message: str,
+    resume_id: str | None = None,
+    event_queue: asyncio.Queue | None = None,
+) -> dict[str, Any]:
+    """Execute a full chat turn with event streaming.
+
+    Events are put into event_queue as the turn progresses.
+    Returns the final TurnResponse dict.
+    """
+    _emit = _make_emitter(event_queue)
+
+    async def _agent_loop_stream(
+        user_message: str,
+        mode: str,
+        skills: list[str],
+        thread_id: str,
+        messages: list[dict[str, Any]],
+        memories: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        return await _try_agent_loop_stream(user_message, mode, skills, thread_id, messages, memories, _emit)
+
+    return await _run_turn_core(thread_id, user_message, resume_id, _emit=_emit, _try_agent_loop_fn=_agent_loop_stream)
+
+
+def _make_emitter(event_queue: asyncio.Queue | None):
+    """Create a non-blocking emit function for a queue."""
+    async def _emit(event):
+        if event_queue is not None:
+            try:
+                event_queue.put_nowait(event)
+            except Exception:
+                pass
+            # Yield control so the generator can drain the queue
+            await asyncio.sleep(0)
+    return _emit
+
+
+async def _try_agent_loop_stream(
+    user_message: str,
+    mode: str,
+    skills: list[str],
+    thread_id: str,
+    messages: list[dict[str, Any]],
+    memories: list[dict[str, Any]],
+    _emit,
+) -> dict[str, Any] | None:
+    """Try agent loop with streaming events."""
+    msg_lower = user_message.lower()
+    is_complex = (
+        any(p in msg_lower for p in _COMPLEX_PATTERNS)
+        or any(rx.search(msg_lower) for rx in _COMPLEX_PATTERNS_RE)
+    )
+    agent_mode = CHAT_BASE_MODES.get(mode, {}).get("agent_loop", False)
+    if not is_complex and not agent_mode:
+        return None
+
+    import asyncio
+    from app.schemas.agent_events import AgentStatusEvent, AgentStatus
+
+    await _emit(AgentStatusEvent(status=AgentStatus.PLANNING, message="Agent planning autonomous execution..."))
+
+    context = {
+        "mode": mode,
+        "skills": skills,
+        "thread_id": thread_id,
+        "history": _format_history(messages, limit=10),
+        "memories": _format_memories(memories),
+    }
+
+    try:
+        # Run agent loop — events flow directly to _emit (real-time, no buffering)
+        result = await agent_runner.run(
+            query=user_message,
+            mode=mode,
+            skills=skills,
+            context=context,
+            budget_config=BudgetConfig(
+                max_iterations=4 if mode == "search" else 3,
+                max_tool_calls=15 if mode == "search" else 8,
+                max_execution_time_ms=60000 if mode == "search" else 25000,
+            ),
+            emit_fn=_emit,
+        )
+
+        answer = result.get("answer", "")
+        if answer and len(answer) > 20:
+            cards = []
+            for tc in result.get("tool_calls", []):
+                if tc.get("success"):
+                    cards.append({
+                        "kind": "info",
+                        "data": {"tool": tc["tool"], "status": "completed"},
+                    })
+            return {"answer": answer, "cards": cards}
+
+    except Exception as e:
+        logger.warning("Agent loop failed, falling through to planner: %s", e)
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -426,14 +926,19 @@ async def run_turn(
 
 async def confirm_pending(token: str) -> dict[str, Any]:
     """Execute a previously pending write tool."""
+    from app.services.chat_tools import execute_tool, execute_tool_confirmed
+
     entry = _get_pending(token)
     if entry is None:
         raise ValueError("Pending action not found or expired")
 
     _remove_pending(token)
 
-    # Execute the write tool
-    result = await execute_tool(entry["tool"], entry["args"])
+    # search_mcp_jobs is a read tool — execute directly
+    if entry["tool"] == "search_mcp_jobs":
+        result = await execute_tool(entry["tool"], entry["args"])
+    else:
+        result = await execute_tool_confirmed(entry["tool"], entry["args"])
 
     return {
         "ok": True,
@@ -457,6 +962,90 @@ async def cancel_pending(token: str) -> dict[str, Any]:
         "ok": True,
         "message": f"Action cancelled: {entry['summary']}",
     }
+
+
+# ---------------------------------------------------------------------------
+# Agent loop (optional path for complex queries)
+# ---------------------------------------------------------------------------
+
+# Complex query patterns that benefit from the autonomous agent loop
+_COMPLEX_PATTERNS = [
+    "compare", "analysis", "analyze", "evaluate", "assess",
+    "research", "discover", "explore",
+    "market position", "industry trends",
+    "what skills", "what companies", "what roles",
+]
+_COMPLEX_PATTERNS_RE = [
+    re.compile(r'\bhow\s+do\s+i\s+improve\b'),
+    re.compile(r'\bwhat\s+are\s+the\s+best\b'),
+    re.compile(r'\bwhat\s+should\s+i\b'),
+    re.compile(r'\bsalary\b'),
+]
+
+
+async def _try_agent_loop(
+    user_message: str,
+    mode: str,
+    skills: list[str],
+    thread_id: str,
+    messages: list[dict[str, Any]],
+    memories: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Try to handle a query with the autonomous agent loop.
+
+    Returns agent result if the query is complex enough, None to fall
+    through to the standard planner path.
+    """
+    msg_lower = user_message.lower()
+
+    # Only trigger for complex queries or when agent mode is active
+    is_complex = (
+        any(p in msg_lower for p in _COMPLEX_PATTERNS)
+        or any(rx.search(msg_lower) for rx in _COMPLEX_PATTERNS_RE)
+    )
+    agent_mode = CHAT_BASE_MODES.get(mode, {}).get("agent_loop", False)
+    if not is_complex and not agent_mode:
+        return None
+
+    # Build context from conversation history
+    context = {
+        "mode": mode,
+        "skills": skills,
+        "thread_id": thread_id,
+        "history": _format_history(messages, limit=10),
+        "memories": _format_memories(memories),
+    }
+
+    try:
+        result = await agent_runner.run(
+            query=user_message,
+            mode=mode,
+            skills=skills,
+            context=context,
+            budget_config=BudgetConfig(
+                max_iterations=4 if mode == "search" else 3,
+                max_tool_calls=15 if mode == "search" else 8,
+                max_execution_time_ms=60000 if mode == "search" else 25000,
+            ),
+        )
+
+        # If agent returned a meaningful answer, use it
+        answer = result.get("answer", "")
+        if answer and len(answer) > 20:
+            # Build cards from tool results
+            cards = []
+            for tc in result.get("tool_calls", []):
+                if tc.get("success"):
+                    cards.append({
+                        "kind": "info",
+                        "data": {"tool": tc["tool"], "status": "completed"},
+                    })
+            return {"answer": answer, "cards": cards}
+
+    except Exception as e:
+        logger.warning("Agent loop failed, falling through to planner: %s", e)
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -592,7 +1181,7 @@ def _tool_to_card_kind(tool_name: str) -> str:
         "get_market_position": "stats",
         "get_evidence": "evidence",
         "get_job_verdict": "job",
-        "search_jobs": "job",
+        "search_mcp_jobs": "job_list",
         "get_career_summary": "info",
         "compare_resumes": "info",
         "get_applications": "info",

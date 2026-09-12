@@ -15,6 +15,7 @@ import {
   Briefcase,
   FolderKanban,
   Lightbulb,
+  FileText,
   ChevronDown,
   ChevronRight,
   Sparkles,
@@ -28,6 +29,7 @@ interface RegenerateDialogProps {
   experienceItems: RegenerateItemInput[];
   projectItems: RegenerateItemInput[];
   skillsItem: RegenerateItemInput | null;
+  summaryItem: RegenerateItemInput | null;
   selectedItems: RegenerateItemInput[];
   onSelectionChange: (items: RegenerateItemInput[]) => void;
   onContinue: () => void;
@@ -46,13 +48,14 @@ export const RegenerateDialog: React.FC<RegenerateDialogProps> = ({
   experienceItems,
   projectItems,
   skillsItem,
+  summaryItem,
   selectedItems,
   onSelectionChange,
   onContinue,
 }) => {
   const { t } = useTranslations();
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
-    new Set(['experience', 'projects', 'skills'])
+    new Set(['experience', 'projects', 'skills', 'summary'])
   );
 
   const toggleSection = (section: string) => {
@@ -77,7 +80,11 @@ export const RegenerateDialog: React.FC<RegenerateDialogProps> = ({
     }
   };
 
-  const hasItems = experienceItems.length > 0 || projectItems.length > 0 || skillsItem !== null;
+  const hasItems =
+    experienceItems.length > 0 ||
+    projectItems.length > 0 ||
+    skillsItem !== null ||
+    summaryItem !== null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,6 +172,23 @@ export const RegenerateDialog: React.FC<RegenerateDialogProps> = ({
                 item={skillsItem}
                 isSelected={isSelected(skillsItem)}
                 onToggle={() => toggleItem(skillsItem)}
+              />
+            </SectionCard>
+          )}
+
+          {/* Summary Section */}
+          {summaryItem && (
+            <SectionCard
+              icon={<FileText className="h-4 w-4 text-primary" />}
+              label={t('builder.regenerate.selectDialog.summary')}
+              count={1}
+              isExpanded={expandedSections.has('summary')}
+              onToggle={() => toggleSection('summary')}
+            >
+              <ItemRow
+                item={summaryItem}
+                isSelected={isSelected(summaryItem)}
+                onToggle={() => toggleItem(summaryItem)}
               />
             </SectionCard>
           )}

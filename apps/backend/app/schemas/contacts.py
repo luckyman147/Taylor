@@ -20,6 +20,7 @@ class ContactStatus(str, Enum):
     """Where the outreach stands (stable keys)."""
 
     to_contact = "to_contact"
+    contacted = "contacted"
     follow_up = "follow_up"
     meeting_scheduled = "meeting_scheduled"
     thank_you_sent = "thank_you_sent"
@@ -44,15 +45,18 @@ class ContactResponse(BaseModel):
 
     contact_id: str
     name: str
+    email: str | None = None
     company: str | None = None
     location: str | None = None
     goal: ContactGoal | None = None
     status: ContactStatus | None = None
     relationship: ContactRelationship | None = None
     follow_up_date: str | None = None
+    description: str | None = None
+    linkedin_url: str | None = None
+    website_url: str | None = None
     created_at: str
     updated_at: str
-
 
 class ContactListResponse(BaseModel):
     """All tracked contacts, ordered by name."""
@@ -64,12 +68,16 @@ class ContactCreate(BaseModel):
     """Create a contact — only ``name`` is required."""
 
     name: str = Field(min_length=1, max_length=200)
+    email: str | None = Field(default=None, max_length=254)
     company: str | None = Field(default=None, max_length=200)
     location: str | None = Field(default=None, max_length=200)
     goal: ContactGoal | None = None
     status: ContactStatus | None = None
     relationship: ContactRelationship | None = None
     follow_up_date: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
+    linkedin_url: str | None = Field(default=None, max_length=500)
+    website_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("follow_up_date")
     @classmethod
@@ -84,12 +92,16 @@ class ContactUpdate(BaseModel):
     """Partial update — every field optional."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
+    email: str | None = Field(default=None, max_length=254)
     company: str | None = Field(default=None, max_length=200)
     location: str | None = Field(default=None, max_length=200)
     goal: ContactGoal | None = None
     status: ContactStatus | None = None
     relationship: ContactRelationship | None = None
     follow_up_date: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
+    linkedin_url: str | None = Field(default=None, max_length=500)
+    website_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("follow_up_date")
     @classmethod

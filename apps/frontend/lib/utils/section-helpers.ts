@@ -84,13 +84,22 @@ export const DEFAULT_SECTION_META: SectionMeta[] = [
     order: 6,
   },
   {
-    id: 'additional',
-    key: 'additional',
-    displayName: 'Skills & Awards',
+    id: 'skills',
+    key: 'skills',
+    displayName: 'Skills',
     sectionType: 'stringList',
     isDefault: true,
     isVisible: true,
     order: 7,
+  },
+  {
+    id: 'languages',
+    key: 'languages',
+    displayName: 'Languages',
+    sectionType: 'stringList',
+    isDefault: true,
+    isVisible: true,
+    order: 8,
   },
 ];
 
@@ -106,7 +115,8 @@ const DEFAULT_SECTION_I18N_KEY_BY_ID: Readonly<Record<string, string>> = Object.
   certifications: 'resume.sections.certifications',
   awards: 'resume.sections.awards',
   personalProjects: 'resume.sections.projects',
-  additional: 'resume.sections.skills',
+  skills: 'resume.sections.skills',
+  languages: 'resume.sections.languages',
 });
 
 /**
@@ -157,7 +167,33 @@ export function withLocalizedDefaultSections(
  * resumes without changing existing visibility or order.
  */
 export function getSectionMeta(resumeData: ResumeData): SectionMeta[] {
-  const stored = resumeData.sectionMeta?.length ? resumeData.sectionMeta : DEFAULT_SECTION_META;
+  let stored = resumeData.sectionMeta?.length ? resumeData.sectionMeta : DEFAULT_SECTION_META;
+
+  // Safety net: migrate legacy 'additional' sections to 'skills'
+  // This handles old resumes where the backend stored id/key as "additional"
+  let needsMigration = false;
+  for (const s of stored) {
+    if (s.id === 'additional' || s.key === 'additional') {
+      needsMigration = true;
+      break;
+    }
+  }
+  if (needsMigration) {
+    const migrated = stored.map((s) => {
+      const next = { ...s };
+      if (next.id === 'additional') next.id = 'skills';
+      if (next.key === 'additional') next.key = 'skills';
+      return next;
+    });
+    // Deduplicate if both 'additional' (now 'skills') and original 'skills' exist
+    const seen = new Set<string>();
+    stored = migrated.filter((s) => {
+      if (seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }
+
   const byId = new Map(stored.map((s) => [s.id, s]));
   let maxOrder = stored.reduce((max, s) => Math.max(max, s.order), 0);
   const merged = [...stored];

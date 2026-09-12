@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
 import { MessageCard } from './message-card';
+import { StatusTimeline } from './status-timeline';
 import type {
   ToolCard,
   Action,
   PendingAction,
   MemoryCandidate,
+  AgentEvent,
 } from '@/lib/api/chat';
 
 export interface ChatMessage {
@@ -32,7 +33,10 @@ interface MessageListProps {
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
   onSelectResume?: (resumeId: string) => void;
-  onViewFile?: (filename: string, content: string) => void;
+  onViewFile?: (filename: string, resumeId: string) => void;
+  onJobSearch?: (query: string) => void;
+  streamEvents?: AgentEvent[];
+  streamStatus?: 'running' | 'paused' | 'completed';
 }
 
 export function MessageList({
@@ -45,6 +49,9 @@ export function MessageList({
   onFollowup,
   onSelectResume,
   onViewFile,
+  onJobSearch,
+  streamEvents = [],
+  streamStatus = 'completed',
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +59,7 @@ export function MessageList({
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     });
-  }, [messages, loading]);
+  }, [messages, loading, streamEvents]);
 
   return (
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scroll-smooth">
@@ -76,13 +83,21 @@ export function MessageList({
             onFollowup={onFollowup}
             onSelectResume={onSelectResume}
             onViewFile={onViewFile}
+            onJobSearch={onJobSearch}
           />
         ))}
 
-        {/* Loading indicator — thinking animation below the last message */}
-        {loading && (
+        {/* Streaming status timeline (replaces the simple Thinking... indicator) */}
+        {loading && streamEvents.length > 0 && (
+          <div className="pl-6">
+            <StatusTimeline events={streamEvents} status={streamStatus} />
+          </div>
+        )}
+
+        {/* Fallback: simple loading indicator when no events yet */}
+        {loading && streamEvents.length === 0 && (
           <div className="flex items-center gap-2 pl-6 text-sm text-ink-muted">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             <span>Thinking...</span>
           </div>
         )}

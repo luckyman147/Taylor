@@ -5,16 +5,19 @@ from pydantic import BaseModel, Field
 
 class ThreadCreate(BaseModel):
     mode: str = Field(default="ask", max_length=30)
+    skills: list[str] = Field(default_factory=list)
     title: str | None = Field(default=None, max_length=120)
 
 
 class ThreadUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=120)
     mode: str | None = Field(default=None, max_length=30)
+    skills: list[str] | None = None
 
 
 class TurnRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+    resume_id: str | None = None
 
 
 class Action(BaseModel):
@@ -74,6 +77,7 @@ class ThreadSummary(BaseModel):
     thread_id: str
     title: str
     mode: str
+    skills: list[str] = Field(default_factory=list)
     created_at: str
     updated_at: str
     message_count: int = 0

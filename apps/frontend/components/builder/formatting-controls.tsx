@@ -31,7 +31,6 @@ import {
   type AccentColor,
   type TextAlign,
   type DateRangeFormat,
-  type SkillsLayoutMode,
   type MarginUnit,
   type WorkShowBy,
   type WorkDatesBy,
@@ -194,10 +193,6 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
     });
   };
 
-  const handleSkillsLayoutChange = (skillsLayout: SkillsLayoutMode) => {
-    onChange({ ...settings, skillsLayout });
-  };
-
   const handleWorkSettingsChange = (
     key: keyof WorkExperienceSettings,
     value: WorkShowBy | WorkDatesBy | WorkLocationBy
@@ -292,10 +287,7 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
     });
   };
 
-  const handleVspaceChange = (
-    key: keyof AdvancedSettings['verticalSpacing'],
-    value: number
-  ) => {
+  const handleVspaceChange = (key: keyof AdvancedSettings['verticalSpacing'], value: number) => {
     onChange({
       ...settings,
       advanced: {
@@ -312,16 +304,16 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
         ...settings.advanced,
         borders: {
           ...settings.advanced.borders,
-          [key]: { ...settings.advanced.borders[key], enabled: !settings.advanced.borders[key].enabled },
+          [key]: {
+            ...settings.advanced.borders[key],
+            enabled: !settings.advanced.borders[key].enabled,
+          },
         },
       },
     });
   };
 
-  const handleBorderThicknessChange = (
-    key: keyof AdvancedSettings['borders'],
-    value: number
-  ) => {
+  const handleBorderThicknessChange = (key: keyof AdvancedSettings['borders'], value: number) => {
     onChange({
       ...settings,
       advanced: {
@@ -335,7 +327,11 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
   };
 
   const handleAccentColorChange = (accentColor: AccentColor) => {
-    onChange({ ...settings, accentColor });
+    onChange({ ...settings, accentColor, customAccentColor: null });
+  };
+
+  const handleCustomAccentChange = (hex: string) => {
+    onChange({ ...settings, customAccentColor: hex || null });
   };
 
   const handleReset = () => {
@@ -390,10 +386,6 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
   const dateFormatOptions: DropdownOption[] = (
     ['short', 'long', 'mmmyyyy', 'years'] as DateRangeFormat[]
   ).map((format) => ({ id: format, label: t(`builder.formatting.dateFormats.${format}`) }));
-
-  const skillsLayoutOptions: DropdownOption[] = (
-    ['comma', 'list', 'columns'] as SkillsLayoutMode[]
-  ).map((layout) => ({ id: layout, label: t(`builder.formatting.skillsLayoutOptions.${layout}`) }));
 
   const workShowByPreviewOptions: PreviewOption[] = [
     {
@@ -551,7 +543,8 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
   const isAccentTemplate =
     settings.template === 'modern' ||
     settings.template === 'modern-two-column' ||
-    settings.template === 'vivid';
+    settings.template === 'vivid' ||
+    settings.template === 'latex';
 
   const allSections = getAllSections(resumeData);
 
@@ -667,7 +660,7 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
                         key={color}
                         onClick={() => handleAccentColorChange(color)}
                         className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all ${
-                          settings.accentColor === color
+                          settings.accentColor === color && !settings.customAccentColor
                             ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
                             : 'border-[#e6e3dc] bg-white hover:bg-paper-tint'
                         }`}
@@ -680,6 +673,21 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
                         <span>{t(`builder.formatting.accentColors.${color}`)}</span>
                       </button>
                     ))}
+                    <label
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all ${
+                        settings.customAccentColor
+                          ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
+                          : 'border-[#e6e3dc] bg-white hover:bg-paper-tint'
+                      }`}
+                    >
+                      <input
+                        type="color"
+                        value={settings.customAccentColor || '#1D4ED8'}
+                        onChange={(e) => handleCustomAccentChange(e.target.value)}
+                        className="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
+                      />
+                      <span>{t('builder.formatting.accentColors.custom')}</span>
+                    </label>
                   </div>
                 </CollapsibleGroup>
               )}
@@ -702,12 +710,6 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
                   label={t('builder.formatting.locationAlignment')}
                   value={settings.alignment.location}
                   onChange={(v) => handleAlignmentChange('location', v)}
-                />
-                <Dropdown
-                  options={skillsLayoutOptions}
-                  value={settings.skillsLayout}
-                  onChange={(v) => handleSkillsLayoutChange(v as SkillsLayoutMode)}
-                  label={t('builder.formatting.skillsLayout')}
                 />
               </div>
             </CollapsibleGroup>
@@ -872,9 +874,7 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
                   options={BULLET_MARKER_OPTIONS}
                   value={settings.advanced.bulletMarker}
                   onChange={(v) => handleBulletMarkerChange(v as BulletMarker)}
-                  glyphLabel={(m) =>
-                    m === '•' ? '•' : t(`builder.formatting.markerOptions.${m}`)
-                  }
+                  glyphLabel={(m) => (m === '•' ? '•' : t(`builder.formatting.markerOptions.${m}`))}
                 />
               </CollapsibleGroup>
               <CollapsibleGroup variant="subheading" title={t('builder.formatting.listSeparator')}>
@@ -1087,12 +1087,7 @@ interface GlyphPickerProps {
   glyphLabel?: (option: string) => string;
 }
 
-const GlyphPicker: React.FC<GlyphPickerProps> = ({
-  options,
-  value,
-  onChange,
-  glyphLabel,
-}) => (
+const GlyphPicker: React.FC<GlyphPickerProps> = ({ options, value, onChange, glyphLabel }) => (
   <div className="flex gap-1.5">
     {options.map((option) => (
       <button

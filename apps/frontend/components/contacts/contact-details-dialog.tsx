@@ -1,6 +1,9 @@
 'use client';
 
+import Mail from 'lucide-react/dist/esm/icons/mail';
+import Send from 'lucide-react/dist/esm/icons/send';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +22,7 @@ interface ContactDetailsDialogProps {
   contact: Contact | null;
   onEdit: () => void;
   onDelete: () => void;
+  onSendEmail: (contact: Contact) => void;
   goalLabel: (goal: ContactGoal | null) => string;
   statusLabel: (status: ContactStatus | null) => string;
   relationshipLabel: (relationship: ContactRelationship | null) => string;
@@ -45,6 +49,7 @@ export function ContactDetailsDialog({
   contact,
   onEdit,
   onDelete,
+  onSendEmail,
   goalLabel,
   statusLabel,
   relationshipLabel,
@@ -54,7 +59,12 @@ export function ContactDetailsDialog({
 
   const name = contact.name || t('common.unknown');
 
-  const rows: { label: string; value: string }[] = [
+  const rows: { label: string; value: string; href?: string }[] = [
+    {
+      label: t('contacts.form.email'),
+      value: contact.email ?? '—',
+      href: contact.email ? `mailto:${contact.email}` : undefined,
+    },
     {
       label: t('contacts.form.company'),
       value: contact.company ?? '—',
@@ -74,6 +84,18 @@ export function ContactDetailsDialog({
     {
       label: t('contacts.form.followUpDate'),
       value: contact.follow_up_date ?? '—',
+    },
+    {
+      label: t('contacts.form.linkedinUrl'),
+      value: contact.linkedin_url ?? '—',
+      href: contact.linkedin_url || undefined,
+      external: true,
+    },
+    {
+      label: t('contacts.form.websiteUrl'),
+      value: contact.website_url ?? '—',
+      href: contact.website_url || undefined,
+      external: true,
     },
     {
       label: t('contacts.details.created'),
@@ -119,10 +141,38 @@ export function ContactDetailsDialog({
                 <dt className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                   {row.label}
                 </dt>
-                <dd className="mt-1 truncate text-sm text-ink">{row.value}</dd>
+                <dd className="mt-1 truncate text-sm text-ink">
+                  {row.href ? (
+                    <a
+                      href={row.href}
+                      target={row.external ? '_blank' : undefined}
+                      rel={row.external ? 'noopener noreferrer' : undefined}
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      {row.external ? (
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                      ) : (
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      {row.value}
+                    </a>
+                  ) : (
+                    row.value
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
+          {contact.description && (
+            <div className="mt-4 min-w-0">
+              <dt className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                {t('contacts.form.description')}
+              </dt>
+              <dd className="mt-1 whitespace-pre-wrap text-sm text-ink">
+                {contact.description}
+              </dd>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
@@ -133,6 +183,15 @@ export function ContactDetailsDialog({
           >
             <Trash2 className="h-4 w-4" />
             {t('common.delete')}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onSendEmail(contact)}
+            disabled={!contact.email}
+            title={contact.email ? undefined : t('contacts.emailDialog.noEmail')}
+          >
+            <Send className="h-4 w-4" />
+            {t('contacts.emailDialog.send')}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.close')}

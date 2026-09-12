@@ -17,6 +17,7 @@ from app.schemas import (
     BulkDelete,
     BulkStatusUpdate,
     ManualApplicationCreate,
+    SaveJobFromChatRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,29 @@ async def create_application(request: ManualApplicationCreate) -> ApplicationRes
             await db.update_job(job["job_id"], {"company": company, "role": role})
         except Exception as e:
             logger.warning("Failed to cache company/role on job %s: %s", job["job_id"], e)
+
+    return ApplicationResponse(**application)
+
+
+@router.post("/save-job", response_model=ApplicationResponse)
+async def save_job_from_chat(request: SaveJobFromChatRequest) -> ApplicationResponse:
+    """Save a job listing from chat directly to the tracker (no LLM call, no job scraper entry)."""
+    from uuid import uuid4
+    fake_job_id = f"chat-{uuid4()}"
+    job_description = f"{request.title} at {request.company}\nLocation: {request.location}\nURL: {request.url}"
+
+    try:
+        application = await db.create_application(
+            job_id=fake_job_id,
+            resume_id=request.resume_id or "",
+            status="saved",
+            company=request.company,
+            role=request.title,
+            notes=job_description,
+        )
+    except Exception as e:
+        logger.error("Failed to save job from chat: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save job. Please try again.")
 
     return ApplicationResponse(**application)
 

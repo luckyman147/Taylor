@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-EMBEDDING_MODEL = "text-embedding-3-small"
-EMBEDDING_DIMENSION = 1536
+
 CHUNK_MAX_TOKENS = 150  # approximate token count per chunk
 CONTEXT_BUDGET_TOKENS = 800  # max tokens for retrieved context block
 
@@ -160,6 +159,51 @@ def chunk_skill(skill: dict[str, Any]) -> list[Chunk]:
 # Embedding layer
 # ---------------------------------------------------------------------------
 
+# Providers that natively support embeddings → (model, dimension)
+_EMBEDDING_PROVIDERS: dict[str, tuple[str, int]] = {
+    "openai": ("text-embedding-3-small", 1536),
+    "openai_compatible": ("text-embedding-3-small", 1536),
+    "gemini": ("gemini/gemini-embedding-001", 3072),
+    "ollama": ("ollama/nomic-embed-text", 768),
+    "azure_foundry": ("text-embedding-3-small", 1536),
+}
+
+# Fallback embedding model for providers without native embeddings
+_FALLBACK_EMBEDDING = ("text-embedding-3-small", 1536)
+
+
+def _get_embedding_config() -> tuple[str | None, int]:
+    """Return (model, dimension) or (None, 0) if embedding is unsupported.
+
+    Priority: explicit config.json > provider default > None (skip embedding).
+    """
+    default_dim = 1536
+    try:
+        from app.config import load_config_file
+        from app.llm import get_llm_config
+        stored = load_config_file()
+
+        # User explicitly set embedding_model → honour it
+        if "embedding_model" in stored and stored["embedding_model"]:
+            model = stored["embedding_model"]
+            dimension = stored.get("embedding_dimension", default_dim)
+            return model, dimension
+
+        # Auto-detect from provider
+        llm_config = get_llm_config()
+        if llm_config.provider in _EMBEDDING_PROVIDERS:
+            return _EMBEDDING_PROVIDERS[llm_config.provider]
+
+        # Provider has no native embeddings — skip (BM25-only mode)
+        logger.info(
+            "Provider '%s' has no embedding model; RAG will use BM25 keyword search only",
+            llm_config.provider,
+        )
+        return None, 0
+    except Exception:
+        return _FALLBACK_EMBEDDING
+
+
 async def embed_text(text: str) -> list[float]:
     """Embed a single text string using litellm.aembedding()."""
     results = await embed_batch([text])
@@ -170,16 +214,23 @@ async def embed_batch(texts: list[str]) -> list[list[float]]:
     """Embed multiple texts via litellm.aembedding(). Falls back to zero vectors on failure."""
     if not texts:
         return []
+    model, dimension = _get_embedding_config()
+    if model is None:
+        # No embedding support — return zero vectors (BM25-only mode)
+        return [[0.0] * 1536 for _ in texts]
     try:
         import litellm
-        response = await litellm.aembedding(
-            model=EMBEDDING_MODEL,
-            input=texts,
-        )
+        from app.llm import get_llm_config
+        llm_config = get_llm_config()
+        kwargs: dict[str, Any] = {"model": model, "input": texts}
+        # Only pass api_key for providers that need it (not ollama)
+        if llm_config.provider != "ollama" and llm_config.api_key:
+            kwargs["api_key"] = llm_config.api_key
+        response = await litellm.aembedding(**kwargs)
         return [item["embedding"] for item in response.data]
     except Exception:
-        logger.warning("Embedding failed, falling back to zero vectors", exc_info=True)
-        return [[0.0] * EMBEDDING_DIMENSION for _ in texts]
+        logger.warning("Embedding failed (model=%s), falling back to zero vectors", model, exc_info=True)
+        return [[0.0] * dimension for _ in texts]
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:

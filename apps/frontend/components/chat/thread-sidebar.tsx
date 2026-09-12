@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, MessageSquare } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  MessageSquare,
+  MessageCircle,
+  Target,
+  Briefcase,
+  BarChart3,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
-import {
-  listThreads,
-  createThread,
-  deleteThread,
-  type ThreadSummary,
-} from '@/lib/api/chat';
+import { listThreads, createThread, deleteThread, type ThreadSummary } from '@/lib/api/chat';
 import { groupThreadsByDate, formatThreadTime } from '@/lib/chat-utils';
 
 interface ThreadSidebarProps {
@@ -20,11 +23,16 @@ interface ThreadSidebarProps {
   refreshKey?: number;
 }
 
-const MODE_ICONS: Record<string, string> = {
-  ask: '💬',
-  coach: '🎯',
-  recruiter: '👔',
-  resume_analyst: '📊',
+const MODE_ICONS: Record<string, typeof MessageSquare> = {
+  ask: MessageCircle,
+  agent: Target,
+  search: Briefcase,
+};
+
+const SKILL_LABELS: Record<string, string> = {
+  coach: 'Coach',
+  recruiter: 'Recruiter',
+  resume_analyst: 'Resume',
 };
 
 export function ThreadSidebar({
@@ -89,15 +97,11 @@ export function ThreadSidebar({
       {/* Thread list */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2">
         {loading && (
-          <div className="p-4 text-center text-xs text-ink-soft">
-            {t('chat.sidebar.loading')}
-          </div>
+          <div className="p-4 text-center text-xs text-ink-soft">{t('chat.sidebar.loading')}</div>
         )}
 
         {!loading && threads.length === 0 && (
-          <div className="p-4 text-center text-xs text-ink-soft">
-            {t('chat.sidebar.empty')}
-          </div>
+          <div className="p-4 text-center text-xs text-ink-soft">{t('chat.sidebar.empty')}</div>
         )}
 
         {groups.map((group) => (
@@ -106,32 +110,48 @@ export function ThreadSidebar({
               {group.label}
             </div>
             {group.threads.map((thread) => (
-              <button
+              <div
                 key={thread.thread_id}
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectThread(thread.thread_id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') onSelectThread(thread.thread_id);
+                }}
                 className={cn(
                   'group flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors hover:bg-[#e6e3dc]/40',
                   activeThreadId === thread.thread_id
                     ? 'border-l-2 border-primary bg-primary/5 pl-2'
-                    : 'border-l-2 border-transparent',
+                    : 'border-l-2 border-transparent'
                 )}
               >
                 <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-muted" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-medium text-ink">
-                      {thread.title}
-                    </span>
+                    <span className="truncate text-sm font-medium text-ink">{thread.title}</span>
                   </div>
                   {thread.last_preview && (
-                    <p className="mt-0.5 truncate text-xs text-ink-soft">
-                      {thread.last_preview}
-                    </p>
+                    <p className="mt-0.5 truncate text-xs text-ink-soft">{thread.last_preview}</p>
                   )}
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[10px] text-ink-muted">
-                      {MODE_ICONS[thread.mode] || '💬'}
+                    <span className="text-ink-muted">
+                      {(() => {
+                        const ModeIcon = MODE_ICONS[thread.mode] || MessageSquare;
+                        return <ModeIcon className="h-3 w-3" />;
+                      })()}
                     </span>
+                    {thread.skills && thread.skills.length > 0 && (
+                      <div className="flex gap-1">
+                        {thread.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+                          >
+                            {SKILL_LABELS[skill] || skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <span className="text-[10px] text-ink-muted">
                       {formatThreadTime(thread.updated_at)}
                     </span>
@@ -147,7 +167,7 @@ export function ThreadSidebar({
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         ))}

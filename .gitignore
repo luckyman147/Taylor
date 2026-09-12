@@ -6,7 +6,12 @@ venv/
 env/
 ENV/
 activate_this.py
-
+report/
+docs/
+scripts/
+.plan.md
+architecture.rag.md
+PLAN.md
 # Python Bytecode and Caches
 __pycache__/
 *.py[cod]

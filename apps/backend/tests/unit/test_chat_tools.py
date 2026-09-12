@@ -24,7 +24,7 @@ class TestToolCatalog:
             "get_rejections",
             "get_contacts",
             "get_companies",
-            "search_jobs",
+            "search_mcp_jobs",
             "get_job_verdict",
             "get_evidence",
             "create_application",
@@ -37,7 +37,7 @@ class TestToolCatalog:
 
     def test_read_tools_not_write(self):
         for name, spec in TOOL_CATALOG.items():
-            if name.startswith("get_") or name == "search_jobs":
+            if name.startswith("get_") or name == "search_mcp_jobs":
                 assert spec.write is False, f"{name} should be read-only"
 
     def test_write_tools_flagged(self):
@@ -60,13 +60,10 @@ class TestGetToolCatalogJson:
             assert "params" in tool
             assert "write" in tool
 
-    def test_mode_filters_tools(self):
+    def test_mode_returns_all_tools(self):
+        # Mode parameter is accepted but doesn't filter tools (unified catalog)
         result = get_tool_catalog_json(mode="recruiter")
-        names = {t["name"] for t in result}
-        # Recruiter should not have get_funnel_stats
-        assert "get_funnel_stats" not in names
-        # But should have get_ats_audit
-        assert "get_ats_audit" in names
+        assert len(result) == len(TOOL_CATALOG)
 
     def test_unknown_mode_returns_all(self):
         result = get_tool_catalog_json(mode="unknown")
@@ -75,28 +72,28 @@ class TestGetToolCatalogJson:
 
 class TestValidateToolArgs:
     def test_validates_required_args(self):
-        result = validate_tool_args("search_jobs", {"query": "python"})
+        result = validate_tool_args("search_mcp_jobs", {"query": "python"})
         assert result["query"] == "python"
-        assert result["limit"] == 5  # default
+        assert result["limit"] == 10  # default
 
     def test_missing_required_raises(self):
         with pytest.raises(ValueError, match="Missing required"):
-            validate_tool_args("search_jobs", {})
+            validate_tool_args("search_mcp_jobs", {})
 
     def test_truncates_long_strings(self):
         result = validate_tool_args(
-            "search_jobs",
+            "search_mcp_jobs",
             {"query": "a" * 300},
         )
         assert len(result["query"]) == 200
 
     def test_validates_int_args(self):
-        result = validate_tool_args("search_jobs", {"query": "python", "limit": "3"})
+        result = validate_tool_args("search_mcp_jobs", {"query": "python", "limit": "3"})
         assert result["limit"] == 3
 
     def test_invalid_int_raises(self):
         with pytest.raises(ValueError, match="must be an integer"):
-            validate_tool_args("search_jobs", {"query": "python", "limit": "abc"})
+            validate_tool_args("search_mcp_jobs", {"query": "python", "limit": "abc"})
 
     def test_unknown_tool_raises(self):
         with pytest.raises(ValueError, match="Unknown tool"):

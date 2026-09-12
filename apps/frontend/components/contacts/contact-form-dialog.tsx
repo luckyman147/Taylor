@@ -42,12 +42,16 @@ export function ContactFormDialog({
   const editing = Boolean(contact);
 
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
   const [location, setLocation] = useState('');
   const [goal, setGoal] = useState<ContactGoal | ''>('');
   const [status, setStatus] = useState<ContactStatus | ''>('');
   const [relationship, setRelationship] = useState<ContactRelationship | ''>('');
   const [followUpDate, setFollowUpDate] = useState('');
+  const [description, setDescription] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,12 +59,16 @@ export function ContactFormDialog({
   React.useEffect(() => {
     if (!open) return;
     setName(contact?.name ?? '');
+    setEmail(contact?.email ?? '');
     setCompany(contact?.company ?? '');
     setLocation(contact?.location ?? '');
     setGoal(contact?.goal ?? '');
     setStatus(contact?.status ?? '');
     setRelationship(contact?.relationship ?? '');
     setFollowUpDate(contact?.follow_up_date ?? '');
+    setDescription(contact?.description ?? '');
+    setLinkedinUrl(contact?.linkedin_url ?? '');
+    setWebsiteUrl(contact?.website_url ?? '');
     setError(null);
   }, [open, contact]);
 
@@ -74,7 +82,7 @@ export function ContactFormDialog({
     ] as ContactGoal[]
   ).map((g) => ({ id: g, label: t(`contacts.goal.${g}`) }));
   const statusOptions = (
-    ['to_contact', 'follow_up', 'meeting_scheduled', 'thank_you_sent'] as ContactStatus[]
+    ['to_contact', 'contacted', 'follow_up', 'meeting_scheduled', 'thank_you_sent'] as ContactStatus[]
   ).map((s) => ({ id: s, label: t(`contacts.status.${s}`) }));
   const relationshipOptions = (
     [
@@ -108,12 +116,16 @@ export function ContactFormDialog({
     try {
       const payload = {
         name: name.trim(),
+        email: email.trim() || undefined,
         company: company.trim() || undefined,
         location: location.trim() || undefined,
         goal: (goal as ContactGoal | '') || undefined,
         status: (status as ContactStatus | '') || undefined,
         relationship: (relationship as ContactRelationship | '') || undefined,
         follow_up_date: followUpDate.trim() || undefined,
+        description: description.trim() || undefined,
+        linkedin_url: linkedinUrl.trim() || undefined,
+        website_url: websiteUrl.trim() || undefined,
       };
       if (editing && contact) {
         await updateContact(contact.contact_id, payload);
@@ -147,6 +159,17 @@ export function ContactFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('contacts.form.namePlaceholder')}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="contact-email">{t('contacts.form.email')}</Label>
+            <Input
+              id="contact-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('contacts.form.optional')}
             />
           </div>
 
@@ -201,6 +224,41 @@ export function ContactFormDialog({
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
                 placeholder={t('contacts.form.optional')}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="contact-description">{t('contacts.form.description')}</Label>
+            <textarea
+              id="contact-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t('contacts.form.descriptionPlaceholder')}
+              rows={3}
+              className="w-full rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-soft/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="contact-linkedin-url">{t('contacts.form.linkedinUrl')}</Label>
+              <Input
+                id="contact-linkedin-url"
+                type="url"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder={t('contacts.form.linkedinUrlPlaceholder')}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="contact-website-url">{t('contacts.form.websiteUrl')}</Label>
+              <Input
+                id="contact-website-url"
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder={t('contacts.form.websiteUrlPlaceholder')}
               />
             </div>
           </div>

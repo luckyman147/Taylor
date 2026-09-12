@@ -1,6 +1,6 @@
 """Pydantic models for AI-powered resume enrichment."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -75,7 +75,7 @@ class ApplyEnhancementsRequest(BaseModel):
 # AI Regenerate Feature Schemas
 # ============================================
 
-RegenerateItemType = Literal["experience", "project", "skills"]
+RegenerateItemType = Literal["experience", "project", "skills", "summary"]
 
 
 class RegenerateItemInput(BaseModel):
@@ -106,6 +106,7 @@ class RegeneratedItem(BaseModel):
     subtitle: str | None = None
     original_content: list[str] = Field(default_factory=list)
     new_content: list[str] = Field(default_factory=list)
+    new_skill_groups: list[dict[str, Any]] | None = None  # Grouped skills for item_type="skills"
     diff_summary: str = ""  # AI-generated summary of changes
 
 
@@ -179,6 +180,7 @@ class GenerateOutreachEmailRequest(BaseModel):
     instruction: str | None = Field(default=None, max_length=2000)
     output_language: str = "en"
     resume_id: str | None = None
+    company_research: str | None = Field(default=None, max_length=10000)
 
 
 class GenerateOutreachEmailResponse(BaseModel):
@@ -186,3 +188,28 @@ class GenerateOutreachEmailResponse(BaseModel):
 
     subject: str = ""
     body: str = ""
+
+
+# ============================================
+# Company Research Schemas
+# ============================================
+
+
+class ResearchCompanyRequest(BaseModel):
+    """Request to research a company via web crawling and LinkedIn MCP."""
+
+    company_name: str
+    website: str | None = None
+    industry: str | None = None
+    linkedin_url: str | None = None
+
+
+class ResearchCompanyResponse(BaseModel):
+    """Structured research results for a company."""
+
+    company_name: str
+    website_content: str = ""
+    linkedin_content: str = ""
+    hiring_signals: str = ""
+    research_summary: str = ""
+    sources: list[str] = Field(default_factory=list)

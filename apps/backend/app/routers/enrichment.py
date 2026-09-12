@@ -19,6 +19,7 @@ from app.prompts.enrichment import (
     GENERATE_PROJECT_BULLETS_PROMPT,
     REGENERATE_ITEM_PROMPT,
     REGENERATE_SKILLS_PROMPT,
+    REGENERATE_SUMMARY_PROMPT,
 )
 from app.prompts.templates import get_language_name
 from app.services.cover_letter import _resolve_feature_prompt
@@ -40,6 +41,8 @@ from app.schemas.enrichment import (
     RegenerateRequest,
     RegenerateResponse,
     RegeneratedItem,
+    ResearchCompanyRequest,
+    ResearchCompanyResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -464,21 +467,164 @@ async def _regenerate_skills(
     instruction: str,
     output_language: str,
 ) -> RegeneratedItem:
-    """Regenerate the skills section."""
+    """Regenerate the skills section, grouped by category, sourced from master profile."""
+    # Fetch master resume to get the source-of-truth skills
+    master = await db.get_master_resume()
+    master_skills: list[str] = []
+    if master:
+        processed = master.get("processed_data") or {}
+        additional = processed.get("additional") or {}
+        master_skills = additional.get("technicalSkills") or []
+        # Also check skillGroups as fallback
+        if not master_skills:
+            skill_groups_raw = additional.get("skillGroups") or []
+            if isinstance(skill_groups_raw, list):
+                for g in skill_groups_raw:
+                    if isinstance(g, dict) and isinstance(g.get("skills"), list):
+                        master_skills.extend(str(s) for s in g["skills"] if s)
+
+    logger.debug(
+        "regenerate_skills: master_skills=%d items=%s",
+        len(master_skills),
+        master_skills[:10],
+    )
+    logger.debug(
+        "regenerate_skills: current_content=%d items=%s",
+        len(item.current_content),
+        item.current_content[:10],
+    )
+
+    master_skills_text = ", ".join(master_skills) if master_skills else "(No master skills available)"
     current_skills_text = ", ".join(item.current_content) if item.current_content else "(No skills)"
 
     prompt = REGENERATE_SKILLS_PROMPT.format(
         output_language=output_language,
+        master_skills=master_skills_text,
         current_skills=current_skills_text,
         user_instruction=instruction,
     )
 
     result = await complete_json(prompt, max_tokens=2048, schema_type="diff")
+    logger.debug(
+        "regenerate_skills: LLM result keys=%s",
+        list(result.keys()) if isinstance(result, dict) else type(result).__name__,
+    )
 
-    new_skills = result.get("new_skills", [])
-    if not isinstance(new_skills, list):
-        new_skills = []
-    new_skills = [str(s) for s in new_skills if s]
+    # Build normalized master lookup for validation (case-insensitive)
+    # technicalSkills may be stored as comma-separated strings, so split them
+    master_norm: dict[str, str] = {}
+    for raw in master_skills:
+        for s in str(raw).split(","):
+            s = s.strip()
+            if s:
+                master_norm[s.casefold()] = s
+
+    # Fallback: if master has no skills, use the current resume's skills
+    # as the validation set.  The LLM already received them as context.
+    if not master_norm and item.current_content:
+        for raw in item.current_content:
+            for s in str(raw).split(","):
+                s = s.strip()
+                if s:
+                    master_norm[s.casefold()] = s
+        logger.warning(
+            "regenerate_skills: master_norm empty, falling back to %d current_content skills",
+            len(master_norm),
+        )
+
+    logger.debug(
+        "regenerate_skills: master_norm=%d keys=%s",
+        len(master_norm),
+        list(master_norm.keys())[:15],
+    )
+
+    # Build a secondary fuzzy lookup (strips suffixes like .js, .py, /…)
+    def _normalize_skill(name: str) -> str:
+        import re as _re
+
+        n = name.casefold()
+        n = _re.sub(r"\.js$", "", n)
+        n = _re.sub(r"\.ts$", "", n)
+        n = _re.sub(r"\.py$", "", n)
+        n = _re.sub(r"\s*/\s*.*$", "", n)
+        return n.strip()
+
+    master_fuzzy: dict[str, str] = {}
+    for orig, normalized in (
+        (s, _normalize_skill(s)) for s in master_norm.values()
+    ):
+        if normalized and normalized not in master_fuzzy:
+            master_fuzzy[normalized] = orig
+
+    logger.debug(
+        "regenerate_skills: master_fuzzy=%d keys=%s",
+        len(master_fuzzy),
+        list(master_fuzzy.keys())[:15],
+    )
+
+    # Parse grouped output — try common key variants
+    raw_groups = result.get("skillGroups") or result.get("skill_groups") or result.get("groups") or []
+    if not isinstance(raw_groups, list):
+        raw_groups = []
+    logger.debug(
+        "regenerate_skills: raw_groups=%d groups=%s",
+        len(raw_groups),
+        [(g.get("name"), len(g.get("skills", []))) for g in raw_groups if isinstance(g, dict)],
+    )
+
+    seen: set[str] = set()
+    skill_groups: list[dict[str, str]] = []
+    all_flat: list[str] = []
+    skipped_skills: list[str] = []
+
+    for group in raw_groups:
+        if not isinstance(group, dict):
+            continue
+        group_name = str(group.get("name", "")).strip()
+        raw_skills = group.get("skills", [])
+        if not isinstance(raw_skills, list) or not group_name:
+            continue
+
+        group_skills: list[str] = []
+        for s in raw_skills:
+            s_str = str(s).strip() if s else ""
+            if not s_str:
+                continue
+            key = s_str.casefold()
+            # Exact match first
+            resolved = master_norm.get(key)
+            # Fuzzy match fallback (e.g. "React.js" ↔ "React")
+            if resolved is None:
+                fuzzy_key = _normalize_skill(s_str)
+                resolved = master_fuzzy.get(fuzzy_key)
+            if resolved is None:
+                skipped_skills.append(s_str)
+                continue
+            dedup_key = (group_name.casefold(), resolved.casefold())
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+            group_skills.append(resolved)
+            all_flat.append(resolved)
+
+        if group_skills:
+            skill_groups.append({"name": group_name, "skills": group_skills})
+
+    # If LLM returned no valid groups, fall back to a flat "Skills" group
+    if not skill_groups and all_flat:
+        skill_groups = [{"name": "Skills", "skills": all_flat}]
+
+    if skipped_skills:
+        logger.warning(
+            "regenerate_skills: %d skill(s) filtered out (not in master profile): %s",
+            len(skipped_skills),
+            skipped_skills,
+        )
+    logger.info(
+        "regenerate_skills: result=%d flat, %d groups",
+        len(all_flat),
+        len(skill_groups),
+    )
 
     return RegeneratedItem(
         item_id=item.item_id,
@@ -486,7 +632,43 @@ async def _regenerate_skills(
         title=item.title,
         subtitle=item.subtitle,
         original_content=item.current_content,
-        new_content=new_skills,
+        new_content=all_flat,
+        new_skill_groups=skill_groups,
+        diff_summary=str(result.get("change_summary") or ""),
+    )
+
+
+async def _regenerate_summary(
+    item: RegenerateItemInput,
+    instruction: str,
+    output_language: str,
+    resume_data: dict | None = None,
+) -> RegeneratedItem:
+    """Regenerate the professional summary."""
+    import json
+
+    resume_json = json.dumps(resume_data or {}, indent=2, ensure_ascii=False) if resume_data else "(No resume data)"
+
+    prompt = REGENERATE_SUMMARY_PROMPT.format(
+        output_language=output_language,
+        resume=resume_json,
+        user_instruction=instruction,
+    )
+
+    result = await complete_json(prompt, max_tokens=2048, schema_type="diff")
+
+    new_summary = result.get("new_summary", "")
+    if not isinstance(new_summary, str):
+        new_summary = str(new_summary) if new_summary else ""
+    new_content = [line for line in new_summary.split("\n") if line.strip()] if new_summary else []
+
+    return RegeneratedItem(
+        item_id=item.item_id,
+        item_type=item.item_type,
+        title=item.title,
+        subtitle=item.subtitle,
+        original_content=item.current_content,
+        new_content=new_content,
         diff_summary=str(result.get("change_summary") or ""),
     )
 
@@ -514,6 +696,8 @@ async def regenerate_items(request: RegenerateRequest) -> RegenerateResponse:
     for item in request.items:
         if item.item_type == "skills":
             tasks.append(_regenerate_skills(item, request.instruction, output_language))
+        elif item.item_type == "summary":
+            tasks.append(_regenerate_summary(item, request.instruction, output_language, resume.get("processed_data")))
         else:
             tasks.append(_regenerate_experience_or_project(item, request.instruction, output_language))
 
@@ -591,9 +775,42 @@ async def apply_regenerated_items(
         text = str(value).strip()
         return [text] if text else []
 
+    def _normalize_skill_lines(value: object) -> list[str]:
+        """Normalize skills list: split comma-separated entries, strip, dedup."""
+        if value is None:
+            return []
+        items: list[str] = []
+        if isinstance(value, list):
+            for entry in value:
+                text = str(entry).strip()
+                if text:
+                    items.append(text)
+        else:
+            text = str(value).strip()
+            if text:
+                items.append(text)
+        seen: set[str] = set()
+        result: list[str] = []
+        for item in items:
+            for part in re.split(r"[;,]", item):
+                part = part.strip()
+                if not part:
+                    continue
+                key = part.casefold()
+                if key in seen:
+                    continue
+                seen.add(key)
+                result.append(part)
+        return result
+
     def _lines_equal(left: object, right: object) -> bool:
         left_norm = [line.casefold() for line in _normalize_lines(left)]
         right_norm = [line.casefold() for line in _normalize_lines(right)]
+        return left_norm == right_norm
+
+    def _skills_equal(left: object, right: object) -> bool:
+        left_norm = [s.casefold() for s in _normalize_skill_lines(left)]
+        right_norm = [s.casefold() for s in _normalize_skill_lines(right)]
         return left_norm == right_norm
 
     def _find_unique_index_by_metadata(
@@ -767,18 +984,38 @@ async def apply_regenerated_items(
 
             additional = updated_data.get("additional")
             if isinstance(additional, dict) and "technicalSkills" in additional:
-                if not _lines_equal(additional.get("technicalSkills"), expected_original_content):
+                if not _skills_equal(additional.get("technicalSkills"), expected_original_content):
                     apply_failures.append(item_id)
                     continue
                 additional["technicalSkills"] = new_content
+                # Write grouped skills if the LLM produced them
+                if item.new_skill_groups is not None:
+                    additional["skillGroups"] = item.new_skill_groups
             elif "technicalSkills" in updated_data:
                 # Fallback for legacy data structure
-                if not _lines_equal(updated_data.get("technicalSkills"), expected_original_content):
+                if not _skills_equal(updated_data.get("technicalSkills"), expected_original_content):
                     apply_failures.append(item_id)
                     continue
                 updated_data["technicalSkills"] = new_content
             else:
                 apply_failures.append(item_id)
+
+        elif item_type == "summary":
+            # Update summary (stored as a string in resumeData.summary)
+            expected_original_content = item.original_content
+            current_summary = updated_data.get("summary", "")
+            current_summary_lines = (
+                [line for line in current_summary.split("\n") if line.strip()]
+                if isinstance(current_summary, str)
+                else []
+            )
+
+            if not _lines_equal(current_summary_lines, expected_original_content):
+                apply_failures.append(item_id)
+                continue
+
+            # Join new content lines into a single summary string
+            updated_data["summary"] = "\n".join(new_content)
 
     if apply_failures:
         logger.warning(
@@ -890,6 +1127,206 @@ async def generate_project_bullets(
 
 
 # ============================================
+# Company Research Endpoint
+# ============================================
+
+RESEARCH_SYNTHESIS_PROMPT = """You are a business research analyst. Synthesize the following raw data about a company into a concise, structured summary useful for writing a personalized outreach email.
+
+COMPANY: {company_name}
+
+WEBSITE CONTENT:
+{website_content}
+
+LINKEDIN PAGE CONTENT:
+{linkedin_content}
+
+HIRING SIGNALS (from LinkedIn job postings):
+{hiring_signals}
+
+TASK: Produce a JSON object with these fields:
+- "summary": 2-3 sentence company overview (what they do, mission, key products)
+- "recent_news": Notable recent developments, funding, launches (or "No recent news found" if none)
+- "tech_stack": Known technologies, tools, platforms (or "Not identified" if unknown)
+- "culture": Company culture signals — values, work style, team size hints (or "Not identified" if unknown)
+
+RULES:
+- Base everything ONLY on the provided data. Do NOT invent facts.
+- Be concise — each field should be 1-3 sentences max.
+- If a section has no useful data, write a brief note saying so.
+- Output JSON only, no other text."""
+
+RESEARCH_SOURCES_PROMPT = """You are a business research analyst. Based on the company name and any available metadata, suggest up to 3 URLs that would contain useful information about this company for writing a personalized outreach email.
+
+COMPANY: {company_name}
+INDUSTRY: {industry}
+WEBSITE: {website}
+LINKEDIN: {linkedin_url}
+
+TASK: Return a JSON object with a single field "urls" containing a list of URLs to crawl. Prioritize:
+1. The company website (if provided and valid)
+2. LinkedIn company page (if provided)
+3. Any other relevant public page (About page, blog, press page)
+
+OUTPUT FORMAT (JSON only):
+{{"urls": ["https://...", "https://..."]}}"""
+
+
+@router.post("/research-company", response_model=ResearchCompanyResponse)
+async def research_company(
+    request: ResearchCompanyRequest,
+) -> ResearchCompanyResponse:
+    """Research a company by crawling its website, LinkedIn page, and checking hiring signals.
+
+    Uses crawl4ai for web fetching and LinkedIn MCP for job postings.
+    Returns structured research data to personalize outreach emails.
+    """
+    from app.services.mcp.crawl4ai import Crawl4AIAdapter
+
+    website_content = ""
+    linkedin_content = ""
+    hiring_signals = ""
+    sources: list[str] = []
+
+    # --- Step 1: Determine which URLs to crawl ---
+    urls_to_crawl: list[str] = []
+    if request.website:
+        urls_to_crawl.append(request.website)
+    if request.linkedin_url:
+        urls_to_crawl.append(request.linkedin_url)
+
+    # If we have few URLs, also ask the LLM to suggest additional sources
+    if len(urls_to_crawl) < 3:
+        try:
+            sources_prompt = RESEARCH_SOURCES_PROMPT.format(
+                company_name=request.company_name,
+                industry=request.industry or "not specified",
+                website=request.website or "not provided",
+                linkedin_url=request.linkedin_url or "not provided",
+            )
+            suggested = await complete_json(sources_prompt, max_tokens=512, schema_type="diff")
+            suggested_urls = suggested.get("urls", [])
+            if isinstance(suggested_urls, list):
+                for u in suggested_urls:
+                    if isinstance(u, str) and u.startswith("http") and u not in urls_to_crawl:
+                        urls_to_crawl.append(u)
+                        if len(urls_to_crawl) >= 5:
+                            break
+        except Exception:
+            pass  # Best-effort — proceed with what we have
+
+    # --- Step 2: Crawl URLs with crawl4ai ---
+    crawler = Crawl4AIAdapter()
+    if urls_to_crawl:
+        try:
+            crawled = await crawler.fetch_pages(urls_to_crawl)
+            for url, content in crawled.items():
+                if not content:
+                    continue
+                sources.append(url)
+                if url == request.website:
+                    website_content = content
+                elif url == request.linkedin_url:
+                    linkedin_content = content
+                # Additional sources go into website_content if it's empty
+                elif not website_content:
+                    website_content += f"\n\nSource: {url}\n{content}"
+        except Exception as exc:
+            logger.warning("crawl4ai batch crawl failed: %s", exc)
+
+    # Fallback: try Jina Reader for any URLs that crawl4ai missed
+    if (not website_content and request.website) or (
+        not linkedin_content and request.linkedin_url
+    ):
+        try:
+            from app.services.mcp.web import WebAdapter
+
+            jina = WebAdapter()
+            if not website_content and request.website:
+                website_content = await jina.fetch_page(request.website)
+                if website_content:
+                    sources.append(request.website)
+            if not linkedin_content and request.linkedin_url:
+                linkedin_content = await jina.fetch_page(request.linkedin_url)
+                if linkedin_content:
+                    sources.append(request.linkedin_url)
+        except Exception:
+            pass
+
+    # --- Step 3: Check LinkedIn MCP for hiring signals ---
+    try:
+        from app.services.job_scraper import get_mcp_manager
+
+        manager = get_mcp_manager()
+        linkedin_adapter = None
+        for adapter in manager._adapters:
+            if adapter.name == "linkedin" and adapter.enabled:
+                linkedin_adapter = adapter
+                break
+
+        if linkedin_adapter and await linkedin_adapter.is_available():
+            from app.schemas.job_scraper import JobSearchFilters
+
+            filters = JobSearchFilters(
+                keywords=request.company_name,
+                locations=[],
+                job_types=[],
+                experience_levels=[],
+                work_types=[],
+                date_posted="month",
+                easy_apply_only=False,
+                max_pages=1,
+            )
+            jobs = await linkedin_adapter.search_jobs(
+                f"{request.company_name}", filters
+            )
+            if jobs:
+                lines = [f"Found {len(jobs)} active job posting(s):"]
+                for job in jobs[:5]:
+                    lines.append(f"- {job.title} ({job.location or 'Location not specified'})")
+                hiring_signals = "\n".join(lines)
+    except Exception as exc:
+        logger.debug("LinkedIn MCP search failed (non-critical): %s", exc)
+
+    # --- Step 4: AI synthesis ---
+    research_summary = ""
+    if website_content or linkedin_content or hiring_signals:
+        try:
+            synthesis_prompt = RESEARCH_SYNTHESIS_PROMPT.format(
+                company_name=request.company_name,
+                website_content=website_content or "(No website content available)",
+                linkedin_content=linkedin_content or "(No LinkedIn content available)",
+                hiring_signals=hiring_signals or "(No hiring signals available)",
+            )
+            result = await complete_json(synthesis_prompt, max_tokens=1024, schema_type="diff")
+            parts = []
+            if result.get("summary"):
+                parts.append(f"Overview: {result['summary']}")
+            if result.get("recent_news") and "no recent" not in result["recent_news"].lower():
+                parts.append(f"Recent news: {result['recent_news']}")
+            if result.get("tech_stack") and "not identified" not in result["tech_stack"].lower():
+                parts.append(f"Tech stack: {result['tech_stack']}")
+            if result.get("culture") and "not identified" not in result["culture"].lower():
+                parts.append(f"Culture: {result['culture']}")
+            research_summary = "\n".join(parts)
+        except Exception as exc:
+            logger.warning("Research synthesis failed: %s", exc)
+            # Fallback: use raw content as summary
+            if website_content:
+                research_summary = f"Website content:\n{website_content[:2000]}"
+            if hiring_signals:
+                research_summary += f"\n\n{hiring_signals}"
+
+    return ResearchCompanyResponse(
+        company_name=request.company_name,
+        website_content=website_content[:3000],
+        linkedin_content=linkedin_content[:3000],
+        hiring_signals=hiring_signals,
+        research_summary=research_summary,
+        sources=sources,
+    )
+
+
+# ============================================
 # Outreach Email Generation Endpoint
 # ============================================
 
@@ -914,6 +1351,12 @@ def _build_sender_info(processed: dict | None) -> str:
         lines.append(f"Phone: {personal['phone']}")
     if personal.get("location"):
         lines.append(f"Location: {personal['location']}")
+    if personal.get("website"):
+        lines.append(f"Website: {personal['website']}")
+    if personal.get("github"):
+        lines.append(f"GitHub: {personal['github']}")
+    if personal.get("linkedin"):
+        lines.append(f"LinkedIn: {personal['linkedin']}")
     summary = str(processed.get("summary") or "").strip()
     if summary:
         lines.append(f"Summary: {summary[:600]}")
@@ -933,7 +1376,64 @@ def _build_sender_info(processed: dict | None) -> str:
         ][:5]
         if languages:
             lines.append("Languages: " + ", ".join(languages))
+
+    # Include projects from the profile
+    projects = processed.get("personalProjects") or []
+    if isinstance(projects, list) and projects:
+        project_lines: list[str] = []
+        for proj in projects[:6]:  # Limit to 6 most recent
+            if not isinstance(proj, dict):
+                continue
+            name = str(proj.get("name") or "").strip()
+            if not name:
+                continue
+            desc_bullets = proj.get("description") or []
+            if isinstance(desc_bullets, list):
+                desc_text = "; ".join(
+                    str(d) for d in desc_bullets[:3] if isinstance(d, str) and d.strip()
+                )
+            else:
+                desc_text = str(desc_bullets)[:200]
+            tech_hint = ""
+            if proj.get("github"):
+                tech_hint += f" | GitHub: {proj['github']}"
+            if proj.get("website"):
+                tech_hint += f" | Live: {proj['website']}"
+            project_lines.append(f"  - {name}: {desc_text[:200]}{tech_hint}")
+        if project_lines:
+            lines.append("Projects:\n" + "\n".join(project_lines))
+
     return "\n".join(lines) or "(No sender information available)"
+
+
+def _build_contact_footer(processed: dict | None) -> str:
+    """Build a contact info footer block for the email with markdown links."""
+    if not processed:
+        return ""
+    personal = processed.get("personalInfo") or {}
+    parts: list[str] = []
+    if personal.get("name"):
+        parts.append(f"**{personal['name']}**")
+    if personal.get("email"):
+        parts.append(f"[{personal['email']}](mailto:{personal['email']})")
+    if personal.get("phone"):
+        parts.append(f"[{personal['phone']}](tel:{personal['phone']})")
+    if personal.get("website"):
+        url = personal["website"]
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        parts.append(f"[Website]({url})")
+    if personal.get("linkedin"):
+        url = personal["linkedin"]
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        parts.append(f"[LinkedIn]({url})")
+    if personal.get("github"):
+        url = personal["github"]
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        parts.append(f"[GitHub]({url})")
+    return " | ".join(parts)
 
 
 @router.post("/generate-outreach-email", response_model=GenerateOutreachEmailResponse)
@@ -961,6 +1461,7 @@ async def generate_outreach_email(
     if not resume:
         resume = await db.get_master_resume()
     sender_info = _build_sender_info(resume.get("processed_data") if resume else None)
+    contact_footer = _build_contact_footer(resume.get("processed_data") if resume else None)
 
     template, is_custom = _resolve_feature_prompt(
         "outreach_email_prompt", GENERATE_OUTREACH_EMAIL_PROMPT
@@ -998,6 +1499,21 @@ async def generate_outreach_email(
             recipient_name=request.recipient_name or "not provided",
             purpose=purpose_text,
             sender_info=sender_info,
+        )
+
+    if request.company_research and request.company_research.strip():
+        prompt = (
+            f"{prompt}\n\n"
+            f"Additional research about this company "
+            f"(use this to personalize the email — reference specific details):\n"
+            f"{request.company_research.strip()}"
+        )
+
+    if contact_footer:
+        prompt = (
+            f"{prompt}\n\n"
+            f"CONTACT FOOTER (append this exactly at the end of the email body, "
+            f"separated by a blank line):\n{contact_footer}"
         )
 
     if request.instruction and request.instruction.strip():

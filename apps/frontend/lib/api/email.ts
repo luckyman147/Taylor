@@ -68,6 +68,7 @@ export interface GenerateOutreachEmailRequest {
   output_language: string;
   resume_id?: string | null;
   instruction?: string | null;
+  company_research?: string | null;
 }
 
 export interface GenerateOutreachEmailResponse {
