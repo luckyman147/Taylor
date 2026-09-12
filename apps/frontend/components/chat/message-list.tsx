@@ -22,6 +22,9 @@ export interface ChatMessage {
   sources?: string[];
   modelInfo?: { provider: string; model: string } | null;
   attachment?: { filename: string; resumeId: string } | null;
+  messageId?: string;
+  version?: number;
+  streamEvents?: AgentEvent[];
 }
 
 interface MessageListProps {
@@ -41,6 +44,9 @@ interface MessageListProps {
   onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
   onClarify?: (intent: string) => void;
+  onEdit?: (messageIndex: number, newContent: string) => void;
+  onRetry?: (messageIndex: number) => void;
+  onRevert?: (messageIndex: number) => void;
   streamEvents?: AgentEvent[];
   streamStatus?: 'running' | 'paused' | 'completed';
 }
@@ -62,6 +68,9 @@ export function MessageList({
   onSaveJob,
   onTailorResume,
   onClarify,
+  onEdit,
+  onRetry,
+  onRevert,
   streamEvents = [],
   streamStatus = 'completed',
 }: MessageListProps) {
@@ -77,35 +86,48 @@ export function MessageList({
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scroll-smooth">
       <div className="mx-auto max-w-3xl space-y-6 px-5 py-6">
         {messages.map((msg, i) => (
-          <MessageCard
-            key={i}
-            role={msg.role}
-            content={msg.content}
-            mode={mode}
-            cards={msg.cards}
-            actions={msg.actions}
-            pendingAction={msg.pendingAction}
-            memoryCandidates={msg.memoryCandidates}
-            followups={msg.followups}
-            modelInfo={msg.modelInfo}
-            attachment={msg.attachment}
-            onConfirm={onConfirm}
-            onCancel={onCancel}
-            onDismissMemory={onDismissMemory}
-            onFollowup={onFollowup}
-            onSelectResume={onSelectResume}
-            onViewFile={onViewFile}
-            onJobSearch={onJobSearch}
-            onViewEmail={onViewEmail}
-            onAddContact={onAddContact}
-            onAddCompany={onAddCompany}
-            onSaveJob={onSaveJob}
-            onTailorResume={onTailorResume}
-            onClarify={onClarify}
-          />
+          <div key={i}>
+            <MessageCard
+              role={msg.role}
+              content={msg.content}
+              mode={mode}
+              cards={msg.cards}
+              actions={msg.actions}
+              pendingAction={msg.pendingAction}
+              memoryCandidates={msg.memoryCandidates}
+              followups={msg.followups}
+              modelInfo={msg.modelInfo}
+              attachment={msg.attachment}
+              isLast={i === messages.length - 1 && msg.role === 'assistant'}
+              messageId={msg.messageId}
+              version={msg.version}
+              onConfirm={onConfirm}
+              onCancel={onCancel}
+              onDismissMemory={onDismissMemory}
+              onFollowup={onFollowup}
+              onSelectResume={onSelectResume}
+              onViewFile={onViewFile}
+              onJobSearch={onJobSearch}
+              onViewEmail={onViewEmail}
+              onAddContact={onAddContact}
+              onAddCompany={onAddCompany}
+              onSaveJob={onSaveJob}
+              onTailorResume={onTailorResume}
+              onClarify={onClarify}
+              onEdit={msg.role === 'user' ? (newContent) => onEdit?.(i, newContent) : undefined}
+              onRetry={msg.role === 'user' ? () => onRetry?.(i) : undefined}
+              onRevert={msg.role === 'assistant' && i === messages.length - 1 ? () => onRevert?.(i) : undefined}
+            />
+            {/* Persistent reasoning timeline for assistant messages */}
+            {msg.role === 'assistant' && msg.streamEvents && msg.streamEvents.length > 0 && (
+              <div className="mt-2 pl-6">
+                <StatusTimeline events={msg.streamEvents} status="completed" />
+              </div>
+            )}
+          </div>
         ))}
 
-        {/* Streaming status timeline (replaces the simple Thinking... indicator) */}
+        {/* Active streaming timeline (while loading) */}
         {loading && streamEvents.length > 0 && (
           <div className="pl-6">
             <StatusTimeline events={streamEvents} status={streamStatus} />

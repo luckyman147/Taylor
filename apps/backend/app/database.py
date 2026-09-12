@@ -1409,6 +1409,9 @@ class Database:
             "role": row.role,
             "content": row.content,
             "created_at": row.created_at,
+            "parent_message_id": row.parent_message_id,
+            "version": row.version,
+            "superseded": row.superseded,
         }
         if row.envelope_json:
             try:
@@ -1417,6 +1420,13 @@ class Database:
                 result["envelope"] = None
         else:
             result["envelope"] = None
+        if row.stream_events_json:
+            try:
+                result["stream_events"] = json.loads(row.stream_events_json)
+            except (json.JSONDecodeError, TypeError):
+                result["stream_events"] = None
+        else:
+            result["stream_events"] = None
         return result
 
     @staticmethod
@@ -1527,7 +1537,7 @@ class Database:
             return result.rowcount > 0
 
     async def list_chat_messages(
-        self, thread_id: str, limit: int = 50
+        self, thread_id: str, limit: int = 50, include_superseded: bool = False,
     ) -> list[dict[str, Any]]:
         """List messages in a thread, oldest first."""
         limit = max(1, min(int(limit), 100))
@@ -1538,6 +1548,8 @@ class Database:
                 .order_by(ChatMessage.created_at.asc())
                 .limit(limit)
             )
+            if not include_superseded:
+                stmt = stmt.where(ChatMessage.superseded == False)  # noqa: E712
             result = await session.execute(stmt)
             return [self._chat_message_to_dict(row) for row in result.scalars().all()]
 
@@ -1547,6 +1559,9 @@ class Database:
         role: str,
         content: str,
         envelope: dict[str, Any] | None = None,
+        parent_message_id: str | None = None,
+        version: int = 1,
+        stream_events: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Persist a single chat message."""
         message_id = str(uuid4())
@@ -1560,6 +1575,9 @@ class Database:
                     content=content,
                     envelope_json=json.dumps(envelope, ensure_ascii=False) if envelope else None,
                     created_at=now,
+                    parent_message_id=parent_message_id,
+                    version=version,
+                    stream_events_json=json.dumps(stream_events, ensure_ascii=False) if stream_events else None,
                 )
             )
             # Also bump thread.updated_at
@@ -1577,7 +1595,107 @@ class Database:
             "content": content,
             "envelope": envelope,
             "created_at": now,
+            "parent_message_id": parent_message_id,
+            "version": version,
         }
+
+    async def supersede_messages(self, message_ids: list[str]) -> None:
+        """Mark messages as superseded (hidden from normal view)."""
+        if not message_ids:
+            return
+        async with self._session() as session:
+            stmt = (
+                update(ChatMessage)
+                .where(ChatMessage.message_id.in_(message_ids))
+                .values(superseded=True)
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+    async def update_chat_message_stream_events(self, message_id: str, events: list) -> None:
+        """Update stream_events_json for a message."""
+        async with self._session() as session:
+            stmt = (
+                update(ChatMessage)
+                .where(ChatMessage.message_id == message_id)
+                .values(stream_events_json=json.dumps(events, ensure_ascii=False))
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+    async def supersede_from(self, thread_id: str, after_message_id: str) -> int:
+        """Supersede all messages in a thread after a given message. Returns count."""
+        async with self._session() as session:
+            # Find the message and its position
+            ref = await session.execute(
+                select(ChatMessage).where(ChatMessage.message_id == after_message_id)
+            )
+            ref_row = ref.scalars().first()
+            if not ref_row:
+                return 0
+            # Supersede all messages after this one in the thread
+            stmt = (
+                update(ChatMessage)
+                .where(
+                    ChatMessage.thread_id == thread_id,
+                    ChatMessage.created_at > ref_row.created_at,
+                    ChatMessage.superseded == False,  # noqa: E712
+                )
+                .values(superseded=True)
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount or 0
+
+    async def get_message_versions(self, thread_id: str, message_id: str) -> list[dict[str, Any]]:
+        """Get all versions of a message by following parent_message_id chain."""
+        async with self._session() as session:
+            # Find the message
+            msg_result = await session.execute(
+                select(ChatMessage).where(ChatMessage.message_id == message_id)
+            )
+            msg_row = msg_result.scalars().first()
+            if not msg_row:
+                return []
+
+            # Walk up the parent chain to find the root
+            root_id = message_id
+            current = msg_row
+            while current.parent_message_id:
+                parent_result = await session.execute(
+                    select(ChatMessage).where(ChatMessage.message_id == current.parent_message_id)
+                )
+                parent = parent_result.scalars().first()
+                if not parent:
+                    break
+                root_id = parent.message_id
+                current = parent
+
+            # Now walk down from root to collect all versions
+            versions = []
+            current_id: str | None = root_id
+            while current_id:
+                v_result = await session.execute(
+                    select(ChatMessage).where(
+                        ChatMessage.message_id == current_id,
+                        ChatMessage.thread_id == thread_id,
+                    )
+                )
+                v_row = v_result.scalars().first()
+                if not v_row:
+                    break
+                versions.append(self._chat_message_to_dict(v_row))
+                # Find child
+                child_result = await session.execute(
+                    select(ChatMessage).where(
+                        ChatMessage.parent_message_id == current_id,
+                        ChatMessage.thread_id == thread_id,
+                    )
+                )
+                child = child_result.scalars().first()
+                current_id = child.message_id if child else None
+
+            return versions
 
     # -- Chat memory operations ----------------------------------------------
 

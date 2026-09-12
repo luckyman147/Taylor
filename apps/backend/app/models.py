@@ -198,6 +198,10 @@ class ChatMessage(Base):
     content: Mapped[str] = mapped_column(Text)
     envelope_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    parent_message_id: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    version: Mapped[int] = mapped_column(default=1)
+    superseded: Mapped[bool] = mapped_column(default=False)
+    stream_events_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ChatMemory(Base):

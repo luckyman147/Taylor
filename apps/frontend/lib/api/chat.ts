@@ -151,6 +151,9 @@ export interface ThreadMessage {
     followups?: string[];
     sources?: string[];
   } | null;
+  version?: number;
+  superseded?: boolean;
+  stream_events?: AgentEvent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -392,4 +395,29 @@ export async function saveJobFromChat(params: {
 }): Promise<{ application_id: string; message: string }> {
   const res = await apiPost('/applications/save-job', params, 10_000);
   return asJson(res, 'Failed to save job');
+}
+
+// ---------------------------------------------------------------------------
+// Message versioning & revert
+// ---------------------------------------------------------------------------
+
+export async function supersedeMessage(threadId: string, messageId: string): Promise<{ ok: boolean }> {
+  const res = await apiPost(`/chat/threads/${threadId}/messages/${messageId}/supersede`, {});
+  return asJson(res, 'Failed to supersede message');
+}
+
+export async function revertLastTurn(threadId: string): Promise<{
+  ok: boolean;
+  superseded: number;
+  messages: ThreadMessage[];
+}> {
+  const res = await apiPost(`/chat/threads/${threadId}/revert`, {});
+  return asJson(res, 'Failed to revert');
+}
+
+export async function getMessageVersions(threadId: string, messageId: string): Promise<{
+  versions: ThreadMessage[];
+}> {
+  const res = await apiFetch(`/chat/threads/${threadId}/versions/${messageId}`);
+  return asJson(res, 'Failed to get versions');
 }

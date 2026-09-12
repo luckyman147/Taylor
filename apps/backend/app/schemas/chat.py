@@ -92,3 +92,7 @@ class ThreadMessage(BaseModel):
     content: str
     created_at: str
     envelope: dict | None = None
+    parent_message_id: str | None = None
+    version: int = 1
+    superseded: bool = False
+    stream_events: list[dict] | None = None

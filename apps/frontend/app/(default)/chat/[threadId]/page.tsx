@@ -27,6 +27,8 @@ import {
   dismissMemory,
   updateThread,
   getThreadMessages,
+  supersedeMessage,
+  revertLastTurn,
   type ThreadSummary,
   type TurnResponse,
   type AgentEvent,
@@ -396,6 +398,65 @@ export default function ChatThreadRoute() {
     [send],
   );
 
+  const handleEdit = useCallback(
+    (messageIndex: number, newContent: string) => {
+      // Supersede the old user message and the assistant's response, then resend with the edited content
+      setMessages((prev) => {
+        const updated = [...prev];
+        // Supersede the assistant message that follows this user message
+        const assistantIdx = messageIndex + 1;
+        if (assistantIdx < updated.length && updated[assistantIdx].role === 'assistant') {
+          updated.splice(assistantIdx, 1);
+        }
+        // Update the user message content
+        updated[messageIndex] = { ...updated[messageIndex], content: newContent };
+        return updated;
+      });
+      // Resend the edited message
+      void send(newContent);
+    },
+    [send],
+  );
+
+  const handleRetry = useCallback(
+    (messageIndex: number) => {
+      const msg = messages[messageIndex];
+      if (!msg || msg.role !== 'user') return;
+      void send(msg.content);
+    },
+    [messages, send],
+  );
+
+  const handleRevert = useCallback(
+    async (messageIndex: number) => {
+      if (!threadId) return;
+      try {
+        const result = await revertLastTurn(threadId);
+        if (result.ok) {
+          // Remove the assistant message and set it as the latest message
+          setMessages((prev) => prev.slice(0, messageIndex));
+          // Optionally add the previous assistant response back if available
+          if (result.messages && result.messages.length > 0) {
+            const prevAssistant = result.messages.find((m) => m.role === 'assistant');
+            if (prevAssistant) {
+              setMessages((prev) => [...prev, {
+                role: 'assistant',
+                content: prevAssistant.content,
+                cards: prevAssistant.envelope?.cards as any,
+                messageId: prevAssistant.message_id,
+                version: prevAssistant.version,
+                streamEvents: prevAssistant.stream_events as any,
+              }]);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Revert failed:', e);
+      }
+    },
+    [threadId],
+  );
+
   const handleSelectResume = useCallback(
     (resumeId: string) => {
       void send(`audit resume ${resumeId}`);
@@ -503,6 +564,9 @@ export default function ChatThreadRoute() {
                 onSaveJob={handleSaveJob}
                 onTailorResume={handleTailorResume}
                 onClarify={handleClarify}
+                onEdit={handleEdit}
+                onRetry={handleRetry}
+                onRevert={handleRevert}
                 streamEvents={streamEvents}
                 streamStatus={streamStatus}
               />

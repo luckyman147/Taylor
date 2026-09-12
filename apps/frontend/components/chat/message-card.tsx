@@ -1,6 +1,7 @@
 'use client';
 
-import { MessageCircle, Target, Briefcase, BarChart3, FileText, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle, Target, Briefcase, BarChart3, FileText, Eye, Pencil, RotateCcw, Undo2, Check, X } from 'lucide-react';
 import { MarkdownContent } from '@/components/common/markdown-content';
 import { ToolCards } from './tool-cards';
 import { ConfirmCard } from './confirm-card';
@@ -25,6 +26,7 @@ interface MessageCardProps {
   followups?: string[];
   modelInfo?: { provider: string; model: string } | null;
   attachment?: { filename: string; resumeId: string } | null;
+  isLast?: boolean;
   onConfirm?: (token: string) => void;
   onCancel?: (token: string) => void;
   onDismissMemory?: (statement: string) => void;
@@ -38,6 +40,11 @@ interface MessageCardProps {
   onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
   onClarify?: (intent: string) => void;
+  onEdit?: (newContent: string) => void;
+  onRetry?: () => void;
+  onRevert?: () => void;
+  messageId?: string;
+  version?: number;
 }
 
 export function MessageCard({
@@ -64,8 +71,16 @@ export function MessageCard({
   onSaveJob,
   onTailorResume,
   onClarify,
+  onEdit,
+  onRetry,
+  onRevert,
+  isLast = false,
+  messageId,
+  version,
 }: MessageCardProps) {
   const isUser = role === 'user';
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(content);
 
   if (isUser) {
     return (
@@ -83,9 +98,56 @@ export function MessageCard({
               </button>
             </div>
           )}
-          <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-[15px] leading-relaxed text-white">
-            <span className="whitespace-pre-wrap">{content}</span>
-          </div>
+          {isEditing ? (
+            <div className="space-y-2">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full rounded-xl border border-primary/30 bg-white p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20"
+                rows={3}
+                autoFocus
+              />
+              <div className="flex justify-end gap-1.5">
+                <button
+                  onClick={() => { setIsEditing(false); setEditContent(content); }}
+                  className="flex items-center gap-1 rounded-lg border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-[#f0eeeb]"
+                >
+                  <X className="h-3 w-3" /> Cancel
+                </button>
+                <button
+                  onClick={() => { onEdit?.(editContent); setIsEditing(false); }}
+                  className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/90"
+                >
+                  <Check className="h-3 w-3" /> Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2.5">
+                <p className="whitespace-pre-wrap text-sm text-white">{content}</p>
+              </div>
+              {version && version > 1 && (
+                <span className="ml-2 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">v{version}</span>
+              )}
+              <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-ink-muted/60 transition-colors hover:bg-[#f0eeeb] hover:text-ink-soft"
+                  title="Edit message"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={onRetry}
+                  className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-ink-muted/60 transition-colors hover:bg-[#f0eeeb] hover:text-ink-soft"
+                  title="Retry"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -106,6 +168,15 @@ export function MessageCard({
           <span className="text-xs font-semibold text-ink-soft">
             Taylor · {MODE_CONFIG[mode]?.label || mode}
           </span>
+          {isLast && onRevert && (
+            <button
+              onClick={onRevert}
+              className="ml-auto flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] text-ink-muted/60 transition-colors hover:bg-[#f0eeeb] hover:text-ink-soft"
+              title="Revert this response"
+            >
+              <Undo2 className="h-3 w-3" /> Revert
+            </button>
+          )}
         </div>
 
         {/* Message content — full-width, no bubble, left accent bar */}

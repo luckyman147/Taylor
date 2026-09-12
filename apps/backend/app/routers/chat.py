@@ -173,6 +173,7 @@ async def send_turn_stream(
         )
 
     event_queue: asyncio.Queue = asyncio.Queue()
+    collected_events: list = []
 
     async def event_generator():
         async def _run():
@@ -212,9 +213,25 @@ async def send_turn_stream(
             if event is None:
                 break
             event_count += 1
+            # Collect events for persistence
+            try:
+                collected_events.append(serialize_event(event))
+            except Exception:
+                pass
             yield f"data: {serialize_event(event)}\n\n"
 
         yield "data: [DONE]\n\n"
+
+        # Persist stream events with the last assistant message
+        if collected_events:
+            try:
+                messages = await db.list_chat_messages(thread_id, limit=5, include_superseded=False)
+                for msg in reversed(messages):
+                    if msg["role"] == "assistant":
+                        await db.update_chat_message_stream_events(msg["message_id"], collected_events)
+                        break
+            except Exception as e:
+                logger.warning("Failed to persist stream events: %s", e)
 
     return StreamingResponse(
         event_generator(),
@@ -285,3 +302,47 @@ async def dismiss_memory(memory_id: str) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="Memory not found")
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Message versioning & revert
+# ---------------------------------------------------------------------------
+
+
+@router.post("/threads/{thread_id}/messages/{message_id}/supersede")
+async def supersede_message(thread_id: str, message_id: str) -> dict:
+    """Soft-delete a message and its associated response (supersede)."""
+    await db.supersede_messages([message_id])
+    return {"ok": True}
+
+
+@router.post("/threads/{thread_id}/revert")
+async def revert_last_turn(thread_id: str) -> dict:
+    """Revert the last user+assistant pair in a thread."""
+    messages = await db.list_chat_messages(thread_id, limit=100, include_superseded=False)
+    if not messages:
+        raise HTTPException(status_code=404, detail="No messages to revert")
+
+    # Find the last user message and its following assistant message
+    last_user_idx = None
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i]["role"] == "user":
+            last_user_idx = i
+            break
+
+    if last_user_idx is None:
+        raise HTTPException(status_code=404, detail="No user message to revert")
+
+    # Supersede from the last user message onward
+    count = await db.supersede_from(thread_id, messages[last_user_idx]["message_id"])
+
+    # Return remaining messages
+    remaining = await db.list_chat_messages(thread_id, limit=100, include_superseded=False)
+    return {"ok": True, "superseded": count, "messages": remaining}
+
+
+@router.get("/threads/{thread_id}/versions/{message_id}")
+async def get_message_versions(thread_id: str, message_id: str) -> dict:
+    """Get all versions of a message."""
+    versions = await db.get_message_versions(thread_id, message_id)
+    return {"versions": versions}
