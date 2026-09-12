@@ -183,3 +183,16 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql(
                     "UPDATE chat_threads SET mode = 'ask' WHERE mode IN ('coach', 'recruiter', 'resume_analyst')"
                 )
+
+        # Chat message versioning + persistent reasoning.
+        chat_msg_columns = conn.exec_driver_sql("PRAGMA table_info(chat_messages)").mappings().all()
+        if chat_msg_columns:
+            chat_msg_col_names = {column["name"] for column in chat_msg_columns}
+            if "parent_message_id" not in chat_msg_col_names:
+                conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN parent_message_id TEXT")
+            if "version" not in chat_msg_col_names:
+                conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN version INTEGER DEFAULT 1")
+            if "superseded" not in chat_msg_col_names:
+                conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN superseded BOOLEAN DEFAULT 0")
+            if "stream_events_json" not in chat_msg_col_names:
+                conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN stream_events_json TEXT")
