@@ -1113,6 +1113,10 @@ TOOL USAGE EXAMPLES:
 - User says "compare my frontend and backend resumes" → call compare_resumes with keywords="frontend, backend"
 - User says "compare all my resumes" → call compare_resumes
 - User says "how many applications" → call get_applications
+- User says "check my emails" or "any new emails" → call fetch_emails
+- User says "emails from LinkedIn" → call search_emails with query="FROM linkedin"
+- User says "search emails about interviews" → call search_emails with query="SUBJECT interview"
+- User says "summarize my inbox" → call fetch_emails with max_results=20
 
 RULES:
 1. Return ONLY a valid JSON object with these keys:
@@ -1125,11 +1129,12 @@ RULES:
 
 2. When the user asks to search, find, look up, or discover jobs/opportunities: ALWAYS call search_mcp_jobs.
 3. When the user asks about technology trends, news, research, or any non-job topic: ALWAYS call web_search.
-4. For READ tools (get_*, search_*, web_search): include them in tool_calls.
-4. For WRITE tools (create_*, update_*): set intent="action", include the tool call, and set "summary" describing what would be written.
-5. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
-6. Never fabricate data. Only use tools that exist in the catalog.
-7. For resume audits: the gateway handles resume selection and returns a selection card. Do not call get_ats_audit.
+4. When the user asks about emails, inbox, notifications, or messages: ALWAYS call fetch_emails or search_emails.
+5. For READ tools (get_*, search_*, web_search, fetch_emails, search_emails): include them in tool_calls.
+6. For WRITE tools (create_*, update_*): set intent="action", include the tool call, and set "summary" describing what would be written.
+7. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
+8. Never fabricate data. Only use tools that exist in the catalog.
+9. For resume audits: the gateway handles resume selection and returns a selection card. Do not call get_ats_audit.
 
 Return JSON only (no markdown fences):"""
 
