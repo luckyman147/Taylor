@@ -352,6 +352,24 @@ def _build_search_query(params: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# System tag stripping
+# ---------------------------------------------------------------------------
+
+_SYSTEM_TAG_RE = re.compile(
+    r"<system-reminder>.*?</system-reminder>",
+    re.DOTALL,
+)
+_XML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_system_tags(text: str) -> str:
+    """Remove system-reminder and other leaked XML tags from LLM output."""
+    text = _SYSTEM_TAG_RE.sub("", text)
+    text = _XML_TAG_RE.sub("", text)
+    return text.strip()
+
+
+# ---------------------------------------------------------------------------
 # History formatting
 # ---------------------------------------------------------------------------
 
@@ -601,10 +619,10 @@ async def _run_turn_core(
             "followups": ["Tell me more", "What else can you do?"],
             "sources": [],
         }
-        await db.add_chat_message(thread_id, "assistant", agent_result["answer"], envelope=envelope)
+        await db.add_chat_message(thread_id, "assistant", _strip_system_tags(agent_result["answer"]), envelope=envelope)
         config = get_llm_config()
         result = {
-            "assistant_content": agent_result["answer"],
+            "assistant_content": _strip_system_tags(agent_result["answer"]),
             "cards": envelope["cards"],
             "actions": envelope["actions"],
             "stats": None,
@@ -802,6 +820,9 @@ async def _run_turn_core(
             "I wasn't able to generate a complete answer right now. "
             "Please try again in a moment, or check your API configuration."
         )
+
+    # Strip system-reminder and other XML tags that may leak from the LLM
+    assistant_content = _strip_system_tags(assistant_content)
 
     # Persist user message
     await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
