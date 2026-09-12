@@ -726,19 +726,21 @@ async def analyze_job(
     if cached and cached_hash == ch:
         return cached
 
-    # 2. Load master resume
-    master_resume = await db.get_resume(master_resume_id)
-    if not master_resume:
-        raise ValueError(f"Resume {master_resume_id} not found")
+    # 2. Load master resume (optional — analysis works without one)
+    master_resume = None
+    if master_resume_id:
+        master_resume = await db.get_resume(master_resume_id)
 
-    resume_data = master_resume.get("processed_data") or {
-        "content": master_resume.get("content", "")
-    }
+    resume_data = {}
+    if master_resume:
+        resume_data = master_resume.get("processed_data") or {
+            "content": master_resume.get("content", "")
+        }
 
     # 3. Compute match percent
     from app.services.refiner import calculate_keyword_match
 
-    match_pct = calculate_keyword_match(resume_data, job_keywords)
+    match_pct = calculate_keyword_match(resume_data, job_keywords) if resume_data else 0.0
 
     # 4. Job DNA + Career DNA + comparison
     job_dna = await extract_job_dna(job, job_keywords)
@@ -755,7 +757,7 @@ async def analyze_job(
         salary_potential = (salary_parsed[0] + salary_parsed[1]) / 2.0
 
     # 6. Competition heuristic
-    competition = _estimate_competition(meta, master_resume)
+    competition = _estimate_competition(meta, master_resume or {})
 
     # 7. Company quality (no external data)
     company_quality: float | None = None

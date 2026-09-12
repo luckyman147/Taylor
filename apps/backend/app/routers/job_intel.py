@@ -103,9 +103,13 @@ async def get_hiring_probability(job_id: str) -> HiringProbabilityResponse:
 @router.post("/{job_id}/should-apply", response_model=ShouldApplyResponse)
 async def should_apply(
     job_id: str,
-    master_resume_id: str,
+    master_resume_id: str | None = None,
 ) -> ShouldApplyResponse:
     """Full Should I Apply analysis."""
+    # Auto-resolve master resume if not provided
+    if not master_resume_id:
+        master = await db.get_master_resume()
+        master_resume_id = (master.get("resume_id") if master else "") or ""
     try:
         result = await job_intel.analyze_job(job_id, master_resume_id)
     except ValueError as e:
