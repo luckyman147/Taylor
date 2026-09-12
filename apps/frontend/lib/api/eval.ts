@@ -64,3 +64,55 @@ export async function listEvalMetrics(): Promise<Array<{ name: string }>> {
   if (!res.ok) throw new Error('Failed to list metrics');
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard endpoints (temporary, reads JSON files from eval/results/)
+// ---------------------------------------------------------------------------
+
+export interface EvalResultSummary {
+  filename: string;
+  mode: string;
+  dataset: string;
+  samples_total: number;
+  traces_collected: number;
+  elapsed_seconds: number;
+  metrics: Record<string, { value: number; pass_rate: number | null }>;
+  created_at: number;
+}
+
+export interface EvalResultDetail {
+  mode: string;
+  dataset: string;
+  samples_total: number;
+  traces_collected: number;
+  elapsed_seconds: number;
+  config: Record<string, unknown>;
+  metrics: Array<{
+    metric: string;
+    value: number;
+    pass_rate: number | null;
+    samples: number;
+  }>;
+  traces: EvalTrace[];
+}
+
+export async function listEvalResults(): Promise<EvalResultSummary[]> {
+  const res = await apiFetch('/eval/results');
+  if (!res.ok) throw new Error('Failed to list eval results');
+  return res.json();
+}
+
+export async function getEvalResult(filename: string): Promise<EvalResultDetail> {
+  const res = await apiFetch(`/eval/results/${encodeURIComponent(filename)}`);
+  if (!res.ok) throw new Error('Failed to get eval result');
+  return res.json();
+}
+
+export async function runBenchmark(
+  mode: string = 'autonomous',
+  dataset: string = 'benchmark.jsonl',
+): Promise<{ run_id: string; filename: string; mode: string; samples_total: number; traces_collected: number; elapsed_seconds: number }> {
+  const res = await apiPost('/eval/benchmark/run', { mode, dataset }, 300_000);
+  if (!res.ok) throw new Error('Benchmark run failed');
+  return res.json();
+}

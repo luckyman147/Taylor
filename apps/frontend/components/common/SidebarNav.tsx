@@ -10,6 +10,7 @@ import {
   Sparkles,
   Plus,
   GraduationCap,
+  BarChart3,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Image from 'next/image';
@@ -47,7 +48,8 @@ interface SidebarNavProps {
     | 'contacts'
     | 'profile'
     | 'interview-practice'
-    | 'chat';
+    | 'chat'
+    | 'eval-dashboard';
   onNavigate?: (page: string) => void;
 }
 
@@ -67,6 +69,7 @@ const DEFAULT_NAV_LINKS: NavItem[] = [
   { key: 'profile', label: 'profile', icon: UserRound, route: '/profile' },
   { key: 'interview-practice', label: 'interviewPractice', icon: GraduationCap, route: '/interview-practice' },
   { key: 'chat', label: 'chat', icon: Sparkles, route: '/chat' },
+  { key: 'eval-dashboard', label: 'evalDashboard', icon: BarChart3, route: '/eval-dashboard' },
   { key: 'settings', label: 'settings', icon: Settings, route: '/settings' },
 ];
 

@@ -54,6 +54,7 @@
     "contacts": "Contact Tracker",
     "profile": "My Profile",
     "chat": "AI Chat",
+    "evalDashboard": "Eval Dashboard",
     "createResume": "Create Resume",
     "interviewPractice": "Interview Practice"
   },

@@ -119,3 +119,101 @@ async def eval_health() -> dict:
         "metrics_registered": len(registry.list_all()),
         "metric_names": registry.list_names(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Results dashboard endpoints (temporary, reads JSON files from eval/results/)
+# ---------------------------------------------------------------------------
+
+import json
+import os
+import re
+from pathlib import Path
+
+_RESULTS_DIR = Path(__file__).resolve().parent.parent.parent / "eval" / "results"
+_FILENAME_RE = re.compile(r"^run_[a-zA-Z0-9_-]+\.json$")
+
+
+@router.get("/results")
+async def list_results() -> list[dict]:
+    """List all eval result files with summary metrics."""
+    if not _RESULTS_DIR.exists():
+        return []
+
+    results = []
+    for f in sorted(_RESULTS_DIR.glob("run_*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if not _FILENAME_RE.match(f.name):
+            continue
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            # Extract top-level metrics into a flat dict
+            metrics_flat = {}
+            for m in data.get("metrics", []):
+                name = m.get("metric", "")
+                value = m.get("value")
+                pass_rate = m.get("pass_rate")
+                if name and value is not None:
+                    metrics_flat[name] = {"value": value, "pass_rate": pass_rate}
+
+            results.append({
+                "filename": f.name,
+                "mode": data.get("mode", "unknown"),
+                "dataset": data.get("dataset", ""),
+                "samples_total": data.get("samples_total", 0),
+                "traces_collected": data.get("traces_collected", 0),
+                "elapsed_seconds": data.get("elapsed_seconds", 0),
+                "metrics": metrics_flat,
+                "created_at": f.stat().st_mtime,
+            })
+        except Exception:
+            continue
+
+    return results
+
+
+@router.get("/results/{filename}")
+async def get_result(filename: str) -> dict:
+    """Return full content of a specific eval result file."""
+    if not _FILENAME_RE.match(filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    fpath = _RESULTS_DIR / filename
+    if not fpath.exists():
+        raise HTTPException(status_code=404, detail="Result not found")
+
+    try:
+        return json.loads(fpath.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read result: {e}")
+
+
+@router.post("/benchmark/run")
+async def run_benchmark(mode: str = "autonomous", dataset: str = "benchmark.jsonl") -> dict:
+    """Trigger a full benchmark run and persist results."""
+    from eval.config import EvalConfig
+    from eval.runners.benchmark_runner import BenchmarkRunner
+
+    config = EvalConfig(eval_mode=mode, dataset_path=f"eval/datasets/{dataset}")
+
+    runner = BenchmarkRunner()
+    try:
+        result = await runner.run_benchmark(config)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Benchmark run failed: {e}")
+
+    # Persist result to JSON file
+    import uuid
+    run_id = uuid.uuid4().hex[:12]
+    out = _RESULTS_DIR / f"run_{mode}_{run_id}.json"
+    _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, default=str)
+
+    return {
+        "run_id": run_id,
+        "filename": out.name,
+        "mode": mode,
+        "samples_total": result.get("samples_total", 0),
+        "traces_collected": result.get("traces_collected", 0),
+        "elapsed_seconds": result.get("elapsed_seconds", 0),
+    }

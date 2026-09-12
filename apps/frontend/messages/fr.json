@@ -54,6 +54,7 @@
     "contacts": "Contact Tracker",
     "profile": "My Profile",
     "chat": "Chat IA",
+    "evalDashboard": "Tableau d'évaluation",
     "createResume": "Créer un CV",
     "interviewPractice": "Entraînement aux Entretiens"
   },

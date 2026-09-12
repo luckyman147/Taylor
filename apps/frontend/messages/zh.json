@@ -54,6 +54,7 @@
     "contacts": "Contact Tracker",
     "profile": "My Profile",
     "chat": "AI 聊天",
+    "evalDashboard": "评估面板",
     "createResume": "创建简历",
     "interviewPractice": "面试练习"
   },
