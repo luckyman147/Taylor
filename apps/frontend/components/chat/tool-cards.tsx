@@ -459,17 +459,26 @@ function JobListCard({ data }: { data: Record<string, unknown> }) {
 }
 
 function SourcesCard({ data }: { data: Record<string, unknown> }) {
-  const sources = (data.sources || []) as { url: string; title: string }[];
+  const sources = (data.sources || []) as {
+    url: string;
+    title: string;
+    hostname?: string;
+    favicon_url?: string;
+  }[];
   if (sources.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2">
       {sources.map((s, i) => {
-        let hostname = '';
-        try {
-          hostname = new URL(s.url).hostname.replace('www.', '');
-        } catch { /* ignore */ }
-        const initial = (hostname || s.title)[0]?.toUpperCase() || '?';
+        let hostname = s.hostname || '';
+        if (!hostname && s.url) {
+          try {
+            hostname = new URL(s.url).hostname.replace('www.', '');
+          } catch { /* ignore */ }
+        }
+        const favicon = s.favicon_url || (hostname
+          ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
+          : '');
         return (
           <a
             key={i}
@@ -478,9 +487,20 @@ function SourcesCard({ data }: { data: Record<string, unknown> }) {
             rel="noopener noreferrer"
             className="group flex items-center gap-2 rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-[13px] transition-colors hover:border-primary/40 hover:bg-primary/5"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-              {initial}
-            </span>
+            {favicon ? (
+              <img
+                src={favicon}
+                alt=""
+                className="h-4 w-4 shrink-0 rounded-sm"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">
+                {(hostname || s.title)[0]?.toUpperCase() || '?'}
+              </span>
+            )}
             <span className="min-w-0 truncate text-ink-soft group-hover:text-primary">
               {s.title || hostname}
             </span>

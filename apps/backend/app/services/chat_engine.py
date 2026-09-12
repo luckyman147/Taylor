@@ -1547,12 +1547,32 @@ def _build_actions(tool_results: dict[str, Any]) -> list[dict[str, Any]]:
     return actions
 
 
-def _extract_sources(tool_results: dict[str, Any]) -> list[str]:
-    """Extract source labels from tool results."""
-    sources: list[str] = []
-    for tool_name in tool_results:
-        if tool_name.startswith("get_"):
-            sources.append(tool_name.replace("get_", "").replace("_", " "))
+def _extract_sources(tool_results: dict[str, Any]) -> list[dict]:
+    """Extract source info from tool results.
+
+    Returns list of dicts with {url, title, favicon_url, hostname}.
+    Deduplicates by URL.
+    """
+    sources: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for tool_name, result in tool_results.items():
+        if tool_name == "web_search" and isinstance(result, dict):
+            for item in result.get("results", []):
+                url = item.get("url", "")
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                sources.append({
+                    "url": url,
+                    "title": item.get("title", ""),
+                    "hostname": item.get("hostname", ""),
+                    "favicon_url": item.get("favicon_url", ""),
+                })
+        elif tool_name.startswith("get_"):
+            label = tool_name.replace("get_", "").replace("_", " ")
+            sources.append({"title": label, "url": "", "hostname": "", "favicon_url": ""})
+
     return sources
 
 
@@ -1575,5 +1595,6 @@ def _tool_to_card_kind(tool_name: str) -> str:
         "get_skill_suggestions": "info",
         "fetch_emails": "email_list",
         "search_emails": "email_list",
+        "web_search": "sources",
     }
     return mapping.get(tool_name, "info")

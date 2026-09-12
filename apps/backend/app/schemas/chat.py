@@ -50,7 +50,7 @@ class TurnResponse(BaseModel):
     pending_action: PendingAction | None = None
     memory_candidates: list[MemoryCandidate] = Field(default_factory=list)
     followups: list[str] = Field(default_factory=list)
-    sources: list[str] = Field(default_factory=list)
+    sources: list[dict] = Field(default_factory=list)
     model_info: dict | None = None
 
 

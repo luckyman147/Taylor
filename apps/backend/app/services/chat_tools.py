@@ -908,16 +908,27 @@ async def _web_search(query: str, num_results: int = 8) -> dict[str, Any]:
         return {"query": query, "total_results": 0, "results": []}
 
     # Build basic results from DuckDuckGo snippets
+    from urllib.parse import urlparse
+
     results = []
     urls_to_crawl = []
     for item in search_results:
         url = item.get("href", "")
         title = item.get("title", "Unknown")
         snippet = item.get("body", "")
+        hostname = ""
+        favicon_url = ""
+        if url:
+            parsed = urlparse(url)
+            hostname = parsed.hostname or ""
+            if hostname:
+                favicon_url = f"https://www.google.com/s2/favicons?domain={hostname}&sz=32"
         results.append({
             "title": title,
             "url": url,
             "source": url,
+            "hostname": hostname,
+            "favicon_url": favicon_url,
             "snippet": snippet[:500],
             "published_date": None,
         })
