@@ -1109,14 +1109,33 @@ TOOL USAGE EXAMPLES:
 - User says "what jobs match my skills" → call search_mcp_jobs with query=their top skills
 - User says "search the latest technologies" → call web_search with query="latest technology trends 2026"
 - User says "what are the trending frameworks" → call web_search with query="trending frameworks 2026"
+- User says "React vs Vue" → call web_search with query="React vs Vue comparison 2026"
 - User says "analyze my resume" → call get_ats_audit
 - User says "compare my frontend and backend resumes" → call compare_resumes with keywords="frontend, backend"
 - User says "compare all my resumes" → call compare_resumes
 - User says "how many applications" → call get_applications
+- User says "what's my skill gap" → call get_skill_suggestions
+- User says "how am I doing with applications" → call get_funnel_stats
+- User says "where do I stand in the market" → call get_market_position
+- User says "what are my strongest skills" → call get_career_summary
 - User says "check my emails" or "any new emails" → call fetch_emails
 - User says "emails from LinkedIn" → call search_emails with query="FROM linkedin"
 - User says "search emails about interviews" → call search_emails with query="SUBJECT interview"
 - User says "summarize my inbox" → call fetch_emails with max_results=20
+
+CLARIFY EXAMPLES (ONLY for truly vague messages):
+- "help" → clarify (could mean anything)
+- "what should I do" → clarify (no specific task)
+- "I need advice" → clarify (no topic specified)
+- "something about my career" → clarify (too vague)
+- "help me" → clarify (no specific request)
+
+DO NOT CLARIFY for clear requests:
+- "React vs Vue" → web_search (clear technology comparison)
+- "what is Docker" → web_search (clear how-to question)
+- "find me jobs" → search_mcp_jobs (clear job search)
+- "how's my resume" → get_ats_audit (clear audit request)
+- "what skills am I missing" → get_skill_suggestions (clear skills question)
 
 RULES:
 1. Return ONLY a valid JSON object with these keys:

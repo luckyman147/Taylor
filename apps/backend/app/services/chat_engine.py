@@ -108,11 +108,11 @@ def _get_conversation_state(thread_id: str) -> ConversationState:
 
 
 _INTENT_LABELS: dict[str, str] = {
-    "job_search": "Search for jobs matching your profile",
-    "resume_audit": "Improve or audit your resume",
-    "profile": "Review your career profile",
-    "market": "Analyze market position and trends",
-    "skills": "Get skill suggestions and ROI analysis",
+    "job_search": "Search for jobs matching my skills",
+    "resume_audit": "Audit my resume against a job description",
+    "profile": "Check my career profile and skills",
+    "market": "Analyze market position and salary trends",
+    "skills": "Discover skill gaps and improvement suggestions",
 }
 
 

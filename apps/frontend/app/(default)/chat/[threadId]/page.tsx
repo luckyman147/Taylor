@@ -385,11 +385,11 @@ export default function ChatThreadRoute() {
   const handleClarify = useCallback(
     (intent: string) => {
       const intentMessages: Record<string, string> = {
-        job_search: 'Search for jobs matching my profile',
-        resume_audit: 'Audit my resume',
-        profile: 'Show my career profile',
-        market: 'Show market position',
-        skills: 'Show skill suggestions',
+        job_search: 'Search for jobs matching my skills',
+        resume_audit: 'Audit my resume against a job description',
+        profile: 'Check my career profile and skills',
+        market: 'Analyze market position and salary trends',
+        skills: 'Discover skill gaps and improvement suggestions',
       };
       void send(intentMessages[intent] || intent);
     },

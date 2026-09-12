@@ -466,11 +466,12 @@ function ClarifyCard({ data, onClarify }: { data: Record<string, unknown>; onCla
 
   const icons: Record<string, string> = {
     job_search: '🔍',
-    resume_audit: '📄',
+    resume_audit: '📝',
     profile: '👤',
     market: '📊',
     skills: '🛠',
     career_advice: '💡',
+    general: '💬',
   };
 
   return (

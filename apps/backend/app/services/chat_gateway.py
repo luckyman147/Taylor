@@ -62,11 +62,11 @@ _SPECIFIC_INTENTS = {
 }
 
 DEFAULT_CLARIFICATION_OPTIONS = [
-    "Search for jobs matching my profile",
-    "Improve or audit my resume",
-    "Review my career profile",
-    "Analyze a specific job",
-    "Get career or skill advice",
+    "Search for jobs matching my skills",
+    "Audit my resume against a job description",
+    "Compare my resumes side by side",
+    "Check my career profile and skills",
+    "Analyze my application pipeline",
 ]
 
 
