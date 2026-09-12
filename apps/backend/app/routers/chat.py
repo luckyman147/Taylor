@@ -195,11 +195,19 @@ async def send_turn_stream(
 
         turn_task = asyncio.create_task(_run())
         event_count = 0
+        QUEUE_TIMEOUT = 300  # seconds — max time to wait for next event
 
         while True:
             try:
-                event = await event_queue.get()
+                event = await asyncio.wait_for(event_queue.get(), timeout=QUEUE_TIMEOUT)
+            except asyncio.TimeoutError:
+                logger.warning("SSE event_queue timeout after %ds — cancelling turn", QUEUE_TIMEOUT)
+                turn_task.cancel()
+                from app.schemas.agent_events import AgentStatusEvent, AgentStatus
+                yield f"data: {serialize_event(AgentStatusEvent(status=AgentStatus.FAILED, message='Request timed out. Please try again.'))}\n\n"
+                break
             except asyncio.CancelledError:
+                turn_task.cancel()
                 break
             if event is None:
                 break

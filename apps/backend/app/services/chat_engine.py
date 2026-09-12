@@ -315,11 +315,19 @@ async def _run_turn_core(
     from app.services.chat_gateway import classify_intent
     gateway = await classify_intent(user_message, resume_id=resume_id)
 
-    # --- Contextual follow-up: references to previous results ---
+    # --- Contextual follow-up: only if there are previous job results to reference ---
     if gateway.contextual_follow_up:
-        return await _handle_contextual_follow_up(
-            thread_id, user_message, gateway, _emit, messages, memories,
+        has_job_context = any(
+            card.get("kind") == "job_list"
+            for m in messages
+            if m.get("role") == "assistant"
+            for card in (m.get("envelope") or {}).get("cards", [])
         )
+        if has_job_context:
+            return await _handle_contextual_follow_up(
+                thread_id, user_message, gateway, _emit, messages, memories,
+            )
+        # No job context — fall through to normal planner path
 
     # --- Intent-based routing ---
     if gateway.intent == ChatIntent.JOB_SEARCH:
@@ -901,7 +909,7 @@ async def _handle_contextual_follow_up(
     )
 
     answer_text = await complete(
-        [{"role": "user", "content": prompt}],
+        prompt,
         max_tokens=2000,
     )
 

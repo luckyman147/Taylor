@@ -102,9 +102,9 @@ _SKILLS_PATTERNS = re.compile(
 )
 
 _CONTEXTUAL_FOLLOWUP_PATTERNS = re.compile(
-    r"\b(best|worst|top|filter|compare|which|from\s+those|of\s+that|of\s+those|"
-    r"from\s+the\s+list|summarize|analyze|rank|sort|of\s+these|from\s+this|"
-    r"tell\s+me\s+more\s+about|pick|choose|select|narrow|refine)\b",
+    r"\b(from\s+those|of\s+that\b|of\s+those|from\s+the\s+list|"
+    r"of\s+these|from\s+this|that\s+list|these\s+results|"
+    r"tell\s+me\s+more\s+about|narrow\s+down|refine\s+those)\b",
     re.IGNORECASE,
 )
 
