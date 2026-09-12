@@ -961,13 +961,13 @@ async def _search_emails(query: str, max_results: int = 10) -> dict[str, Any]:
 
 
 async def _extract_entities_from_email(body: str, subject: str = "") -> dict[str, Any]:
-    """Use LLM to extract structured entities from email body."""
+    """Use LLM to extract structured entities and summary from email body."""
     if not body or len(body) < 50:
         return {"is_job_alert": False}
 
     from app.llm import complete_json
 
-    prompt = f"""Extract structured data from this email. Return a JSON object.
+    prompt = f"""Analyze this email and extract structured data. Return a JSON object.
 
 SUBJECT: {subject}
 
@@ -982,6 +982,7 @@ Extract:
 - match_percentage: match percentage if mentioned (string or null)
 - is_job_alert: true if this is a job alert/notification (boolean)
 - location: job location if mentioned (string or null)
+- summary: 2-3 sentence summary of the email content (string)
 
 Return JSON only:"""
 

@@ -542,6 +542,7 @@ interface EmailEntities {
   match_percentage?: string;
   is_job_alert?: boolean;
   location?: string;
+  summary?: string;
 }
 
 interface EmailItem {

@@ -11,6 +11,7 @@ interface EmailEntities {
   match_percentage?: string;
   is_job_alert?: boolean;
   location?: string;
+  summary?: string;
 }
 
 interface EmailData {
@@ -136,9 +137,16 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
           </div>
         )}
 
-        {/* Email body */}
+        {/* Email summary + body */}
         <div className="overflow-y-auto p-4" style={{ maxHeight: 'calc(85vh - 200px)' }}>
-          <pre className="whitespace-pre-wrap text-sm text-ink leading-relaxed font-sans">{email.body || email.snippet || 'No content available.'}</pre>
+          {entities?.summary && (
+            <div className="mb-4 rounded-lg bg-blue-50 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">Summary</div>
+              <div className="text-sm text-ink leading-relaxed">{entities.summary}</div>
+            </div>
+          )}
+          <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-2">Full Email</div>
+          <pre className="whitespace-pre-wrap text-sm text-ink-soft leading-relaxed font-sans">{email.body || email.snippet || 'No content available.'}</pre>
         </div>
       </div>
     </div>
