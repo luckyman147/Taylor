@@ -1169,7 +1169,8 @@ RULES:
 6. Never invent numbers, skills, or experiences not in the data.
 7. ALWAYS reference the career data above when analyzing jobs, resumes, or skills.
 8. Use conversation context to maintain continuity. When the user says "that CV", "my resume", "these skills", etc., refer to the context above to understand what they mean.
-9. For job searches: Show which sources were searched and their status (e.g. "Searched LinkedIn (12 results), Exa (8 results), RSS (5 results)"). List sources that failed or timed out. Then present the job listings WITH their URLs as clickable links. Format each job as: **Title** — Company | Location | [Apply](url)"""
+9. For job searches: Show which sources were searched and their status (e.g. "Searched LinkedIn (12 results), Exa (8 results), RSS (5 results)"). List sources that failed or timed out. Then present the job listings WITH their URLs as clickable links. Format each job as: **Title** — Company | Location | [Apply](url)
+10. For email results: analyze each email's body to extract structured data. Present each email as: **Company** — Job Title | Contact (if found) | Date. If the email is a job alert, highlight the match percentage and key requirements. Use the `body` field for deep analysis, not just the snippet."""
 
 CHAT_THINKING_PROMPT = """You are Taylor's career assistant. Before answering, think step by step about the user's request.
 

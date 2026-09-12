@@ -955,6 +955,7 @@ async def _fetch_emails(max_results: int = 10) -> dict[str, Any]:
                 "sender": e.sender,
                 "date": e.date,
                 "snippet": e.snippet,
+                "body": e.body,
             }
             for e in emails
         ],
@@ -978,6 +979,7 @@ async def _search_emails(query: str, max_results: int = 10) -> dict[str, Any]:
                 "sender": e.sender,
                 "date": e.date,
                 "snippet": e.snippet,
+                "body": e.body,
             }
             for e in emails
         ],

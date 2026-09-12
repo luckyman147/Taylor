@@ -6,6 +6,7 @@ import email.header
 import email.utils
 import imaplib
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 IMAP_HOST = "imap.gmail.com"
 IMAP_PORT = 993
+MAX_BODY_LEN = 3000
 
 
 @dataclass
@@ -24,6 +26,7 @@ class EmailMessage:
     sender: str
     date: str
     snippet: str
+    body: str = ""
     is_unread: bool = False
 
 
@@ -68,29 +71,73 @@ def _decode_header(raw: str | None) -> str:
     return " ".join(decoded)
 
 
-def _extract_snippet(msg: email.message.Message, max_len: int = 200) -> str:
-    """Extract a plain-text snippet from the email body."""
-    body = ""
+def _strip_html(text: str) -> str:
+    """Strip HTML tags and collapse whitespace."""
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _extract_body(msg: email.message.Message) -> tuple[str, str]:
+    """Extract plain-text body and full text from email.
+
+    Returns (snippet, full_body) where:
+    - snippet: first ~300 chars of meaningful content
+    - full_body: up to MAX_BODY_LEN chars of the full email text
+    """
+    plain_parts: list[str] = []
+    html_parts: list[str] = []
+
     if msg.is_multipart():
         for part in msg.walk():
             ct = part.get_content_type()
+            payload = part.get_payload(decode=True)
+            if not payload:
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            text = payload.decode(charset, errors="replace")
             if ct == "text/plain":
-                payload = part.get_payload(decode=True)
-                if payload:
-                    charset = part.get_content_charset() or "utf-8"
-                    body = payload.decode(charset, errors="replace")
-                    break
+                plain_parts.append(text)
+            elif ct == "text/html":
+                html_parts.append(text)
     else:
         payload = msg.get_payload(decode=True)
         if payload:
             charset = msg.get_content_charset() or "utf-8"
-            body = payload.decode(charset, errors="replace")
+            text = payload.decode(charset, errors="replace")
+            if msg.get_content_type() == "text/html":
+                html_parts.append(text)
+            else:
+                plain_parts.append(text)
 
-    # Strip HTML tags for snippet
-    import re
-    body = re.sub(r"<[^>]+>", "", body)
-    body = re.sub(r"\s+", " ", body).strip()
-    return body[:max_len] + ("..." if len(body) > max_len else "")
+    # Prefer plain text, fall back to HTML with tag stripping
+    if plain_parts:
+        body = "\n".join(plain_parts)
+    elif html_parts:
+        body = _strip_html("\n".join(html_parts))
+    else:
+        return "", ""
+
+    body = _strip_html(body)
+
+    # Extract snippet: skip short greeting lines, find first substantive paragraph
+    lines = body.split("\n")
+    snippet_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if len(stripped) < 10:
+            continue
+        # Skip common greeting/boilerplate patterns
+        if re.match(r"^(hi|hello|dear|hey|good\s+(morning|afternoon|evening))\b", stripped, re.IGNORECASE):
+            continue
+        snippet_lines.append(stripped)
+        if len(" ".join(snippet_lines)) > 300:
+            break
+
+    snippet = " ".join(snippet_lines)[:300]
+    full_body = body[:MAX_BODY_LEN]
+
+    return snippet, full_body
 
 
 def _parse_email(msg_data: bytes, uid: str) -> EmailMessage:
@@ -99,7 +146,7 @@ def _parse_email(msg_data: bytes, uid: str) -> EmailMessage:
     subject = _decode_header(msg.get("Subject"))
     sender = _decode_header(msg.get("From"))
     date_str = msg.get("Date", "")
-    snippet = _extract_snippet(msg)
+    snippet, body = _extract_body(msg)
 
     # Check if unread (has \Seen flag)
     is_unread = b"\\Seen" not in msg_data if isinstance(msg_data, bytes) else True
@@ -110,6 +157,7 @@ def _parse_email(msg_data: bytes, uid: str) -> EmailMessage:
         sender=sender,
         date=date_str,
         snippet=snippet,
+        body=body,
         is_unread=is_unread,
     )
 

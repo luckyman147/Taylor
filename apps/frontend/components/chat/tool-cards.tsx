@@ -535,6 +535,7 @@ interface EmailItem {
   sender: string;
   date: string;
   snippet: string;
+  body: string;
 }
 
 function EmailListCard({ data }: { data: Record<string, unknown> }) {
