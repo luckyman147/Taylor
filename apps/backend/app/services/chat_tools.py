@@ -42,8 +42,10 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "compare_resumes": ToolSpec(
         name="compare_resumes",
-        description="Compare all uploaded resumes side by side: titles, master status, processing status, sections, skills count, and word count.",
-        params={},
+        description="Compare uploaded resumes side by side. Returns actual content (skills, work experience, education, summary) for meaningful comparison. Pass optional keywords to filter by title.",
+        params={
+            "keywords": {"type": "str", "required": False, "default": "", "max_len": 200},
+        },
         write=False,
     ),
     "get_ats_audit": ToolSpec(
@@ -380,11 +382,22 @@ async def _get_career_summary() -> dict[str, Any]:
     }
 
 
-async def _compare_resumes() -> dict[str, Any]:
-    """Compare all uploaded resumes side by side."""
+async def _compare_resumes(keywords: str = "") -> dict[str, Any]:
+    """Compare uploaded resumes side by side with actual content."""
     resumes = await db.list_resumes()
     if not resumes:
         return {"resumes": [], "hint": "No resumes uploaded yet."}
+
+    # Filter by keywords if provided (match against title or filename)
+    if keywords:
+        kw = keywords.lower()
+        resumes = [
+            r for r in resumes
+            if kw in (r.get("title") or "").lower()
+            or kw in (r.get("filename") or "").lower()
+        ]
+        if not resumes:
+            return {"resumes": [], "hint": f"No resumes matched '{keywords}'."}
 
     result = []
     for r in resumes:
@@ -394,34 +407,64 @@ async def _compare_resumes() -> dict[str, Any]:
         education = data.get("education", [])
         projects = data.get("personalProjects", [])
         summary = data.get("summary", "")
-        full_text = json.dumps(data, ensure_ascii=False)
-        word_count = len(full_text.split())
+        personal_info = data.get("personalInfo", {})
 
-        sections = []
-        if data.get("personalInfo"):
-            sections.append("personalInfo")
-        if summary:
-            sections.append("summary")
-        if work:
-            sections.append("workExperience")
-        if education:
-            sections.append("education")
-        if projects:
-            sections.append("personalProjects")
-        if skills:
-            sections.append("skills")
+        # Build actual content, not just counts
+        skills_list = []
+        for s in skills:
+            if isinstance(s, dict):
+                skills_list.append(s.get("name", str(s)))
+            else:
+                skills_list.append(str(s))
+
+        work_entries = []
+        for w in work[:3]:  # Top 3 work entries
+            if isinstance(w, dict):
+                entry = {
+                    "title": w.get("title", ""),
+                    "company": w.get("company", ""),
+                    "duration": w.get("duration", ""),
+                }
+                bullets = w.get("bullets", w.get("description", []))
+                if isinstance(bullets, list):
+                    entry["bullets"] = [b.get("text", str(b)) if isinstance(b, dict) else str(b) for b in bullets[:3]]
+                elif isinstance(bullets, str):
+                    entry["bullets"] = [bullets[:200]]
+                work_entries.append(entry)
+
+        education_entries = []
+        for e in education[:2]:
+            if isinstance(e, dict):
+                education_entries.append({
+                    "degree": e.get("degree", ""),
+                    "school": e.get("school", e.get("institution", "")),
+                    "year": e.get("year", e.get("dates", "")),
+                })
+
+        project_entries = []
+        for p in projects[:3]:
+            if isinstance(p, dict):
+                project_entries.append({
+                    "name": p.get("name", p.get("title", "")),
+                    "description": (p.get("description", "") or "")[:150],
+                })
 
         result.append({
             "resume_id": r.get("resume_id"),
             "title": r.get("title") or r.get("filename") or "Untitled",
             "is_master": r.get("is_master", False),
-            "processing_status": r.get("processing_status", "unknown"),
-            "sections": sections,
+            "personal_info": {
+                "name": personal_info.get("name", ""),
+                "email": personal_info.get("email", ""),
+            } if personal_info else {},
+            "summary": summary[:300] if summary else "",
+            "skills": skills_list[:20],
+            "work_experience": work_entries,
+            "education": education_entries,
+            "projects": project_entries,
             "skills_count": len(skills),
             "work_entries": len(work),
-            "education_entries": len(education),
-            "project_entries": len(projects),
-            "word_count": word_count,
+            "word_count": len(json.dumps(data, ensure_ascii=False).split()),
         })
 
     return {"resumes": result, "total": len(result)}
