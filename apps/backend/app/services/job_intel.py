@@ -710,8 +710,18 @@ async def analyze_job(
     Loads the job and resume, computes match, DNA comparison, red flags, and
     produces a verdict with LLM-grounded prose.
     """
-    # 1. Load job
+    # 1. Load job (regular or scraped)
     job = await db.get_job(job_id)
+    if not job:
+        scraped = await db.get_scraped_job(job_id)
+        if scraped:
+            job = {
+                "job_id": scraped["job_id"],
+                "title": scraped.get("title", ""),
+                "company": scraped.get("company", ""),
+                "content": scraped.get("description") or "",
+                "metadata_json": {},
+            }
     if not job:
         raise ValueError(f"Job {job_id} not found")
 

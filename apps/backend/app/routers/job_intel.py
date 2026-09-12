@@ -114,5 +114,8 @@ async def should_apply(
         result = await job_intel.analyze_job(job_id, master_resume_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("should_apply failed for job %s: %s", job_id, e)
+        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
 
     return ShouldApplyResponse(**result)

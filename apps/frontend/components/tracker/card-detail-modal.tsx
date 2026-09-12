@@ -112,8 +112,9 @@ export function CardDetailModal({
     try {
       const result = await fetchShouldApply(detail.job_id);
       setJobAnalysis(result);
-    } catch {
-      setAnalyzeError(t('common.error'));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t('common.error');
+      setAnalyzeError(msg);
     } finally {
       setAnalyzing(false);
     }
