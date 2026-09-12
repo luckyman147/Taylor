@@ -265,6 +265,33 @@ async def generate_answer(state: TaylorState) -> dict[str, Any]:
                     sources.append({"url": url, "title": f"{title} - {company}"})
                     raw_data_blocks.append(f"{title} at {company} ({location}): {url}")
 
+        elif isinstance(result, dict) and "resumes" in result:
+            # compare_resumes result — serialize full resume data for LLM
+            import json as _json
+            for resume in result.get("resumes", []):
+                title = resume.get("title", "Untitled")
+                raw_data_blocks.append(_json.dumps(resume, ensure_ascii=False, default=str))
+
+        elif isinstance(result, dict) and "summary" in result:
+            # get_career_summary result
+            import json as _json
+            raw_data_blocks.append(_json.dumps(result, ensure_ascii=False, default=str))
+
+        elif isinstance(result, dict) and "audit" in result:
+            # get_ats_audit result
+            import json as _json
+            raw_data_blocks.append(_json.dumps(result, ensure_ascii=False, default=str))
+
+        elif isinstance(result, dict) and ("applications" in result or "total" in result):
+            # get_applications or get_funnel_stats result
+            import json as _json
+            raw_data_blocks.append(_json.dumps(result, ensure_ascii=False, default=str))
+
+        elif isinstance(result, dict):
+            # Fallback: serialize any dict result
+            import json as _json
+            raw_data_blocks.append(_json.dumps(result, ensure_ascii=False, default=str))
+
     if not raw_data_blocks:
         return {
             "final_answer": "I found some data but couldn't extract useful information from it.",

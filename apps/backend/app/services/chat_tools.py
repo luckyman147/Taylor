@@ -291,7 +291,7 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         if name == "get_career_summary":
             return await _get_career_summary()
         elif name == "compare_resumes":
-            return await _compare_resumes()
+            return await _compare_resumes(args.get("keywords", ""))
         elif name == "get_ats_audit":
             return await _get_ats_audit(args.get("resume_id"))
         elif name == "get_funnel_stats":

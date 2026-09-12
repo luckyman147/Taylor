@@ -1147,7 +1147,7 @@ async def cancel_pending(token: str) -> dict[str, Any]:
 
 # Complex query patterns that benefit from the autonomous agent loop
 _COMPLEX_PATTERNS = [
-    "compare", "analysis", "analyze", "evaluate", "assess",
+    "analysis", "analyze", "evaluate", "assess",
     "research", "discover", "explore",
     "market position", "industry trends",
     "what skills", "what companies", "what roles",
