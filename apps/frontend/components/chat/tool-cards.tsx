@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, FileCode, File, Eye, Check, TrendingUp, Target, Award, Bookmark, ExternalLink, Loader2, X } from 'lucide-react';
+import { FileText, FileCode, File, Eye, Check, TrendingUp, Target, Award, Bookmark, ExternalLink, Loader2, X, Mail } from 'lucide-react';
 import { saveJobFromChat } from '@/lib/api/chat';
 import { JobSearchForm } from './job-search-form';
 import type { ToolCard } from '@/lib/api/chat';
@@ -26,6 +26,7 @@ function formatCardTitle(kind: string): string {
     job_search_form: 'Find Jobs',
     info: 'Career Summary',
     sources: 'Sources',
+    email_list: 'Emails',
   };
   return titles[kind] || 'Data';
 }
@@ -528,6 +529,53 @@ function GenericCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+interface EmailItem {
+  uid: string;
+  subject: string;
+  sender: string;
+  date: string;
+  snippet: string;
+}
+
+function EmailListCard({ data }: { data: Record<string, unknown> }) {
+  const emails = (data.emails as EmailItem[]) || [];
+  const total = (data.total as number) || 0;
+  const hint = data.hint as string | undefined;
+
+  if (emails.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-ink-soft">
+        <Mail className="h-4 w-4" />
+        <span>{hint || 'No emails found.'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-ink-muted">{total} email{total !== 1 ? 's' : ''}</div>
+      {emails.map((email) => (
+        <div
+          key={email.uid}
+          className="rounded-lg border border-[#e6e3dc] bg-white p-3 hover:bg-[#f5f3f0] transition-colors"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Mail className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+              <span className="text-sm font-medium truncate">{email.subject || '(no subject)'}</span>
+            </div>
+            <span className="text-[10px] text-ink-muted shrink-0">{email.date}</span>
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">From: {email.sender}</div>
+          {email.snippet && (
+            <div className="mt-1.5 text-xs text-ink-soft line-clamp-2">{email.snippet}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function isMarketPositionData(data: Record<string, unknown>): boolean {
   const skills = data.skills;
   const domains = data.domains;
@@ -542,6 +590,7 @@ function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch }: { kin
   if (kind === 'file') return <FileCard data={data} onView={onViewFile} />;
   if (kind === 'info') return <CareerSummaryCard data={data} />;
   if (kind === 'job_list') return <JobListCard data={data} />;
+  if (kind === 'email_list') return <EmailListCard data={data} />;
   if (kind === 'job_search_form') return <JobSearchForm onSubmit={(q) => onJobSearch?.(q)} />;
   if (kind === 'sources') return <SourcesCard data={data} />;
   if (kind === 'stats' && isMarketPositionData(data)) return <MarketPositionCard data={data} />;

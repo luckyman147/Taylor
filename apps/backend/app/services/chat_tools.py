@@ -209,6 +209,23 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         },
         write=False,
     ),
+    "fetch_emails": ToolSpec(
+        name="fetch_emails",
+        description="Fetch unread emails from Gmail inbox. Returns sender, subject, date, and snippet for each email.",
+        params={
+            "max_results": {"type": "int", "required": False, "default": 10},
+        },
+        write=False,
+    ),
+    "search_emails": ToolSpec(
+        name="search_emails",
+        description="Search Gmail using IMAP syntax. Query examples: FROM \"hr@company.com\", SUBJECT \"interview\", FROM \"linkedin\" SUBJECT \"job\", SINCE \"01-Sep-2026\".",
+        params={
+            "query": {"type": "str", "required": True, "max_len": 200},
+            "max_results": {"type": "int", "required": False, "default": 10},
+        },
+        write=False,
+    ),
 }
 
 
@@ -323,6 +340,10 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return await _list_mcp_sources()
         elif name == "web_search":
             return await _web_search(args["query"], args.get("num_results", 8))
+        elif name == "fetch_emails":
+            return await _fetch_emails(args.get("max_results", 10))
+        elif name == "search_emails":
+            return await _search_emails(args["query"], args.get("max_results", 10))
         else:
             return {"error": f"Unknown read tool: {name}"}
     except Exception as e:
@@ -915,6 +936,53 @@ async def _web_search(query: str, num_results: int = 8) -> dict[str, Any]:
         "query": query,
         "total_results": len(results),
         "results": results,
+    }
+
+
+async def _fetch_emails(max_results: int = 10) -> dict[str, Any]:
+    """Fetch unread emails from Gmail inbox."""
+    from app.services.gmail import get_unread_emails
+
+    emails = await get_unread_emails(max_results)
+    if not emails:
+        return {"emails": [], "total": 0, "hint": "No unread emails."}
+
+    return {
+        "emails": [
+            {
+                "uid": e.uid,
+                "subject": e.subject,
+                "sender": e.sender,
+                "date": e.date,
+                "snippet": e.snippet,
+            }
+            for e in emails
+        ],
+        "total": len(emails),
+    }
+
+
+async def _search_emails(query: str, max_results: int = 10) -> dict[str, Any]:
+    """Search Gmail using IMAP search syntax."""
+    from app.services.gmail import search_emails
+
+    emails = await search_emails(query, max_results)
+    if not emails:
+        return {"emails": [], "total": 0, "hint": f"No emails matched '{query}'."}
+
+    return {
+        "emails": [
+            {
+                "uid": e.uid,
+                "subject": e.subject,
+                "sender": e.sender,
+                "date": e.date,
+                "snippet": e.snippet,
+            }
+            for e in emails
+        ],
+        "total": len(emails),
+        "query": query,
     }
 
 

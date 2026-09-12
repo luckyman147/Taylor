@@ -1366,5 +1366,7 @@ def _tool_to_card_kind(tool_name: str) -> str:
         "get_contacts": "info",
         "get_companies": "info",
         "get_skill_suggestions": "info",
+        "fetch_emails": "email_list",
+        "search_emails": "email_list",
     }
     return mapping.get(tool_name, "info")
