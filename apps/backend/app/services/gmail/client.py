@@ -72,10 +72,26 @@ def _decode_header(raw: str | None) -> str:
 
 
 def _strip_html(text: str) -> str:
-    """Strip HTML tags and collapse whitespace."""
+    """Strip HTML tags, CSS, entities, and collapse whitespace."""
+    import html
+    # Remove <style> blocks and their content
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # Remove <script> blocks
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # Remove CSS @font-face and media queries
+    text = re.sub(r"@font-face\s*\{[^}]*\}", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"@media[^{]*\{.*?\}\s*\}", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # Remove HTML tags
     text = re.sub(r"<[^>]+>", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+    # Decode HTML entities (&nbsp; &zwnj; etc.)
+    text = html.unescape(text)
+    # Remove zero-width joiners and non-breaking spaces
+    text = re.sub(r"[\u200b\u200c\u200d\ufeff]", "", text)
+    text = text.replace("\u00a0", " ")  # nbsp -> space
+    # Collapse whitespace
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s*\n", "\n", text)
+    return text.strip()
 
 
 def _extract_body(msg: email.message.Message) -> tuple[str, str]:
