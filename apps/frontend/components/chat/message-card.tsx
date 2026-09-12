@@ -57,6 +57,11 @@ export function MessageCard({
   onSelectResume,
   onViewFile,
   onJobSearch,
+  onViewEmail,
+  onAddContact,
+  onAddCompany,
+  onSaveJob,
+  onTailorResume,
 }: MessageCardProps) {
   const isUser = role === 'user';
 
