@@ -100,14 +100,14 @@ async def create_application(request: ManualApplicationCreate) -> ApplicationRes
 
 @router.post("/save-job", response_model=ApplicationResponse)
 async def save_job_from_chat(request: SaveJobFromChatRequest) -> ApplicationResponse:
-    """Save a job listing from chat directly to the tracker (no LLM call, no job scraper entry)."""
-    from uuid import uuid4
-    fake_job_id = f"chat-{uuid4()}"
+    """Save a job listing from chat directly to the tracker."""
     job_description = f"{request.title} at {request.company}\nLocation: {request.location}\nURL: {request.url}"
 
     try:
+        # Create a real job record so job intel endpoints can find it
+        job = await db.create_job(content=job_description, resume_id=request.resume_id or "")
         application = await db.create_application(
-            job_id=fake_job_id,
+            job_id=job["job_id"],
             resume_id=request.resume_id or "",
             status="saved",
             company=request.company,

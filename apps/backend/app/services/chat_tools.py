@@ -1075,9 +1075,11 @@ async def _create_application(args: dict[str, Any]) -> dict[str, Any]:
     if not resume_id:
         return {"error": "No resume found. Please upload a resume first."}
 
+    # Create a real job record so job intel endpoints can find it
+    job = await db.create_job(content=job_desc, resume_id=resume_id)
     # Create application via DB
     app_result = await db.create_application(
-        job_id=f"chat_{hash(job_desc) & 0xFFFFFFFF:08x}",
+        job_id=job["job_id"],
         resume_id=resume_id,
         status=status,
         company=company,
