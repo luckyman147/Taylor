@@ -40,6 +40,7 @@ interface MessageListProps {
   onAddCompany?: (data: { name: string; website?: string }) => void;
   onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
+  onClarify?: (intent: string) => void;
   streamEvents?: AgentEvent[];
   streamStatus?: 'running' | 'paused' | 'completed';
 }
@@ -60,6 +61,7 @@ export function MessageList({
   onAddCompany,
   onSaveJob,
   onTailorResume,
+  onClarify,
   streamEvents = [],
   streamStatus = 'completed',
 }: MessageListProps) {
@@ -99,6 +101,7 @@ export function MessageList({
             onAddCompany={onAddCompany}
             onSaveJob={onSaveJob}
             onTailorResume={onTailorResume}
+            onClarify={onClarify}
           />
         ))}
 

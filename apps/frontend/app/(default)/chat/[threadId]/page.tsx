@@ -382,6 +382,20 @@ export default function ChatThreadRoute() {
     [send],
   );
 
+  const handleClarify = useCallback(
+    (intent: string) => {
+      const intentMessages: Record<string, string> = {
+        job_search: 'Search for jobs matching my profile',
+        resume_audit: 'Audit my resume',
+        profile: 'Show my career profile',
+        market: 'Show market position',
+        skills: 'Show skill suggestions',
+      };
+      void send(intentMessages[intent] || intent);
+    },
+    [send],
+  );
+
   const handleSelectResume = useCallback(
     (resumeId: string) => {
       void send(`audit resume ${resumeId}`);
@@ -488,6 +502,7 @@ export default function ChatThreadRoute() {
                 onAddCompany={handleAddCompany}
                 onSaveJob={handleSaveJob}
                 onTailorResume={handleTailorResume}
+                onClarify={handleClarify}
                 streamEvents={streamEvents}
                 streamStatus={streamStatus}
               />

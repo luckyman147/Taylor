@@ -37,6 +37,7 @@ interface MessageCardProps {
   onAddCompany?: (data: { name: string; website?: string }) => void;
   onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
+  onClarify?: (intent: string) => void;
 }
 
 export function MessageCard({
@@ -62,6 +63,7 @@ export function MessageCard({
   onAddCompany,
   onSaveJob,
   onTailorResume,
+  onClarify,
 }: MessageCardProps) {
   const isUser = role === 'user';
 
@@ -115,7 +117,7 @@ export function MessageCard({
 
         {/* Tool result cards */}
         {cards.length > 0 && (
-          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />
+          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} onClarify={onClarify} />
         )}
 
         {/* Pending action confirmation */}

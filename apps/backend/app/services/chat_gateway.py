@@ -149,6 +149,65 @@ _CONTEXTUAL_FOLLOWUP_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+# General information queries that should go to the planner (not clarification)
+_GENERAL_QUERY_PATTERNS = re.compile(
+    r"\b("
+    r"what\s+(is|are|was|were|do|does|did|has|have|had|should|would|could|will|can|'s|s)\b|"
+    r"how\s+(do|does|did|is|are|was|were|can|could|should|would|much|many)\b|"
+    r"why\s+(do|does|did|is|are|was|were|can|could|should|would)\b|"
+    r"when\s+(do|does|did|is|are|was|were|can|could|should|would|did)\b|"
+    r"where\s+(do|does|did|is|are|was|were|can|could|should|would)\b|"
+    r"who\s+(is|are|was|were|do|does|did|has|have|had)\b|"
+    r"tell\s+me\s+about\b|"
+    r"explain\b|"
+    r"describe\b|"
+    r"compare\b|"
+    r"list\b|"
+    r"show\s+me\b|"
+    r"latest\b|"
+    r"recent\b|"
+    r"news\b|"
+    r"happening\b|"
+    r"trending\b|"
+    r"trend\b|"
+    r"best\b|"
+    r"top\b|"
+    r"difference\s+between\b|"
+    r"pros?\s+and\s+cons?\b|"
+    r"review\b|"
+    r"tutorial\b|"
+    r"guide\b|"
+    r"example\b|"
+    r"sample\b|"
+    r"code\b|"
+    r"implement\b|"
+    r"build\b|"
+    r"create\b|"
+    r"write\b|"
+    r"generate\b|"
+    r"design\b|"
+    r"debug\b|"
+    r"fix\b|"
+    r"error\b|"
+    r"issue\b|"
+    r"problem\b|"
+    r"solution\b|"
+    r"approach\b|"
+    r"recommend\b|"
+    r"suggest\b|"
+    r"advice\b|"
+    r"opinion\b|"
+    r"think\b|"
+    r"feel\b|"
+    r"prefer\b|"
+    r"choose\b|"
+    r"pick\b|"
+    r"select\b|"
+    r"decide\b"
+    r")\b",
+    re.IGNORECASE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Gateway decision
@@ -309,6 +368,11 @@ async def classify_intent(user_message: str, resume_id: str | None = None) -> Ga
             clarification_reason="vague_pattern",
             suggested_intents=["job_search", "resume_audit", "profile", "market", "skills"],
         )
+
+    # General information query — has question words or topic keywords, let planner handle it
+    if _GENERAL_QUERY_PATTERNS.search(msg):
+        logger.info("Gateway: general query detected, passing to planner")
+        return GatewayDecision(intent=ChatIntent.GENERAL, confidence=0.7)
 
     # Pure conversational / social messages — no clarification needed, just answer
     _CONVERSATIONAL = re.compile(

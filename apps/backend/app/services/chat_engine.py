@@ -151,10 +151,19 @@ async def _handle_clarification(
             "I'm not sure which one you mean. Could you pick from these?\n\n"
             + options_text
         )
-        await db.add_chat_message(thread_id, "assistant", assistant_content)
+        clarify_card = {
+            "kind": "clarify",
+            "data": {
+                "options": [
+                    {"label": _INTENT_LABELS.get(intent, intent), "intent": intent}
+                    for intent in state.clarification_options
+                ],
+            },
+        }
+        await db.add_chat_message(thread_id, "assistant", assistant_content, envelope={"cards": [clarify_card]})
         result = {
             "assistant_content": assistant_content,
-            "cards": [],
+            "cards": [clarify_card],
             "actions": [],
             "stats": None,
             "pending_action": None,
@@ -179,10 +188,19 @@ async def _handle_clarification(
         "I can help with several career tasks. What would you like to do?\n\n"
         + options_text
     )
-    await db.add_chat_message(thread_id, "assistant", assistant_content)
+    clarify_card = {
+        "kind": "clarify",
+        "data": {
+            "options": [
+                {"label": label, "intent": intent}
+                for intent, label in zip(suggested, options)
+            ],
+        },
+    }
+    await db.add_chat_message(thread_id, "assistant", assistant_content, envelope={"cards": [clarify_card]})
     result = {
         "assistant_content": assistant_content,
-        "cards": [],
+        "cards": [clarify_card],
         "actions": [],
         "stats": None,
         "pending_action": None,

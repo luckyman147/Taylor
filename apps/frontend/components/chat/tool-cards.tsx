@@ -17,6 +17,7 @@ interface ToolCardsProps {
   onAddCompany?: (data: { name: string; website?: string }) => void;
   onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
+  onClarify?: (intent: string) => void;
 }
 
 function formatCardTitle(kind: string): string {
@@ -32,6 +33,7 @@ function formatCardTitle(kind: string): string {
     info: 'Career Summary',
     sources: 'Sources',
     email_list: 'Emails',
+    clarify: 'What would you like to do?',
   };
   return titles[kind] || 'Data';
 }
@@ -458,6 +460,35 @@ function JobListCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+function ClarifyCard({ data, onClarify }: { data: Record<string, unknown>; onClarify?: (intent: string) => void }) {
+  const options = (data.options || []) as { label: string; intent: string }[];
+  if (options.length === 0) return null;
+
+  const icons: Record<string, string> = {
+    job_search: '🔍',
+    resume_audit: '📄',
+    profile: '👤',
+    market: '📊',
+    skills: '🛠',
+    career_advice: '💡',
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt, i) => (
+        <button
+          key={i}
+          onClick={() => onClarify?.(opt.intent)}
+          className="group flex items-center gap-2 rounded-lg border border-[#e6e3dc] bg-white px-4 py-2.5 text-[13px] font-medium text-ink transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary active:scale-[0.98]"
+        >
+          <span className="text-base">{icons[opt.intent] || '✦'}</span>
+          <span>{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SourcesCard({ data }: { data: Record<string, unknown> }) {
   const sources = (data.sources || []) as {
     url: string;
@@ -707,7 +738,7 @@ function isMarketPositionData(data: Record<string, unknown>): boolean {
   return first && 'skill' in first && 'percentile' in first;
 }
 
-function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, resumeId: string) => void; onJobSearch?: (query: string) => void; onViewEmail?: (email: EmailItem) => void; onAddContact?: (data: { name: string; email?: string; company?: string }) => void; onAddCompany?: (data: { name: string; website?: string }) => void; onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void; onTailorResume?: (data: { job_description: string; company: string; role: string }) => void }) {
+function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume, onClarify }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, resumeId: string) => void; onJobSearch?: (query: string) => void; onViewEmail?: (email: EmailItem) => void; onAddContact?: (data: { name: string; email?: string; company?: string }) => void; onAddCompany?: (data: { name: string; website?: string }) => void; onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void; onTailorResume?: (data: { job_description: string; company: string; role: string }) => void; onClarify?: (intent: string) => void }) {
   if (data.needs_selection) return <ResumeSelectionCard data={data} onSelect={onSelectResume} />;
   if (kind === 'file') return <FileCard data={data} onView={onViewFile} />;
   if (kind === 'info') return <CareerSummaryCard data={data} />;
@@ -715,11 +746,12 @@ function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch, onViewE
   if (kind === 'email_list') return <EmailListCard data={data} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />;
   if (kind === 'job_search_form') return <JobSearchForm onSubmit={(q) => onJobSearch?.(q)} />;
   if (kind === 'sources') return <SourcesCard data={data} />;
+  if (kind === 'clarify') return <ClarifyCard data={data} onClarify={onClarify} />;
   if (kind === 'stats' && isMarketPositionData(data)) return <MarketPositionCard data={data} />;
   return <GenericCard data={data} />;
 }
 
-export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume }: ToolCardsProps) {
+export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume, onClarify }: ToolCardsProps) {
   if (cards.length === 0) return null;
 
   return (
@@ -732,7 +764,7 @@ export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch, onVi
           <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
             {formatCardTitle(card.kind)}
           </div>
-          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />
+          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} onClarify={onClarify} />
         </div>
       ))}
     </div>
