@@ -133,6 +133,8 @@ async def _handle_clarification(
         if resolved:
             state.pending_clarification = False
             state.clarification_options = []
+            # Save the user's clarification response
+            await db.add_chat_message(thread_id, "user", user_message)
             # Route to the resolved intent by re-classifying with more context
             from app.services.chat_gateway import classify_intent as _classify
             new_decision = await _classify(resolved)
@@ -143,14 +145,7 @@ async def _handle_clarification(
             gateway.needs_clarification = False
             return None  # Signal to continue normal routing
         # User response didn't resolve — still ambiguous
-        options_text = "\n".join(
-            f"  {i+1}. {label}"
-            for i, label in enumerate(state.clarification_options)
-        )
-        assistant_content = (
-            "I'm not sure which one you mean. Could you pick from these?\n\n"
-            + options_text
-        )
+        assistant_content = "I'm not sure which one you mean. Could you pick from these?"
         clarify_card = {
             "kind": "clarify",
             "data": {
@@ -180,14 +175,7 @@ async def _handle_clarification(
     state.pending_clarification = True
     state.clarification_options = suggested
 
-    options_text = "\n".join(
-        f"  {i+1}. {label}"
-        for i, label in enumerate(options)
-    )
-    assistant_content = (
-        "I can help with several career tasks. What would you like to do?\n\n"
-        + options_text
-    )
+    assistant_content = "I can help with several career tasks. What would you like to do?"
     clarify_card = {
         "kind": "clarify",
         "data": {
@@ -241,24 +229,38 @@ def _resolve_clarification_reply(
         if word in msg and idx < len(options):
             return options[idx]
 
-    # Keyword matching against intent labels (most specific first)
+    # Keyword matching against intent labels
+    # Multi-word phrases first (more specific), then single words
+    _PHRASE_MAP = {
+        "search for jobs": "job_search",
+        "find jobs": "job_search",
+        "job search": "job_search",
+        "market position": "market",
+        "salary trends": "market",
+        "skill gap": "skills",
+        "skill suggestions": "skills",
+        "career profile": "profile",
+        "job application": "applications",
+        "application pipeline": "applications",
+    }
     _KEYWORD_MAP = {
-        "job": "job_search",
-        "jobs": "job_search",
-        "search": "job_search",
-        "find": "job_search",
         "resume": "resume_audit",
         "cv": "resume_audit",
         "audit": "resume_audit",
+        "skills": "skills",
+        "skill": "skills",
         "profile": "profile",
         "career": "profile",
         "market": "market",
         "trends": "market",
-        "skills": "skills",
-        "skill": "skills",
+        "applications": "applications",
         "advice": "profile",
         "improve": "resume_audit",
     }
+
+    for phrase, intent in _PHRASE_MAP.items():
+        if phrase in msg:
+            return intent
     for keyword, intent in _KEYWORD_MAP.items():
         if keyword in msg:
             return intent
