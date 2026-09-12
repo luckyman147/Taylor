@@ -651,28 +651,43 @@ async def _run_turn_core(
     plan_title = plan.get("title", "")
 
     # Planner-level clarification fallback (gateway missed it)
+    # BUT: if the gateway said needs_clarification=False, override the planner's clarify
+    # (the user's intent was clear — planner may have been confused)
     if plan.get("intent") == "clarify" and not tool_calls:
-        logger.info("Planner returned clarify intent with %d questions", len(followups))
-        state = _get_conversation_state(thread_id)
-        state.pending_clarification = True
-        state.clarification_options = followups
+        if not gateway.needs_clarification:
+            logger.info("Planner returned clarify but gateway says intent is clear — overriding to query")
+            plan["intent"] = "query"
+        else:
+            logger.info("Planner returned clarify intent with %d questions", len(followups))
+            state = _get_conversation_state(thread_id)
+            state.pending_clarification = True
+            state.clarification_options = followups
 
-        options_text = "\n".join(
-            f"  {i+1}. {q}" for i, q in enumerate(followups)
-        )
-        assistant_content = (
-            "I want to make sure I understand correctly. Could you clarify?\n\n"
-            + options_text
-        )
-        await db.add_chat_message(thread_id, "assistant", assistant_content)
-        result = {
-            "assistant_content": assistant_content,
-            "cards": [],
-            "actions": [],
-            "stats": None,
-            "pending_action": None,
-            "memory_candidates": [],
-            "followups": followups,
+            options_text = "\n".join(
+                f"  {i+1}. {q}" for i, q in enumerate(followups)
+            )
+            assistant_content = (
+                "I want to make sure I understand correctly. Could you clarify?\n\n"
+                + options_text
+            )
+            clarify_card = {
+                "kind": "clarify",
+                "data": {
+                    "options": [
+                        {"label": q, "intent": "general"}
+                        for q in followups
+                    ],
+                },
+            }
+            await db.add_chat_message(thread_id, "assistant", assistant_content, envelope={"cards": [clarify_card]})
+            result = {
+                "assistant_content": assistant_content,
+                "cards": [clarify_card],
+                "actions": [],
+                "stats": None,
+                "pending_action": None,
+                "memory_candidates": [],
+                "followups": followups,
             "sources": [],
         }
         await _emit(TurnCompleteEvent(data=result))

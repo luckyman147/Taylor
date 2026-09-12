@@ -1120,7 +1120,7 @@ TOOL USAGE EXAMPLES:
 
 RULES:
 1. Return ONLY a valid JSON object with these keys:
-   - "intent": "query" (general question), "stat" (wants numbers/stats), "action" (wants to create/update something), or "clarify" (user's request is ambiguous — ask clarifying questions)
+   - "intent": "query" (general question), "stat" (wants numbers/stats), "action" (wants to create/update something), or "clarify" (user's request is truly ambiguous — ask clarifying questions)
    - "tool_calls": list of tool calls as {{"tool": "name", "args": {{...}}}} (empty list ONLY if truly no tool matches or intent="clarify")
    - "narrative": brief plan of how you'll answer
    - "title": short conversation title (3-6 words, e.g. "ATS Resume Audit", "Skill Gap Analysis", "Job Search Strategy")
@@ -1128,14 +1128,14 @@ RULES:
    - "memory_candidates": list of {{"statement": "..."}} for durable preferences the user expressed (empty list if none)
 
 2. When the user asks to search, find, look up, or discover jobs/opportunities: ALWAYS call search_mcp_jobs.
-3. When the user asks about technology trends, news, research, or any non-job topic: ALWAYS call web_search.
+3. When the user asks about technology trends, news, research, comparisons, or any non-career topic: ALWAYS call web_search. Examples: "React vs Vue", "latest Python features", "how does Docker work", "best JavaScript frameworks", "what is machine learning". These are ALL web_search queries — NEVER return clarify for clear technology questions.
 4. When the user asks about emails, inbox, notifications, or messages: ALWAYS call fetch_emails or search_emails.
 5. For READ tools (get_*, search_*, web_search, fetch_emails, search_emails): include them in tool_calls.
 6. For WRITE tools (create_*, update_*): set intent="action", include the tool call, and set "summary" describing what would be written.
 7. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
 8. Never fabricate data. Only use tools that exist in the catalog.
 9. For resume audits: the gateway handles resume selection and returns a selection card. Do not call get_ats_audit.
-10. When the user's request is ambiguous, vague, or could map to multiple tools: set intent="clarify", leave tool_calls empty, and put 2-3 specific clarifying questions in "followups". Do NOT guess — ask. Examples: "help me", "what should I do", "I need advice", single-word queries with no clear intent.
+10. ONLY use "clarify" when the user's message is genuinely vague or could mean many different things. Clear requests — even if they don't match a career tool — should use web_search or be answered directly. NEVER return clarify for: technology comparisons, how-to questions, "what is X", "explain Y", "compare A vs B", or any specific question with a clear intent. ONLY clarify for truly vague messages like "help", "what should I do", "I need advice" with no specific topic.
 
 Return JSON only (no markdown fences):"""
 
