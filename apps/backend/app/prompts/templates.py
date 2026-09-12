@@ -1110,6 +1110,8 @@ TOOL USAGE EXAMPLES:
 - User says "search the latest technologies" → call web_search with query="latest technology trends 2026"
 - User says "what are the trending frameworks" → call web_search with query="trending frameworks 2026"
 - User says "analyze my resume" → call get_ats_audit
+- User says "compare my frontend and backend resumes" → call compare_resumes with keywords="frontend, backend"
+- User says "compare all my resumes" → call compare_resumes
 - User says "how many applications" → call get_applications
 
 RULES:

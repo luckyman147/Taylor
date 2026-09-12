@@ -388,16 +388,22 @@ async def _compare_resumes(keywords: str = "") -> dict[str, Any]:
     if not resumes:
         return {"resumes": [], "hint": "No resumes uploaded yet."}
 
-    # Filter by keywords if provided (match against title or filename)
     if keywords:
-        kw = keywords.lower()
-        resumes = [
-            r for r in resumes
-            if kw in (r.get("title") or "").lower()
-            or kw in (r.get("filename") or "").lower()
-        ]
-        if not resumes:
-            return {"resumes": [], "hint": f"No resumes matched '{keywords}'."}
+        # Parse multiple resume names: "frontend, backend" or "frontend and backend"
+        import re
+        parts = re.split(r'\s*,\s*|\s+and\s+', keywords)
+        parts = [p.strip().lower() for p in parts if p.strip()]
+
+        if parts:
+            # Match each part against resume titles
+            matched = []
+            for r in resumes:
+                title = (r.get("title") or r.get("filename") or "").lower()
+                if any(p in title for p in parts):
+                    matched.append(r)
+            resumes = matched
+            if not resumes:
+                return {"resumes": [], "hint": f"No resumes matched '{keywords}'."}
 
     result = []
     for r in resumes:
