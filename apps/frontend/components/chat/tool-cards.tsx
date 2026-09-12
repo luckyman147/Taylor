@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, FileCode, File, Eye, Check, TrendingUp, Target, Award, Bookmark, ExternalLink, Loader2, X, Mail } from 'lucide-react';
+import { FileText, FileCode, File, Eye, Check, TrendingUp, Target, Award, Bookmark, ExternalLink, Loader2, X, Mail, Building2, Briefcase, MapPin, User, UserPlus } from 'lucide-react';
 import { saveJobFromChat } from '@/lib/api/chat';
 import { JobSearchForm } from './job-search-form';
 import type { ToolCard } from '@/lib/api/chat';
@@ -12,6 +12,11 @@ interface ToolCardsProps {
   onSelectResume?: (id: string) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
   onJobSearch?: (query: string) => void;
+  onViewEmail?: (email: EmailItem) => void;
+  onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
+  onAddCompany?: (data: { name: string; website?: string }) => void;
+  onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
+  onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
 }
 
 function formatCardTitle(kind: string): string {
@@ -529,6 +534,16 @@ function GenericCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+interface EmailEntities {
+  company?: string;
+  contacts?: Array<{ name: string; email?: string }>;
+  job_title?: string;
+  job_description?: string;
+  match_percentage?: string;
+  is_job_alert?: boolean;
+  location?: string;
+}
+
 interface EmailItem {
   uid: string;
   subject: string;
@@ -536,9 +551,19 @@ interface EmailItem {
   date: string;
   snippet: string;
   body: string;
+  entities?: EmailEntities;
 }
 
-function EmailListCard({ data }: { data: Record<string, unknown> }) {
+interface EmailListCardProps {
+  data: Record<string, unknown>;
+  onViewEmail?: (email: EmailItem) => void;
+  onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
+  onAddCompany?: (data: { name: string; website?: string }) => void;
+  onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
+  onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
+}
+
+function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume }: EmailListCardProps) {
   const emails = (data.emails as EmailItem[]) || [];
   const total = (data.total as number) || 0;
   const hint = data.hint as string | undefined;
@@ -553,26 +578,101 @@ function EmailListCard({ data }: { data: Record<string, unknown> }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="text-xs text-ink-muted">{total} email{total !== 1 ? 's' : ''}</div>
-      {emails.map((email) => (
-        <div
-          key={email.uid}
-          className="rounded-lg border border-[#e6e3dc] bg-white p-3 hover:bg-[#f5f3f0] transition-colors"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Mail className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
-              <span className="text-sm font-medium truncate">{email.subject || '(no subject)'}</span>
+      {emails.map((email) => {
+        const entities = email.entities;
+        const hasEntities = entities && (entities.company || entities.contacts?.length || entities.job_title);
+        return (
+          <div
+            key={email.uid}
+            className="rounded-lg border border-[#e6e3dc] bg-white p-3 hover:bg-[#f5f3f0] transition-colors cursor-pointer"
+            onClick={() => onViewEmail?.(email)}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                <span className="text-sm font-medium truncate">{email.subject || '(no subject)'}</span>
+                {entities?.match_percentage && (
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">
+                    {entities.match_percentage} match
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-ink-muted shrink-0">{email.date}</span>
             </div>
-            <span className="text-[10px] text-ink-muted shrink-0">{email.date}</span>
+            <div className="mt-1 text-xs text-ink-soft">From: {email.sender}</div>
+
+            {hasEntities && (
+              <div className="mt-2 space-y-1">
+                {entities.company && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Building2 className="h-3 w-3 text-ink-muted" />
+                    <span className="font-medium">{entities.company}</span>
+                  </div>
+                )}
+                {entities.job_title && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Briefcase className="h-3 w-3 text-ink-muted" />
+                    <span>{entities.job_title}</span>
+                  </div>
+                )}
+                {entities.location && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <MapPin className="h-3 w-3 text-ink-muted" />
+                    <span>{entities.location}</span>
+                  </div>
+                )}
+                {entities.contacts && entities.contacts.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <User className="h-3 w-3 text-ink-muted" />
+                    <span>{entities.contacts.map(c => c.name).join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-2 flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
+              {entities?.contacts && entities.contacts.length > 0 && onAddContact && (
+                <button
+                  onClick={() => onAddContact({ name: entities.contacts![0].name, email: entities.contacts![0].email, company: entities.company })}
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  Add Contact
+                </button>
+              )}
+              {entities?.company && onAddCompany && (
+                <button
+                  onClick={() => onAddCompany({ name: entities.company! })}
+                  className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-1 text-[10px] font-medium text-purple-700 hover:bg-purple-100 transition-colors"
+                >
+                  <Building2 className="h-3 w-3" />
+                  Add Company
+                </button>
+              )}
+              {entities?.job_title && entities?.company && onSaveJob && (
+                <button
+                  onClick={() => onSaveJob({ title: entities.job_title!, company: entities.company!, location: entities.location })}
+                  className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                >
+                  <Bookmark className="h-3 w-3" />
+                  Save Job
+                </button>
+              )}
+              {entities?.job_description && entities?.company && onTailorResume && (
+                <button
+                  onClick={() => onTailorResume({ job_description: entities.job_description!, company: entities.company!, role: entities.job_title || '' })}
+                  className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 transition-colors"
+                >
+                  <FileText className="h-3 w-3" />
+                  Tailor Resume
+                </button>
+              )}
+            </div>
           </div>
-          <div className="mt-1 text-xs text-ink-soft">From: {email.sender}</div>
-          {email.snippet && (
-            <div className="mt-1.5 text-xs text-ink-soft line-clamp-2">{email.snippet}</div>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -586,19 +686,19 @@ function isMarketPositionData(data: Record<string, unknown>): boolean {
   return first && 'skill' in first && 'percentile' in first;
 }
 
-function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, resumeId: string) => void; onJobSearch?: (query: string) => void }) {
+function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, resumeId: string) => void; onJobSearch?: (query: string) => void; onViewEmail?: (email: EmailItem) => void; onAddContact?: (data: { name: string; email?: string; company?: string }) => void; onAddCompany?: (data: { name: string; website?: string }) => void; onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void; onTailorResume?: (data: { job_description: string; company: string; role: string }) => void }) {
   if (data.needs_selection) return <ResumeSelectionCard data={data} onSelect={onSelectResume} />;
   if (kind === 'file') return <FileCard data={data} onView={onViewFile} />;
   if (kind === 'info') return <CareerSummaryCard data={data} />;
   if (kind === 'job_list') return <JobListCard data={data} />;
-  if (kind === 'email_list') return <EmailListCard data={data} />;
+  if (kind === 'email_list') return <EmailListCard data={data} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />;
   if (kind === 'job_search_form') return <JobSearchForm onSubmit={(q) => onJobSearch?.(q)} />;
   if (kind === 'sources') return <SourcesCard data={data} />;
   if (kind === 'stats' && isMarketPositionData(data)) return <MarketPositionCard data={data} />;
   return <GenericCard data={data} />;
 }
 
-export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch }: ToolCardsProps) {
+export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume }: ToolCardsProps) {
   if (cards.length === 0) return null;
 
   return (
@@ -611,7 +711,7 @@ export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch }: To
           <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
             {formatCardTitle(card.kind)}
           </div>
-          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} />
+          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />
         </div>
       ))}
     </div>

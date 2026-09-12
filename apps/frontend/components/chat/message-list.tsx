@@ -35,6 +35,11 @@ interface MessageListProps {
   onSelectResume?: (resumeId: string) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
   onJobSearch?: (query: string) => void;
+  onViewEmail?: (email: any) => void;
+  onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
+  onAddCompany?: (data: { name: string; website?: string }) => void;
+  onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
+  onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
   streamEvents?: AgentEvent[];
   streamStatus?: 'running' | 'paused' | 'completed';
 }
@@ -50,6 +55,11 @@ export function MessageList({
   onSelectResume,
   onViewFile,
   onJobSearch,
+  onViewEmail,
+  onAddContact,
+  onAddCompany,
+  onSaveJob,
+  onTailorResume,
   streamEvents = [],
   streamStatus = 'completed',
 }: MessageListProps) {
@@ -84,6 +94,11 @@ export function MessageList({
             onSelectResume={onSelectResume}
             onViewFile={onViewFile}
             onJobSearch={onJobSearch}
+            onViewEmail={onViewEmail}
+            onAddContact={onAddContact}
+            onAddCompany={onAddCompany}
+            onSaveJob={onSaveJob}
+            onTailorResume={onTailorResume}
           />
         ))}
 

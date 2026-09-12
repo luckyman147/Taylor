@@ -11,6 +11,11 @@ import { ModelBadge } from '@/components/chat/model-badge';
 import { EvalPanel } from '@/components/chat/eval-panel';
 import { AddMCPDialog } from '@/components/chat/add-mcp-dialog';
 import { FileViewerDialog } from '@/components/chat/file-viewer-dialog';
+import { EmailBodyDialog } from '@/components/chat/email-body-dialog';
+import { ContactDialog } from '@/components/chat/contact-dialog';
+import { CompanyDialog } from '@/components/chat/company-dialog';
+import { SaveJobDialog } from '@/components/chat/save-job-dialog';
+import { TailorDialog } from '@/components/chat/tailor-dialog';
 import { StatusTimeline } from '@/components/chat/status-timeline';
 import { useTranslations } from '@/lib/i18n';
 import {
@@ -397,6 +402,33 @@ export default function ChatThreadRoute() {
     [],
   );
 
+  // Email dialog state
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; email: any }>({ open: false, email: null });
+  const [contactDialog, setContactDialog] = useState<{ open: boolean; data: { name: string; email?: string; company?: string } }>({ open: false, data: { name: '' } });
+  const [companyDialog, setCompanyDialog] = useState<{ open: boolean; data: { name: string; website?: string } }>({ open: false, data: { name: '' } });
+  const [saveJobDialog, setSaveJobDialog] = useState<{ open: boolean; data: { title: string; company: string; location?: string; url?: string } }>({ open: false, data: { title: '', company: '' } });
+  const [tailorDialog, setTailorDialog] = useState<{ open: boolean; data: { job_description: string; company: string; role: string } }>({ open: false, data: { job_description: '', company: '', role: '' } });
+
+  const handleViewEmail = useCallback((email: any) => {
+    setEmailDialog({ open: true, email });
+  }, []);
+
+  const handleAddContact = useCallback((data: { name: string; email?: string; company?: string }) => {
+    setContactDialog({ open: true, data });
+  }, []);
+
+  const handleAddCompany = useCallback((data: { name: string; website?: string }) => {
+    setCompanyDialog({ open: true, data });
+  }, []);
+
+  const handleSaveJob = useCallback((data: { title: string; company: string; location?: string; url?: string }) => {
+    setSaveJobDialog({ open: true, data });
+  }, []);
+
+  const handleTailorResume = useCallback((data: { job_description: string; company: string; role: string }) => {
+    setTailorDialog({ open: true, data });
+  }, []);
+
   const isEmpty = messages.length === 0;
 
   return (
@@ -451,6 +483,11 @@ export default function ChatThreadRoute() {
                 onSelectResume={handleSelectResume}
                 onViewFile={handleViewFile}
                 onJobSearch={handleFollowup}
+                onViewEmail={handleViewEmail}
+                onAddContact={handleAddContact}
+                onAddCompany={handleAddCompany}
+                onSaveJob={handleSaveJob}
+                onTailorResume={handleTailorResume}
                 streamEvents={streamEvents}
                 streamStatus={streamStatus}
               />
@@ -619,6 +656,52 @@ export default function ChatThreadRoute() {
         onClose={() => setFileViewer(null)}
         filename={fileViewer?.filename || ''}
         content={fileViewer?.content || ''}
+      />
+
+      {/* Email body dialog */}
+      <EmailBodyDialog
+        isOpen={emailDialog.open}
+        onClose={() => setEmailDialog({ open: false, email: null })}
+        email={emailDialog.email}
+        onAddContact={handleAddContact}
+        onAddCompany={handleAddCompany}
+        onSaveJob={handleSaveJob}
+        onTailorResume={handleTailorResume}
+      />
+
+      {/* Contact dialog */}
+      <ContactDialog
+        isOpen={contactDialog.open}
+        onClose={() => setContactDialog({ open: false, data: { name: '' } })}
+        initialData={contactDialog.data}
+        onCreated={() => {}}
+      />
+
+      {/* Company dialog */}
+      <CompanyDialog
+        isOpen={companyDialog.open}
+        onClose={() => setCompanyDialog({ open: false, data: { name: '' } })}
+        initialData={companyDialog.data}
+        onCreated={() => {}}
+      />
+
+      {/* Save job dialog */}
+      <SaveJobDialog
+        isOpen={saveJobDialog.open}
+        onClose={() => setSaveJobDialog({ open: false, data: { title: '', company: '' } })}
+        initialData={saveJobDialog.data}
+        threadId={threadId}
+        onSaved={() => {}}
+      />
+
+      {/* Tailor resume dialog */}
+      <TailorDialog
+        isOpen={tailorDialog.open}
+        onClose={() => setTailorDialog({ open: false, data: { job_description: '', company: '', role: '' } })}
+        initialData={tailorDialog.data}
+        onTailor={(resumeId, jd, company, role) => {
+          void send(`Tailor resume ${resumeId} for ${role} at ${company}`);
+        }}
       />
 
       {/* MCP add dialog */}

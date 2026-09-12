@@ -32,6 +32,11 @@ interface MessageCardProps {
   onSelectResume?: (resumeId: string) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
   onJobSearch?: (query: string) => void;
+  onViewEmail?: (email: any) => void;
+  onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
+  onAddCompany?: (data: { name: string; website?: string }) => void;
+  onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
+  onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
 }
 
 export function MessageCard({
@@ -105,7 +110,7 @@ export function MessageCard({
 
         {/* Tool result cards */}
         {cards.length > 0 && (
-          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} />
+          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />
         )}
 
         {/* Pending action confirmation */}

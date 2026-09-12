@@ -182,6 +182,17 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         write=True,
         summary_template="Set follow-up for {contact_id} on {follow_up_date}",
     ),
+    "create_company": ToolSpec(
+        name="create_company",
+        description="Add a new company to the tracker.",
+        params={
+            "name": {"type": "str", "required": True, "max_len": 200},
+            "website": {"type": "str", "required": False, "max_len": 500},
+            "industry": {"type": "str", "required": False, "max_len": 200},
+        },
+        write=True,
+        summary_template="Add company: {name}",
+    ),
     "search_mcp_jobs": ToolSpec(
         name="search_mcp_jobs",
         description="Search for jobs across all enabled external sources (LinkedIn, Exa web search, RSS feeds, RemoteOK, Keejob, Tunisian freelance boards). Returns live job listings with title, company, location, and URL.",
@@ -940,52 +951,188 @@ async def _web_search(query: str, num_results: int = 8) -> dict[str, Any]:
 
 
 async def _fetch_emails(max_results: int = 10) -> dict[str, Any]:
-    """Fetch unread emails from Gmail inbox."""
+    """Fetch unread emails from Gmail inbox with entity extraction."""
+    return await _fetch_emails_with_entities(max_results)
+
+
+async def _search_emails(query: str, max_results: int = 10) -> dict[str, Any]:
+    """Search Gmail using IMAP search syntax with entity extraction."""
+    return await _search_emails_with_entities(query, max_results)
+
+
+async def _extract_entities_from_email(body: str, subject: str = "") -> dict[str, Any]:
+    """Use LLM to extract structured entities from email body."""
+    if not body or len(body) < 50:
+        return {"is_job_alert": False}
+
+    from app.llm import complete_json
+
+    prompt = f"""Extract structured data from this email. Return a JSON object.
+
+SUBJECT: {subject}
+
+EMAIL BODY:
+{body[:3000]}
+
+Extract:
+- company: company name (string or null)
+- contacts: list of contacts with name and email (list of objects)
+- job_title: job title if mentioned (string or null)
+- job_description: full job description if present (string or null)
+- match_percentage: match percentage if mentioned (string or null)
+- is_job_alert: true if this is a job alert/notification (boolean)
+- location: job location if mentioned (string or null)
+
+Return JSON only:"""
+
+    try:
+        result = await complete_json(prompt, schema_type="enrichment")
+        return result if isinstance(result, dict) else {"is_job_alert": False}
+    except Exception as e:
+        logger.warning("Entity extraction failed: %s", e)
+        return {"is_job_alert": False}
+
+
+async def _fetch_emails_with_entities(max_results: int = 10) -> dict[str, Any]:
+    """Fetch unread emails with LLM entity extraction."""
     from app.services.gmail import get_unread_emails
 
     emails = await get_unread_emails(max_results)
     if not emails:
         return {"emails": [], "total": 0, "hint": "No unread emails."}
 
-    return {
-        "emails": [
-            {
-                "uid": e.uid,
-                "subject": e.subject,
-                "sender": e.sender,
-                "date": e.date,
-                "snippet": e.snippet,
-                "body": e.body,
-            }
-            for e in emails
-        ],
-        "total": len(emails),
-    }
+    results = []
+    for e in emails:
+        entities = await _extract_entities_from_email(e.body, e.subject)
+        results.append({
+            "uid": e.uid,
+            "subject": e.subject,
+            "sender": e.sender,
+            "date": e.date,
+            "snippet": e.snippet,
+            "body": e.body,
+            "entities": entities,
+        })
+
+    return {"emails": results, "total": len(results)}
 
 
-async def _search_emails(query: str, max_results: int = 10) -> dict[str, Any]:
-    """Search Gmail using IMAP search syntax."""
+async def _search_emails_with_entities(query: str, max_results: int = 10) -> dict[str, Any]:
+    """Search emails with LLM entity extraction."""
     from app.services.gmail import search_emails
 
     emails = await search_emails(query, max_results)
     if not emails:
         return {"emails": [], "total": 0, "hint": f"No emails matched '{query}'."}
 
-    return {
-        "emails": [
-            {
-                "uid": e.uid,
-                "subject": e.subject,
-                "sender": e.sender,
-                "date": e.date,
-                "snippet": e.snippet,
-                "body": e.body,
-            }
-            for e in emails
-        ],
-        "total": len(emails),
-        "query": query,
-    }
+    results = []
+    for e in emails:
+        entities = await _extract_entities_from_email(e.body, e.subject)
+        results.append({
+            "uid": e.uid,
+            "subject": e.subject,
+            "sender": e.sender,
+            "date": e.date,
+            "snippet": e.snippet,
+            "body": e.body,
+            "entities": entities,
+        })
+
+    return {"emails": results, "total": len(results), "query": query}
+
+
+# ---------------------------------------------------------------------------
+# Write tool implementations
+# ---------------------------------------------------------------------------
+
+async def _create_application(args: dict[str, Any]) -> dict[str, Any]:
+    """Create a job application in the tracker."""
+    from app.schemas.applications import ManualApplicationCreate
+
+    job_desc = args.get("job_description", "")
+    company = args.get("company")
+    role = args.get("role")
+    resume_id = args.get("resume_id", "")
+    status = args.get("status", "saved")
+
+    # Get master resume if no resume_id provided
+    if not resume_id:
+        master = await db.get_master_resume()
+        resume_id = master.get("resume_id", "") if master else ""
+
+    if not resume_id:
+        return {"error": "No resume found. Please upload a resume first."}
+
+    # Create application via DB
+    app_result = await db.create_application(
+        job_id=f"chat_{hash(job_desc) & 0xFFFFFFFF:08x}",
+        resume_id=resume_id,
+        status=status,
+        company=company,
+        role=role,
+        notes=job_desc[:500] if job_desc else None,
+    )
+    return {"application": app_result, "message": f"Application created: {role or 'Job'} at {company or 'Unknown'}"}
+
+
+async def _update_application_status(args: dict[str, Any]) -> dict[str, Any]:
+    """Update application status."""
+    app_id = args.get("application_id", "")
+    status = args.get("status", "")
+    if not app_id or not status:
+        return {"error": "application_id and status are required"}
+    result = await db.update_application(app_id, {"status": status})
+    return {"application": result, "message": f"Application updated to {status}"}
+
+
+async def _create_skill(args: dict[str, Any]) -> dict[str, Any]:
+    """Add a skill to the career profile."""
+    name = args.get("name", "")
+    category = args.get("category")
+    if not name:
+        return {"error": "name is required"}
+    result = await db.create_career_skill(name=name, category=category)
+    return {"skill": result, "message": f"Skill added: {name}"}
+
+
+async def _create_contact(args: dict[str, Any]) -> dict[str, Any]:
+    """Add a networking contact."""
+    name = args.get("name", "")
+    company = args.get("company")
+    relationship = args.get("relationship")
+    if not name:
+        return {"error": "name is required"}
+    result = await db.create_contact(
+        name=name,
+        company=company,
+        relationship=relationship,
+    )
+    return {"contact": result, "message": f"Contact added: {name}"}
+
+
+async def _create_followup(args: dict[str, Any]) -> dict[str, Any]:
+    """Set a follow-up date for a contact."""
+    contact_id = args.get("contact_id", "")
+    follow_up_date = args.get("follow_up_date", "")
+    if not contact_id or not follow_up_date:
+        return {"error": "contact_id and follow_up_date are required"}
+    result = await db.update_contact(contact_id, {"follow_up_date": follow_up_date})
+    return {"contact": result, "message": f"Follow-up set for {follow_up_date}"}
+
+
+async def _create_company(args: dict[str, Any]) -> dict[str, Any]:
+    """Add a company to the tracker."""
+    name = args.get("name", "")
+    website = args.get("website")
+    industry = args.get("industry")
+    if not name:
+        return {"error": "name is required"}
+    result = await db.create_company(
+        name=name,
+        website=website,
+        industry=industry,
+    )
+    return {"company": result, "message": f"Company added: {name}"}
 
 
 async def _execute_write_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -1001,6 +1148,8 @@ async def _execute_write_tool(name: str, args: dict[str, Any]) -> dict[str, Any]
             return await _create_contact(args)
         elif name == "create_followup":
             return await _create_followup(args)
+        elif name == "create_company":
+            return await _create_company(args)
         else:
             return {"error": f"Unknown write tool: {name}"}
     except Exception as e:
