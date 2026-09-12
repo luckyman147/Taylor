@@ -61,7 +61,7 @@ class TestConfirmPending:
     @pytest.mark.asyncio
     async def test_confirm_nonexistent_raises(self):
         with pytest.raises(ValueError, match="not found"):
-            await confirm_pending("nonexistent")
+            await confirm_pending("nonexistent", "test-thread")
 
     @pytest.mark.asyncio
     async def test_confirm_expired_raises(self):
@@ -71,7 +71,7 @@ class TestConfirmPending:
         _pending_store[token]["created_at"] = time.time() - 3600
 
         with pytest.raises(ValueError, match="not found"):
-            await confirm_pending(token)
+            await confirm_pending(token, "test-thread")
 
 
 class TestCancelPending:

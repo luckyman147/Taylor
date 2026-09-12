@@ -104,9 +104,9 @@ describe('chat API client', () => {
           { status: 200 },
         ),
       );
-      const result = await confirmAction('abc123');
+      const result = await confirmAction('abc123', 'thread-456');
       const [, init] = fetchMock.mock.calls[0];
-      expect(JSON.parse(init.body)).toEqual({ token: 'abc123' });
+      expect(JSON.parse(init.body)).toEqual({ token: 'abc123', thread_id: 'thread-456' });
       expect(result.ok).toBe(true);
     });
   });

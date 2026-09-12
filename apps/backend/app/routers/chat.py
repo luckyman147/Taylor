@@ -228,7 +228,7 @@ async def send_turn_stream(
 async def confirm_action(request: ConfirmRequest) -> ConfirmResponse:
     """Confirm and execute a pending write action."""
     try:
-        result = await confirm_pending(request.token)
+        result = await confirm_pending(request.token, request.thread_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

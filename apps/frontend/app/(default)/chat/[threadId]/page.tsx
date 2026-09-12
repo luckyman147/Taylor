@@ -278,25 +278,68 @@ export default function ChatThreadRoute() {
 
   const handleConfirm = useCallback(
     async (token: string) => {
+      if (!threadId) return;
       try {
-        const result = await confirmAction(token);
+        const result = await confirmAction(token, threadId);
+
+        // Update message: remove pending action, add result card
         setMessages((prev) => {
           const updated = [...prev];
           const idx = updated.findLastIndex((m) => m.pendingAction);
           if (idx >= 0) {
+            const existingCards = updated[idx].cards || [];
+            const resultCards = result.result_card ? [result.result_card] : [];
             updated[idx] = {
               ...updated[idx],
               pendingAction: null,
               content: `${updated[idx].content}\n\n✅ ${result.message}`,
+              cards: [...existingCards, ...resultCards],
             };
           }
           return updated;
         });
+
+        // Trigger a follow-up AI turn to analyze the results
+        if (result.ok && result.result_card) {
+          setSending(true);
+          setStreamEvents([]);
+          setStreamStatus('running');
+          try {
+            await sendTurnStream(
+              threadId,
+              'Analyze these search results and provide insights.',
+              undefined,
+              {
+                onEvent: (event) => setStreamEvents((prev) => [...prev, event]),
+                onComplete: (resp) => {
+                  const assistantMsg = processResponse(resp);
+                  setMessages((prev) => [...prev, assistantMsg]);
+                  setStreamStatus('completed');
+                },
+                onError: (err) => {
+                  setError(err.message);
+                  setStreamStatus('completed');
+                },
+              },
+            );
+          } catch {
+            setStreamStatus('completed');
+          } finally {
+            setSending(false);
+            inFlight.current = false;
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
+        // Clear pendingAction so ConfirmCard doesn't stay spinner-locked
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.pendingAction ? { ...m, pendingAction: null } : m,
+          ),
+        );
       }
     },
-    [],
+    [threadId, processResponse],
   );
 
   const handleCancel = useCallback(

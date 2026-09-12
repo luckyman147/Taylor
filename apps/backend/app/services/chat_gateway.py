@@ -101,6 +101,13 @@ _SKILLS_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+_CONTEXTUAL_FOLLOWUP_PATTERNS = re.compile(
+    r"\b(best|worst|top|filter|compare|which|from\s+those|of\s+that|of\s+those|"
+    r"from\s+the\s+list|summarize|analyze|rank|sort|of\s+these|from\s+this|"
+    r"tell\s+me\s+more\s+about|pick|choose|select|narrow|refine)\b",
+    re.IGNORECASE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Gateway decision
@@ -117,6 +124,7 @@ class GatewayDecision:
         resumes: list[dict[str, Any]] | None = None,
         preferred_tools: list[str] | None = None,
         confidence: float = 0.0,
+        contextual_follow_up: bool = False,
     ):
         self.intent = intent
         self.resume_id = resume_id
@@ -124,11 +132,13 @@ class GatewayDecision:
         self.resumes = resumes
         self.preferred_tools = preferred_tools or []
         self.confidence = confidence
+        self.contextual_follow_up = contextual_follow_up
 
     def __repr__(self) -> str:
         return (
             f"GatewayDecision(intent={self.intent!r}, resume_id={self.resume_id!r}, "
-            f"needs_selection={self.needs_selection}, confidence={self.confidence})"
+            f"needs_selection={self.needs_selection}, confidence={self.confidence}, "
+            f"contextual_follow_up={self.contextual_follow_up})"
         )
 
 
@@ -171,6 +181,18 @@ async def classify_intent(user_message: str, resume_id: str | None = None) -> Ga
     # Check if this is a resume audit intent
     if _AUDIT_KEYWORDS.search(msg):
         return await _classify_audit_intent()
+
+    # Contextual follow-up — references to previous results (check before job search)
+    if _CONTEXTUAL_FOLLOWUP_PATTERNS.search(msg):
+        # Don't flag if it's also a new job search (e.g., "find the best jobs")
+        is_new_search = bool(_JOB_SEARCH_PATTERNS.search(msg))
+        if not is_new_search:
+            logger.info("Gateway: contextual follow-up detected")
+            return GatewayDecision(
+                intent=ChatIntent.GENERAL,
+                confidence=0.8,
+                contextual_follow_up=True,
+            )
 
     # Job search
     if _JOB_SEARCH_PATTERNS.search(msg):

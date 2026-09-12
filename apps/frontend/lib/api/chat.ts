@@ -339,8 +339,8 @@ export async function sendTurnStream(
 // Confirm / Cancel
 // ---------------------------------------------------------------------------
 
-export async function confirmAction(token: string): Promise<ConfirmResponse> {
-  const res = await apiPost('/chat/confirm', { token }, 60_000);
+export async function confirmAction(token: string, threadId: string): Promise<ConfirmResponse> {
+  const res = await apiPost('/chat/confirm', { token, thread_id: threadId }, 120_000);
   return asJson<ConfirmResponse>(res, 'Failed to confirm action');
 }
 

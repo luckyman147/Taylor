@@ -197,6 +197,7 @@ def _build_conversation_context(messages: list[dict[str, Any]]) -> str:
     skills_mentioned: set[str] = set()
     questions: list[str] = []
     target_roles: set[str] = set()
+    job_results: list[str] = []
 
     seen_resumes: set[str] = set()
 
@@ -241,6 +242,14 @@ def _build_conversation_context(messages: list[dict[str, Any]]) -> str:
                         target_roles.add(str(r))
                 elif isinstance(tr, str):
                     target_roles.add(tr)
+            if kind == "job_list":
+                jobs = data.get("jobs", [])
+                if jobs:
+                    for j in jobs[:10]:
+                        title = j.get("title", "N/A")
+                        company = j.get("company", "N/A")
+                        loc = j.get("location", "")
+                        job_results.append(f"{title} at {company} ({loc})" if loc else f"{title} at {company}")
 
         # Track user questions
         if role == "user":
@@ -249,6 +258,8 @@ def _build_conversation_context(messages: list[dict[str, Any]]) -> str:
 
     # Format compact output
     parts: list[str] = []
+    if job_results:
+        parts.append(f"Previous job search results ({len(job_results)} jobs):\n" + "\n".join(f"  - {s}" for s in job_results))
     if resumes:
         parts.append(f"Resumes: {', '.join(resumes)}")
     if scores:
@@ -303,6 +314,12 @@ async def _run_turn_core(
     # --- Gateway: fast intent classification (no LLM call) ---
     from app.services.chat_gateway import classify_intent
     gateway = await classify_intent(user_message, resume_id=resume_id)
+
+    # --- Contextual follow-up: references to previous results ---
+    if gateway.contextual_follow_up:
+        return await _handle_contextual_follow_up(
+            thread_id, user_message, gateway, _emit, messages, memories,
+        )
 
     # --- Intent-based routing ---
     if gateway.intent == ChatIntent.JOB_SEARCH:
@@ -797,6 +814,125 @@ async def _handle_direct_tool(
     return result
 
 
+# ---------------------------------------------------------------------------
+# Contextual follow-up handler
+# ---------------------------------------------------------------------------
+
+async def _handle_contextual_follow_up(
+    thread_id: str,
+    user_message: str,
+    gateway: Any,
+    _emit: Any,
+    messages: list[dict[str, Any]],
+    memories: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Handle follow-up messages that reference previous results (e.g. 'give me the best of that list').
+
+    Loads the previous job results from conversation history and passes them
+    to the LLM for analysis without re-fetching.
+    """
+    from app.config_cache import get_content_language, get_language_name
+    from app.llm import complete
+    from app.schemas.agent_events import (
+        AgentStatusEvent, AgentStatus, TurnCompleteEvent,
+    )
+
+    language = get_content_language()
+    output_language = get_language_name(language)
+
+    await _emit(AgentStatusEvent(
+        status=AgentStatus.THINKING,
+        message="Analyzing previous results...",
+    ))
+
+    # Find the last assistant message with job_list cards
+    previous_jobs = []
+    for m in reversed(messages):
+        if m.get("role") != "assistant":
+            continue
+        envelope = m.get("envelope") or {}
+        for card in envelope.get("cards", []):
+            if card.get("kind") == "job_list":
+                data = card.get("data", {})
+                previous_jobs = data.get("jobs", [])
+                break
+        if previous_jobs:
+            break
+
+    # Build context with previous results
+    jobs_context = ""
+    if previous_jobs:
+        job_lines = []
+        for i, j in enumerate(previous_jobs[:15], 1):
+            title = j.get("title", "N/A")
+            company = j.get("company", "N/A")
+            location = j.get("location", "")
+            url = j.get("url", "")
+            source = j.get("source", "")
+            snippet = j.get("description_snippet", "")
+            line = f"{i}. **{title}** at {company}"
+            if location:
+                line += f" ({location})"
+            if source:
+                line += f" [{source}]"
+            if snippet:
+                line += f"\n   {snippet[:150]}"
+            if url:
+                line += f"\n   {url}"
+            job_lines.append(line)
+        jobs_context = "\n\n".join(job_lines)
+    else:
+        jobs_context = "(No previous job results found in conversation history)"
+
+    conversation_context = _build_conversation_context(messages)
+
+    prompt = (
+        f"You are Taylor's career assistant. The user is following up on previous job search results.\n\n"
+        f"USER MESSAGE: {user_message}\n\n"
+        f"PREVIOUS JOB SEARCH RESULTS:\n{jobs_context}\n\n"
+        f"CONVERSATION CONTEXT:\n{conversation_context}\n\n"
+        f"OUTPUT LANGUAGE: {output_language}\n\n"
+        f"RULES:\n"
+        f"1. Answer in Markdown (short sections, bullet points).\n"
+        f"2. Analyze, filter, rank, or summarize the previous job results as requested.\n"
+        f"3. Reference specific jobs by title and company.\n"
+        f"4. Be concise, specific, and actionable.\n"
+        f"5. Do NOT re-fetch jobs — use only the results provided above.\n"
+    )
+
+    answer_text = await complete(
+        [{"role": "user", "content": prompt}],
+        max_tokens=2000,
+    )
+
+    await _emit(AgentStatusEvent(status=AgentStatus.COMPLETE, message="Done"))
+
+    envelope = {
+        "cards": [],
+        "actions": [],
+        "stats": None,
+        "pending_action": None,
+        "followups": [],
+        "sources": [],
+    }
+    await db.add_chat_message(thread_id, "user", user_message)
+    await db.add_chat_message(thread_id, "assistant", answer_text, envelope=envelope)
+
+    result = {
+        "assistant_content": answer_text,
+        "cards": [],
+        "actions": [],
+        "stats": None,
+        "pending_action": None,
+        "memory_candidates": [],
+        "followups": [],
+        "sources": [],
+        "model_info": None,
+    }
+    await _emit(TurnCompleteEvent(data=result))
+    return result
+
+
 async def run_turn(
     thread_id: str,
     user_message: str,
@@ -924,8 +1060,8 @@ async def _try_agent_loop_stream(
 # Confirm / Cancel
 # ---------------------------------------------------------------------------
 
-async def confirm_pending(token: str) -> dict[str, Any]:
-    """Execute a previously pending write tool."""
+async def confirm_pending(token: str, thread_id: str) -> dict[str, Any]:
+    """Execute a previously pending write tool and persist results to conversation."""
     from app.services.chat_tools import execute_tool, execute_tool_confirmed
 
     entry = _get_pending(token)
@@ -940,12 +1076,45 @@ async def confirm_pending(token: str) -> dict[str, Any]:
     else:
         result = await execute_tool_confirmed(entry["tool"], entry["args"])
 
+    # Persist the execution result as a chat message so the LLM has context
+    jobs = result.get("jobs", [])
+    result_text = result.get("query", entry["summary"])
+    if jobs:
+        job_lines = [f"{j.get('title', 'N/A')} at {j.get('company', 'N/A')} ({j.get('location', 'N/A')})" for j in jobs[:10]]
+        result_text = (
+            f"Job search completed. Found {result.get('total_results', len(jobs))} results "
+            f"({len(jobs)} returned) from sources: {', '.join(result.get('sources', {}).keys())}.\n\n"
+            f"Top results:\n" + "\n".join(f"- {line}" for line in job_lines)
+        )
+    else:
+        error = result.get("error")
+        result_text = f"Job search completed with no results." + (f" Error: {error}" if error else "")
+
+    await db.add_chat_message(thread_id, "user", f"Executed: {entry['summary']}")
+    await db.add_chat_message(
+        thread_id,
+        "assistant",
+        result_text,
+        envelope={
+            "cards": [{"kind": "job_list", "data": result}],
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "followups": [
+                "Give me the best of that list",
+                "Filter by remote only",
+                "Show more results",
+            ],
+            "sources": list(result.get("sources", {}).keys()),
+        },
+    )
+
     return {
         "ok": True,
         "message": f"Action completed: {entry['summary']}",
         "result_card": {
-            "kind": "info",
-            "data": {"tool": entry["tool"], "result": result},
+            "kind": "job_list",
+            "data": result,
         },
     }
 

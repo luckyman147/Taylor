@@ -56,6 +56,7 @@ class TurnResponse(BaseModel):
 
 class ConfirmRequest(BaseModel):
     token: str = Field(min_length=1, max_length=100)
+    thread_id: str = Field(min_length=1, max_length=100)
 
 
 class ConfirmResponse(BaseModel):
