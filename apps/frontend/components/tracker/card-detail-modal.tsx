@@ -160,7 +160,7 @@ export function CardDetailModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-2xl p-0 gap-0 overflow-hidden flex flex-col">
         {/* Header */}
-        <DialogHeader className="border-b border-[#e6e3dc] bg-white px-6 py-5">
+        <DialogHeader className="border-b border-[#e6e3dc] bg-white px-8 py-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <DialogTitle className="truncate">{detail?.company || t('tracker.card.companyUnknown')}</DialogTitle>
@@ -176,7 +176,7 @@ export function CardDetailModal({
         </DialogHeader>
 
         {/* Tabs */}
-        <div className="border-b border-[#e6e3dc] bg-white px-6">
+        <div className="border-b border-[#e6e3dc] bg-white px-8">
           <RetroTabs
             tabs={[
               { id: 'details', label: 'Details' },
@@ -201,11 +201,11 @@ export function CardDetailModal({
         ) : detail ? (
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'details' ? (
-              <div className="space-y-5 p-6">
+              <div className="space-y-6 p-8">
                 {/* Job Description */}
                 <div className="space-y-1.5">
                   <Label>{t('tracker.modal.jobDescription')}</Label>
-                  <div className="max-h-52 overflow-y-auto whitespace-pre-wrap rounded-xl border border-[#e6e3dc] bg-background p-4 text-sm leading-relaxed">
+                  <div className="max-h-52 overflow-y-auto whitespace-pre-wrap rounded-xl border border-[#e6e3dc] bg-background p-5 text-sm leading-relaxed">
                     {detail.job_content || t('tracker.modal.noJobDescription')}
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export function CardDetailModal({
               </div>
             ) : (
               /* Analysis Tab */
-              <div className="p-6">
+              <div className="p-8">
                 {analyzing ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-16">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -279,13 +279,13 @@ export function CardDetailModal({
                     <Button variant="outline" size="sm" onClick={handleAnalyze}>Retry</Button>
                   </div>
                 ) : jobAnalysis ? (
-                  <div className="space-y-5">
+                  <div className="space-y-6">
                     {/* Verdict hero */}
                     {(() => {
                       const vc = verdictConfig[jobAnalysis.verdict];
                       const Icon = vc.icon;
                       return (
-                        <div className={`flex items-center gap-4 rounded-xl border ${vc.border} ${vc.bg} p-4`}>
+                        <div className={`flex items-center gap-4 rounded-xl border ${vc.border} ${vc.bg} p-5`}>
                           <Icon className={`h-8 w-8 shrink-0 ${vc.color}`} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
@@ -304,14 +304,14 @@ export function CardDetailModal({
                     })()}
 
                     {/* Progress bars */}
-                    <div className="space-y-3 rounded-xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                    <div className="space-y-4 rounded-xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
                       <MetricBar label="Keyword Match" value={`${jobAnalysis.match_percent}%`} percent={jobAnalysis.match_percent} color={jobAnalysis.match_percent >= 60 ? 'text-green-600' : jobAnalysis.match_percent >= 40 ? 'text-yellow-600' : 'text-red-600'} />
                       <MetricBar label="Career Relevance" value={`${jobAnalysis.career_relevance}%`} percent={jobAnalysis.career_relevance} color={jobAnalysis.career_relevance >= 60 ? 'text-green-600' : jobAnalysis.career_relevance >= 40 ? 'text-yellow-600' : 'text-red-600'} />
                       <MetricBar label="Ghost Risk" value={`${jobAnalysis.ghost_risk_percent}%`} percent={jobAnalysis.ghost_risk_percent} color={jobAnalysis.ghost_risk_percent <= 30 ? 'text-green-600' : jobAnalysis.ghost_risk_percent <= 50 ? 'text-yellow-600' : 'text-red-600'} />
                     </div>
 
                     {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-4">
                       <StatCard label="Competition" value={jobAnalysis.competition} color={jobAnalysis.competition === 'Low' ? 'text-green-600' : jobAnalysis.competition === 'Medium' ? 'text-yellow-600' : 'text-red-600'} />
                       <StatCard label="Salary" value={jobAnalysis.salary_potential ? `$${Math.round(jobAnalysis.salary_potential / 1000)}k` : 'N/A'} color="text-ink" />
                       <StatCard label="Relevance" value={`${Math.round(jobAnalysis.career_relevance)}%`} color={jobAnalysis.career_relevance >= 60 ? 'text-green-600' : 'text-yellow-600'} />
@@ -319,7 +319,7 @@ export function CardDetailModal({
 
                     {/* Missing skills */}
                     {jobAnalysis.comparison?.technical?.missing?.length > 0 && (
-                      <div className="rounded-xl border border-orange-200 bg-orange-50/50 p-4">
+                      <div className="rounded-xl border border-orange-200 bg-orange-50/50 p-5">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-orange-700">Missing Skills</p>
                         <div className="flex flex-wrap gap-1.5">
                           {jobAnalysis.comparison.technical.missing.map((s: { skill: string; weight: number }) => (
@@ -337,7 +337,7 @@ export function CardDetailModal({
                       <div className="space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Red Flags</p>
                         {jobAnalysis.red_flags.map((rf, i) => (
-                          <div key={i} className="flex items-start gap-3 rounded-xl border border-[#e6e3dc] bg-white p-3 shadow-sw-xs">
+                          <div key={i} className="flex items-start gap-3 rounded-xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
                             <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${
                               rf.severity === 'danger' ? 'text-red-500' :
                               rf.severity === 'warning' ? 'text-yellow-500' : 'text-blue-500'
@@ -353,7 +353,7 @@ export function CardDetailModal({
 
                     {/* Recommendation */}
                     {jobAnalysis.recommendation && jobAnalysis.recommendation !== 'N/A' && (
-                      <div className="rounded-xl border border-[#e6e3dc] bg-secondary p-4">
+                      <div className="rounded-xl border border-[#e6e3dc] bg-secondary p-5">
                         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-soft">Recommendation</p>
                         <p className="text-sm leading-relaxed text-ink">{jobAnalysis.recommendation}</p>
                       </div>
@@ -372,7 +372,7 @@ export function CardDetailModal({
         )}
 
         {/* Footer */}
-        <div className="flex shrink-0 flex-row items-center justify-end gap-3 border-t border-[#e6e3dc] bg-secondary px-6 py-4">
+        <div className="flex shrink-0 flex-row items-center justify-end gap-3 border-t border-[#e6e3dc] bg-secondary px-8 py-5">
           <div className="flex-1" />
           <Button
             variant="outline"
