@@ -85,7 +85,7 @@ export function MessageCard({
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[78%] space-y-1.5">
+        <div className="max-w-[78%] space-y-1.5 group">
           {attachment && (
             <div className="flex items-center gap-2 rounded-2xl rounded-br-sm bg-primary/90 px-3 py-2">
               <FileText className="h-4 w-4 shrink-0 text-white/80" />

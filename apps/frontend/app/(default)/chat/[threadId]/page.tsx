@@ -430,31 +430,24 @@ export default function ChatThreadRoute() {
   const handleRevert = useCallback(
     async (messageIndex: number) => {
       if (!threadId) return;
+      // Get the user message content before removing it
+      const userMsg = messages[messageIndex - 1];
+      const userContent = userMsg?.content;
       try {
         const result = await revertLastTurn(threadId);
         if (result.ok) {
-          // Remove the assistant message and set it as the latest message
-          setMessages((prev) => prev.slice(0, messageIndex));
-          // Optionally add the previous assistant response back if available
-          if (result.messages && result.messages.length > 0) {
-            const prevAssistant = result.messages.find((m) => m.role === 'assistant');
-            if (prevAssistant) {
-              setMessages((prev) => [...prev, {
-                role: 'assistant',
-                content: prevAssistant.content,
-                cards: prevAssistant.envelope?.cards as any,
-                messageId: prevAssistant.message_id,
-                version: prevAssistant.version,
-                streamEvents: prevAssistant.stream_events as any,
-              }]);
-            }
+          // Remove both the user message and assistant response
+          setMessages((prev) => prev.slice(0, messageIndex - 1));
+          // Re-send the user's message to get a fresh response
+          if (userContent) {
+            void send(userContent);
           }
         }
       } catch (e) {
         console.error('Revert failed:', e);
       }
     },
-    [threadId],
+    [threadId, messages, send],
   );
 
   const handleSelectResume = useCallback(

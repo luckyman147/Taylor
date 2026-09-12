@@ -1623,22 +1623,22 @@ class Database:
             await session.execute(stmt)
             await session.commit()
 
-    async def supersede_from(self, thread_id: str, after_message_id: str) -> int:
-        """Supersede all messages in a thread after a given message. Returns count."""
+    async def supersede_from(self, thread_id: str, from_message_id: str) -> int:
+        """Supersede a message and all messages after it in a thread. Returns count."""
         async with self._session() as session:
             # Find the message and its position
             ref = await session.execute(
-                select(ChatMessage).where(ChatMessage.message_id == after_message_id)
+                select(ChatMessage).where(ChatMessage.message_id == from_message_id)
             )
             ref_row = ref.scalars().first()
             if not ref_row:
                 return 0
-            # Supersede all messages after this one in the thread
+            # Supersede this message and all messages after it in the thread
             stmt = (
                 update(ChatMessage)
                 .where(
                     ChatMessage.thread_id == thread_id,
-                    ChatMessage.created_at > ref_row.created_at,
+                    ChatMessage.created_at >= ref_row.created_at,
                     ChatMessage.superseded == False,  # noqa: E712
                 )
                 .values(superseded=True)
