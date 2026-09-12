@@ -31,7 +31,7 @@ from app.services.chat_tools import (
     execute_tool,
     get_tool_catalog_json,
 )
-from app.services.chat_gateway import ChatIntent
+from app.services.chat_gateway import ChatIntent, should_clarify, DEFAULT_CLARIFICATION_OPTIONS
 from app.agent.runner import agent_runner
 from app.agent.budget import BudgetConfig
 
@@ -82,6 +82,174 @@ def _get_pending(token: str) -> dict[str, Any] | None:
 
 def _remove_pending(token: str) -> None:
     _pending_store.pop(token, None)
+
+
+# ---------------------------------------------------------------------------
+# Conversation state (in-memory, per thread)
+# ---------------------------------------------------------------------------
+
+class ConversationState:
+    """Tracks pending clarification across turns for a single thread."""
+
+    def __init__(self) -> None:
+        self.pending_clarification: bool = False
+        self.clarification_options: list[str] = []
+        self.previous_intent: str | None = None
+
+
+# Thread ID → ConversationState (in-memory, single-worker)
+_conversation_states: dict[str, ConversationState] = {}
+
+
+def _get_conversation_state(thread_id: str) -> ConversationState:
+    if thread_id not in _conversation_states:
+        _conversation_states[thread_id] = ConversationState()
+    return _conversation_states[thread_id]
+
+
+_INTENT_LABELS: dict[str, str] = {
+    "job_search": "Search for jobs matching your profile",
+    "resume_audit": "Improve or audit your resume",
+    "profile": "Review your career profile",
+    "market": "Analyze market position and trends",
+    "skills": "Get skill suggestions and ROI analysis",
+}
+
+
+async def _handle_clarification(
+    thread_id: str,
+    user_message: str,
+    gateway: Any,
+    _emit,
+) -> dict[str, Any]:
+    """Handle ambiguous/unclear user messages by asking clarifying questions."""
+    from app.schemas.agent_events import TurnCompleteEvent
+
+    state = _get_conversation_state(thread_id)
+
+    # If we already asked and user is now responding, try to resolve
+    if state.pending_clarification and state.clarification_options:
+        resolved = _resolve_clarification_reply(user_message, state.clarification_options)
+        if resolved:
+            state.pending_clarification = False
+            state.clarification_options = []
+            # Route to the resolved intent by re-classifying with more context
+            from app.services.chat_gateway import classify_intent as _classify
+            new_decision = await _classify(resolved)
+            # Inject the resolved intent as context for the planner
+            gateway.intent = new_decision.intent
+            gateway.preferred_tools = new_decision.preferred_tools
+            gateway.confidence = new_decision.confidence
+            gateway.needs_clarification = False
+            return None  # Signal to continue normal routing
+        # User response didn't resolve — still ambiguous
+        options_text = "\n".join(
+            f"  {i+1}. {label}"
+            for i, label in enumerate(state.clarification_options)
+        )
+        assistant_content = (
+            "I'm not sure which one you mean. Could you pick from these?\n\n"
+            + options_text
+        )
+        await db.add_chat_message(thread_id, "assistant", assistant_content)
+        result = {
+            "assistant_content": assistant_content,
+            "cards": [],
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "memory_candidates": [],
+            "followups": [],
+            "sources": [],
+        }
+        await _emit(TurnCompleteEvent(data=result))
+        return result
+
+    # First clarification — show options
+    suggested = gateway.suggested_intents or ["job_search", "resume_audit", "profile"]
+    options = [_INTENT_LABELS.get(intent, intent) for intent in suggested]
+    state.pending_clarification = True
+    state.clarification_options = suggested
+
+    options_text = "\n".join(
+        f"  {i+1}. {label}"
+        for i, label in enumerate(options)
+    )
+    assistant_content = (
+        "I can help with several career tasks. What would you like to do?\n\n"
+        + options_text
+    )
+    await db.add_chat_message(thread_id, "assistant", assistant_content)
+    result = {
+        "assistant_content": assistant_content,
+        "cards": [],
+        "actions": [],
+        "stats": None,
+        "pending_action": None,
+        "memory_candidates": [],
+        "followups": [],
+        "sources": [],
+    }
+    await _emit(TurnCompleteEvent(data=result))
+    return result
+
+
+def _resolve_clarification_reply(
+    user_message: str,
+    options: list[str],
+) -> str | None:
+    """Try to match a user reply to one of the clarification options.
+
+    Returns the resolved intent string or None if unclear.
+    """
+    msg = user_message.strip().lower()
+
+    # Numbered selection: "1", "option 2"
+    num_match = re.search(r"(?:option\s*)?(\d+)", msg)
+    if num_match:
+        idx = int(num_match.group(1)) - 1
+        if 0 <= idx < len(options):
+            return options[idx]
+
+    # Ordinal words: "first", "second", "third", "the first one"
+    _ORDINALS = {
+        "first": 0, "1st": 0,
+        "second": 1, "2nd": 1,
+        "third": 2, "3rd": 2,
+        "fourth": 3, "4th": 3,
+        "fifth": 4, "5th": 4,
+    }
+    for word, idx in _ORDINALS.items():
+        if word in msg and idx < len(options):
+            return options[idx]
+
+    # Keyword matching against intent labels (most specific first)
+    _KEYWORD_MAP = {
+        "job": "job_search",
+        "jobs": "job_search",
+        "search": "job_search",
+        "find": "job_search",
+        "resume": "resume_audit",
+        "cv": "resume_audit",
+        "audit": "resume_audit",
+        "profile": "profile",
+        "career": "profile",
+        "market": "market",
+        "trends": "market",
+        "skills": "skills",
+        "skill": "skills",
+        "advice": "profile",
+        "improve": "resume_audit",
+    }
+    for keyword, intent in _KEYWORD_MAP.items():
+        if keyword in msg:
+            return intent
+
+    # "yes"/"yeah" with single option
+    if msg in ("yes", "yeah", "yep", "y", "sure", "ok") and len(options) == 1:
+        return options[0]
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +497,17 @@ async def _run_turn_core(
             )
         # No job context — fall through to normal planner path
 
+    # --- Clarification: gateway detected ambiguity ---
+    if gateway.needs_clarification or gateway.intent == ChatIntent.CLARIFY:
+        logger.info("Gateway: needs_clarification=True, intent=%s, confidence=%.2f",
+                     gateway.intent, gateway.confidence)
+        clarification_result = await _handle_clarification(
+            thread_id, user_message, gateway, _emit,
+        )
+        if clarification_result is not None:
+            return clarification_result
+        # clarification resolved — continue with updated gateway intent
+
     # --- Intent-based routing ---
     if gateway.intent == ChatIntent.JOB_SEARCH:
         return await _handle_job_search(
@@ -452,6 +631,34 @@ async def _run_turn_core(
     followups = plan.get("followups", [])
     memory_candidates = plan.get("memory_candidates", [])
     plan_title = plan.get("title", "")
+
+    # Planner-level clarification fallback (gateway missed it)
+    if plan.get("intent") == "clarify" and not tool_calls:
+        logger.info("Planner returned clarify intent with %d questions", len(followups))
+        state = _get_conversation_state(thread_id)
+        state.pending_clarification = True
+        state.clarification_options = followups
+
+        options_text = "\n".join(
+            f"  {i+1}. {q}" for i, q in enumerate(followups)
+        )
+        assistant_content = (
+            "I want to make sure I understand correctly. Could you clarify?\n\n"
+            + options_text
+        )
+        await db.add_chat_message(thread_id, "assistant", assistant_content)
+        result = {
+            "assistant_content": assistant_content,
+            "cards": [],
+            "actions": [],
+            "stats": None,
+            "pending_action": None,
+            "memory_candidates": [],
+            "followups": followups,
+            "sources": [],
+        }
+        await _emit(TurnCompleteEvent(data=result))
+        return result
 
     if plan_title and len(messages) <= 1:
         try:

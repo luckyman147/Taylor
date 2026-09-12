@@ -1120,11 +1120,11 @@ TOOL USAGE EXAMPLES:
 
 RULES:
 1. Return ONLY a valid JSON object with these keys:
-   - "intent": "query" (general question), "stat" (wants numbers/stats), or "action" (wants to create/update something)
-   - "tool_calls": list of tool calls as {{"tool": "name", "args": {{...}}}} (empty list ONLY if truly no tool matches)
+   - "intent": "query" (general question), "stat" (wants numbers/stats), "action" (wants to create/update something), or "clarify" (user's request is ambiguous — ask clarifying questions)
+   - "tool_calls": list of tool calls as {{"tool": "name", "args": {{...}}}} (empty list ONLY if truly no tool matches or intent="clarify")
    - "narrative": brief plan of how you'll answer
    - "title": short conversation title (3-6 words, e.g. "ATS Resume Audit", "Skill Gap Analysis", "Job Search Strategy")
-   - "followups": 2-3 suggested follow-up questions the user might ask
+   - "followups": 2-3 suggested follow-up questions the user might ask (for intent="clarify", these ARE the clarifying questions to ask)
    - "memory_candidates": list of {{"statement": "..."}} for durable preferences the user expressed (empty list if none)
 
 2. When the user asks to search, find, look up, or discover jobs/opportunities: ALWAYS call search_mcp_jobs.
@@ -1135,6 +1135,7 @@ RULES:
 7. For STAT questions (how many, what rate, etc.): set intent="stat" and do NOT call any tools — the backend computes stats.
 8. Never fabricate data. Only use tools that exist in the catalog.
 9. For resume audits: the gateway handles resume selection and returns a selection card. Do not call get_ats_audit.
+10. When the user's request is ambiguous, vague, or could map to multiple tools: set intent="clarify", leave tool_calls empty, and put 2-3 specific clarifying questions in "followups". Do NOT guess — ask. Examples: "help me", "what should I do", "I need advice", single-word queries with no clear intent.
 
 Return JSON only (no markdown fences):"""
 
@@ -1170,7 +1171,8 @@ RULES:
 7. ALWAYS reference the career data above when analyzing jobs, resumes, or skills.
 8. Use conversation context to maintain continuity. When the user says "that CV", "my resume", "these skills", etc., refer to the context above to understand what they mean.
 9. For job searches: Show which sources were searched and their status (e.g. "Searched LinkedIn (12 results), Exa (8 results), RSS (5 results)"). List sources that failed or timed out. Then present the job listings WITH their URLs as clickable links. Format each job as: **Title** — Company | Location | [Apply](url)
-10. For email results: analyze each email's body to extract structured data. Present each email as: **Company** — Job Title | Contact (if found) | Date. If the email is a job alert, highlight the match percentage and key requirements. Use the `body` field for deep analysis, not just the snippet."""
+10. For email results: analyze each email's body to extract structured data. Present each email as: **Company** — Job Title | Contact (if found) | Date. If the email is a job alert, highlight the match percentage and key requirements. Use the `body` field for deep analysis, not just the snippet.
+11. When the user's request is ambiguous or you're unsure what they want, ask a specific clarifying question instead of guessing. Never invent an answer when the intent is unclear. Prefer questions that narrow down to an available tool (e.g. "Do you want me to search for jobs, audit your resume, or review your career profile?")."""
 
 CHAT_THINKING_PROMPT = """You are Taylor's career assistant. Before answering, think step by step about the user's request.
 
