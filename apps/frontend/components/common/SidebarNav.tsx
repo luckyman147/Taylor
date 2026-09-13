@@ -213,7 +213,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ currentPage, onNavigate }) => {
     <aside className="fixed left-0 top-0 bottom-0 w-16 bg-white border-r border-border min-h-screen p-4 flex flex-col items-center space-y-6">
       {/* Logo */}
       <Link href="/" className="flex flex-col items-center mb-4" aria-label="Taylor">
-        <Image src="/logo.png" alt="Taylor" width={40} height={40} className="h-10 w-10" />
+        <Image src="/logo.png" alt="Taylor" width={40} height={40} unoptimized className="h-10 w-10" />
       </Link>
 
       {/* Create Resume — primary action */}
