@@ -477,7 +477,7 @@ class ScrapedJob(Base):
 
 
 class MCPServer(Base):
-    """A registered MCP server (built-in or user-added custom).
+    """A registered MCP server (user-added custom).
 
     Stores server metadata, connection info, cached tool list, and health
     tracking. Credentials are stored separately in MCPCredential (encrypted).
@@ -486,15 +486,17 @@ class MCPServer(Base):
     __tablename__ = "mcp_servers"
 
     server_id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)  # ownership
     name: Mapped[str] = mapped_column(String, index=True)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     url: Mapped[str | None] = mapped_column(String, nullable=True)
     transport: Mapped[str] = mapped_column(String, default="streamable-http")
-    server_type: Mapped[str] = mapped_column(String, default="custom")  # "builtin" | "custom"
+    server_kind: Mapped[str] = mapped_column(String, default="remote")  # remote | local_stdio | managed
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    status: Mapped[str] = mapped_column(String, default="unknown")  # connected | error | needs_configuration | unknown
+    status: Mapped[str] = mapped_column(String, default="unverified")  # unverified | connected | error | needs_configuration
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    tools_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # cached tool list
+    last_error_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    tools_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # DEPRECATED: cached tool list, use MCPTool table
     last_connected_at: Mapped[str | None] = mapped_column(String, nullable=True)
     # Health tracking
     health_last_success: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -518,8 +520,25 @@ class MCPCredential(Base):
 
     credential_id: Mapped[str] = mapped_column(String, primary_key=True)
     server_id: Mapped[str] = mapped_column(String, index=True)
-    auth_type: Mapped[str] = mapped_column(String)  # api_key | bearer | oauth | env_vars | custom_headers
-    auth_config: Mapped[str] = mapped_column(Text)  # encrypted JSON: {key, header_name, token, etc.}
+    auth_type: Mapped[str] = mapped_column(String)  # none | api_key | bearer | basic | custom_headers | oauth
+    auth_config: Mapped[str] = mapped_column(Text)  # DEPRECATED: encrypted JSON, kept for migration
+    # Per-type encrypted fields
+    api_key_header_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    encrypted_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encrypted_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encrypted_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encrypted_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encrypted_password: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encrypted_custom_headers: Mapped[str | None] = mapped_column(Text, nullable=True)  # encrypted JSON: {key: value}
+    # OAuth fields
+    oauth_authorization_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    oauth_token_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    oauth_client_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    encrypted_client_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oauth_scope: Mapped[str | None] = mapped_column(String, nullable=True)
+    token_expiry: Mapped[str | None] = mapped_column(String, nullable=True)
+    oauth_state_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    oauth_state_expires_at: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -540,5 +559,25 @@ class ToolUsageStats(Base):
     last_used_at: Mapped[str | None] = mapped_column(String, nullable=True)
     last_error_at: Mapped[str | None] = mapped_column(String, nullable=True)
     last_error_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class MCPTool(Base):
+    """A discovered tool from an MCP server.
+
+    Tracks tool metadata, enable/disable state, and ownership by server.
+    """
+
+    __tablename__ = "mcp_tools"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    server_id: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)  # original tool name (e.g., "search_jobs")
+    public_name: Mapped[str] = mapped_column(String)  # namespaced (e.g., "my_server__search_jobs")
+    description: Mapped[str] = mapped_column(Text, default="")
+    input_schema: Mapped[str] = mapped_column(Text, default="{}")  # JSON string
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_discovered_at: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)

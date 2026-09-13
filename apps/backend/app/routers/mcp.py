@@ -101,7 +101,7 @@ async def create_mcp_server(request: MCPServerCreateRequest) -> dict[str, Any]:
         name=request.name,
         url=request.url,
         transport=request.transport,
-        server_type="custom",
+        server_kind="remote",
         display_name=request.display_name,
     )
     return server
@@ -235,6 +235,151 @@ async def delete_mcp_credential(credential_id: str) -> dict[str, str]:
     if not deleted:
         raise HTTPException(status_code=404, detail="Credential not found")
     return {"message": "Credential deleted"}
+
+
+# ── New Credential Endpoints (Milestone 1) ──────────────────────────
+
+@router.put("/servers/{server_id}/credentials")
+async def upsert_mcp_credential(server_id: str, request: MCPCredentialCreateRequest) -> dict[str, Any]:
+    """Store or update an MCP credential with per-type encrypted fields.
+
+    Replaces the previous credential for this server if one exists.
+    """
+    from uuid import uuid4
+
+    from app.database import db
+    from app.services.mcp.authentication import MCPAuthenticationService
+    from app.services.mcp.validation import validate_credential_payload, CredentialPayload
+
+    # Validate the server exists
+    server = await db.get_mcp_server(server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    # Validate the credential payload
+    try:
+        validated = validate_credential_payload(request.auth_config)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    # Check if a credential already exists for this server
+    existing = await db.get_mcp_credential_for_server(server_id)
+    credential_id = existing["credential_id"] if existing else f"cred_{uuid4().hex[:12]}"
+
+    # Store using the new authentication service
+    auth_service = MCPAuthenticationService()
+    await auth_service.store_credential(
+        credential_id=credential_id,
+        server_id=server_id,
+        auth_type=validated.auth_type,
+        payload=request.auth_config,
+    )
+
+    return {"credential_id": credential_id, "message": "Credential stored"}
+
+
+@router.get("/servers/{server_id}/credentials/metadata")
+async def get_mcp_credential_metadata(server_id: str) -> dict[str, Any] | None:
+    """Get credential metadata (no secrets) for a server."""
+    from app.database import db
+    from app.services.mcp.authentication import MCPAuthenticationService
+
+    existing = await db.get_mcp_credential_for_server(server_id)
+    if not existing:
+        return None
+
+    auth_service = MCPAuthenticationService()
+    return await auth_service.get_credential_metadata(existing["credential_id"])
+
+
+# ── Server Test Endpoint (Milestone 1) ──────────────────────────────
+
+@router.post("/servers/{server_id}/test")
+async def test_mcp_server(server_id: str) -> dict[str, Any]:
+    """Test connection to an MCP server.
+
+    Validates the URL, resolves DNS, and attempts a basic handshake.
+    Does NOT store any credentials or tools.
+    """
+    import time
+
+    from app.database import db
+    from app.services.mcp.authentication import MCPAuthenticationService
+    from app.services.mcp.validation import validate_mcp_url
+    from app.services.mcp.errors import MCPError
+
+    server = await db.get_mcp_server(server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    url = server.get("url")
+    if not url:
+        raise HTTPException(status_code=422, detail="Server has no URL configured")
+
+    # Validate URL (SSRF protection)
+    try:
+        validate_mcp_url(url)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_code": "SSRF_BLOCKED",
+            "latency_ms": 0,
+        }
+
+    # Resolve credentials
+    auth_service = MCPAuthenticationService()
+    resolved = await auth_service.resolve_credentials(server_id)
+
+    # Attempt connection
+    start = time.monotonic()
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                url,
+                headers=resolved.headers,
+                params=resolved.query_params,
+            )
+            latency_ms = int((time.monotonic() - start) * 1000)
+
+            if response.status_code < 400:
+                return {
+                    "success": True,
+                    "latency_ms": latency_ms,
+                    "status_code": response.status_code,
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"HTTP {response.status_code}",
+                    "error_code": "HTTP_ERROR",
+                    "latency_ms": latency_ms,
+                }
+    except httpx.TimeoutException:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        return {
+            "success": False,
+            "error": "Connection timed out",
+            "error_code": "TIMEOUT",
+            "latency_ms": latency_ms,
+        }
+    except httpx.ConnectError as e:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        return {
+            "success": False,
+            "error": f"Connection failed: {e}",
+            "error_code": "CONNECT_ERROR",
+            "latency_ms": latency_ms,
+        }
+    except Exception as e:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        return {
+            "success": False,
+            "error": f"Test failed: {e}",
+            "error_code": "UNKNOWN_ERROR",
+            "latency_ms": latency_ms,
+        }
 
 
 # ── Tool Discovery & Registry ───────────────────────────────────────

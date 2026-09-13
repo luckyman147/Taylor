@@ -24,6 +24,7 @@ import {
   fetchMCPServerHealth,
   resetMCPServerHealth,
   storeMCPCredential,
+  testMCPServer,
   discoverMCPTools,
   type MCPServer,
 } from '@/lib/api/mcp';
@@ -31,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { CredentialFields, type AuthType, type CredentialData } from './credential-fields';
 
 export function MCPSettings() {
   const [servers, setServers] = useState<MCPServer[]>([]);
@@ -40,9 +42,11 @@ export function MCPSettings() {
   const [showCredentialDialog, setShowCredentialDialog] = useState<string | null>(null);
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
   const [newServer, setNewServer] = useState({ name: '', url: '', display_name: '' });
-  const [newCredential, setNewCredential] = useState({ auth_type: 'api_key', key: '' });
+  const [newCredential, setNewCredential] = useState<CredentialData>({ auth_type: 'none' });
   const [connecting, setConnecting] = useState<string | null>(null);
   const [discovering, setDiscovering] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ serverId: string; success: boolean; message: string } | null>(null);
 
   const loadServers = useCallback(async () => {
     try {
@@ -119,12 +123,35 @@ export function MCPSettings() {
     try {
       await storeMCPCredential(serverId, {
         auth_type: newCredential.auth_type,
-        auth_config: { key: newCredential.key },
+        auth_config: newCredential,
       });
-      setNewCredential({ auth_type: 'api_key', key: '' });
+      setNewCredential({ auth_type: 'none' });
       setShowCredentialDialog(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to store credential');
+    }
+  };
+
+  const handleTestServer = async (serverId: string) => {
+    try {
+      setTesting(serverId);
+      setTestResult(null);
+      const result = await testMCPServer(serverId);
+      setTestResult({
+        serverId,
+        success: result.success,
+        message: result.success
+          ? `Connected in ${result.latency_ms}ms`
+          : `${result.error} (${result.latency_ms}ms)`,
+      });
+    } catch (e: unknown) {
+      setTestResult({
+        serverId,
+        success: false,
+        message: e instanceof Error ? e.message : 'Test failed',
+      });
+    } finally {
+      setTesting(null);
     }
   };
 
@@ -219,7 +246,7 @@ export function MCPSettings() {
                       {server.display_name || server.name}
                     </span>
                     <span className="ml-2 text-xs text-ink-muted">
-                      {server.server_type}
+                      {server.server_kind || 'remote'}
                     </span>
                   </div>
                   {server.url && (
@@ -298,6 +325,19 @@ export function MCPSettings() {
                         Connect
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleTestServer(server.server_id)}
+                      disabled={testing === server.server_id}
+                    >
+                      {testing === server.server_id ? (
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Wifi className="mr-1.5 h-3 w-3" />
+                      )}
+                      Test
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -385,26 +425,33 @@ export function MCPSettings() {
                 <Label className="text-sm">Auth Type</Label>
                 <select
                   value={newCredential.auth_type}
-                  onChange={(e) => setNewCredential({ ...newCredential, auth_type: e.target.value })}
+                  onChange={(e) => setNewCredential({ ...newCredential, auth_type: e.target.value as AuthType })}
                   className="mt-1 w-full rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-sm"
                 >
+                  <option value="none">None</option>
                   <option value="api_key">API Key</option>
                   <option value="bearer">Bearer Token</option>
+                  <option value="basic">Basic Auth</option>
                   <option value="custom_headers">Custom Headers</option>
+                  <option value="oauth">OAuth 2.0</option>
                 </select>
               </div>
-              <div>
-                <Label className="text-sm">
-                  {newCredential.auth_type === 'api_key' ? 'API Key' : 'Token'}
-                </Label>
-                <Input
-                  type="password"
-                  value={newCredential.key}
-                  onChange={(e) => setNewCredential({ ...newCredential, key: e.target.value })}
-                  placeholder="Enter credential..."
-                  className="mt-1"
-                />
-              </div>
+              <CredentialFields
+                authType={newCredential.auth_type}
+                data={newCredential}
+                onChange={setNewCredential}
+              />
+              {testResult && testResult.serverId === showCredentialDialog && (
+                <div
+                  className={`rounded-lg px-3 py-2 text-xs ${
+                    testResult.success
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : 'bg-red-50 text-red-600'
+                  }`}
+                >
+                  {testResult.message}
+                </div>
+              )}
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCredentialDialog(null)}>

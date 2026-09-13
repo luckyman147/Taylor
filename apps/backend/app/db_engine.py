@@ -196,3 +196,35 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN superseded BOOLEAN DEFAULT 0")
             if "stream_events_json" not in chat_msg_col_names:
                 conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN stream_events_json TEXT")
+
+        # MCP ownership + per-type credential columns.
+        mcp_server_columns = conn.exec_driver_sql("PRAGMA table_info(mcp_servers)").mappings().all()
+        if mcp_server_columns:
+            mcp_server_col_names = {column["name"] for column in mcp_server_columns}
+            if "user_id" not in mcp_server_col_names:
+                conn.exec_driver_sql("ALTER TABLE mcp_servers ADD COLUMN user_id TEXT")
+            if "server_kind" not in mcp_server_col_names:
+                conn.exec_driver_sql("ALTER TABLE mcp_servers ADD COLUMN server_kind TEXT DEFAULT 'remote'")
+                # Backfill: builtin → managed, custom → remote
+                conn.exec_driver_sql(
+                    "UPDATE mcp_servers SET server_kind = 'managed' WHERE server_type = 'builtin'"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE mcp_servers SET server_kind = 'remote' WHERE server_type = 'custom'"
+                )
+            if "last_error_code" not in mcp_server_col_names:
+                conn.exec_driver_sql("ALTER TABLE mcp_servers ADD COLUMN last_error_code TEXT")
+
+        # MCP per-type credential columns (additive, keep auth_config for migration).
+        mcp_cred_columns = conn.exec_driver_sql("PRAGMA table_info(mcp_credentials)").mappings().all()
+        if mcp_cred_columns:
+            mcp_cred_col_names = {column["name"] for column in mcp_cred_columns}
+            for col in (
+                "api_key_header_name", "encrypted_api_key", "encrypted_access_token",
+                "encrypted_refresh_token", "encrypted_username", "encrypted_password",
+                "encrypted_custom_headers", "oauth_authorization_url", "oauth_token_url",
+                "oauth_client_id", "encrypted_client_secret", "oauth_scope",
+                "token_expiry", "oauth_state_hash", "oauth_state_expires_at",
+            ):
+                if col not in mcp_cred_col_names:
+                    conn.exec_driver_sql(f"ALTER TABLE mcp_credentials ADD COLUMN {col} TEXT")

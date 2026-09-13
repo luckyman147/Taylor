@@ -23,8 +23,9 @@ class MCPServerManager:
         name: str,
         url: str | None = None,
         transport: str = "streamable-http",
-        server_type: str = "custom",
+        server_kind: str = "remote",
         display_name: str | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         """Register a new MCP server.
 
@@ -32,8 +33,9 @@ class MCPServerManager:
             name: Unique identifier (e.g. "linkedin", "exa", "custom_github").
             url: Server endpoint URL (required for remote servers).
             transport: Transport type: streamable-http, stdio, sse.
-            server_type: "builtin" or "custom".
+            server_kind: "remote", "local_stdio", or "managed".
             display_name: Human-readable name for the UI.
+            user_id: Owner user ID.
 
         Returns:
             The registered server dict.
@@ -47,8 +49,8 @@ class MCPServerManager:
         server_id = f"mcp_{uuid4().hex[:12]}"
         return await db.create_mcp_server(
             server_id=server_id, name=name, url=url,
-            transport=transport, server_type=server_type,
-            display_name=display_name,
+            transport=transport, server_kind=server_kind,
+            display_name=display_name, user_id=user_id,
         )
 
     async def get_server(self, server_id: str) -> dict[str, Any] | None:

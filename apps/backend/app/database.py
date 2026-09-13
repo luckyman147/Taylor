@@ -2719,16 +2719,16 @@ class Database:
     # ── MCP Server CRUD ──────────────────────────────────────────────
 
     async def create_mcp_server(self, server_id: str, name: str, url: str | None = None,
-                                 transport: str = "streamable-http", server_type: str = "custom",
-                                 display_name: str | None = None) -> dict[str, Any]:
+                                 transport: str = "streamable-http", server_kind: str = "remote",
+                                 display_name: str | None = None, user_id: str | None = None) -> dict[str, Any]:
         """Register a new MCP server."""
         from app.models import MCPServer
         now = _now()
         async with self._session() as session:
             row = MCPServer(
                 server_id=server_id, name=name, display_name=display_name or name,
-                url=url, transport=transport, server_type=server_type,
-                created_at=now, updated_at=now,
+                url=url, transport=transport, server_kind=server_kind,
+                user_id=user_id, created_at=now, updated_at=now,
             )
             session.add(row)
             await session.commit()
@@ -2862,6 +2862,91 @@ class Database:
             await session.commit()
             return True
 
+    async def upsert_mcp_credential(
+        self,
+        credential_id: str,
+        server_id: str,
+        auth_type: str,
+        auth_config_encrypted: str,
+        **per_type_fields: Any,
+    ) -> dict[str, Any]:
+        """Store or update an MCP credential with per-type encrypted fields.
+
+        If a credential with this ID already exists, updates it.
+        Otherwise, creates a new one.
+        """
+        from app.models import MCPCredential
+        now = _now()
+        async with self._session() as session:
+            row = await session.get(MCPCredential, credential_id)
+            if row:
+                row.auth_type = auth_type
+                row.auth_config = auth_config_encrypted
+                for key, val in per_type_fields.items():
+                    if val is not None and hasattr(row, key):
+                        setattr(row, key, val)
+                row.updated_at = now
+                await session.commit()
+                return self._mcp_credential_to_dict(row)
+            else:
+                row = MCPCredential(
+                    credential_id=credential_id,
+                    server_id=server_id,
+                    auth_type=auth_type,
+                    auth_config=auth_config_encrypted,
+                    created_at=now,
+                    updated_at=now,
+                )
+                for key, val in per_type_fields.items():
+                    if val is not None and hasattr(row, key):
+                        setattr(row, key, val)
+                session.add(row)
+                await session.commit()
+                return self._mcp_credential_to_dict(row)
+
+    async def get_mcp_credential_for_server(self, server_id: str) -> dict[str, Any] | None:
+        """Get the first credential for an MCP server."""
+        from app.models import MCPCredential
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPCredential).where(MCPCredential.server_id == server_id).limit(1)
+            )
+            row = result.scalar_one_or_none()
+            return self._mcp_credential_to_dict(row) if row else None
+
+    async def get_mcp_server_by_id_and_user(self, server_id: str, user_id: str) -> dict[str, Any] | None:
+        """Get an MCP server with ownership check."""
+        from app.models import MCPServer
+        async with self._session() as session:
+            row = await session.get(MCPServer, server_id)
+            if not row:
+                return None
+            # Ownership check: server must belong to user or be unclaimed
+            if row.user_id and row.user_id != user_id:
+                return None
+            return self._mcp_server_to_dict(row)
+
+    async def list_mcp_servers_by_user(self, user_id: str) -> list[dict[str, Any]]:
+        """List MCP servers owned by a specific user."""
+        from app.models import MCPServer
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPServer).where(
+                    (MCPServer.user_id == user_id) | (MCPServer.user_id == None)
+                )
+            )
+            return [self._mcp_server_to_dict(row) for row in result.scalars().all()]
+
+    def _mcp_credential_to_dict(self, row: Any) -> dict[str, Any]:
+        """Convert an MCPCredential row to a dict (no secrets)."""
+        return {
+            "credential_id": row.credential_id,
+            "server_id": row.server_id,
+            "auth_type": row.auth_type,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
     # ── Tool Usage Stats CRUD ────────────────────────────────────────
 
     async def update_tool_usage(self, tool_name: str, success: bool, latency_ms: float,
@@ -2931,9 +3016,12 @@ class Database:
         return {
             "server_id": row.server_id, "name": row.name,
             "display_name": row.display_name, "url": row.url,
-            "transport": row.transport, "server_type": row.server_type,
+            "transport": row.transport,
+            "server_kind": getattr(row, "server_kind", "remote"),
             "enabled": row.enabled, "status": row.status,
-            "error_message": row.error_message, "tools_json": row.tools_json,
+            "error_message": row.error_message,
+            "last_error_code": getattr(row, "last_error_code", None),
+            "tools_json": row.tools_json,
             "last_connected_at": row.last_connected_at,
             "health_last_success": row.health_last_success,
             "health_last_failure": row.health_last_failure,
@@ -2942,6 +3030,7 @@ class Database:
             "health_total_calls": row.health_total_calls,
             "health_success_calls": row.health_success_calls,
             "created_at": row.created_at, "updated_at": row.updated_at,
+            "user_id": getattr(row, "user_id", None),
         }
 
     async def career_data_fingerprint(self) -> str:

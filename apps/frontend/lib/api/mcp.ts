@@ -134,10 +134,11 @@ export interface MCPServer {
   display_name: string | null;
   url: string | null;
   transport: string;
-  server_type: string;
+  server_kind: string;
   enabled: boolean;
   status: string;
   error_message: string | null;
+  last_error_code: string | null;
   tools_json: string | null;
   last_connected_at: string | null;
   health_last_success: string | null;
@@ -148,6 +149,7 @@ export interface MCPServer {
   health_success_calls: number;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
 }
 
 export interface MCPTool {
@@ -244,5 +246,19 @@ export async function discoverMCPTools(): Promise<{
 }> {
   const res = await apiPost('/mcp/discover', {});
   if (!res.ok) throw new Error('Failed to discover tools');
+  return res.json();
+}
+
+export async function testMCPServer(
+  serverId: string
+): Promise<{
+  success: boolean;
+  latency_ms: number;
+  error?: string;
+  error_code?: string;
+  status_code?: number;
+}> {
+  const res = await apiPost(`/mcp/servers/${serverId}/test`, {});
+  if (!res.ok) throw new Error('Failed to test server');
   return res.json();
 }
