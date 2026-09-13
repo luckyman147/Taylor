@@ -262,7 +262,7 @@ FORMULA: Action verb + what you did + how you did it + [optional result]
 CRITICAL RULES:
 - R is OPTIONAL. When no measurable result exists in the original, write an action-focused bullet (A only) and skip R entirely. Do not invent impact language ("significantly enhancing", "substantially reducing").
 - VERB SAFETY: Use leadership verbs (Spearheaded, Architected, Led, Directed, Pioneered) ONLY when the original shows full ownership of the system or team. Use action verbs (Built, Implemented, Delivered, Developed) for individual contribution.
-- NO IMPACT ADVERBS OR VAGUE CLAIMS: Never use "significantly", "substantially", "greatly", "dramatically", "seamless", "optimize", "minimize", "enhance", "streamline" — these are unverifiable filler. State the concrete change or omit the result.
+- NO IMPACT ADVERBS OR VAGUE CLAIMS: Never use "significantly", "substantially", "greatly", "dramatically", "seamless", "seamlessly", "optimize", "optimizing", "optimized", "minimize", "minimizing", "minimized", "enhance", "enhancing", "enhanced", "streamline", "streamlining", "streamlined" — these are unverifiable filler. State the concrete change or omit the result.
 - VALIDATION STEP: Before writing each bullet, verify: (1) the action is stated or implied in the original, (2) any metric comes from the original, (3) the verb matches the scope of work. If any check fails, rewrite with a safer verb and drop the unsupported claim.
 - Keep Situation/Task to one short clause; the emphasis should be on Action and Result
 - Preserve the candidate's original details and voice
@@ -320,7 +320,7 @@ Do NOT include personalInfo in your output - it will be preserved from the origi
 
 Rules:
 - Strengthen alignment by weaving in relevant keywords where evidence already exists
-- You may rephrase bullet points to include keyword phrasing using the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only). Do not use impact adverbs or vague claims ("significantly", "substantially", "seamless", "optimize", "minimize", "enhance", "streamline"). Formula: Action verb + what you did + how you did it + [optional result].
+- You may rephrase bullet points to include keyword phrasing using the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only). Do not use impact adverbs or vague claims ("significantly", "substantially", "seamless", "seamlessly", "optimize", "optimizing", "optimized", "minimize", "minimizing", "minimized", "enhance", "enhancing", "enhanced", "streamline", "streamlining", "streamlined"). Formula: Action verb + what you did + how you did it + [optional result].
 - Do NOT introduce new skills, tools, or certifications not in the resume
 - Do NOT change role, industry, or seniority level
 - Preserve descriptionStyles arrays and keep them aligned one-to-one with description arrays
@@ -350,7 +350,7 @@ Do NOT include personalInfo in your output - it will be preserved from the origi
 
 Rules:
 - Make targeted adjustments to bullet points to align with job description phrasing. Preserve the candidate's original details and voice - adjust wording, do not rewrite entirely.
-- When rewriting bullets, use the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only). Do not use impact adverbs or vague claims ("significantly", "substantially", "seamless", "optimize", "minimize", "enhance", "streamline"). Use leadership verbs (Spearheaded, Architected) only when the original shows full ownership. Formula: Action verb + what you did + how you did it + [optional result].
+- When rewriting bullets, use the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only). Do not use impact adverbs or vague claims ("significantly", "substantially", "seamless", "seamlessly", "optimize", "optimizing", "optimized", "minimize", "minimizing", "minimized", "enhance", "enhancing", "enhanced", "streamline", "streamlining", "streamlined"). Use leadership verbs (Spearheaded, Architected) only when the original shows full ownership. Formula: Action verb + what you did + how you did it + [optional result].
 - DO NOT invent new information
 - Preserve existing action verbs. Do not invent quantifiable achievements not in the original.
 - Keep proper nouns (names, company names, locations) unchanged
@@ -471,7 +471,7 @@ Rewrite each bullet using the STAR method with evidence validation:
 - R (Result): What changed — ONLY if the original provides a concrete metric or outcome
 
 When no result is available, write an action-focused bullet (A only) and skip R entirely.
-Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "dramatically", "seamless", "optimize", "minimize", "enhance", "streamline").
+Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "dramatically", "seamless", "seamlessly", "optimize", "optimizing", "optimized", "minimize", "minimizing", "minimized", "enhance", "enhancing", "enhanced", "streamline", "streamlining", "streamlined").
 Use leadership verbs (Spearheaded, Architected, Led) only when the original shows full system or team ownership.
 Formula: Action verb + what you did + how you did it + [optional result].
 Example: "Built 15+ end-to-end features using Flutter and Clean Architecture for a 50+ member organization."
@@ -834,7 +834,7 @@ RULES:
   STEP 3 — Select Formula: A (Junior): hands-on + projects + seeking to contribute. B (Full-Stack): frontend + backend + application types. C (Achievement): expertise + delivered achievement. D (Experience): experience + developed contributions.
   STEP 4 — Write: 3-4 sentences, ~50-80 words, ATS-friendly, use JD keywords naturally. Do not use "passionate", "results-driven", "highly motivated" unless supported.
   STEP 5 — Validate: every skill supported by profile or JD, every achievement verified, no unsupported metrics, strongest qualifications first.
-15. When rewriting experience or project bullet points, apply the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Delivered); R (Result) = what changed — ONLY if the original provides a concrete metric or outcome. When no result is available, write an action-focused bullet (A only) and skip R. Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "seamless", "optimize", "minimize", "enhance", "streamline"). Use leadership verbs (Spearheaded, Architected, Led) only when the original shows full system or team ownership. Formula: Action verb + what you did + how you did it + [optional result].
+15. When rewriting experience or project bullet points, apply the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Delivered); R (Result) = what changed — ONLY if the original provides a concrete metric or outcome. When no result is available, write an action-focused bullet (A only) and skip R. Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "seamless", "seamlessly", "optimize", "optimizing", "optimized", "minimize", "minimizing", "minimized", "enhance", "enhancing", "enhanced", "streamline", "streamlining", "streamlined"). Use leadership verbs (Spearheaded, Architected, Led) only when the original shows full system or team ownership. Formula: Action verb + what you did + how you did it + [optional result].
 
 PATHS you can target:
 - "summary" — the resume summary text
