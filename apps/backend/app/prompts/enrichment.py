@@ -97,12 +97,15 @@ CANDIDATE'S ADDITIONAL CONTEXT:
 
 TASK:
 Generate NEW bullet points to ADD to the existing description. The original bullets will be kept as-is.
-New bullets should be:
-1. Action-oriented: Start with strong verbs (Led, Built, Architected, Implemented, Optimized)
-2. Quantified: Include metrics, numbers, percentages where the candidate provided them
-3. Technically specific: Mention technologies, tools, and methodologies
-4. Impact-focused: Clearly state the business or technical outcome
-5. Ownership-clear: Show what the candidate personally did vs. the team
+New bullets should follow the STAR method:
+- S (Situation): Brief context or problem
+- T (Task): What the candidate was responsible for
+- A (Action): What they actually did — start with strong verbs (Led, Built, Architected, Implemented, Optimized, Automated, Integrated)
+- R (Result): What changed — include metrics, numbers, percentages where the candidate provided them
+Additionally:
+1. Be technically specific: Mention technologies, tools, and methodologies
+2. Show ownership: What the candidate personally did vs. the team
+3. Formula: Action verb + what you did + how you did it + measurable result
 
 OUTPUT FORMAT (JSON only, no other text):
 {{
@@ -146,12 +149,13 @@ USER'S FEEDBACK/INSTRUCTION:
 {user_instruction}
 
 TASK:
-Based on the user's feedback, completely REWRITE the description bullets. The new description should:
+Based on the user's feedback, completely REWRITE the description bullets using the STAR method. The new description should:
 1. Address the user's specific concerns/requests
-2. Be action-oriented with strong verbs
+2. Follow STAR: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using strong verbs; R (Result) = what changed
 3. Highlight quantifiable impact ONLY when it already exists in the current description or the user's feedback (never invent numbers)
 4. Be technically specific with tools/technologies
-5. Show clear impact and ownership
+5. Show clear ownership and scope
+6. Formula: Action verb + what you did + how you did it + measurable result
 
 OUTPUT FORMAT (JSON only):
 {{
@@ -357,12 +361,15 @@ PROJECT SOURCE MATERIAL (the primary source of facts about this project):
 
 {user_instruction}
 TASK:
-Write bullet points for this project's resume entry. The bullets should:
-1. Be action-oriented with strong verbs
-2. Highlight quantifiable impact ONLY when the source material supports it (never invent numbers)
-3. Be technically specific with the tools, technologies, and architecture described
-4. Show ownership, scope, and what was built or delivered
-5. Be concise (1-2 lines each)
+Write bullet points for this project's resume entry using the STAR method:
+- S (Situation): Brief context about the project and what problem it solves
+- T (Task): What the candidate's role and responsibilities were
+- A (Action): What they actually did — be technically specific with tools, technologies, and architecture
+- R (Result): What was built or delivered, with quantifiable impact ONLY when the source material supports it
+Formula: Action verb + what you did + how you did it + measurable result
+Additionally:
+1. Show ownership, scope, and what was built or delivered
+2. Be concise (1-2 lines each)
 
 OUTPUT FORMAT (JSON only):
 {{

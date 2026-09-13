@@ -249,6 +249,32 @@ CRITICAL_TRUTHFULNESS_RULES = {
     ),
 }
 
+
+STAR_BULLET_GUIDE = """STAR METHOD for experience bullet points:
+Each bullet must follow the STAR formula to produce achievement-focused, specific descriptions:
+- S (Situation): Brief context or problem (one clause max)
+- T (Task): What the candidate was responsible for
+- A (Action): What they actually did — use precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Deployed, Refactored, Configured, Migrated, Reduced, Increased, Delivered)
+- R (Result): What changed because of their work — quantify only when the original resume supports it
+
+FORMULA: Action verb + what you did + how you did it + measurable result
+
+GOOD EXAMPLES:
+- "Developed REST APIs with Node.js and integrated database operations to support car listings and user interactions in a vehicle marketplace."
+- "Implemented role-based authorization for five user types using ASP.NET Core and SQL Server, reducing access-related support tickets."
+- "Built 15+ end-to-end features using Flutter and Clean Architecture, including role-based access control, member management, and event tracking, for a 50+ member organization."
+
+BAD EXAMPLES (too vague, no STAR):
+- "Developed backend solutions."
+- "Worked on the project."
+- "Responsible for API development."
+
+RULES:
+- Do not force metrics — a strong non-quantified bullet is better than an invented number
+- Keep Situation/Task to one short clause; the emphasis should be on Action and Result
+- Preserve the candidate's original details and voice
+- Do not use em dash characters"""
+
 IMPROVE_RESUME_PROMPT_NUDGE = """Lightly nudge this resume toward the job description. Output ONLY the JSON object, no other text.
 
 {critical_truthfulness_rules}
@@ -290,7 +316,7 @@ Do NOT include personalInfo in your output - it will be preserved from the origi
 
 Rules:
 - Strengthen alignment by weaving in relevant keywords where evidence already exists
-- You may rephrase bullet points to include keyword phrasing
+- You may rephrase bullet points to include keyword phrasing using the STAR method: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did; R (Result) = what changed. Formula: Action verb + what you did + how you did it + result.
 - Do NOT introduce new skills, tools, or certifications not in the resume
 - Do NOT change role, industry, or seniority level
 - Preserve descriptionStyles arrays and keep them aligned one-to-one with description arrays
@@ -320,6 +346,7 @@ Do NOT include personalInfo in your output - it will be preserved from the origi
 
 Rules:
 - Make targeted adjustments to bullet points to align with job description phrasing. Preserve the candidate's original details and voice - adjust wording, do not rewrite entirely.
+- When rewriting bullets, use the STAR method: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs; R (Result) = what changed, quantified only when the original supports it. Formula: Action verb + what you did + how you did it + result.
 - DO NOT invent new information
 - Preserve existing action verbs. Do not invent quantifiable achievements not in the original.
 - Keep proper nouns (names, company names, locations) unchanged
@@ -423,11 +450,18 @@ Create a concise summary using the C-WHAT formula (2-3 concise sentences):
 Do not use: "passionate", "motivated", "results-driven", "dynamic", "innovative", "highly skilled", "proven track record", "detail-oriented", "team player", "tech enthusiast", "leveraging cutting-edge technologies", "committed to excellence" - unless genuinely supported.
 Prefer concrete technical language.
 
-# 5. EXPERIENCE BULLETS
+# 5. EXPERIENCE BULLETS — STAR METHOD
 
-Rewrite using: ACTION -> CONTEXT -> RESULT
-Each bullet: What the candidate did, what they worked on, how they did it, what changed because of it.
-Prefer measurable evidence when available. Do not force a metric - a strong non-quantified bullet is better than an invented number.
+Rewrite each bullet using the STAR method:
+- S (Situation): Brief context or problem (one clause)
+- T (Task): What the candidate was responsible for
+- A (Action): What they actually did — use precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Deployed, Refactored)
+- R (Result): What changed because of their work — quantify only when supported by evidence
+
+Formula: Action verb + what you did + how you did it + measurable result.
+Example: "Developed REST APIs with Node.js and integrated database operations to support car listings and user interactions in a vehicle marketplace."
+Do not force metrics — a strong non-quantified bullet is better than an invented number.
+Preserve the candidate's original details and voice.
 
 # 6. TECHNICAL SPECIFICITY
 
@@ -724,10 +758,10 @@ RESUME_SCHEMA = RESUME_SCHEMA_EXAMPLE
 
 DIFF_STRATEGY_INSTRUCTIONS = {
     "nudge": "Make minimal edits. Only rephrase where there is a clear match. Do not add new bullet points.",
-    "keywords": "Weave in relevant keywords where evidence already exists. You may rephrase bullets but do not add new ones.",
-    "full": "Make targeted adjustments. You may rephrase bullets, add verified JD skills, and add new bullets that elaborate on existing work, but do not invent new responsibilities.",
+    "keywords": "Weave in relevant keywords where evidence already exists. You may rephrase bullets using the STAR method (Action + Result) but do not add new ones.",
+    "full": "Make targeted adjustments. You may rephrase bullets using the STAR method (Situation -> Task -> Action -> Result), add verified JD skills, and add new bullets that elaborate on existing work, but do not invent new responsibilities.",
 }
-DIFF_STRATEGY_INSTRUCTIONS["recruiter"] = "Make targeted adjustments. You may rephrase bullets, add verified JD skills, and add new bullets that elaborate on existing work, but do not invent new responsibilities. Apply the recruiter-grade tailoring approach: evidence mapping, factual accuracy, technical specificity, and ATS optimization."
+DIFF_STRATEGY_INSTRUCTIONS["recruiter"] = "Make targeted adjustments. You may rephrase bullets using the STAR method (Situation -> Task -> Action -> Result), add verified JD skills, and add new bullets that elaborate on existing work, but do not invent new responsibilities. Apply the recruiter-grade tailoring approach: evidence mapping, factual accuracy, technical specificity, and ATS optimization."
 
 SKILL_TARGET_PLAN_PROMPT = """Build a concise skill target plan for tailoring this resume to the job.
 
@@ -781,6 +815,7 @@ RULES:
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
 13. When rewriting project descriptions, reference technologies and patterns from the GitHub repos listed above if they relate to the job description. Use repo languages, topics, and descriptions as evidence of skills, but do not add new project entries.
 14. When the summary is rewritten (path "summary"), build it with the C-WHAT formula and cover all four elements in 2-3 concise sentences: WHO = the candidate's professional identity (title, seniority, years of experience); WHAT = their specialization and the job-relevant skills; RESULT = measurable impact or evidence of results (only facts present in the original resume — never invented); HOW = the technologies and methodologies they use.
+15. When rewriting experience or project bullet points, apply the STAR method: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated); R (Result) = what changed, quantified only when the original supports it. Formula: Action verb + what you did + how you did it + result. Do not force metrics.
 
 PATHS you can target:
 - "summary" — the resume summary text
