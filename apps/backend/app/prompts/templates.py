@@ -360,7 +360,12 @@ Rules:
 - Improve custom section content the same way as standard sections
 - Copy the "years" field values EXACTLY as they appear in the original resume (including any month prefixes like "Jan 2020 - Present"). Do not shorten, reformat, or drop months.
 - Calculate and emphasize total relevant experience duration when it matches requirements
-- When writing or rewriting the summary, build it with the C-WHAT formula and cover all four elements in 2-3 concise sentences: WHO = the candidate's professional identity (title, seniority, years of experience); WHAT = their specialization and the job-relevant skills; RESULT = measurable impact or evidence of results (only facts present in the original resume — never invented); HOW = the technologies and methodologies they use.
+- When writing or rewriting the summary, use the formula-based approach:
+  STEP 1 — Identify the Engineer: Determine professional identity (Junior Software Engineer, Full-Stack Developer, Frontend Developer, Backend Developer, Mobile Developer, Software Engineering Graduate). Do not assign seniority not supported by experience.
+  STEP 2 — Extract Relevant Evidence: Technologies from JD, demonstrated in experience, verified metrics. Do not invent.
+  STEP 3 — Select Formula: A (Junior): hands-on + projects + seeking to contribute. B (Full-Stack): frontend + backend + application types. C (Achievement): expertise + delivered achievement. D (Experience): experience + developed contributions.
+  STEP 4 — Write: 3-4 sentences, ~50-80 words, ATS-friendly, use JD keywords naturally. Do not use "passionate", "results-driven", "highly motivated" unless supported.
+  STEP 5 — Validate: every skill supported by profile or JD, every achievement verified, no unsupported metrics, strongest qualifications first.
 - Do NOT use em dash ("—") anywhere in the writing/output, even if it exists, remove it
 
 Job Description:
@@ -445,14 +450,17 @@ Do NOT strengthen weak evidence by inventing experience.
 
 # 4. PROFESSIONAL SUMMARY
 
-Create a concise summary using the C-WHAT formula (2-3 concise sentences):
-- WHO: Professional identity / target role (title, seniority, years)
-- WHAT: Most relevant technical specialization and job-relevant skills
-- RESULT: Measurable impact or evidence of results (only facts present in the original resume - never invented)
-- HOW: Technologies and methodologies used
+Write a concise, ATS-friendly summary tailored to the target job.
 
-Do not use: "passionate", "motivated", "results-driven", "dynamic", "innovative", "highly skilled", "proven track record", "detail-oriented", "team player", "tech enthusiast", "leveraging cutting-edge technologies", "committed to excellence" - unless genuinely supported.
-Prefer concrete technical language.
+STEP 1 — Identify the Engineer: Determine professional identity (Junior Software Engineer, Full-Stack Developer, Frontend Developer, Backend Developer, Mobile Developer, Software Engineering Graduate). Do not assign seniority not supported by experience.
+
+STEP 2 — Extract Relevant Evidence: Technologies from JD, demonstrated in experience, verified metrics. Do not invent.
+
+STEP 3 — Select Formula: A (Junior): hands-on + projects + seeking to contribute. B (Full-Stack): frontend + backend + application types. C (Achievement): expertise + delivered achievement. D (Experience): experience + developed contributions.
+
+STEP 4 — Write: 3-4 sentences, ~50-80 words, ATS-friendly, use JD keywords naturally. Do not use "passionate", "results-driven", "highly motivated" unless supported.
+
+STEP 5 — Validate: every skill supported by profile or JD, every achievement verified, no unsupported metrics, strongest qualifications first.
 
 # 5. EXPERIENCE BULLETS — STAR METHOD
 
@@ -820,7 +828,12 @@ RULES:
 11. By DEFAULT, scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that text using the job description's terminology where it is not already phrased that way (per rule 9, leave content that already aligns well), while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
 13. When rewriting project descriptions, reference technologies and patterns from the GitHub repos listed above if they relate to the job description. Use repo languages, topics, and descriptions as evidence of skills, but do not add new project entries.
-14. When the summary is rewritten (path "summary"), build it with the C-WHAT formula and cover all four elements in 2-3 concise sentences: WHO = the candidate's professional identity (title, seniority, years of experience); WHAT = their specialization and the job-relevant skills; RESULT = measurable impact or evidence of results (only facts present in the original resume — never invented); HOW = the technologies and methodologies they use.
+14. When the summary is rewritten (path "summary"), use the formula-based approach:
+  STEP 1 — Identify the Engineer: Determine professional identity (Junior Software Engineer, Full-Stack Developer, Frontend Developer, Backend Developer, Mobile Developer, Software Engineering Graduate). Do not assign seniority not supported by experience.
+  STEP 2 — Extract Relevant Evidence: Technologies from JD, demonstrated in experience, verified metrics. Do not invent.
+  STEP 3 — Select Formula: A (Junior): hands-on + projects + seeking to contribute. B (Full-Stack): frontend + backend + application types. C (Achievement): expertise + delivered achievement. D (Experience): experience + developed contributions.
+  STEP 4 — Write: 3-4 sentences, ~50-80 words, ATS-friendly, use JD keywords naturally. Do not use "passionate", "results-driven", "highly motivated" unless supported.
+  STEP 5 — Validate: every skill supported by profile or JD, every achievement verified, no unsupported metrics, strongest qualifications first.
 15. When rewriting experience or project bullet points, apply the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Delivered); R (Result) = what changed — ONLY if the original provides a concrete metric or outcome. When no result is available, write an action-focused bullet (A only) and skip R. Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "seamless", "optimize", "minimize", "enhance", "streamline"). Use leadership verbs (Spearheaded, Architected, Led) only when the original shows full system or team ownership. Formula: Action verb + what you did + how you did it + [optional result].
 
 PATHS you can target:
