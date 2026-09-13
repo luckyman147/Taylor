@@ -386,7 +386,7 @@ async def test_mcp_server(server_id: str) -> dict[str, Any]:
 
 @router.get("/tools")
 async def list_mcp_tools() -> list[dict[str, Any]]:
-    """List all tools from all enabled MCP servers."""
+    """List all tools from all enabled MCP servers (legacy, uses tools_json)."""
     from app.services.mcp.server_manager import server_manager
     return await server_manager.get_all_tools()
 
@@ -398,6 +398,64 @@ async def discover_all_tools() -> dict[str, Any]:
     result = await tool_discovery.discover_all()
     total = sum(len(tools) for tools in result.values())
     return {"servers": len(result), "total_tools": total, "tools_by_server": {k: len(v) for k, v in result.items()}}
+
+
+# ── Per-Server Tool Management (Milestone 2) ────────────────────────
+
+@router.get("/servers/{server_id}/tools")
+async def list_server_tools(server_id: str) -> list[dict[str, Any]]:
+    """List discovered tools for a specific server (from MCPTool table)."""
+    from app.database import db
+    server = await db.get_mcp_server(server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    return await db.list_mcp_tools_for_server(server_id)
+
+
+@router.post("/servers/{server_id}/discover")
+async def discover_server_tools(server_id: str) -> dict[str, Any]:
+    """Discover tools from a specific server."""
+    from app.database import db
+    from app.services.mcp.discovery import tool_discovery
+
+    server = await db.get_mcp_server(server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    tools = await tool_discovery.discover_tools(server_id)
+    return {"server_id": server_id, "tools_found": len(tools), "tools": tools}
+
+
+class MCPToolUpdateRequest(BaseModel):
+    """Request to update an MCP tool."""
+    enabled: bool | None = None
+
+
+@router.patch("/servers/{server_id}/tools/{tool_id}")
+async def update_server_tool(
+    server_id: str,
+    tool_id: str,
+    request: MCPToolUpdateRequest,
+) -> dict[str, Any]:
+    """Enable/disable a tool."""
+    from app.database import db
+
+    tool = await db.get_mcp_tool(tool_id)
+    if not tool or tool["server_id"] != server_id:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    if request.enabled is not None:
+        await db.update_mcp_tool(tool_id, enabled=request.enabled)
+
+    updated = await db.get_mcp_tool(tool_id)
+    return updated or {}
+
+
+@router.get("/tools/enabled")
+async def list_enabled_tools() -> list[dict[str, Any]]:
+    """List all enabled MCP tool schemas (for LLM planner)."""
+    from app.services.mcp.discovery import tool_discovery
+    return await tool_discovery.get_enabled_tool_schemas()
 
 
 # ── Tool Usage Stats ────────────────────────────────────────────────

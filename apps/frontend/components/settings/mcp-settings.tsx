@@ -14,6 +14,7 @@ import {
   Key,
   ChevronDown,
   ChevronUp,
+  Wrench,
 } from 'lucide-react';
 import {
   fetchMCPServers,
@@ -21,12 +22,14 @@ import {
   deleteMCPServer,
   connectMCPServer,
   disconnectMCPServer,
-  fetchMCPServerHealth,
   resetMCPServerHealth,
   storeMCPCredential,
   testMCPServer,
-  discoverMCPTools,
+  discoverServerTools,
+  fetchServerTools,
+  updateServerTool,
   type MCPServer,
+  type MCPToolDef,
 } from '@/lib/api/mcp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,9 +47,11 @@ export function MCPSettings() {
   const [newServer, setNewServer] = useState({ name: '', url: '', display_name: '' });
   const [newCredential, setNewCredential] = useState<CredentialData>({ auth_type: 'none' });
   const [connecting, setConnecting] = useState<string | null>(null);
-  const [discovering, setDiscovering] = useState(false);
+  const [discovering, setDiscovering] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ serverId: string; success: boolean; message: string } | null>(null);
+  const [serverTools, setServerTools] = useState<Record<string, MCPToolDef[]>>({});
+  const [loadingTools, setLoadingTools] = useState<string | null>(null);
 
   const loadServers = useCallback(async () => {
     try {
@@ -157,13 +162,61 @@ export function MCPSettings() {
 
   const handleDiscoverTools = async () => {
     try {
-      setDiscovering(true);
-      await discoverMCPTools();
+      setDiscovering('all');
+      // Discover tools for all servers
+      for (const server of servers) {
+        if (server.enabled && server.url) {
+          try {
+            const result = await discoverServerTools(server.server_id);
+            setServerTools((prev) => ({ ...prev, [server.server_id]: result.tools }));
+          } catch {
+            // Skip servers that fail
+          }
+        }
+      }
       await loadServers();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to discover tools');
     } finally {
-      setDiscovering(false);
+      setDiscovering(null);
+    }
+  };
+
+  const handleDiscoverServerTools = async (serverId: string) => {
+    try {
+      setLoadingTools(serverId);
+      const result = await discoverServerTools(serverId);
+      setServerTools((prev) => ({ ...prev, [serverId]: result.tools }));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to discover tools');
+    } finally {
+      setLoadingTools(null);
+    }
+  };
+
+  const handleLoadTools = async (serverId: string) => {
+    try {
+      setLoadingTools(serverId);
+      const tools = await fetchServerTools(serverId);
+      setServerTools((prev) => ({ ...prev, [serverId]: tools }));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load tools');
+    } finally {
+      setLoadingTools(null);
+    }
+  };
+
+  const handleToggleTool = async (serverId: string, toolId: string, enabled: boolean) => {
+    try {
+      await updateServerTool(serverId, toolId, { enabled });
+      setServerTools((prev) => ({
+        ...prev,
+        [serverId]: (prev[serverId] || []).map((t) =>
+          t.id === toolId ? { ...t, enabled } : t
+        ),
+      }));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to update tool');
     }
   };
 
@@ -188,9 +241,9 @@ export function MCPSettings() {
             variant="outline"
             size="sm"
             onClick={() => void handleDiscoverTools()}
-            disabled={discovering}
+            disabled={discovering !== null}
           >
-            {discovering ? (
+            {discovering !== null ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
@@ -363,6 +416,86 @@ export function MCPSettings() {
                       <Trash2 className="mr-1.5 h-3 w-3" />
                       Delete
                     </Button>
+                  </div>
+
+                  {/* Tools section */}
+                  <div className="mt-3 border-t border-[#e6e3dc] pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                        <Wrench className="h-3 w-3" />
+                        <span>Tools</span>
+                        {serverTools[server.server_id] && (
+                          <span className="text-ink-muted">
+                            ({serverTools[server.server_id].filter((t) => t.enabled).length}/
+                            {serverTools[server.server_id].length} enabled)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => void handleLoadTools(server.server_id)}
+                          disabled={loadingTools === server.server_id}
+                        >
+                          {loadingTools === server.server_id ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            'Load'
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => void handleDiscoverServerTools(server.server_id)}
+                          disabled={loadingTools === server.server_id}
+                        >
+                          {loadingTools === server.server_id ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            'Discover'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {serverTools[server.server_id] && serverTools[server.server_id].length > 0 ? (
+                      <div className="space-y-1.5">
+                        {serverTools[server.server_id].map((tool) => (
+                          <div
+                            key={tool.id}
+                            className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-[#e6e3dc]"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-ink truncate">{tool.name}</p>
+                              {tool.description && (
+                                <p className="text-[10px] text-ink-muted truncate mt-0.5">
+                                  {tool.description}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => void handleToggleTool(server.server_id, tool.id, !tool.enabled)}
+                              className={`ml-2 h-5 w-9 rounded-full transition-colors ${
+                                tool.enabled ? 'bg-emerald-500' : 'bg-gray-300'
+                              }`}
+                            >
+                              <span
+                                className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                                  tool.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : serverTools[server.server_id] ? (
+                      <p className="text-[10px] text-ink-muted text-center py-2">
+                        No tools discovered. Click Discover to scan.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               )}

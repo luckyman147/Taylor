@@ -3011,6 +3011,131 @@ class Database:
                       "last_error_type": r.last_error_type}
                     for r in result.scalars().all()]
 
+    # ── MCP Tool CRUD ───────────────────────────────────────────────
+
+    async def upsert_mcp_tool(
+        self,
+        tool_id: str,
+        server_id: str,
+        name: str,
+        public_name: str,
+        description: str = "",
+        input_schema: str = "{}",
+        last_discovered_at: str | None = None,
+    ) -> dict[str, Any]:
+        """Store or update an MCP tool."""
+        from app.models import MCPTool
+        now = _now()
+        async with self._session() as session:
+            # Try to find existing tool by server_id + name
+            result = await session.execute(
+                select(MCPTool).where(
+                    MCPTool.server_id == server_id,
+                    MCPTool.name == name,
+                )
+            )
+            row = result.scalar_one_or_none()
+            if row:
+                row.public_name = public_name
+                row.description = description
+                row.input_schema = input_schema
+                if last_discovered_at:
+                    row.last_discovered_at = last_discovered_at
+                row.updated_at = now
+                await session.commit()
+                return self._mcp_tool_to_dict(row)
+            else:
+                row = MCPTool(
+                    id=tool_id,
+                    server_id=server_id,
+                    name=name,
+                    public_name=public_name,
+                    description=description,
+                    input_schema=input_schema,
+                    last_discovered_at=last_discovered_at,
+                    created_at=now,
+                    updated_at=now,
+                )
+                session.add(row)
+                await session.commit()
+                return self._mcp_tool_to_dict(row)
+
+    async def get_mcp_tool(self, tool_id: str) -> dict[str, Any] | None:
+        """Get a single MCP tool by ID."""
+        from app.models import MCPTool
+        async with self._session() as session:
+            row = await session.get(MCPTool, tool_id)
+            return self._mcp_tool_to_dict(row) if row else None
+
+    async def list_mcp_tools(self) -> list[dict[str, Any]]:
+        """List all MCP tools."""
+        from app.models import MCPTool
+        async with self._session() as session:
+            result = await session.execute(select(MCPTool))
+            return [self._mcp_tool_to_dict(row) for row in result.scalars().all()]
+
+    async def list_mcp_tools_for_server(self, server_id: str) -> list[dict[str, Any]]:
+        """List MCP tools for a specific server."""
+        from app.models import MCPTool
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPTool).where(MCPTool.server_id == server_id)
+            )
+            return [self._mcp_tool_to_dict(row) for row in result.scalars().all()]
+
+    async def list_enabled_mcp_tools(self) -> list[dict[str, Any]]:
+        """List all enabled MCP tools."""
+        from app.models import MCPTool
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPTool).where(MCPTool.enabled == True)
+            )
+            return [self._mcp_tool_to_dict(row) for row in result.scalars().all()]
+
+    async def update_mcp_tool(self, tool_id: str, **fields: Any) -> bool:
+        """Update MCP tool fields (non-None values only)."""
+        from app.models import MCPTool
+        now = _now()
+        async with self._session() as session:
+            row = await session.get(MCPTool, tool_id)
+            if not row:
+                return False
+            for key, val in fields.items():
+                if val is not None and hasattr(row, key):
+                    setattr(row, key, val)
+            row.updated_at = now
+            await session.commit()
+            return True
+
+    async def delete_mcp_tools_for_server(self, server_id: str) -> int:
+        """Delete all MCP tools for a server. Returns count deleted."""
+        from app.models import MCPTool
+        async with self._session() as session:
+            result = await session.execute(
+                select(MCPTool).where(MCPTool.server_id == server_id)
+            )
+            rows = result.scalars().all()
+            count = len(rows)
+            for row in rows:
+                await session.delete(row)
+            await session.commit()
+            return count
+
+    def _mcp_tool_to_dict(self, row: Any) -> dict[str, Any]:
+        """Convert an MCPTool ORM row to a plain dict."""
+        return {
+            "id": row.id,
+            "server_id": row.server_id,
+            "name": row.name,
+            "public_name": row.public_name,
+            "description": row.description,
+            "input_schema": row.input_schema,
+            "enabled": row.enabled,
+            "last_discovered_at": row.last_discovered_at,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
     def _mcp_server_to_dict(self, row: Any) -> dict[str, Any]:
         """Convert an MCPServer ORM row to a plain dict."""
         return {

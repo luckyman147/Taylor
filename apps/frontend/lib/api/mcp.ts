@@ -262,3 +262,59 @@ export async function testMCPServer(
   if (!res.ok) throw new Error('Failed to test server');
   return res.json();
 }
+
+// ── Tool Management ─────────────────────────────────────────────────
+
+export interface MCPToolDef {
+  id: string;
+  server_id: string;
+  name: string;
+  public_name: string;
+  description: string;
+  input_schema: string;
+  enabled: boolean;
+  last_discovered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchServerTools(serverId: string): Promise<MCPToolDef[]> {
+  const res = await apiFetch(`/mcp/servers/${serverId}/tools`);
+  if (!res.ok) throw new Error('Failed to fetch server tools');
+  return res.json();
+}
+
+export async function discoverServerTools(
+  serverId: string
+): Promise<{ server_id: string; tools_found: number; tools: MCPToolDef[] }> {
+  const res = await apiPost(`/mcp/servers/${serverId}/discover`, {});
+  if (!res.ok) throw new Error('Failed to discover server tools');
+  return res.json();
+}
+
+export async function updateServerTool(
+  serverId: string,
+  toolId: string,
+  data: { enabled?: boolean }
+): Promise<MCPToolDef> {
+  const res = await apiFetch(`/mcp/servers/${serverId}/tools/${toolId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update tool');
+  return res.json();
+}
+
+export async function fetchEnabledTools(): Promise<
+  Array<{
+    type: string;
+    function: { name: string; description: string; parameters: Record<string, unknown> };
+    tool_id: string;
+    server_id: string;
+  }>
+> {
+  const res = await apiFetch('/mcp/tools/enabled');
+  if (!res.ok) throw new Error('Failed to fetch enabled tools');
+  return res.json();
+}
