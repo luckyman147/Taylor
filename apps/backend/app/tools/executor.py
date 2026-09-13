@@ -346,7 +346,7 @@ class ToolExecutor:
     def _classify_error(self, error_msg: str) -> str:
         """Classify an error message into an error code."""
         error_lower = error_msg.lower()
-        if "timeout" in error_lower:
+        if "timeout" in error_lower or "timed out" in error_lower:
             return "TIMEOUT"
         if "connection" in error_lower and "failed" in error_lower:
             return "CONNECT_ERROR"
