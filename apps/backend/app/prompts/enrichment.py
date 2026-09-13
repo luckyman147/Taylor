@@ -97,15 +97,18 @@ CANDIDATE'S ADDITIONAL CONTEXT:
 
 TASK:
 Generate NEW bullet points to ADD to the existing description. The original bullets will be kept as-is.
-New bullets should follow the STAR method:
+New bullets should follow the STAR method with evidence validation:
 - S (Situation): Brief context or problem
 - T (Task): What the candidate was responsible for
-- A (Action): What they actually did — start with strong verbs (Led, Built, Architected, Implemented, Optimized, Automated, Integrated)
-- R (Result): What changed — include metrics, numbers, percentages where the candidate provided them
+- A (Action): What they actually did — start with precise verbs (Built, Implemented, Automated, Integrated, Delivered, Refactored, Deployed)
+- R (Result): What changed — ONLY if the candidate provided a concrete metric. When no result is available, write an action-focused bullet (A only) and skip R.
+
+Do not use leadership verbs (Spearheaded, Architected, Led) unless the candidate claims full system or team ownership.
+Do not use impact adverbs ("significantly", "substantially", "greatly").
 Additionally:
 1. Be technically specific: Mention technologies, tools, and methodologies
 2. Show ownership: What the candidate personally did vs. the team
-3. Formula: Action verb + what you did + how you did it + measurable result
+3. Formula: Action verb + what you did + how you did it + [optional result]
 
 OUTPUT FORMAT (JSON only, no other text):
 {{
@@ -149,13 +152,15 @@ USER'S FEEDBACK/INSTRUCTION:
 {user_instruction}
 
 TASK:
-Based on the user's feedback, completely REWRITE the description bullets using the STAR method. The new description should:
+Based on the user's feedback, completely REWRITE the description bullets using the STAR method with evidence validation. The new description should:
 1. Address the user's specific concerns/requests
-2. Follow STAR: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using strong verbs; R (Result) = what changed
+2. Follow STAR: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only)
 3. Highlight quantifiable impact ONLY when it already exists in the current description or the user's feedback (never invent numbers)
 4. Be technically specific with tools/technologies
 5. Show clear ownership and scope
-6. Formula: Action verb + what you did + how you did it + measurable result
+6. Do not use impact adverbs ("significantly", "substantially", "greatly")
+7. Do not use leadership verbs (Spearheaded, Architected, Led) unless the original shows full system or team ownership
+8. Formula: Action verb + what you did + how you did it + [optional result]
 
 OUTPUT FORMAT (JSON only):
 {{
@@ -361,12 +366,14 @@ PROJECT SOURCE MATERIAL (the primary source of facts about this project):
 
 {user_instruction}
 TASK:
-Write bullet points for this project's resume entry using the STAR method:
+Write bullet points for this project's resume entry using the STAR method with evidence validation:
 - S (Situation): Brief context about the project and what problem it solves
 - T (Task): What the candidate's role and responsibilities were
 - A (Action): What they actually did — be technically specific with tools, technologies, and architecture
-- R (Result): What was built or delivered, with quantifiable impact ONLY when the source material supports it
-Formula: Action verb + what you did + how you did it + measurable result
+- R (Result): What was built or delivered — ONLY when the source material provides a concrete metric. When no result is available, write an action-focused bullet (A only).
+
+Do not use leadership verbs unless the candidate claims full ownership. Do not use impact adverbs ("significantly", "substantially").
+Formula: Action verb + what you did + how you did it + [optional result]
 Additionally:
 1. Show ownership, scope, and what was built or delivered
 2. Be concise (1-2 lines each)

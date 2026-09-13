@@ -250,30 +250,34 @@ CRITICAL_TRUTHFULNESS_RULES = {
 }
 
 
-STAR_BULLET_GUIDE = """STAR METHOD for experience bullet points:
+STAR_BULLET_GUIDE = """STAR METHOD for experience bullet points — EVIDENCE-BASED RULES:
 Each bullet must follow the STAR formula to produce achievement-focused, specific descriptions:
 - S (Situation): Brief context or problem (one clause max)
 - T (Task): What the candidate was responsible for
 - A (Action): What they actually did — use precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Deployed, Refactored, Configured, Migrated, Reduced, Increased, Delivered)
-- R (Result): What changed because of their work — quantify only when the original resume supports it
+- R (Result): What changed because of their work — ONLY if the original resume provides a concrete metric or outcome
 
-FORMULA: Action verb + what you did + how you did it + measurable result
+FORMULA: Action verb + what you did + how you did it + [optional result]
+
+CRITICAL RULES:
+- R is OPTIONAL. When no measurable result exists in the original, write an action-focused bullet (A only) and skip R entirely. Do not invent impact language ("significantly enhancing", "substantially reducing").
+- VERB SAFETY: Use leadership verbs (Spearheaded, Architected, Led, Directed, Pioneered) ONLY when the original shows full ownership of the system or team. Use action verbs (Built, Implemented, Delivered, Developed) for individual contribution.
+- NO IMPACT ADVERBS: Never use "significantly", "substantially", "greatly", "dramatically" — these are unverifiable filler. State the concrete change or omit the result.
+- VALIDATION STEP: Before writing each bullet, verify: (1) the action is stated or implied in the original, (2) any metric comes from the original, (3) the verb matches the scope of work. If any check fails, rewrite with a safer verb and drop the unsupported claim.
+- Keep Situation/Task to one short clause; the emphasis should be on Action and Result
+- Preserve the candidate's original details and voice
+- Do not use em dash characters
 
 GOOD EXAMPLES:
 - "Developed REST APIs with Node.js and integrated database operations to support car listings and user interactions in a vehicle marketplace."
-- "Implemented role-based authorization for five user types using ASP.NET Core and SQL Server, reducing access-related support tickets."
-- "Built 15+ end-to-end features using Flutter and Clean Architecture, including role-based access control, member management, and event tracking, for a 50+ member organization."
+- "Implemented role-based authorization for five user types using ASP.NET Core and SQL Server."
+- "Built 15+ end-to-end features using Flutter and Clean Architecture for a 50+ member organization."
 
-BAD EXAMPLES (too vague, no STAR):
-- "Developed backend solutions."
-- "Worked on the project."
-- "Responsible for API development."
-
-RULES:
-- Do not force metrics — a strong non-quantified bullet is better than an invented number
-- Keep Situation/Task to one short clause; the emphasis should be on Action and Result
-- Preserve the candidate's original details and voice
-- Do not use em dash characters"""
+BAD EXAMPLES (invented metrics, inflated verbs):
+- "Spearheaded a revolutionary platform transformation, significantly boosting efficiency."
+- "Architected a comprehensive solution that substantially reduced operational costs."
+- "Dramatically enhanced user engagement through innovative feature development."
+"""
 
 IMPROVE_RESUME_PROMPT_NUDGE = """Lightly nudge this resume toward the job description. Output ONLY the JSON object, no other text.
 
@@ -316,7 +320,7 @@ Do NOT include personalInfo in your output - it will be preserved from the origi
 
 Rules:
 - Strengthen alignment by weaving in relevant keywords where evidence already exists
-- You may rephrase bullet points to include keyword phrasing using the STAR method: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did; R (Result) = what changed. Formula: Action verb + what you did + how you did it + result.
+- You may rephrase bullet points to include keyword phrasing using the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only). Do not use impact adverbs ("significantly", "substantially"). Formula: Action verb + what you did + how you did it + [optional result].
 - Do NOT introduce new skills, tools, or certifications not in the resume
 - Do NOT change role, industry, or seniority level
 - Preserve descriptionStyles arrays and keep them aligned one-to-one with description arrays
@@ -346,7 +350,7 @@ Do NOT include personalInfo in your output - it will be preserved from the origi
 
 Rules:
 - Make targeted adjustments to bullet points to align with job description phrasing. Preserve the candidate's original details and voice - adjust wording, do not rewrite entirely.
-- When rewriting bullets, use the STAR method: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs; R (Result) = what changed, quantified only when the original supports it. Formula: Action verb + what you did + how you did it + result.
+- When rewriting bullets, use the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs; R (Result) = what changed — ONLY if the original provides a concrete metric. When no result exists, write an action-focused bullet (A only). Do not use impact adverbs ("significantly", "substantially"). Use leadership verbs (Spearheaded, Architected) only when the original shows full ownership. Formula: Action verb + what you did + how you did it + [optional result].
 - DO NOT invent new information
 - Preserve existing action verbs. Do not invent quantifiable achievements not in the original.
 - Keep proper nouns (names, company names, locations) unchanged
@@ -452,15 +456,17 @@ Prefer concrete technical language.
 
 # 5. EXPERIENCE BULLETS — STAR METHOD
 
-Rewrite each bullet using the STAR method:
+Rewrite each bullet using the STAR method with evidence validation:
 - S (Situation): Brief context or problem (one clause)
 - T (Task): What the candidate was responsible for
-- A (Action): What they actually did — use precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Deployed, Refactored)
-- R (Result): What changed because of their work — quantify only when supported by evidence
+- A (Action): What they actually did — use precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Deployed, Refactored, Delivered)
+- R (Result): What changed — ONLY if the original provides a concrete metric or outcome
 
-Formula: Action verb + what you did + how you did it + measurable result.
-Example: "Developed REST APIs with Node.js and integrated database operations to support car listings and user interactions in a vehicle marketplace."
-Do not force metrics — a strong non-quantified bullet is better than an invented number.
+When no result is available, write an action-focused bullet (A only) and skip R entirely.
+Do not use impact adverbs ("significantly", "substantially", "greatly", "dramatically").
+Use leadership verbs (Spearheaded, Architected, Led) only when the original shows full system or team ownership.
+Formula: Action verb + what you did + how you did it + [optional result].
+Example: "Built 15+ end-to-end features using Flutter and Clean Architecture for a 50+ member organization."
 Preserve the candidate's original details and voice.
 
 # 6. TECHNICAL SPECIFICITY
@@ -815,7 +821,7 @@ RULES:
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
 13. When rewriting project descriptions, reference technologies and patterns from the GitHub repos listed above if they relate to the job description. Use repo languages, topics, and descriptions as evidence of skills, but do not add new project entries.
 14. When the summary is rewritten (path "summary"), build it with the C-WHAT formula and cover all four elements in 2-3 concise sentences: WHO = the candidate's professional identity (title, seniority, years of experience); WHAT = their specialization and the job-relevant skills; RESULT = measurable impact or evidence of results (only facts present in the original resume — never invented); HOW = the technologies and methodologies they use.
-15. When rewriting experience or project bullet points, apply the STAR method: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated); R (Result) = what changed, quantified only when the original supports it. Formula: Action verb + what you did + how you did it + result. Do not force metrics.
+15. When rewriting experience or project bullet points, apply the STAR method with evidence validation: S (Situation) = brief context; T (Task) = what the candidate owned; A (Action) = what they actually did using precise verbs (Built, Developed, Implemented, Designed, Integrated, Automated, Delivered); R (Result) = what changed — ONLY if the original provides a concrete metric or outcome. When no result is available, write an action-focused bullet (A only) and skip R. Do not use impact adverbs ("significantly", "substantially", "greatly"). Use leadership verbs (Spearheaded, Architected, Led) only when the original shows full system or team ownership. Formula: Action verb + what you did + how you did it + [optional result].
 
 PATHS you can target:
 - "summary" — the resume summary text
