@@ -306,6 +306,14 @@ export async function updateServerTool(
   return res.json();
 }
 
+export async function fetchMCPCredentialMetadata(
+  serverId: string
+): Promise<{ credential_id: string; auth_type: string } | null> {
+  const res = await apiFetch(`/mcp/servers/${serverId}/credentials/metadata`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function fetchEnabledTools(): Promise<
   Array<{
     type: string;

@@ -28,6 +28,7 @@ import {
   discoverServerTools,
   fetchServerTools,
   updateServerTool,
+  fetchMCPCredentialMetadata,
   type MCPServer,
   type MCPToolDef,
 } from '@/lib/api/mcp';
@@ -36,6 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { CredentialFields, type AuthType, type CredentialData } from './credential-fields';
+import { OAuthConnectButton } from './oauth-connect-button';
 
 export function MCPSettings() {
   const [servers, setServers] = useState<MCPServer[]>([]);
@@ -52,6 +54,7 @@ export function MCPSettings() {
   const [testResult, setTestResult] = useState<{ serverId: string; success: boolean; message: string } | null>(null);
   const [serverTools, setServerTools] = useState<Record<string, MCPToolDef[]>>({});
   const [loadingTools, setLoadingTools] = useState<string | null>(null);
+  const [credentialMeta, setCredentialMeta] = useState<Record<string, { credential_id: string; auth_type: string } | null>>({});
 
   const loadServers = useCallback(async () => {
     try {
@@ -128,10 +131,11 @@ export function MCPSettings() {
     try {
       await storeMCPCredential(serverId, {
         auth_type: newCredential.auth_type,
-        auth_config: newCredential,
+        auth_config: newCredential as unknown as Record<string, unknown>,
       });
       setNewCredential({ auth_type: 'none' });
       setShowCredentialDialog(null);
+      await handleLoadCredentialMeta(serverId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to store credential');
     }
@@ -220,6 +224,23 @@ export function MCPSettings() {
     }
   };
 
+  const handleLoadCredentialMeta = async (serverId: string) => {
+    try {
+      const meta = await fetchMCPCredentialMetadata(serverId);
+      setCredentialMeta((prev) => ({ ...prev, [serverId]: meta }));
+    } catch {
+      setCredentialMeta((prev) => ({ ...prev, [serverId]: null }));
+    }
+  };
+
+  const handleToggleExpand = (serverId: string) => {
+    const next = expandedServer === serverId ? null : serverId;
+    setExpandedServer(next);
+    if (next && !credentialMeta[next]) {
+      void handleLoadCredentialMeta(next);
+    }
+  };
+
   const statusIcon = (server: MCPServer) => {
     if (server.status === 'connected') return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
     if (server.status === 'error') return <AlertTriangle className="h-4 w-4 text-red-500" />;
@@ -290,7 +311,7 @@ export function MCPSettings() {
               {/* Server header */}
               <div
                 className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[#faf9f7]"
-                onClick={() => setExpandedServer(expandedServer === server.server_id ? null : server.server_id)}
+                onClick={() => handleToggleExpand(server.server_id)}
               >
                 <div className="flex items-center gap-3">
                   {statusIcon(server)}
@@ -416,6 +437,14 @@ export function MCPSettings() {
                       <Trash2 className="mr-1.5 h-3 w-3" />
                       Delete
                     </Button>
+                    {credentialMeta[server.server_id]?.auth_type === 'oauth' && (
+                      <OAuthConnectButton
+                        serverId={server.server_id}
+                        serverName={server.display_name || server.name}
+                        onSuccess={() => void handleLoadCredentialMeta(server.server_id)}
+                        onError={(msg) => setError(msg)}
+                      />
+                    )}
                   </div>
 
                   {/* Tools section */}
