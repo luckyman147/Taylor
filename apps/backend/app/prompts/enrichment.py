@@ -104,7 +104,7 @@ New bullets should follow the STAR method with evidence validation:
 - R (Result): What changed — ONLY if the candidate provided a concrete metric. When no result is available, write an action-focused bullet (A only) and skip R.
 
 Do not use leadership verbs (Spearheaded, Architected, Led) unless the candidate claims full system or team ownership.
-Do not use impact adverbs ("significantly", "substantially", "greatly").
+Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "seamless", "optimize", "minimize", "enhance", "streamline").
 Additionally:
 1. Be technically specific: Mention technologies, tools, and methodologies
 2. Show ownership: What the candidate personally did vs. the team
@@ -158,7 +158,7 @@ Based on the user's feedback, completely REWRITE the description bullets using t
 3. Highlight quantifiable impact ONLY when it already exists in the current description or the user's feedback (never invent numbers)
 4. Be technically specific with tools/technologies
 5. Show clear ownership and scope
-6. Do not use impact adverbs ("significantly", "substantially", "greatly")
+6. Do not use impact adverbs or vague claims ("significantly", "substantially", "greatly", "seamless", "optimize", "minimize", "enhance", "streamline")
 7. Do not use leadership verbs (Spearheaded, Architected, Led) unless the original shows full system or team ownership
 8. Formula: Action verb + what you did + how you did it + [optional result]
 
@@ -372,7 +372,7 @@ Write bullet points for this project's resume entry using the STAR method with e
 - A (Action): What they actually did — be technically specific with tools, technologies, and architecture
 - R (Result): What was built or delivered — ONLY when the source material provides a concrete metric. When no result is available, write an action-focused bullet (A only).
 
-Do not use leadership verbs unless the candidate claims full ownership. Do not use impact adverbs ("significantly", "substantially").
+Do not use leadership verbs unless the candidate claims full ownership. Do not use impact adverbs or vague claims ("significantly", "substantially", "seamless", "optimize", "minimize", "enhance", "streamline").
 Formula: Action verb + what you did + how you did it + [optional result]
 Additionally:
 1. Show ownership, scope, and what was built or delivered
