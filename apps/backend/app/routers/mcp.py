@@ -472,3 +472,195 @@ async def get_tool_stats_detail() -> list[dict[str, Any]]:
     """Get detailed tool usage statistics."""
     from app.observability.metrics import agent_metrics
     return await agent_metrics.get_tool_metrics()
+
+
+# ── OAuth Endpoints (Milestone 4) ───────────────────────────────────
+
+class OAuthAuthorizeRequest(BaseModel):
+    """Request to get OAuth authorization URL."""
+    redirect_uri: str  # Frontend URL to redirect back to after OAuth
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Request to complete OAuth flow with authorization code."""
+    code: str
+    state: str
+
+
+@router.post("/servers/{server_id}/oauth/authorize")
+async def oauth_authorize(server_id: str, request: OAuthAuthorizeRequest) -> dict[str, Any]:
+    """Get OAuth authorization URL for a server.
+
+    Generates PKCE code_verifier/challenge, creates encrypted state,
+    and returns the authorization URL for the user to visit.
+    """
+    from app.database import db
+    from app.services.mcp.oauth.pkce import generate_pkce_pair
+    from app.services.mcp.oauth.state import generate_oauth_state
+
+    # Get server
+    server = await db.get_mcp_server(server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    # Get credential with OAuth config
+    credential = await db.get_mcp_credential_for_server(server_id)
+    if not credential:
+        raise HTTPException(status_code=404, detail="No credentials found")
+
+    # Get OAuth config from the credential
+    auth_config_row = await db.get_mcp_credential(credential["credential_id"])
+    if not auth_config_row:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    # Try to get auth_config (deprecated but still used during migration)
+    from app.crypto import decrypt
+    auth_config = None
+    try:
+        decrypted = decrypt(auth_config_row.get("auth_config", ""))
+        if decrypted:
+            auth_config = json.loads(decrypted)
+    except Exception:
+        pass
+
+    # Also check per-type columns
+    authorization_url = auth_config_row.get("oauth_authorization_url")
+    client_id = auth_config_row.get("oauth_client_id")
+    scope = auth_config_row.get("oauth_scope")
+
+    if not authorization_url:
+        # Fallback to auth_config
+        if auth_config:
+            authorization_url = auth_config.get("authorization_url")
+            client_id = auth_config.get("client_id")
+            scope = auth_config.get("scope")
+        else:
+            raise HTTPException(status_code=422, detail="OAuth authorization URL not configured")
+
+    if not client_id:
+        raise HTTPException(status_code=422, detail="OAuth client_id not configured")
+
+    # Generate PKCE pair
+    code_verifier, code_challenge = generate_pkce_pair()
+
+    # Generate state
+    state = generate_oauth_state(
+        user_id="current",  # TODO: Get from auth
+        server_id=server_id,
+        code_verifier=code_verifier,
+        redirect_uri=request.redirect_uri,
+    )
+
+    # Build authorization URL
+    separator = "&" if "?" in authorization_url else "?"
+    auth_url = (
+        f"{authorization_url}"
+        f"{separator}response_type=code"
+        f"&client_id={client_id}"
+        f"&redirect_uri={request.redirect_uri}"
+        f"&state={state}"
+        f"&code_challenge={code_challenge}"
+        f"&code_challenge_method=S256"
+    )
+    if scope:
+        auth_url += f"&scope={scope}"
+
+    return {
+        "authorization_url": auth_url,
+        "state": state,
+    }
+
+
+@router.post("/servers/{server_id}/oauth/callback")
+async def oauth_callback(server_id: str, request: OAuthCallbackRequest) -> dict[str, Any]:
+    """Complete OAuth flow with authorization code.
+
+    Validates the state, exchanges the code for tokens, and stores them.
+    """
+    from app.database import db
+    from app.services.mcp.oauth.state import validate_oauth_state, mark_state_used
+    from app.services.mcp.oauth.client import oauth_client
+
+    # Get server
+    server = await db.get_mcp_server(server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    # Validate state
+    state_result = validate_oauth_state(
+        request.state,
+        expected_user_id="current",  # TODO: Get from auth
+        expected_server_id=server_id,
+    )
+
+    if isinstance(state_result, str):
+        # Error message
+        raise HTTPException(status_code=422, detail=f"Invalid OAuth state: {state_result}")
+
+    # Mark state as used (single-use)
+    mark_state_used(request.state)
+
+    # Get credential
+    credential = await db.get_mcp_credential_for_server(server_id)
+    if not credential:
+        raise HTTPException(status_code=404, detail="No credentials found")
+
+    # Get OAuth config
+    auth_config_row = await db.get_mcp_credential(credential["credential_id"])
+    if not auth_config_row:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    from app.crypto import decrypt
+    auth_config = None
+    try:
+        decrypted = decrypt(auth_config_row.get("auth_config", ""))
+        if decrypted:
+            auth_config = json.loads(decrypted)
+    except Exception:
+        pass
+
+    token_url = auth_config_row.get("oauth_token_url")
+    client_id = auth_config_row.get("oauth_client_id")
+    client_secret_encrypted = auth_config_row.get("encrypted_client_secret")
+
+    if not token_url:
+        if auth_config:
+            token_url = auth_config.get("token_url")
+        else:
+            raise HTTPException(status_code=422, detail="OAuth token_url not configured")
+
+    if not client_id:
+        if auth_config:
+            client_id = auth_config.get("client_id")
+        else:
+            raise HTTPException(status_code=422, detail="OAuth client_id not configured")
+
+    client_secret = decrypt(client_secret_encrypted) if client_secret_encrypted else None
+    if not client_secret and auth_config:
+        client_secret = auth_config.get("client_secret")
+
+    # Exchange code for tokens
+    try:
+        tokens = await oauth_client.exchange_code(
+            token_url=token_url,
+            code=request.code,
+            code_verifier=state_result.code_verifier,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=state_result.redirect_uri,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Token exchange failed: {e}")
+
+    # Store tokens
+    await oauth_client.store_tokens(credential["credential_id"], tokens)
+
+    # Update server status
+    await db.update_mcp_server(server_id, status="connected", error_message=None)
+
+    return {
+        "success": True,
+        "message": "OAuth tokens stored successfully",
+        "token_type": tokens.get("token_type", "Bearer"),
+        "expires_in": tokens.get("expires_in"),
+    }
