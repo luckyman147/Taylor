@@ -28,6 +28,7 @@ import {
   Star,
   ChevronDown,
   Loader2,
+  Pencil,
 } from 'lucide-react';
 import {
   useResumePreview,
@@ -41,6 +42,7 @@ import {
   getCoverLetterPdfUrl,
   fetchResume,
   updateResume,
+  renameResume,
   updateResumeTemplateSettings,
   saveResumeAsMaster,
   updateCoverLetter,
@@ -190,6 +192,9 @@ const ResumeBuilderContent = () => {
   const [isOutreachSaving, setIsOutreachSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [resumeTitle, setResumeTitle] = useState<string | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingTitle, setEditingTitle] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // On-demand generation state
   const [isTailoredResume, setIsTailoredResume] = useState(false);
@@ -546,6 +551,30 @@ const ResumeBuilderContent = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
   }, []);
 
+  const handleStartEditTitle = useCallback(() => {
+    setEditingTitle(resumeTitle ?? '');
+    setIsEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  }, [resumeTitle]);
+
+  const handleSaveTitle = useCallback(async () => {
+    const trimmed = editingTitle.trim();
+    if (trimmed && trimmed !== resumeTitle && resumeId) {
+      try {
+        await renameResume(resumeId, trimmed);
+        setResumeTitle(trimmed);
+      } catch {
+        // Keep old title on failure
+      }
+    }
+    setIsEditingTitle(false);
+  }, [editingTitle, resumeTitle, resumeId]);
+
+  const handleCancelEditTitle = useCallback(() => {
+    setIsEditingTitle(false);
+    setEditingTitle('');
+  }, []);
+
   const handleSettingsChange = useCallback((newSettings: TemplateSettings) => {
     setTemplateSettings(newSettings);
   }, []);
@@ -890,9 +919,31 @@ const ResumeBuilderContent = () => {
                   {t('nav.builder')}
                 </h1>
                 {resumeTitle && (
-                  <span className="text-lg font-normal text-steel-grey truncate max-w-[300px]">
-                    — {resumeTitle}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-normal text-steel-grey">—</span>
+                    {isEditingTitle ? (
+                      <input
+                        ref={titleInputRef}
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={handleSaveTitle}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveTitle();
+                          if (e.key === 'Escape') handleCancelEditTitle();
+                        }}
+                        className="text-lg font-normal text-ink bg-transparent border-b border-primary outline-none truncate max-w-[300px]"
+                      />
+                    ) : (
+                      <span
+                        className="text-lg font-normal text-ink truncate max-w-[300px] cursor-pointer group flex items-center gap-1.5"
+                        onClick={handleStartEditTitle}
+                      >
+                        {resumeTitle}
+                        <Pencil className="w-3.5 h-3.5 text-steel-grey opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    )}
+                  </div>
                 )}
                 {hasUnsavedChanges && (
                   <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-[#fbf6e9] px-2.5 py-1 text-[11px] font-semibold text-amber-700">
