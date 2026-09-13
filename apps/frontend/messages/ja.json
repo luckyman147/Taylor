@@ -342,6 +342,7 @@
       "experience": {
         "addJob": "職歴を追加",
         "addFirstJob": "最初の職歴を追加",
+        "addFromProfile": "プロフィールから追加",
         "fields": {
           "jobTitle": "職種",
           "company": "会社"
@@ -718,6 +719,18 @@
       "goToProfile": "プロフィールへ",
       "loading": "資格を読み込み中...",
       "loadError": "資格を読み込めませんでした。",
+      "retry": "再試行"
+    },
+    "experienceDialog": {
+      "title": "プロフィールから職歴を追加",
+      "description": "キャリアプロフィールから職歴を選んでこの履歴書に追加します。",
+      "profileExperiences": "プロフィールの職歴",
+      "searchPlaceholder": "職歴を検索...",
+      "allAdded": "プロフィールのすべての職歴がこの履歴書に含まれています。",
+      "noExperiencesHint": "プロフィールに職歴を追加すると、ここに表示されます。",
+      "goToProfile": "プロフィールへ",
+      "loading": "職歴を読み込み中...",
+      "loadError": "職歴を読み込めませんでした。",
       "retry": "再試行"
     },
     "awardsDialog": {

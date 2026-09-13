@@ -342,6 +342,7 @@
       "experience": {
         "addJob": "Add Job",
         "addFirstJob": "Add First Job",
+        "addFromProfile": "Add from Profile",
         "fields": {
           "jobTitle": "Job Title",
           "company": "Company"
@@ -718,6 +719,18 @@
       "goToProfile": "Go to profile",
       "loading": "Loading your certificates...",
       "loadError": "Could not load your certificates.",
+      "retry": "Retry"
+    },
+    "experienceDialog": {
+      "title": "Add Experience from Profile",
+      "description": "Pick a work experience from your career profile to add it to this resume.",
+      "profileExperiences": "Profile experiences",
+      "searchPlaceholder": "Search experiences...",
+      "allAdded": "All your profile experiences are already in this resume.",
+      "noExperiencesHint": "Add work experiences in your profile so they can appear here.",
+      "goToProfile": "Go to profile",
+      "loading": "Loading your experiences...",
+      "loadError": "Could not load your experiences.",
       "retry": "Retry"
     },
     "awardsDialog": {

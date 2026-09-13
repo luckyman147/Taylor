@@ -342,6 +342,7 @@
       "experience": {
         "addJob": "添加经历",
         "addFirstJob": "添加第一条经历",
+        "addFromProfile": "从个人资料添加",
         "fields": {
           "jobTitle": "职位名称",
           "company": "公司"
@@ -718,6 +719,18 @@
       "goToProfile": "前往个人资料",
       "loading": "正在加载您的证书...",
       "loadError": "无法加载您的证书。",
+      "retry": "重试"
+    },
+    "experienceDialog": {
+      "title": "从个人资料添加经历",
+      "description": "从您的职业资料中选择工作经历添加到此简历。",
+      "profileExperiences": "个人资料中的经历",
+      "searchPlaceholder": "搜索经历...",
+      "allAdded": "您个人资料中的所有经历已在此简历中。",
+      "noExperiencesHint": "在个人资料中添加工作经历，以便在此处显示。",
+      "goToProfile": "前往个人资料",
+      "loading": "正在加载您的经历...",
+      "loadError": "无法加载您的经历。",
       "retry": "重试"
     },
     "awardsDialog": {

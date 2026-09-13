@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ const RichTextEditor = dynamic(
   }
 );
 import { Experience } from '@/components/dashboard/resume-component';
-import { AlignLeft, List, Plus, Trash2 } from 'lucide-react';
+import { AlignLeft, List, Plus, Trash2, User } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { alignDescriptionStyles, toggleDescriptionStyle } from '@/lib/utils/description-styles';
 import {
@@ -37,6 +37,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { DraggableListItem } from '../draggable-list-item';
+import { AddExperienceDialog } from '../add-experience-dialog';
+import { WorkExperienceItem } from '@/lib/api/profile';
 
 interface ExperienceFormProps {
   data: Experience[];
@@ -45,6 +47,7 @@ interface ExperienceFormProps {
 
 export const ExperienceForm: React.FC<ExperienceFormProps> = ({ data, onChange }) => {
   const { t } = useTranslations();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Configure drag-and-drop sensors
   const sensors = useSensors(
@@ -82,6 +85,22 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({ data, onChange }
         years: '',
         description: [''],
         descriptionStyles: ['bullet'],
+      },
+    ]);
+  };
+
+  const handleAddFromProfile = (item: WorkExperienceItem) => {
+    const newId = Math.max(...data.map((d) => d.id), 0) + 1;
+    onChange([
+      ...data,
+      {
+        id: newId,
+        title: item.role,
+        company: item.company ?? '',
+        location: item.location ?? '',
+        years: item.years ?? '',
+        description: item.description.length > 0 ? item.description : [''],
+        descriptionStyles: item.description.map(() => 'bullet' as const),
       },
     ]);
   };
@@ -164,7 +183,15 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({ data, onChange }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDialogOpen(true)}
+          className="rounded-lg border-ink hover:bg-primary hover:text-white transition-colors"
+        >
+          <User className="w-4 h-4 mr-2" /> {t('builder.forms.experience.addFromProfile')}
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -175,19 +202,36 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({ data, onChange }
         </Button>
       </div>
 
+      <AddExperienceDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onAdd={handleAddFromProfile}
+        existingTitles={data.map((d) => d.title ?? '')}
+      />
+
       {data.length === 0 ? (
         <div className="text-center rounded-xl py-12 bg-paper-tint border border-dashed border-[#e6e3dc]">
           <p className=" text-sm text-steel-grey mb-4">
             {t('builder.genericItemForm.noEntries', { label: t('resume.sections.experience') })}
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAdd}
-            className="rounded-full border-[#e6e3dc]"
-          >
-            <Plus className="w-4 h-4 mr-2" /> {t('builder.forms.experience.addFirstJob')}
-          </Button>
+          <div className="flex justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              className="rounded-full border-[#e6e3dc]"
+            >
+              <User className="w-4 h-4 mr-2" /> {t('builder.forms.experience.addFromProfile')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAdd}
+              className="rounded-full border-[#e6e3dc]"
+            >
+              <Plus className="w-4 h-4 mr-2" /> {t('builder.forms.experience.addFirstJob')}
+            </Button>
+          </div>
         </div>
       ) : (
         <DndContext

@@ -342,6 +342,7 @@
       "experience": {
         "addJob": "Agregar trabajo",
         "addFirstJob": "Agregar primer trabajo",
+        "addFromProfile": "Agregar desde el perfil",
         "fields": {
           "jobTitle": "Puesto",
           "company": "Empresa"
@@ -718,6 +719,18 @@
       "goToProfile": "Ir al perfil",
       "loading": "Cargando tus certificados...",
       "loadError": "No se pudieron cargar tus certificados.",
+      "retry": "Reintentar"
+    },
+    "experienceDialog": {
+      "title": "Agregar experiencia desde el perfil",
+      "description": "Elige una experiencia laboral de tu perfil para agregarla a este CV.",
+      "profileExperiences": "Experiencias del perfil",
+      "searchPlaceholder": "Buscar experiencias...",
+      "allAdded": "Todas tus experiencias del perfil ya están en este CV.",
+      "noExperiencesHint": "Agrega experiencias laborales en tu perfil para que aparezcan aquí.",
+      "goToProfile": "Ir al perfil",
+      "loading": "Cargando tus experiencias...",
+      "loadError": "No se pudieron cargar tus experiencias.",
       "retry": "Reintentar"
     },
     "awardsDialog": {
