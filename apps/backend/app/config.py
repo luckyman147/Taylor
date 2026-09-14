@@ -293,6 +293,7 @@ class Settings(BaseSettings):
     # DeepEval Evaluation
     deepeval_enabled: bool = False
     deepeval_threshold: float = 0.5
+    deepeval_sample_rate: float = 0.2  # probability of evaluating a turn (0.0-1.0)
 
     @field_validator("reasoning_effort", mode="before")
     @classmethod

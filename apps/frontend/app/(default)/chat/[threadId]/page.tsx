@@ -8,7 +8,7 @@ import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
 import { ModeSkillSelector } from '@/components/chat/mode-switcher';
 import { ModelBadge } from '@/components/chat/model-badge';
-import { EvalPanel } from '@/components/chat/eval-panel';
+import { EvalPanel, type EvalMetrics } from '@/components/chat/eval-panel';
 import { AddMCPDialog } from '@/components/chat/add-mcp-dialog';
 import { FileViewerDialog } from '@/components/chat/file-viewer-dialog';
 import { EmailBodyDialog } from '@/components/chat/email-body-dialog';
@@ -33,6 +33,7 @@ import {
   type TurnResponse,
   type AgentEvent,
 } from '@/lib/api/chat';
+import { fetchLatestEval } from '@/lib/api/eval';
 
 const SUGGESTED_QUESTIONS = [
   'chat.suggestions.q1',
@@ -74,10 +75,51 @@ export default function ChatThreadRoute() {
   const [showMCPDialog, setShowMCPDialog] = useState(false);
   const [streamEvents, setStreamEvents] = useState<AgentEvent[]>([]);
   const [streamStatus, setStreamStatus] = useState<'running' | 'paused' | 'completed'>('completed');
+  const [evalPanelOpen, setEvalPanelOpen] = useState(false);
+  const [evalMetrics, setEvalMetrics] = useState<EvalMetrics | null>(null);
+  const [evalPolling, setEvalPolling] = useState(false);
+  const evalPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inFlight = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Eval polling — fetches DeepEval metrics after each turn
+  const startEvalPolling = useCallback(
+    (tid: string) => {
+      if (evalPollRef.current) clearInterval(evalPollRef.current);
+      setEvalPolling(true);
+      let attempts = 0;
+      const maxAttempts = 20; // 20 * 3s = 60s max
+      evalPollRef.current = setInterval(async () => {
+        attempts++;
+        try {
+          const evalData = await fetchLatestEval(tid);
+          if (evalData) {
+            setEvalMetrics(evalData);
+            setEvalPolling(false);
+            if (evalPollRef.current) clearInterval(evalPollRef.current);
+          } else if (attempts >= maxAttempts) {
+            setEvalPolling(false);
+            if (evalPollRef.current) clearInterval(evalPollRef.current);
+          }
+        } catch {
+          if (attempts >= maxAttempts) {
+            setEvalPolling(false);
+            if (evalPollRef.current) clearInterval(evalPollRef.current);
+          }
+        }
+      }, 3000);
+    },
+    [],
+  );
+
+  // Cleanup eval polling on unmount
+  useEffect(() => {
+    return () => {
+      if (evalPollRef.current) clearInterval(evalPollRef.current);
+    };
+  }, []);
 
   // Abort stream on unmount
   useEffect(() => {
@@ -239,6 +281,7 @@ export default function ChatThreadRoute() {
       setError(null);
       setSelectedFile(null);
       setUploadedFile(null);
+      setEvalMetrics(null);
 
       try {
         const controller = await sendTurnStream(
@@ -253,6 +296,10 @@ export default function ChatThreadRoute() {
               const assistantMsg = { ...processResponse(resp), streamEvents: [...streamEvents] };
               setMessages((prev) => [...prev, assistantMsg]);
               setStreamStatus('completed');
+              // Start polling for eval results if panel is open
+              if (evalPanelOpen && currentThreadId) {
+                startEvalPolling(currentThreadId);
+              }
             },
             onError: (err) => {
               setError(err.message);
@@ -260,6 +307,7 @@ export default function ChatThreadRoute() {
               setStreamStatus('completed');
             },
           },
+          evalPanelOpen,
         );
         abortControllerRef.current = controller;
       } catch (e) {
@@ -272,7 +320,7 @@ export default function ChatThreadRoute() {
         setRefreshKey((k) => k + 1);
       }
     },
-    [threadId, processResponse, router, uploadedFile, uploading],
+    [threadId, processResponse, router, uploadedFile, uploading, evalPanelOpen, startEvalPolling],
   );
 
   const handlePause = useCallback(() => {
@@ -570,13 +618,12 @@ export default function ChatThreadRoute() {
               <div className="px-5 py-1 text-center text-xs text-destructive">{error}</div>
             )}
 
-            {/* Eval Panel (temporary testing) */}
+            {/* Eval Panel */}
             <EvalPanel
-              lastUserMessage={
-                messages.length > 0
-                  ? [...messages].reverse().find((m) => m.role === 'user')?.content || ''
-                  : ''
-              }
+              evalMetrics={evalMetrics}
+              polling={evalPolling}
+              open={evalPanelOpen}
+              onToggle={() => setEvalPanelOpen(!evalPanelOpen)}
             />
 
             {/* Composer */}

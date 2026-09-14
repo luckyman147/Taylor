@@ -23,6 +23,8 @@ export interface ThreadSummary {
 
 export interface TurnRequest {
   message: string;
+  resume_id?: string | null;
+  eval_requested?: boolean;
 }
 
 export interface PendingAction {
@@ -247,10 +249,11 @@ export async function sendTurn(
   threadId: string,
   message: string,
   resumeId?: string,
+  evalRequested?: boolean,
 ): Promise<TurnResponse> {
   const res = await apiPost(
     `/chat/threads/${threadId}/turn`,
-    { message, resume_id: resumeId || null },
+    { message, resume_id: resumeId || null, eval_requested: evalRequested || false },
     300_000, // LLM timeout
   );
   return asJson<TurnResponse>(res, 'Failed to send message');
@@ -275,6 +278,7 @@ export async function sendTurnStream(
   message: string,
   resumeId: string | undefined,
   callbacks: StreamCallbacks,
+  evalRequested?: boolean,
 ): Promise<AbortController> {
   const controller = new AbortController();
 
@@ -282,7 +286,7 @@ export async function sendTurnStream(
     const res = await fetch(`${BACKEND_URL}/api/v1/chat/threads/${threadId}/turn/stream?stream=true`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, resume_id: resumeId || null }),
+      body: JSON.stringify({ message, resume_id: resumeId || null, eval_requested: evalRequested || false }),
       signal: controller.signal,
     });
 

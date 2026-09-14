@@ -490,6 +490,7 @@ async def _run_turn_core(
     resume_id: str | None,
     _emit,
     _try_agent_loop_fn,
+    eval_requested: bool = False,
 ) -> dict[str, Any]:
     """Shared chat turn logic: gateway → agent loop → planner → tools → answer.
 
@@ -842,16 +843,20 @@ async def _run_turn_core(
     # Persist user message
     await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
 
-    # Fire async evaluation (non-blocking)
-    from app.services.evaluator import chat_evaluator
-    asyncio.create_task(
-        chat_evaluator.evaluate_response(
-            thread_id=thread_id,
-            input_text=user_message,
-            actual_output=assistant_content,
-            context=json.dumps(tool_results, ensure_ascii=False, default=str)[:5000] if tool_results else None,
+    # Fire async evaluation (non-blocking) — skip if not requested or random roll says no
+    import random as _random
+    from app.config import settings as _settings
+    _should_eval = _settings.deepeval_enabled and (eval_requested or _random.random() < _settings.deepeval_sample_rate)
+    if _should_eval:
+        from app.services.evaluator import chat_evaluator
+        asyncio.create_task(
+            chat_evaluator.evaluate_response(
+                thread_id=thread_id,
+                input_text=user_message,
+                actual_output=assistant_content,
+                context=json.dumps(tool_results, ensure_ascii=False, default=str)[:5000] if tool_results else None,
+            )
         )
-    )
 
     # Build envelope for assistant message
     cards = _build_cards(tool_results, stats)
@@ -1234,6 +1239,7 @@ async def run_turn(
     thread_id: str,
     user_message: str,
     resume_id: str | None = None,
+    eval_requested: bool = False,
 ) -> dict[str, Any]:
     """Execute a full chat turn: plan → tool calls → answer.
 
@@ -1243,7 +1249,7 @@ async def run_turn(
     async def _noop_emit(_event):
         pass
 
-    return await _run_turn_core(thread_id, user_message, resume_id, _emit=_noop_emit, _try_agent_loop_fn=_try_agent_loop)
+    return await _run_turn_core(thread_id, user_message, resume_id, _emit=_noop_emit, _try_agent_loop_fn=_try_agent_loop, eval_requested=eval_requested)
 
 
 # ---------------------------------------------------------------------------
@@ -1255,6 +1261,7 @@ async def run_turn_stream(
     user_message: str,
     resume_id: str | None = None,
     event_queue: asyncio.Queue | None = None,
+    eval_requested: bool = False,
 ) -> dict[str, Any]:
     """Execute a full chat turn with event streaming.
 
@@ -1273,7 +1280,7 @@ async def run_turn_stream(
     ) -> dict[str, Any] | None:
         return await _try_agent_loop_stream(user_message, mode, skills, thread_id, messages, memories, _emit)
 
-    return await _run_turn_core(thread_id, user_message, resume_id, _emit=_emit, _try_agent_loop_fn=_agent_loop_stream)
+    return await _run_turn_core(thread_id, user_message, resume_id, _emit=_emit, _try_agent_loop_fn=_agent_loop_stream, eval_requested=eval_requested)
 
 
 def _make_emitter(event_queue: asyncio.Queue | None):

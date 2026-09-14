@@ -116,3 +116,32 @@ export async function runBenchmark(
   if (!res.ok) throw new Error('Benchmark run failed');
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Chat evaluation (DeepEval metrics per turn)
+// ---------------------------------------------------------------------------
+
+export interface ChatEvalMetrics {
+  relevancy: number | null;
+  faithfulness: number | null;
+  hallucination: number | null;
+  bias: number | null;
+  coherence: number | null;
+  overall: number | null;
+}
+
+export async function fetchLatestEval(threadId: string): Promise<ChatEvalMetrics | null> {
+  const res = await apiFetch(`/eval/chat/evaluations?thread_id=${encodeURIComponent(threadId)}&limit=1`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const row = data[0];
+  return {
+    relevancy: row.relevancy_score ?? null,
+    faithfulness: row.faithfulness_score ?? null,
+    hallucination: row.hallucination_score ?? null,
+    bias: row.bias_score ?? null,
+    coherence: row.coherence_score ?? null,
+    overall: row.overall_score ?? null,
+  };
+}

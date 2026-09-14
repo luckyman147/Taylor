@@ -18,6 +18,7 @@ class ThreadUpdate(BaseModel):
 class TurnRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     resume_id: str | None = None
+    eval_requested: bool = False  # true when eval panel is open
 
 
 class Action(BaseModel):

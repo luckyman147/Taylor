@@ -128,7 +128,7 @@ async def get_thread_messages(thread_id: str, limit: int = 100) -> list[ThreadMe
 async def send_turn(thread_id: str, request: TurnRequest) -> TurnResponse:
     """Send a user message and get an assistant response."""
     try:
-        result = await run_turn(thread_id, request.message, resume_id=request.resume_id)
+        result = await run_turn(thread_id, request.message, resume_id=request.resume_id, eval_requested=request.eval_requested)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -160,7 +160,7 @@ async def send_turn_stream(
     ?stream=false: Returns the plain TurnResponse (backward compat).
     """
     if not stream:
-        result = await run_turn(thread_id, request.message, resume_id=request.resume_id)
+        result = await run_turn(thread_id, request.message, resume_id=request.resume_id, eval_requested=request.eval_requested)
         return TurnResponse(
             assistant_content=result["assistant_content"],
             cards=result.get("cards", []),
@@ -183,6 +183,7 @@ async def send_turn_stream(
                     request.message,
                     resume_id=request.resume_id,
                     event_queue=event_queue,
+                    eval_requested=request.eval_requested,
                 )
             except Exception as e:
                 logger.error("Streamed turn failed: %s", e)
