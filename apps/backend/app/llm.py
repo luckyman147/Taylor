@@ -1211,6 +1211,7 @@ async def complete_json(
     max_tokens: int = 4096,
     retries: int = 2,
     schema_type: str = "resume",
+    temperature: float = 0.1,
 ) -> dict[str, Any]:
     """Make a completion request expecting JSON response.
 
@@ -1248,7 +1249,7 @@ async def complete_json(
                 "timeout": _calculate_timeout("json", max_tokens, config.provider),
             }
             # LLM-002: Increase temperature on retry for variation
-            retry_temp = _get_retry_temperature(model_name, attempt)
+            retry_temp = _get_retry_temperature(model_name, attempt, base_temp=temperature)
             if retry_temp is not None:
                 kwargs["temperature"] = retry_temp
             reasoning_effort = config.reasoning_effort

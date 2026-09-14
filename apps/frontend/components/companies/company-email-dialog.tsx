@@ -254,6 +254,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
         output_language: contentLanguage,
         resume_id: selectedResumeId || null,
         instruction: instruction.trim() || null,
+        temperature: 0.7,
       });
       if (result.subject) setSubject(result.subject);
       if (result.body) setBody(result.body);

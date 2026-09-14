@@ -181,6 +181,7 @@ class GenerateOutreachEmailRequest(BaseModel):
     output_language: str = "en"
     resume_id: str | None = None
     company_research: str | None = Field(default=None, max_length=10000)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
 
 class GenerateOutreachEmailResponse(BaseModel):

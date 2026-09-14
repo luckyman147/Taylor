@@ -1390,16 +1390,16 @@ def _build_sender_info(processed: dict | None) -> str:
             desc_bullets = proj.get("description") or []
             if isinstance(desc_bullets, list):
                 desc_text = "; ".join(
-                    str(d) for d in desc_bullets[:3] if isinstance(d, str) and d.strip()
+                    str(d) for d in desc_bullets[:5] if isinstance(d, str) and d.strip()
                 )
             else:
-                desc_text = str(desc_bullets)[:200]
+                desc_text = str(desc_bullets)[:400]
             tech_hint = ""
             if proj.get("github"):
                 tech_hint += f" | GitHub: {proj['github']}"
             if proj.get("website"):
                 tech_hint += f" | Live: {proj['website']}"
-            project_lines.append(f"  - {name}: {desc_text[:200]}{tech_hint}")
+            project_lines.append(f"  - {name}: {desc_text[:400]}{tech_hint}")
         if project_lines:
             lines.append("Projects:\n" + "\n".join(project_lines))
 
@@ -1501,6 +1501,17 @@ async def generate_outreach_email(
             sender_info=sender_info,
         )
 
+    # Insert user instructions prominently after Purpose, before Main Goal
+    if request.instruction and request.instruction.strip():
+        instruction_block = (
+            f"\n\n**User's additional instructions (follow these precisely):**\n"
+            f"{request.instruction.strip()}\n"
+        )
+        prompt = prompt.replace(
+            "\n---\n\n### Main Goal",
+            f"{instruction_block}\n---\n\n### Main Goal",
+        )
+
     if request.company_research and request.company_research.strip():
         prompt = (
             f"{prompt}\n\n"
@@ -1516,14 +1527,9 @@ async def generate_outreach_email(
             f"separated by a blank line):\n{contact_footer}"
         )
 
-    if request.instruction and request.instruction.strip():
-        prompt = (
-            f"{prompt}\n\n"
-            f"User's additional instructions for this generation "
-            f"(follow them precisely):\n{request.instruction.strip()}"
-        )
-
-    result = await complete_json(prompt, max_tokens=4096, schema_type="diff")
+    result = await complete_json(
+        prompt, max_tokens=4096, schema_type="diff", temperature=request.temperature,
+    )
 
     subject = str(result.get("subject") or "").strip()
     body = str(result.get("body") or "").strip()

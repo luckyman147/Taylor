@@ -69,6 +69,7 @@ export interface GenerateOutreachEmailRequest {
   resume_id?: string | null;
   instruction?: string | null;
   company_research?: string | null;
+  temperature?: number;
 }
 
 export interface GenerateOutreachEmailResponse {

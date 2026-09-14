@@ -470,11 +470,13 @@ Mention 1-2 concrete details about the company (from the information above). Con
 
 **7. PROJECT MATCHING:** Look at the sender's Projects list. Pick 1-2 projects whose technologies or purpose most closely match what the company does. Mention these projects briefly by name and what they demonstrate. Do NOT list all projects. When linking to a project, use the **Live** URL (website) if available — only use the **GitHub** URL if the project has no website.
 
-**8. Avoid desperation.** Never write "I desperately need an opportunity" or "Please consider my application." The tone should be confident, interested, and professional.
+**8. USER-INSTRUCTED CONTENT:** If the user's additional instructions mention specific projects, skills, experiences, or content to include, you MUST include them in the email — they take priority over the matching guidelines above.
 
-**9. Don't overuse first person.** Avoid starting every sentence with "I have... I worked on... I developed..."
+**9. Avoid desperation.** Never write "I desperately need an opportunity" or "Please consider my application." The tone should be confident, interested, and professional.
 
-**10. Preserve authenticity.** If the candidate is junior, do not artificially make them sound senior. Authenticity is more important than sounding impressive.
+**10. Don't overuse first person.** Avoid starting every sentence with "I have... I worked on... I developed..."
+
+**11. Preserve authenticity.** If the candidate is junior, do not artificially make them sound senior. Authenticity is more important than sounding impressive.
 
 ---
 
