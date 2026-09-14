@@ -462,7 +462,7 @@ Do not try to make every sentence impressive. **Natural and specific is better t
 **3. Personalize the email.**
 Mention 1-2 concrete details about the company (from the information above). Connect those to something genuinely relevant in the candidate's background. Never invent experience.
 
-**4. Keep it short: 80-140 words.** Every sentence should have a purpose. Do not turn the email into a cover letter.
+**4. Keep it short: 80-140 words.** Every sentence should have a purpose. Do not turn the email into a cover letter. If the user's instructions require mentioning specific projects or experiences, you may go up to 200 words to accommodate them.
 
 **5. Make the opening interesting.** Start directly — do NOT open with "I hope you're doing well" or "I am writing to express my interest." Instead: "I came across [company] and noticed you're working with [tech/industry]."
 
@@ -470,7 +470,7 @@ Mention 1-2 concrete details about the company (from the information above). Con
 
 **7. PROJECT MATCHING:** Look at the sender's Projects list. Pick 1-2 projects whose technologies or purpose most closely match what the company does. Mention these projects briefly by name and what they demonstrate. Do NOT list all projects. When linking to a project, use the **Live** URL (website) if available — only use the **GitHub** URL if the project has no website.
 
-**8. USER-INSTRUCTED CONTENT:** If the user's additional instructions mention specific projects, skills, experiences, or content to include, you MUST include them in the email — they take priority over the matching guidelines above.
+**8. USER-INSTRUCTED CONTENT (HIGHEST PRIORITY):** If the user's additional instructions mention specific projects, skills, experiences, or content to include, you MUST include them in the email. This rule overrides ALL other selection guidelines including project matching (#6, #7) and word count (#4). When the user names a project, mention it by name with a brief description of what it demonstrates. Do NOT drop or替换 user-specified content to fit other constraints.
 
 **9. Avoid desperation.** Never write "I desperately need an opportunity" or "Please consider my application." The tone should be confident, interested, and professional.
 

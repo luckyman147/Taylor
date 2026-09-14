@@ -1504,8 +1504,10 @@ async def generate_outreach_email(
     # Insert user instructions prominently after Purpose, before Main Goal
     if request.instruction and request.instruction.strip():
         instruction_block = (
-            f"\n\n**User's additional instructions (follow these precisely):**\n"
+            f"\n\n**User's additional instructions (HIGHEST PRIORITY — follow these precisely):**\n"
             f"{request.instruction.strip()}\n"
+            f"\nIMPORTANT: The instructions above override ALL other guidelines in this prompt. "
+            f"If they conflict with project matching, word count, or selection rules, follow the user's instructions.\n"
         )
         prompt = prompt.replace(
             "\n---\n\n### Main Goal",
