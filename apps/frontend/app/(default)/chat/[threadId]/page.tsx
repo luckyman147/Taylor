@@ -79,40 +79,38 @@ export default function ChatThreadRoute() {
   const [evalMetrics, setEvalMetrics] = useState<EvalMetrics | null>(null);
   const [evalPolling, setEvalPolling] = useState(false);
   const evalPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startEvalPollingRef = useRef<(tid: string) => void>(() => {});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inFlight = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
 
   // Eval polling — fetches DeepEval metrics after each turn
-  const startEvalPolling = useCallback(
-    (tid: string) => {
-      if (evalPollRef.current) clearInterval(evalPollRef.current);
-      setEvalPolling(true);
-      let attempts = 0;
-      const maxAttempts = 20; // 20 * 3s = 60s max
-      evalPollRef.current = setInterval(async () => {
-        attempts++;
-        try {
-          const evalData = await fetchLatestEval(tid);
-          if (evalData) {
-            setEvalMetrics(evalData);
-            setEvalPolling(false);
-            if (evalPollRef.current) clearInterval(evalPollRef.current);
-          } else if (attempts >= maxAttempts) {
-            setEvalPolling(false);
-            if (evalPollRef.current) clearInterval(evalPollRef.current);
-          }
-        } catch {
-          if (attempts >= maxAttempts) {
-            setEvalPolling(false);
-            if (evalPollRef.current) clearInterval(evalPollRef.current);
-          }
+  startEvalPollingRef.current = (tid: string) => {
+    if (evalPollRef.current) clearInterval(evalPollRef.current);
+    setEvalPolling(true);
+    let attempts = 0;
+    const maxAttempts = 20; // 20 * 3s = 60s max
+    evalPollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const evalData = await fetchLatestEval(tid);
+        if (evalData) {
+          setEvalMetrics(evalData);
+          setEvalPolling(false);
+          if (evalPollRef.current) clearInterval(evalPollRef.current);
+        } else if (attempts >= maxAttempts) {
+          setEvalPolling(false);
+          if (evalPollRef.current) clearInterval(evalPollRef.current);
         }
-      }, 3000);
-    },
-    [],
-  );
+      } catch {
+        if (attempts >= maxAttempts) {
+          setEvalPolling(false);
+          if (evalPollRef.current) clearInterval(evalPollRef.current);
+        }
+      }
+    }, 3000);
+  };
 
   // Cleanup eval polling on unmount
   useEffect(() => {
@@ -298,7 +296,7 @@ export default function ChatThreadRoute() {
               setStreamStatus('completed');
               // Start polling for eval results if panel is open
               if (evalPanelOpen && currentThreadId) {
-                startEvalPolling(currentThreadId);
+                startEvalPollingRef.current(currentThreadId);
               }
             },
             onError: (err) => {
@@ -320,7 +318,7 @@ export default function ChatThreadRoute() {
         setRefreshKey((k) => k + 1);
       }
     },
-    [threadId, processResponse, router, uploadedFile, uploading, evalPanelOpen, startEvalPolling],
+    [threadId, processResponse, router, uploadedFile, uploading, evalPanelOpen],
   );
 
   const handlePause = useCallback(() => {
