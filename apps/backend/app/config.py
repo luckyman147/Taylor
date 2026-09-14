@@ -284,6 +284,16 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     frontend_url: str = "http://localhost:5173"
 
+    # Langfuse Observability
+    langfuse_enabled: bool = False
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "https://cloud.langfuse.com"
+
+    # DeepEval Evaluation
+    deepeval_enabled: bool = False
+    deepeval_threshold: float = 0.5
+
     @field_validator("reasoning_effort", mode="before")
     @classmethod
     def normalize_reasoning_effort(cls, v: Any) -> Any:

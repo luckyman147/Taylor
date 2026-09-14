@@ -36,6 +36,28 @@ litellm.drop_params = True
 # current code path sends thinking, but future-proofs the Router.
 litellm.modify_params = True
 
+
+def _configure_langfuse() -> None:
+    """Initialize Langfuse observability if enabled."""
+    import os
+
+    if not settings.langfuse_enabled:
+        return
+    if not settings.langfuse_public_key or not settings.langfuse_secret_key:
+        logging.warning("LANGFUSE_ENABLED but keys not set — skipping Langfuse init")
+        return
+
+    os.environ["LANGFUSE_PUBLIC_KEY"] = settings.langfuse_public_key
+    os.environ["LANGFUSE_SECRET_KEY"] = settings.langfuse_secret_key
+    os.environ["LANGFUSE_HOST"] = settings.langfuse_host
+
+    litellm.success_callback = ["langfuse"]
+    litellm.failure_callback = ["langfuse"]
+    logging.info("Langfuse observability initialized (host=%s)", settings.langfuse_host)
+
+
+_configure_langfuse()
+
 # LLM timeout configuration (seconds) - base values
 LLM_TIMEOUT_HEALTH_CHECK = 30
 LLM_TIMEOUT_COMPLETION = 300
@@ -723,6 +745,7 @@ async def complete(
     config: LLMConfig | None = None,
     max_tokens: int = 4096,
     temperature: float = 0.7,
+    metadata: dict[str, Any] | None = None,
 ) -> str:
     """Make a completion request to the LLM.
 
@@ -747,6 +770,8 @@ async def complete(
             kwargs["temperature"] = temperature
         if config.reasoning_effort:
             kwargs["reasoning_effort"] = config.reasoning_effort
+        if metadata:
+            kwargs["metadata"] = metadata
 
         response = await router.acompletion(**kwargs)
 
@@ -1212,6 +1237,7 @@ async def complete_json(
     retries: int = 2,
     schema_type: str = "resume",
     temperature: float = 0.1,
+    metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Make a completion request expecting JSON response.
 
@@ -1248,6 +1274,8 @@ async def complete_json(
                 "max_tokens": max_tokens,
                 "timeout": _calculate_timeout("json", max_tokens, config.provider),
             }
+            if metadata:
+                kwargs["metadata"] = metadata
             # LLM-002: Increase temperature on retry for variation
             retry_temp = _get_retry_temperature(model_name, attempt, base_temp=temperature)
             if retry_temp is not None:

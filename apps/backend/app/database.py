@@ -1697,6 +1697,105 @@ class Database:
 
             return versions
 
+    # -- Chat evaluation operations -------------------------------------------
+
+    async def save_chat_evaluation(
+        self,
+        eval_id: str,
+        thread_id: str,
+        input_text: str,
+        output_text: str,
+        context: str,
+        message_id: str | None = None,
+        relevancy_score: float | None = None,
+        faithfulness_score: float | None = None,
+        hallucination_score: float | None = None,
+        bias_score: float | None = None,
+        coherence_score: float | None = None,
+        overall_score: float | None = None,
+        metadata_json: str | None = None,
+    ) -> None:
+        """Save a chat evaluation result to the database."""
+        from app.models import ChatEvaluation
+
+        async with self._session() as session:
+            row = ChatEvaluation(
+                id=eval_id,
+                thread_id=thread_id,
+                message_id=message_id,
+                input_text=input_text,
+                output_text=output_text,
+                context=context,
+                relevancy_score=relevancy_score,
+                faithfulness_score=faithfulness_score,
+                hallucination_score=hallucination_score,
+                bias_score=bias_score,
+                coherence_score=coherence_score,
+                overall_score=overall_score,
+                metadata_json=metadata_json,
+            )
+            session.add(row)
+            await session.commit()
+
+    async def list_chat_evaluations(
+        self, thread_id: str | None = None, limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List recent chat evaluations, newest first."""
+        from app.models import ChatEvaluation
+
+        limit = max(1, min(int(limit), 200))
+        async with self._session() as session:
+            stmt = select(ChatEvaluation).order_by(ChatEvaluation.created_at.desc())
+            if thread_id:
+                stmt = stmt.where(ChatEvaluation.thread_id == thread_id)
+            stmt = stmt.limit(limit)
+            result = await session.execute(stmt)
+            return [
+                {
+                    "id": r.id,
+                    "thread_id": r.thread_id,
+                    "message_id": r.message_id,
+                    "input_text": r.input_text,
+                    "output_text": r.output_text,
+                    "relevancy_score": r.relevancy_score,
+                    "faithfulness_score": r.faithfulness_score,
+                    "hallucination_score": r.hallucination_score,
+                    "bias_score": r.bias_score,
+                    "coherence_score": r.coherence_score,
+                    "overall_score": r.overall_score,
+                    "created_at": r.created_at,
+                }
+                for r in result.scalars().all()
+            ]
+
+    async def get_chat_evaluation_stats(self) -> dict[str, Any]:
+        """Get aggregate evaluation stats."""
+        from app.models import ChatEvaluation
+        from sqlalchemy import func
+
+        async with self._session() as session:
+            result = await session.execute(
+                select(
+                    func.count(),
+                    func.avg(ChatEvaluation.relevancy_score),
+                    func.avg(ChatEvaluation.faithfulness_score),
+                    func.avg(ChatEvaluation.hallucination_score),
+                    func.avg(ChatEvaluation.bias_score),
+                    func.avg(ChatEvaluation.coherence_score),
+                    func.avg(ChatEvaluation.overall_score),
+                )
+            )
+            row = result.one()
+            return {
+                "total_evaluations": row[0],
+                "avg_relevancy": round(float(row[1]), 3) if row[1] else None,
+                "avg_faithfulness": round(float(row[2]), 3) if row[2] else None,
+                "avg_hallucination": round(float(row[3]), 3) if row[3] else None,
+                "avg_bias": round(float(row[4]), 3) if row[4] else None,
+                "avg_coherence": round(float(row[5]), 3) if row[5] else None,
+                "avg_overall": round(float(row[6]), 3) if row[6] else None,
+            }
+
     # -- Chat memory operations ----------------------------------------------
 
     async def list_active_chat_memories(self, limit: int = 20) -> list[dict[str, Any]]:

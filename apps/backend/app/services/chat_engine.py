@@ -660,6 +660,11 @@ async def _run_turn_core(
             prompt=planner_prompt,
             system_prompt=system_prompt,
             schema_type="chat_plan",
+            metadata={
+                "trace_name": "chat_planner",
+                "session_id": thread_id,
+                "tags": ["chat", mode, "planner"],
+            },
         )
     except Exception as e:
         logger.warning("Planner LLM failed, falling back to no-tool answer: %s", e)
@@ -792,6 +797,11 @@ async def _run_turn_core(
             system_prompt=system_prompt,
             max_tokens=2048,
             temperature=0.5,
+            metadata={
+                "trace_name": "chat_thinking",
+                "session_id": thread_id,
+                "tags": ["chat", mode, "thinking"],
+            },
         )
     except Exception as e:
         logger.warning("Thinking pass failed: %s", e)
@@ -813,6 +823,11 @@ async def _run_turn_core(
         assistant_content = await complete(
             prompt=answer_with_thinking,
             system_prompt=system_prompt,
+            metadata={
+                "trace_name": "chat_answer",
+                "session_id": thread_id,
+                "tags": ["chat", mode, "answer"],
+            },
         )
     except Exception as e:
         logger.error("Answer generation failed: %s", e)
@@ -826,6 +841,17 @@ async def _run_turn_core(
 
     # Persist user message
     await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
+
+    # Fire async evaluation (non-blocking)
+    from app.services.evaluator import chat_evaluator
+    asyncio.create_task(
+        chat_evaluator.evaluate_response(
+            thread_id=thread_id,
+            input_text=user_message,
+            actual_output=assistant_content,
+            context=json.dumps(tool_results, ensure_ascii=False, default=str)[:5000] if tool_results else None,
+        )
+    )
 
     # Build envelope for assistant message
     cards = _build_cards(tool_results, stats)

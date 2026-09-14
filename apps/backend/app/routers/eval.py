@@ -217,3 +217,22 @@ async def run_benchmark(mode: str = "autonomous", dataset: str = "benchmark.json
         "traces_collected": result.get("traces_collected", 0),
         "elapsed_seconds": result.get("elapsed_seconds", 0),
     }
+
+
+# ── Chat Evaluation Endpoints (DeepEval) ──────────────────────────────
+
+
+@router.get("/chat/evaluations")
+async def list_chat_evaluations(
+    thread_id: str | None = None, limit: int = 50,
+) -> list[dict]:
+    """List recent chat evaluation scores."""
+    from app.database import db
+    return await db.list_chat_evaluations(thread_id=thread_id, limit=limit)
+
+
+@router.get("/chat/evaluations/stats")
+async def get_chat_evaluation_stats() -> dict:
+    """Get aggregate evaluation score statistics."""
+    from app.database import db
+    return await db.get_chat_evaluation_stats()

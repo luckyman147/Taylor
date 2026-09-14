@@ -581,3 +581,24 @@ class MCPTool(Base):
     last_discovered_at: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class ChatEvaluation(Base):
+    """Evaluation scores for a chat response (DeepEval metrics)."""
+
+    __tablename__ = "chat_evaluations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    thread_id: Mapped[str] = mapped_column(String, index=True)
+    message_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    input_text: Mapped[str] = mapped_column(Text)
+    output_text: Mapped[str] = mapped_column(Text)
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    relevancy_score: Mapped[float | None] = mapped_column(default=None)
+    faithfulness_score: Mapped[float | None] = mapped_column(default=None)
+    hallucination_score: Mapped[float | None] = mapped_column(default=None)
+    bias_score: Mapped[float | None] = mapped_column(default=None)
+    coherence_score: Mapped[float | None] = mapped_column(default=None)
+    overall_score: Mapped[float | None] = mapped_column(default=None)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
