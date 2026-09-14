@@ -43,9 +43,10 @@ class ToolRetriever:
 
         candidates = []
         for tool in tool_registry.list_tools():
-            score = self._score_tool(tool, query_lower, query_words, context)
+            tool_dict = tool.to_dict() if hasattr(tool, "to_dict") else tool
+            score = self._score_tool(tool_dict, query_lower, query_words, context)
             if score >= self.MIN_SCORE:
-                candidates.append({**tool, "retrieval_score": score})
+                candidates.append({**tool_dict, "retrieval_score": score})
 
         # Sort by score descending
         candidates.sort(key=lambda t: t["retrieval_score"], reverse=True)
