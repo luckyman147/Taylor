@@ -51,9 +51,9 @@ def _configure_langfuse() -> None:
     os.environ["LANGFUSE_SECRET_KEY"] = settings.langfuse_secret_key
     os.environ["LANGFUSE_HOST"] = settings.langfuse_host
 
-    litellm.success_callback = ["langfuse"]
-    litellm.failure_callback = ["langfuse"]
-    logging.info("Langfuse observability initialized (host=%s)", settings.langfuse_host)
+    litellm.success_callback = ["langfuse_otel"]
+    litellm.failure_callback = ["langfuse_otel"]
+    logging.info("Langfuse observability initialized (host=%s, via OTEL)", settings.langfuse_host)
 
 
 _configure_langfuse()
