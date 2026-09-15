@@ -29,6 +29,50 @@ class EvaluationResult:
     errors: list[str] | None = None
 
 
+def _get_eval_model():
+    """Get a DeepEval-compatible model instance using the app's LLM provider."""
+    from deepeval.models import DeepEvalBaseLLM
+
+    class _Wrapper(DeepEvalBaseLLM):
+        def __init__(self):
+            from app.config import settings as _s
+            # Use dedicated eval settings, falling back to app settings
+            self._model = _s.deepeval_model or (
+                f"{_s.llm_provider}/{_s.llm_model}" if "/" not in _s.llm_model else _s.llm_model
+            )
+            self._api_key = _s.deepeval_api_key or _s.llm_api_key
+            self._api_base = _s.deepeval_api_base or _s.llm_api_base or ""
+
+        def load_model(self):
+            return self
+
+        def generate(self, prompt: str, *args, **kwargs) -> str:
+            import litellm
+            kwargs_call = {"temperature": 0, "api_key": self._api_key}
+            if self._api_base:
+                kwargs_call["api_base"] = self._api_base
+            response = litellm.completion(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs_call,
+            )
+            return response.choices[0].message.content or ""
+
+        async def a_generate(self, prompt: str, *args, **kwargs) -> str:
+            return self.generate(prompt, *args, **kwargs)
+
+        def get_model_name(self) -> str:
+            return self._model
+
+        def supports_json_mode(self) -> bool:
+            return False
+
+        def supports_log_probs(self) -> bool:
+            return False
+
+    return _Wrapper()
+
+
 def _run_metrics_sync(
     input_text: str,
     actual_output: str,
@@ -44,60 +88,69 @@ def _run_metrics_sync(
         BiasMetric,
         GEval,
     )
+    from deepeval.test_case.llm_test_case import SingleTurnParams
 
+    model = _get_eval_model()
     result = EvaluationResult(errors=[])
 
     # Build retrieval_context from context if available
     retrieval_context = [context] if context else None
 
+    # Faithfulness and Hallucination require retrieval_context / context
+    has_context = bool(context)
+
     test_case = LLMTestCase(
         input=input_text,
         actual_output=actual_output,
-        retrieval_context=retrieval_context,
+        **({"retrieval_context": retrieval_context} if has_context else {}),
     )
 
     # Answer Relevancy
     try:
-        metric = AnswerRelevancyMetric(threshold=threshold)
+        metric = AnswerRelevancyMetric(threshold=threshold, model=model)
         metric.measure(test_case)
         result.relevancy_score = metric.score
     except Exception as e:
         logger.debug("Relevancy metric failed: %s", e)
         result.errors.append(f"relevancy: {e}")
 
-    # Faithfulness
-    try:
-        metric = FaithfulnessMetric(threshold=threshold)
-        metric.measure(test_case)
-        result.faithfulness_score = metric.score
-    except Exception as e:
-        logger.debug("Faithfulness metric failed: %s", e)
-        result.errors.append(f"faithfulness: {e}")
+    # Faithfulness (requires retrieval_context)
+    if has_context:
+        try:
+            metric = FaithfulnessMetric(threshold=threshold, model=model)
+            metric.measure(test_case)
+            result.faithfulness_score = metric.score
+        except Exception as e:
+            logger.debug("Faithfulness metric failed: %s", e)
+            result.errors.append(f"faithfulness: {e}")
 
-    # Hallucination (lower is better)
-    try:
-        metric = HallucinationMetric(threshold=threshold)
-        metric.measure(test_case)
-        result.hallucination_score = metric.score
-    except Exception as e:
-        logger.debug("Hallucination metric failed: %s", e)
-        result.errors.append(f"hallucination: {e}")
+    # Hallucination (requires context, lower is better)
+    if has_context:
+        try:
+            metric = HallucinationMetric(threshold=threshold, model=model)
+            metric.measure(test_case)
+            result.hallucination_score = metric.score
+        except Exception as e:
+            logger.debug("Hallucination metric failed: %s", e)
+            result.errors.append(f"hallucination: {e}")
 
     # Bias (lower is better)
     try:
-        metric = BiasMetric(threshold=threshold)
+        metric = BiasMetric(threshold=threshold, model=model)
         metric.measure(test_case)
         result.bias_score = metric.score
     except Exception as e:
         logger.debug("Bias metric failed: %s", e)
         result.errors.append(f"bias: {e}")
 
-    # Coherence (custom G-Eval)
+    # Coherence (custom G-Eval with evaluation_params)
     try:
         metric = GEval(
             name="Coherence",
             criteria="Determine if the actual_output is logically consistent, well-structured, and flows naturally.",
+            evaluation_params=[SingleTurnParams.INPUT, SingleTurnParams.ACTUAL_OUTPUT],
             threshold=threshold,
+            model=model,
         )
         metric.measure(test_case)
         result.coherence_score = metric.score
