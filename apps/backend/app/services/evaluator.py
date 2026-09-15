@@ -36,12 +36,9 @@ def _get_eval_model():
     class _Wrapper(DeepEvalBaseLLM):
         def __init__(self):
             from app.config import settings as _s
-            # Use dedicated eval settings, falling back to app settings
-            self._model = _s.deepeval_model or (
-                f"{_s.llm_provider}/{_s.llm_model}" if "/" not in _s.llm_model else _s.llm_model
-            )
-            self._api_key = _s.deepeval_api_key or _s.llm_api_key
-            self._api_base = _s.deepeval_api_base or _s.llm_api_base or ""
+            self._model = _s.llm_model if "/" in _s.llm_model else f"{_s.llm_provider}/{_s.llm_model}"
+            self._api_key = _s.llm_api_key
+            self._api_base = _s.llm_api_base or ""
 
         def load_model(self):
             return self

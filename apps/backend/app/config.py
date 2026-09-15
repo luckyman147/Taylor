@@ -294,9 +294,6 @@ class Settings(BaseSettings):
     deepeval_enabled: bool = False
     deepeval_threshold: float = 0.5
     deepeval_sample_rate: float = 0.2  # probability of evaluating a turn (0.0-1.0)
-    deepeval_api_key: str = ""  # OpenAI-compatible API key for DeepEval (uses app key if blank)
-    deepeval_api_base: str = ""  # API base URL (uses app base if blank)
-    deepeval_model: str = ""  # Model for DeepEval (uses app model if blank)
 
     @field_validator("reasoning_effort", mode="before")
     @classmethod
