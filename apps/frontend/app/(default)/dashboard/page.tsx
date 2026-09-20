@@ -26,7 +26,6 @@ import Copy from 'lucide-react/dist/esm/icons/copy';
 import UserRound from 'lucide-react/dist/esm/icons/user-round';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
-import Smartphone from 'lucide-react/dist/esm/icons/smartphone';
 import GraduationCap from 'lucide-react/dist/esm/icons/graduation-cap';
 
 import {
@@ -38,7 +37,6 @@ import {
   fetchJobDescription,
   type ResumeListItem,
 } from '@/lib/api/resume';
-import { fetchJobs, type MobileJob } from '@/lib/api/jobs';
 import { useStatusCache } from '@/lib/context/status-cache';
 
 type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'loading';
@@ -51,7 +49,6 @@ export default function DashboardPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [tailoredResumes, setTailoredResumes] = useState<ResumeListItem[]>([]);
-  const [phoneJobs, setPhoneJobs] = useState<MobileJob[]>([]);
   const [isRetrying, setIsRetrying] = useState(false);
   const [copyingId, setCopyingId] = useState<string | null>(null);
   const tailoredSectionRef = useRef<HTMLDivElement>(null);
@@ -171,27 +168,17 @@ export default function DashboardPage() {
     loadTailoredResumes();
   }, [loadTailoredResumes]);
 
-  const loadPhoneJobs = useCallback(async () => {
-    try {
-      const jobs = await fetchJobs({ limit: 50 });
-      setPhoneJobs(jobs);
-    } catch {
-      // ignore
-    }
-  }, []);
-
   useEffect(() => {
-    loadPhoneJobs();
-  }, [loadPhoneJobs]);
+    loadTailoredResumes();
+  }, [loadTailoredResumes]);
 
   useEffect(() => {
     const handleFocus = () => {
       loadTailoredResumes();
-      loadPhoneJobs();
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [loadTailoredResumes, loadPhoneJobs, checkResumeStatus]);
+  }, [loadTailoredResumes, checkResumeStatus]);
 
   const handleUploadComplete = (resumeId: string) => {
     localStorage.setItem('master_resume_id', resumeId);
@@ -391,6 +378,70 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Quick Actions */}
+        <div className="mb-10">
+          <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <Link href="/tailor" className={!isTailorEnabled ? 'pointer-events-none' : ''}>
+              <div
+                className={`h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm transition-all ${
+                  isTailorEnabled
+                    ? 'hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none'
+                    : 'opacity-40 cursor-not-allowed'
+                }`}
+              >
+                <Plus className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">
+                    {t('dashboard.createResume')}
+                  </p>
+                  <p className="text-xs text-steel-grey mt-0.5">AI-tailored for a job</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/job-scraper">
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <Search className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">Scrape Jobs</p>
+                  <p className="text-xs text-steel-grey mt-0.5">Find opportunities</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/companies">
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <Building2 className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">Company Tracker</p>
+                  <p className="text-xs text-steel-grey mt-0.5">Track companies</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/contacts">
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <Users className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">{t('nav.contacts')}</p>
+                  <p className="text-xs text-steel-grey mt-0.5">Manage your contacts</p>
+                </div>
+              </div>
+            </Link>
+            <Link href="/interview-practice">
+              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
+                <GraduationCap className="w-5 h-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-bold uppercase text-ink">
+                    {t('nav.interviewPractice')}
+                  </p>
+                  <p className="text-xs text-steel-grey mt-0.5">Practice interviews</p>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+
         {/* Master Resume Section */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
@@ -531,110 +582,6 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-
-        {/* Quick Actions */}
-        <div className="mb-10">
-          <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft mb-4">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <Link href="/tailor" className={!isTailorEnabled ? 'pointer-events-none' : ''}>
-              <div
-                className={`h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm transition-all ${
-                  isTailorEnabled
-                    ? 'hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none'
-                    : 'opacity-40 cursor-not-allowed'
-                }`}
-              >
-                <Plus className="w-5 h-5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-bold uppercase text-ink">
-                    {t('dashboard.createResume')}
-                  </p>
-                  <p className="text-xs text-steel-grey mt-0.5">AI-tailored for a job</p>
-                </div>
-              </div>
-            </Link>
-            <Link href="/job-scraper">
-              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
-                <Search className="w-5 h-5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-bold uppercase text-ink">Scrape Jobs</p>
-                  <p className="text-xs text-steel-grey mt-0.5">Find opportunities</p>
-                </div>
-              </div>
-            </Link>
-            <Link href="/companies">
-              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
-                <Building2 className="w-5 h-5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-bold uppercase text-ink">Company Tracker</p>
-                  <p className="text-xs text-steel-grey mt-0.5">Track companies</p>
-                </div>
-              </div>
-            </Link>
-            <Link href="/contacts">
-              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
-                <Users className="w-5 h-5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-bold uppercase text-ink">{t('nav.contacts')}</p>
-                  <p className="text-xs text-steel-grey mt-0.5">Manage your contacts</p>
-                </div>
-              </div>
-            </Link>
-            <Link href="/interview-practice">
-              <div className="h-24 rounded-xl border border-ink bg-white p-5 flex items-center gap-4 shadow-sw-sm hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all">
-                <GraduationCap className="w-5 h-5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-bold uppercase text-ink">
-                    {t('nav.interviewPractice')}
-                  </p>
-                  <p className="text-xs text-steel-grey mt-0.5">Practice interviews</p>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* Phone Jobs */}
-        {phoneJobs.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className=" text-xs font-bold uppercase tracking-widest text-ink-soft">
-                From your phone ({phoneJobs.length})
-              </h2>
-              <Link
-                href="/job-scraper"
-                className=" text-xs text-primary hover:text-blue-800 uppercase tracking-wide flex items-center gap-1"
-              >
-                Job Scraper
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {phoneJobs.slice(0, 6).map((job) => (
-                <div
-                  key={job.job_id}
-                  className="border border-ink p-4 hover:shadow-sw-sm transition-shadow rounded-xl"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 border border-ink bg-paper-tint flex items-center justify-center shrink-0 rounded-xl">
-                      <Smartphone className="w-4 h-4 text-ink-soft" />
-                    </div>
-                  </div>
-                  <p className=" text-sm font-bold truncate">{job.title ?? t('common.unknown')}</p>
-                  <p className=" text-xs text-ink-soft mt-1 truncate">
-                    {job.company ?? 'Unknown company'}
-                    {job.location && ` · ${job.location}`}
-                  </p>
-                  <p className=" text-xs text-steel-grey mt-1">
-                    {t('dashboard.edited', { date: formatDate(job.created_at) })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Tailored Resumes */}
         <div ref={tailoredSectionRef}>
