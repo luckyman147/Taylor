@@ -15,6 +15,8 @@ import {
   clearAllApiKeys,
   resetDatabase,
   PROVIDER_INFO,
+  fetchProviderModels,
+  fetchProviderFreeModels,
   fetchFeaturePrompts,
   updateFeaturePrompts,
   FeaturePromptsError,
@@ -44,7 +46,6 @@ import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dropdown } from '@/components/ui/dropdown';
 import { EmailSettings } from '@/components/settings/email-settings';
-import { MCPSettings } from '@/components/settings/mcp-settings';
 import {
   Save,
   Key,
@@ -82,6 +83,7 @@ const PROVIDERS: LLMProvider[] = [
   'gemini',
   'deepseek',
   'groq',
+  'huggingface',
   'ollama',
 ];
 
@@ -127,6 +129,8 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = useState('');
   const [apiBase, setApiBase] = useState('');
   const [hasStoredApiKey, setHasStoredApiKey] = useState(false);
+  const [providerModels, setProviderModels] = useState<string[]>([]);
+  const [freeModels, setFreeModels] = useState<string[]>([]);
   // Per-provider encrypted key store status (drives the saved/empty hints and
   // the provider key list). Keyed by key-store provider name.
   const [apiKeyStatuses, setApiKeyStatuses] = useState<ApiKeyProviderStatus[]>([]);
@@ -183,14 +187,13 @@ export default function SettingsPage() {
 
   // Active settings section (sidebar navigation)
   const [activeSection, setActiveSection] = useState<
-    'system' | 'ai' | 'mcp' | 'content' | 'language' | 'email' | 'danger'
+    'system' | 'ai' | 'content' | 'language' | 'email' | 'danger'
   >('system');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const section = params.get('section');
     if (section === 'email') setActiveSection('email');
-    if (section === 'mcp') setActiveSection('mcp');
   }, []);
 
   // Language settings
@@ -209,7 +212,6 @@ export default function SettingsPage() {
   const SETTINGS_SECTIONS = [
     { id: 'system', label: t('settings.systemStatus.title'), icon: Activity },
     { id: 'ai', label: t('settings.llmConfigurationTitle'), icon: Sparkles },
-    { id: 'mcp', label: 'MCP Servers', icon: Server },
     { id: 'content', label: t('settings.contentGeneration.title'), icon: Settings2 },
     { id: 'language', label: t('settings.uiLanguage'), icon: Globe },
     { id: 'email', label: t('settings.email.title'), icon: Mail },
@@ -380,6 +382,20 @@ export default function SettingsPage() {
       cancelled = true;
     };
   }, [t]);
+
+  // Fetch available models from backend when provider changes
+  useEffect(() => {
+    let cancelled = false;
+    fetchProviderModels(provider).then((models) => {
+      if (!cancelled) setProviderModels(models);
+    });
+    fetchProviderFreeModels(provider).then((models) => {
+      if (!cancelled) setFreeModels(models);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [provider]);
 
   // Whether a given key-store provider currently has a saved key.
   const providerHasStoredKey = (p: LLMProvider): boolean => {
@@ -974,13 +990,56 @@ export default function SettingsPage() {
                       >
                         {t('settings.llmConfiguration.modelLabel')}
                       </Label>
-                      <Input
-                        id="model"
-                        value={model}
-                        onChange={(e) => setModel(e.target.value)}
-                        placeholder={providerInfo.defaultModel}
-                        className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
-                      />
+                      {(() => {
+                        const models = providerModels;
+                        const isCustom = model && !models.includes(model);
+                        const freeLabel = t('settings.llmConfiguration.free');
+                        const modelLabel = (m: string) =>
+                          freeModels.includes(m) ? `${m} — ${freeLabel}` : m;
+                        if (models.length === 0) {
+                          return (
+                            <Input
+                              id="model"
+                              value={model}
+                              onChange={(e) => setModel(e.target.value)}
+                              placeholder={providerInfo.defaultModel}
+                              className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
+                            />
+                          );
+                        }
+                        return (
+                          <div className="space-y-1.5">
+                            <select
+                              value={isCustom ? '__custom__' : model}
+                              onChange={(e) => {
+                                if (e.target.value === '__custom__') {
+                                  setModel('');
+                                } else {
+                                  setModel(e.target.value);
+                                }
+                              }}
+                              className="w-full rounded-2xl border border-[#e6e3dc] bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                            >
+                              {models.map((m) => (
+                                <option key={m} value={m}>
+                                  {modelLabel(m)}
+                                </option>
+                              ))}
+                              {isCustom && <option value={model}>{modelLabel(model)}</option>}
+                              <option value="__custom__">Custom…</option>
+                            </select>
+                            {isCustom && (
+                              <Input
+                                id="model"
+                                value={model}
+                                onChange={(e) => setModel(e.target.value)}
+                                placeholder="Enter custom model name"
+                                className="rounded-2xl border-[#e6e3dc] focus:border-primary focus:ring-primary/20"
+                              />
+                            )}
+                          </div>
+                        );
+                      })()}
                       <p className="text-xs text-steel-grey">
                         {t('settings.llmConfiguration.defaultModel', {
                           model: providerInfo.defaultModel,
@@ -1226,21 +1285,6 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
-                </section>
-              )}
-
-              {/* MCP Servers Section */}
-              {activeSection === 'mcp' && (
-                <section className="space-y-6">
-                  <div className="flex items-center gap-3 border-b border-[#e6e3dc] pb-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                      <Server className="h-4 w-4 text-primary" />
-                    </span>
-                    <h2 className="text-sm font-bold uppercase tracking-wide text-ink">
-                      MCP Servers
-                    </h2>
-                  </div>
-                  <MCPSettings />
                 </section>
               )}
 

@@ -316,6 +316,7 @@ class CareerProfile(Base):
     awards: Mapped[list] = mapped_column(JSON, default=list)
     source_resume_id: Mapped[str | None] = mapped_column(String, nullable=True)
     source_resume_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    avatar: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -388,6 +389,8 @@ class CareerProject(Base):
     description: Mapped[list] = mapped_column(JSON, default=list)
     languages: Mapped[list] = mapped_column(JSON, default=list)
     readme: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="completed")
+    attachments: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -602,3 +605,16 @@ class ChatEvaluation(Base):
     overall_score: Mapped[float | None] = mapped_column(default=None)
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+class PendingAction(Base):
+    """A tool action awaiting user confirmation."""
+    __tablename__ = "pending_actions"
+
+    token: Mapped[str] = mapped_column(String, primary_key=True)
+    thread_id: Mapped[str] = mapped_column(String, index=True)
+    tool: Mapped[str] = mapped_column(String)
+    args_json: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    expires_at: Mapped[str] = mapped_column(String)

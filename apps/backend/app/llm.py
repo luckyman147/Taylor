@@ -17,11 +17,28 @@ from app.config import load_config_file, save_config_file, settings
 LITELLM_LOGGER_NAMES = ("LiteLLM", "LiteLLM Router", "LiteLLM Proxy")
 
 
+class _LiteLLMParamWarningFilter(logging.Filter):
+    """Drop litellm's per-call ``max_retries is not supported`` warning.
+
+    The Router always injects ``max_retries`` (default 0) into every call,
+    and litellm's huggingface provider warns + ignores it after the Router
+    has already handled retries — pure noise on every HF request. The filter
+    is exact-message so any other warning on this logger still surfaces.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "max_retries` is not supported" not in record.getMessage()
+
+
 def _configure_litellm_logging() -> None:
     """Align LiteLLM logger levels with application settings."""
     numeric_level = getattr(logging, settings.log_llm, logging.WARNING)
     for logger_name in LITELLM_LOGGER_NAMES:
         logging.getLogger(logger_name).setLevel(numeric_level)
+
+    hf_logger = logging.getLogger("litellm.llms.huggingface.chat.transformation")
+    if not any(isinstance(f, _LiteLLMParamWarningFilter) for f in hf_logger.filters):
+        hf_logger.addFilter(_LiteLLMParamWarningFilter())
 
 
 _configure_litellm_logging()
@@ -30,6 +47,11 @@ _configure_litellm_logging()
 # temperature, etc.) instead of raising UnsupportedParamsError. This replaces
 # the hardcoded per-model compatibility branches this module used to carry.
 litellm.drop_params = True
+
+# litellm's default aiohttp transport creates aiohttp.ClientSession objects it
+# never closes ("Unclosed client session" asyncio errors at GC). Force the
+# httpx transport instead — same transport the LLM contract tests run under.
+litellm.disable_aiohttp_transport = True
 
 # Let LiteLLM auto-drop `thinking_blocks` from assistant messages when required
 # for a given turn (e.g., tool-call turns missing the blocks). Defensive; no
@@ -379,6 +401,7 @@ _PROVIDER_KEY_MAP: dict[str, str] = {
     "openrouter": "openrouter",
     "deepseek": "deepseek",
     "groq": "groq",
+    "huggingface": "huggingface",
     "ollama": "ollama",
 }
 
@@ -492,6 +515,7 @@ def get_model_name(config: LLMConfig) -> str:
         "gemini": "gemini/",
         "deepseek": "deepseek/",
         "groq": "groq/",
+        "huggingface": "huggingface/",
         "ollama": "ollama_chat/",  # ollama_chat/ routes to /api/chat (supports messages array)
     }
 
@@ -789,7 +813,7 @@ async def complete(
         logging.error(f"LLM completion failed: {e}", extra={
                       "model": model_name})
         raise ValueError(
-            "LLM completion failed. Please check your API configuration and try again."
+            f"LLM completion failed: {e}"
         ) from e
 
 
@@ -991,7 +1015,7 @@ def _appears_truncated(data: dict, schema_type: str = "resume") -> bool:
                 "Possible truncation detected: chat_plan missing intent or narrative"
             )
             return True
-        if data["intent"] not in ("query", "stat", "action"):
+        if data["intent"] not in ("query", "stat", "action", "clarify"):
             logging.warning(
                 "Possible truncation detected: chat_plan has invalid intent: %s",
                 data["intent"],

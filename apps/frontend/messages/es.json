@@ -158,7 +158,25 @@
       "removeGroup": "Remove Group",
       "groupName": "Group Name",
       "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
-      "skillPlaceholder": "Type a skill and press Enter"
+      "skillPlaceholder": "Type a skill and press Enter",
+      "addFromProfile": "Agregar desde perfil"
+    },
+    "skillsDialog": {
+      "title": "Agregar habilidades desde el perfil",
+      "description": "Selecciona las habilidades de tu perfil para agregar a este CV.",
+      "searchPlaceholder": "Buscar habilidades...",
+      "loading": "Cargando tus habilidades...",
+      "loadError": "Error al cargar las habilidades de tu perfil.",
+      "retry": "Reintentar",
+      "allAdded": "Todas las habilidades del perfil ya están agregadas",
+      "allAddedHint": "Agrega más habilidades a tu perfil para importarlas aquí.",
+      "goToProfile": "Ir al perfil",
+      "addSelected": "Agregar seleccionadas ({count})",
+      "noSkills": "No hay habilidades en tu perfil",
+      "noSkillsHint": "Primero agrega habilidades a tu perfil, luego impórtalas aquí.",
+      "grouped": "Agrupado",
+      "list": "Lista",
+      "uncategorized": "Sin categoría"
     },
     "languagesForm": {
       "instructions": "Add languages as tags.",
@@ -464,7 +482,10 @@
       "spacingSection": "Sección",
       "spacingItems": "Elementos",
       "spacingLines": "Líneas",
-      "padding": "Relleno",
+      "paddingTop": "Relleno superior",
+      "paddingRight": "Relleno derecho",
+      "paddingBottom": "Relleno inferior",
+      "paddingLeft": "Relleno izquierdo",
       "fontSize": "Tamaño de fuente",
       "baseFontSize": "Base",
       "headerScale": "Encabezados",
@@ -533,6 +554,23 @@
         ",": "Comma",
         "|": "Pipe"
       },
+      "avatarShow": "Mostrar avatar",
+      "avatarShape": "Forma",
+      "avatarShapeOptions": {
+        "circle": "Círculo",
+        "rounded": "Redondeado",
+        "square": "Cuadrado",
+        "none": "Ninguno"
+      },
+      "avatarSize": "Tamaño",
+      "avatarSizeOptions": {
+        "small": "Pequeño",
+        "medium": "Mediano",
+        "large": "Grande"
+      },
+      "avatarBorder": "Borde",
+      "avatarPosition": "Posición",
+      "avatarInfoGap": "Espaciado info",
       "weightOptions": {
         "light": "Light",
         "regular": "Regular",
@@ -610,7 +648,11 @@
         "linkedin": "linkedin.com/in/juan",
         "github": "github.com/juan"
       },
-      "displayAsLink": "Mostrar como enlace"
+      "displayAsLink": "Mostrar como enlace",
+      "uploadPhoto": "Subir foto",
+      "changePhoto": "Cambiar foto",
+      "removePhoto": "Eliminar foto",
+      "uploadError": "Error al subir la foto"
     },
     "leftPanel": {
       "editorPanel": "Panel de edición",
@@ -664,7 +706,8 @@
       "verticalSpacing": "Vertical Spacing",
       "borders": "Borders",
       "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
+      "comingSoonHint": "These settings are not available yet.",
+      "avatar": "Avatar"
     },
     "sectionOrder": {
       "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
@@ -1020,6 +1063,7 @@
     "llmConfiguration": {
       "selectedProvider": "SELECCIONADO: {provider}",
       "modelLabel": "Modelo",
+      "free": "Gratuito",
       "defaultModel": "PREDETERMINADO: {model}",
       "apiKeyLabel": "Clave API",
       "apiKeyOptionalForOllama": "(Opcional para Ollama)",
@@ -1973,6 +2017,13 @@
       "uploadDesktop": "Subir desde el equipo",
       "uploaded": "Currículum subido.",
       "save": "Save profile"
+    },
+    "export": {
+      "button": "Exportar Perfil"
+    },
+    "import": {
+      "previewTitle": "Vista Previa del Perfil Importado",
+      "confirm": "Confirmar Importación"
     },
     "skills": {
       "title": "Skills",

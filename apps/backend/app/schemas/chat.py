@@ -68,6 +68,7 @@ class ConfirmResponse(BaseModel):
 
 class CancelRequest(BaseModel):
     token: str = Field(min_length=1, max_length=100)
+    thread_id: str = Field(min_length=1, max_length=100)
 
 
 class MemorySaveRequest(BaseModel):

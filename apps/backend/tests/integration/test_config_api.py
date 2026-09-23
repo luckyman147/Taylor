@@ -475,6 +475,25 @@ class TestEncryptedApiKeys:
         # The gemini LLM provider maps to the google key-store slot.
         assert resolve_api_key(stored, "gemini") == "sk-google-key"
 
+    async def test_huggingface_key_persists_and_resolves(self, keys_env, client):
+        from app.config import load_config_file
+        from app.llm import resolve_api_key
+
+        async with client:
+            r = await client.post(
+                "/api/v1/config/api-keys", json={"huggingface": "hf_test-token-123456"}
+            )
+            assert r.status_code == 200
+            assert r.json()["updated_providers"] == ["huggingface"]
+            status = await client.get("/api/v1/config/api-keys")
+            configured = {p["provider"]: p for p in status.json()["providers"]}
+            assert configured["huggingface"]["configured"] is True
+            assert configured["huggingface"]["masked_key"].endswith("3456")
+            stored = load_config_file()
+            await client.delete("/api/v1/config/api-keys/huggingface")
+        # The huggingface token stored in the key store (not the env fallback).
+        assert resolve_api_key(stored, "huggingface") == "hf_test-token-123456"
+
     async def test_delete_single_provider(self, keys_env, client):
         async with client:
             await client.post("/api/v1/config/api-keys", json={"openai": "a", "anthropic": "b"})

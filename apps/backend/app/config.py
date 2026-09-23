@@ -215,6 +215,7 @@ class Settings(BaseSettings):
         "gemini",
         "deepseek",
         "groq",
+        "huggingface",
         "ollama",
     ] = "openai"
     llm_model: str = "gpt-5-nano-2025-08-07"

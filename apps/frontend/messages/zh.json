@@ -158,7 +158,25 @@
       "removeGroup": "Remove Group",
       "groupName": "Group Name",
       "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
-      "skillPlaceholder": "Type a skill and press Enter"
+      "skillPlaceholder": "Type a skill and press Enter",
+      "addFromProfile": "从个人资料添加"
+    },
+    "skillsDialog": {
+      "title": "从个人资料添加技能",
+      "description": "从你的职业资料中选择技能添加到此简历。",
+      "searchPlaceholder": "搜索技能...",
+      "loading": "正在加载你的技能...",
+      "loadError": "加载技能失败。",
+      "retry": "重试",
+      "allAdded": "所有个人资料技能已添加",
+      "allAddedHint": "在个人资料中添加更多技能以导入。",
+      "goToProfile": "前往个人资料",
+      "addSelected": "添加选中 ({count})",
+      "noSkills": "个人资料中暂无技能",
+      "noSkillsHint": "请先在职业资料中添加技能，然后导入此处。",
+      "grouped": "分组",
+      "list": "列表",
+      "uncategorized": "未分类"
     },
     "languagesForm": {
       "instructions": "Add languages as tags.",
@@ -464,7 +482,10 @@
       "spacingSection": "板块",
       "spacingItems": "条目",
       "spacingLines": "行距",
-      "padding": "内边距",
+      "paddingTop": "顶部内边距",
+      "paddingRight": "右侧内边距",
+      "paddingBottom": "底部内边距",
+      "paddingLeft": "左侧内边距",
       "fontSize": "字号",
       "baseFontSize": "正文",
       "headerScale": "标题",
@@ -533,6 +554,23 @@
         ",": "Comma",
         "|": "Pipe"
       },
+      "avatarShow": "显示头像",
+      "avatarShape": "形状",
+      "avatarShapeOptions": {
+        "circle": "圆形",
+        "rounded": "圆角",
+        "square": "方形",
+        "none": "无"
+      },
+      "avatarSize": "大小",
+      "avatarSizeOptions": {
+        "small": "小",
+        "medium": "中",
+        "large": "大"
+      },
+      "avatarBorder": "边框",
+      "avatarPosition": "位置",
+      "avatarInfoGap": "信息间距",
       "weightOptions": {
         "light": "Light",
         "regular": "Regular",
@@ -610,7 +648,11 @@
         "linkedin": "linkedin.com/in/zhangsan",
         "github": "github.com/zhangsan"
       },
-      "displayAsLink": "显示为链接"
+      "displayAsLink": "显示为链接",
+      "uploadPhoto": "上传照片",
+      "changePhoto": "更换照片",
+      "removePhoto": "删除照片",
+      "uploadError": "照片上传失败"
     },
     "leftPanel": {
       "editorPanel": "编辑面板",
@@ -664,7 +706,8 @@
       "verticalSpacing": "Vertical Spacing",
       "borders": "Borders",
       "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
+      "comingSoonHint": "These settings are not available yet.",
+      "avatar": "头像"
     },
     "sectionOrder": {
       "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
@@ -1020,6 +1063,7 @@
     "llmConfiguration": {
       "selectedProvider": "已选择：{provider}",
       "modelLabel": "模型",
+      "free": "免费",
       "defaultModel": "默认：{model}",
       "apiKeyLabel": "API 密钥",
       "apiKeyOptionalForOllama": "（Ollama 可选）",
@@ -1973,6 +2017,13 @@
       "uploadDesktop": "从电脑上传",
       "uploaded": "简历已上传。",
       "save": "Save profile"
+    },
+    "export": {
+      "button": "导出个人资料"
+    },
+    "import": {
+      "previewTitle": "预览导入的个人资料",
+      "confirm": "确认导入"
     },
     "skills": {
       "title": "Skills",

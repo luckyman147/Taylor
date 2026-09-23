@@ -158,7 +158,25 @@
       "removeGroup": "Remove Group",
       "groupName": "Group Name",
       "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
-      "skillPlaceholder": "Type a skill and press Enter"
+      "skillPlaceholder": "Type a skill and press Enter",
+      "addFromProfile": "프로필에서 추가"
+    },
+    "skillsDialog": {
+      "title": "프로필에서 기술 추가",
+      "description": "커리어 프로필에서 이 이력서에 추가할 기술을 선택하세요.",
+      "searchPlaceholder": "기술 검색...",
+      "loading": "기술을 불러오는 중...",
+      "loadError": "프로필에서 기술을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "allAdded": "모든 프로필 기술이 이미 추가됨",
+      "allAddedHint": "프로필에 더 많은 기술을 추가하여 여기로 가져오세요.",
+      "goToProfile": "프로필로 이동",
+      "addSelected": "선택 추가 ({count})",
+      "noSkills": "프로필에 기술이 없습니다",
+      "noSkillsHint": "먼저 커리어 프로필에 기술을 추가한 다음 여기로 가져오세요.",
+      "grouped": "그룹별",
+      "list": "목록",
+      "uncategorized": "분류 없음"
     },
     "languagesForm": {
       "instructions": "Add languages as tags.",
@@ -464,7 +482,10 @@
       "spacingSection": "섹션",
       "spacingItems": "항목",
       "spacingLines": "줄",
-      "padding": "안쪽여백",
+      "paddingTop": "위쪽 안쪽여백",
+      "paddingRight": "오른쪽 안쪽여백",
+      "paddingBottom": "아래쪽 안쪽여백",
+      "paddingLeft": "왼쪽 안쪽여백",
       "fontSize": "글꼴 크기",
       "baseFontSize": "기본",
       "headerScale": "제목",
@@ -533,6 +554,23 @@
         ",": "Comma",
         "|": "Pipe"
       },
+      "avatarShow": "아바타 표시",
+      "avatarShape": "모양",
+      "avatarShapeOptions": {
+        "circle": "원형",
+        "rounded": "둥근 사각형",
+        "square": "사각형",
+        "none": "없음"
+      },
+      "avatarSize": "크기",
+      "avatarSizeOptions": {
+        "small": "작게",
+        "medium": "보통",
+        "large": "크게"
+      },
+      "avatarBorder": "테두리",
+      "avatarPosition": "위치",
+      "avatarInfoGap": "정보 간격",
       "weightOptions": {
         "light": "Light",
         "regular": "Regular",
@@ -610,7 +648,11 @@
         "linkedin": "linkedin.com/in/john",
         "github": "github.com/john"
       },
-      "displayAsLink": "링크로 표시"
+      "displayAsLink": "링크로 표시",
+      "uploadPhoto": "사진 업로드",
+      "changePhoto": "사진 변경",
+      "removePhoto": "사진 삭제",
+      "uploadError": "사진 업로드 실패"
     },
     "leftPanel": {
       "editorPanel": "편집 패널",
@@ -664,7 +706,8 @@
       "verticalSpacing": "Vertical Spacing",
       "borders": "Borders",
       "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
+      "comingSoonHint": "These settings are not available yet.",
+      "avatar": "아바타"
     },
     "sectionOrder": {
       "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
@@ -1020,6 +1063,7 @@
     "llmConfiguration": {
       "selectedProvider": "선택됨: {provider}",
       "modelLabel": "모델",
+      "free": "무료",
       "defaultModel": "기본값: {model}",
       "apiKeyLabel": "API 키",
       "apiKeyOptionalForOllama": "(Ollama에서는 선택 사항)",
@@ -1973,6 +2017,13 @@
       "uploadDesktop": "컴퓨터에서 업로드",
       "uploaded": "이력서가 업로드되었습니다.",
       "save": "Save profile"
+    },
+    "export": {
+      "button": "프로필 내보내기"
+    },
+    "import": {
+      "previewTitle": "가져온 프로필 미리보기",
+      "confirm": "가져오기 확인"
     },
     "skills": {
       "title": "Skills",

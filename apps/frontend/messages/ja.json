@@ -158,7 +158,25 @@
       "removeGroup": "Remove Group",
       "groupName": "Group Name",
       "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
-      "skillPlaceholder": "Type a skill and press Enter"
+      "skillPlaceholder": "Type a skill and press Enter",
+      "addFromProfile": "プロフィールから追加"
+    },
+    "skillsDialog": {
+      "title": "プロフィールからスキルを追加",
+      "description": "キャリアプロフィールからこの履歴書に追加するスキルを選択してください。",
+      "searchPlaceholder": "スキルを検索...",
+      "loading": "スキルを読み込み中...",
+      "loadError": "プロフィールからスキルの読み込みに失敗しました。",
+      "retry": "再試行",
+      "allAdded": "プロフィールのすべてのスキルが追加済み",
+      "allAddedHint": "プロフィールにさらにスキルを追加して、ここにインポートしてください。",
+      "goToProfile": "プロフィールへ",
+      "addSelected": "選択を追加 ({count})",
+      "noSkills": "プロフィールにスキルがありません",
+      "noSkillsHint": "まずキャリアプロフィールにスキルを追加し、ここにインポートしてください。",
+      "grouped": "グループ",
+      "list": "リスト",
+      "uncategorized": "未分類"
     },
     "languagesForm": {
       "instructions": "Add languages as tags.",
@@ -464,7 +482,10 @@
       "spacingSection": "セクション",
       "spacingItems": "項目",
       "spacingLines": "行間",
-      "padding": "パディング",
+      "paddingTop": "上パディング",
+      "paddingRight": "右パディング",
+      "paddingBottom": "下パディング",
+      "paddingLeft": "左パディング",
       "fontSize": "フォントサイズ",
       "baseFontSize": "本文",
       "headerScale": "見出し",
@@ -533,6 +554,23 @@
         ",": "Comma",
         "|": "Pipe"
       },
+      "avatarShow": "アバターを表示",
+      "avatarShape": "形状",
+      "avatarShapeOptions": {
+        "circle": "丸型",
+        "rounded": "角丸",
+        "square": "四角",
+        "none": "なし"
+      },
+      "avatarSize": "サイズ",
+      "avatarSizeOptions": {
+        "small": "小",
+        "medium": "中",
+        "large": "大"
+      },
+      "avatarBorder": "ボーダー",
+      "avatarPosition": "位置",
+      "avatarInfoGap": "情報間隔",
       "weightOptions": {
         "light": "Light",
         "regular": "Regular",
@@ -610,7 +648,11 @@
         "linkedin": "linkedin.com/in/taro",
         "github": "github.com/taro"
       },
-      "displayAsLink": "リンクとして表示"
+      "displayAsLink": "リンクとして表示",
+      "uploadPhoto": "写真をアップロード",
+      "changePhoto": "写真を変更",
+      "removePhoto": "写真を削除",
+      "uploadError": "写真のアップロードに失敗しました"
     },
     "leftPanel": {
       "editorPanel": "編集パネル",
@@ -664,7 +706,8 @@
       "verticalSpacing": "Vertical Spacing",
       "borders": "Borders",
       "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
+      "comingSoonHint": "These settings are not available yet.",
+      "avatar": "アバター"
     },
     "sectionOrder": {
       "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
@@ -1020,6 +1063,7 @@
     "llmConfiguration": {
       "selectedProvider": "選択中: {provider}",
       "modelLabel": "モデル",
+      "free": "無料",
       "defaultModel": "既定: {model}",
       "apiKeyLabel": "API キー",
       "apiKeyOptionalForOllama": "（Ollama は任意）",
@@ -1973,6 +2017,13 @@
       "uploadDesktop": "デスクトップからアップロード",
       "uploaded": "履歴書をアップロードしました。",
       "save": "Save profile"
+    },
+    "export": {
+      "button": "プロフィールをエクスポート"
+    },
+    "import": {
+      "previewTitle": "インポートされたプロフィールのプレビュー",
+      "confirm": "インポートを確認"
     },
     "skills": {
       "title": "Skills",

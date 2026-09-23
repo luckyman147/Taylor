@@ -189,6 +189,7 @@ class PersonalInfo(BaseModel):
     website: str | None = None
     linkedin: str | None = None
     github: str | None = None
+    avatar: str = ""
     contactDisplay: dict[str, Literal["full", "label"]] = Field(default_factory=dict)
 
 
@@ -555,6 +556,15 @@ class ResumeUploadResponse(BaseModel):
     resume_id: str
     processing_status: Literal["pending", "processing", "ready", "failed"] = "pending"
     is_master: bool = False
+
+
+class BatchUploadResultItem(BaseModel):
+    """Result for a single file in a batch upload."""
+
+    filename: str
+    resume_id: str | None = None
+    processing_status: str = "failed"
+    error: str | None = None
 
 
 class RawResume(BaseModel):
@@ -1054,6 +1064,7 @@ class ApiKeysUpdateRequest(BaseModel):
     openrouter: str | None = None
     deepseek: str | None = None
     groq: str | None = None
+    huggingface: str | None = None
     # Local/self-hosted providers that may sit behind an auth proxy.
     openai_compatible: str | None = None
     ollama: str | None = None

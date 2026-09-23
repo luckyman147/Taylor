@@ -31,57 +31,17 @@ from app.services.chat_tools import (
     execute_tool,
     get_tool_catalog_json,
 )
-from app.services.chat_gateway import ChatIntent, should_clarify, DEFAULT_CLARIFICATION_OPTIONS
+from app.services.chat_gateway import (
+    ChatIntent,
+    ConversationContext,
+    DEFAULT_CLARIFICATION_OPTIONS,
+    TopicState,
+    format_gateway_signals,
+)
 from app.agent.runner import agent_runner
 from app.agent.budget import BudgetConfig
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Pending action store (in-memory, TTL 30 min, single-worker)
-# ---------------------------------------------------------------------------
-
-_PENDING_TTL = 30 * 60  # seconds
-_pending_store: dict[str, dict[str, Any]] = {}
-
-
-def _cleanup_pending() -> None:
-    """Evict expired pending actions."""
-    now = time.time()
-    expired = [t for t, v in _pending_store.items() if now - v["created_at"] > _PENDING_TTL]
-    for t in expired:
-        _pending_store.pop(t, None)
-
-
-def _store_pending(tool: str, args: dict[str, Any], summary: str) -> str:
-    """Store a pending write action, return confirmation token."""
-    _cleanup_pending()
-    token = uuid.uuid4().hex[:16]
-    _pending_store[token] = {
-        "tool": tool,
-        "args": args,
-        "summary": summary,
-        "created_at": time.time(),
-    }
-    return token
-
-
-def _get_pending(token: str) -> dict[str, Any] | None:
-    """Retrieve and validate a pending action."""
-    _cleanup_pending()
-    entry = _pending_store.get(token)
-    if entry is None:
-        logger.warning("Pending token %s not found (may have expired or server restarted)", token[:8])
-        return None
-    if time.time() - entry["created_at"] > _PENDING_TTL:
-        _pending_store.pop(token, None)
-        logger.warning("Pending token %s expired", token[:8])
-        return None
-    return entry
-
-
-def _remove_pending(token: str) -> None:
-    _pending_store.pop(token, None)
 
 
 # ---------------------------------------------------------------------------
@@ -89,12 +49,112 @@ def _remove_pending(token: str) -> None:
 # ---------------------------------------------------------------------------
 
 class ConversationState:
-    """Tracks pending clarification across turns for a single thread."""
+    """Tracks pending clarification and active entities across turns for a single thread."""
 
     def __init__(self) -> None:
         self.pending_clarification: bool = False
         self.clarification_options: list[str] = []
         self.previous_intent: str | None = None
+        # Entity tracking
+        self.active_job_id: str | None = None
+        self.active_resume_id: str | None = None
+        self.active_company: str | None = None
+        self.active_task: str | None = None
+        # Gateway continuity (Phase 1 refactor)
+        self.active_topic: str | None = None
+        self.topic_stack: list[TopicState] = []
+        self.last_tools: list[str] = []
+        self.last_tool_results: list[dict[str, Any]] = []
+        self.recent_user_messages: list[str] = []
+        self.turn: int = 0
+
+
+def build_gateway_context(state: ConversationState) -> ConversationContext:
+    """Snapshot thread state into the gateway's ConversationContext."""
+    last_intent: ChatIntent | None = None
+    if state.previous_intent:
+        try:
+            last_intent = ChatIntent(state.previous_intent)
+        except ValueError:
+            last_intent = None
+    return ConversationContext(
+        active_topic=state.active_topic,
+        active_job_id=state.active_job_id,
+        active_resume_id=state.active_resume_id,
+        active_company=state.active_company,
+        last_intent=last_intent,
+        last_tools=list(state.last_tools),
+        last_tool_results=list(state.last_tool_results),
+        recent_user_messages=list(state.recent_user_messages),
+        topic_stack=list(state.topic_stack),
+        turn=state.turn,
+    )
+
+
+def _persist_gateway_state(
+    state: ConversationState,
+    gateway: Any,
+    user_message: str,
+    count_turn: bool = True,
+) -> None:
+    """Record this turn's gateway decision into thread state."""
+    if count_turn:
+        state.turn += 1
+        state.recent_user_messages.append(user_message)
+        state.recent_user_messages = state.recent_user_messages[-10:]
+
+    intent = getattr(gateway, "intent", None)
+    state.previous_intent = intent.value if intent is not None else None
+    tools = getattr(gateway, "preferred_tools", None) or []
+    if tools:
+        state.last_tools = list(tools)
+    resume_id = getattr(gateway, "resume_id", None)
+    if resume_id and resume_id != "master":
+        state.active_resume_id = resume_id
+
+    topics: list[str] = getattr(gateway, "topics", None) or []
+    if getattr(gateway, "topic_shift", False):
+        state.active_topic = None
+        state.topic_stack = []
+    if topics:
+        primary = topics[0]
+        if primary != state.active_topic:
+            state.active_topic = primary
+            state.topic_stack.append(
+                TopicState(
+                    topic=primary,
+                    confidence=getattr(gateway, "confidence", 0.0),
+                    turn=state.turn,
+                )
+            )
+            state.topic_stack = state.topic_stack[-5:]
+
+
+def _update_conversation_state(
+    state: ConversationState,
+    tool_results: dict[str, Any],
+    intent: str | None = None,
+) -> None:
+    """Update active entities and executed-tool memory based on tools."""
+    if intent is not None:
+        state.previous_intent = intent
+    if tool_results:
+        state.last_tools = list(tool_results.keys())
+        state.last_tool_results = [
+            r for r in tool_results.values() if isinstance(r, dict)
+        ][:5]
+    if "search_mcp_jobs" in tool_results:
+        state.active_task = "search"
+        jobs = tool_results["search_mcp_jobs"].get("jobs", [])
+        if jobs:
+            state.active_company = jobs[0].get("company")
+            job_id = jobs[0].get("job_id")
+            if job_id:
+                state.active_job_id = job_id
+    if "get_ats_audit" in tool_results:
+        state.active_task = "audit"
+    if "create_application" in tool_results:
+        state.active_task = "application"
 
 
 # Thread ID → ConversationState (in-memory, single-worker)
@@ -137,12 +197,24 @@ async def _handle_clarification(
             await db.add_chat_message(thread_id, "user", user_message)
             # Route to the resolved intent by re-classifying with more context
             from app.services.chat_gateway import classify_intent as _classify
-            new_decision = await _classify(resolved)
+            new_decision = await _classify(
+                resolved, context=build_gateway_context(state)
+            )
             # Inject the resolved intent as context for the planner
             gateway.intent = new_decision.intent
             gateway.preferred_tools = new_decision.preferred_tools
             gateway.confidence = new_decision.confidence
+            gateway.force_preferred = new_decision.force_preferred
+            gateway.slash_args = new_decision.slash_args
+            gateway.topics = new_decision.topics
+            gateway.actions = new_decision.actions
+            gateway.entities = new_decision.entities
+            gateway.active_topic = new_decision.active_topic
+            gateway.has_followup_reference = new_decision.has_followup_reference
+            gateway.topic_shift = new_decision.topic_shift
             gateway.needs_clarification = False
+            # Same user turn — update intent/topics without double-counting.
+            _persist_gateway_state(state, gateway, resolved, count_turn=False)
             return None  # Signal to continue normal routing
         # User response didn't resolve — still ambiguous
         assistant_content = "I'm not sure which one you mean. Could you pick from these?"
@@ -169,21 +241,51 @@ async def _handle_clarification(
         await _emit(TurnCompleteEvent(data=result))
         return result
 
-    # First clarification — show options
-    suggested = gateway.suggested_intents or ["job_search", "resume_audit", "profile"]
-    options = [_INTENT_LABELS.get(intent, intent) for intent in suggested]
-    state.pending_clarification = True
-    state.clarification_options = suggested
+    # First clarification — show context-aware options based on user's data
+    suggested = gateway.suggested_intents or []
 
-    assistant_content = "I can help with several career tasks. What would you like to do?"
+    # Build options based on what the user actually has
+    try:
+        resumes = await db.list_resumes()
+        has_resumes = len(resumes) > 0
+        has_master = any(r.get("is_master") for r in resumes)
+    except Exception:
+        has_resumes = False
+        has_master = False
+
+    try:
+        applications = await db.list_applications()
+        has_applications = len(applications) > 0
+    except Exception:
+        has_applications = False
+
+    # Build contextual options
+    options = []
+    if not has_resumes:
+        options.append({"label": "Upload my resume to get started", "intent": "resume_audit"})
+        options.append({"label": "Search for job openings", "intent": "job_search"})
+        options.append({"label": "Tell me about your career tools", "intent": "profile"})
+    elif not has_master:
+        options.append({"label": "Set up my master resume", "intent": "resume_audit"})
+        options.append({"label": "Search for job openings", "intent": "job_search"})
+        options.append({"label": "Check my career profile", "intent": "profile"})
+    else:
+        # Has resumes — show a contextual mix
+        options.append({"label": "Search for jobs matching my skills", "intent": "job_search"})
+        options.append({"label": "Audit my resume against a job", "intent": "resume_audit"})
+        if has_applications:
+            options.append({"label": "Review my application pipeline", "intent": "applications"})
+        else:
+            options.append({"label": "Analyze my market position", "intent": "market"})
+        options.append({"label": "Discover skill gaps", "intent": "skills"})
+
+    state.pending_clarification = True
+    state.clarification_options = [o["intent"] for o in options]
+
+    assistant_content = "Here's what I can help you with:"
     clarify_card = {
         "kind": "clarify",
-        "data": {
-            "options": [
-                {"label": label, "intent": intent}
-                for intent, label in zip(suggested, options)
-            ],
-        },
+        "data": {"options": options},
     }
     await db.add_chat_message(thread_id, "assistant", assistant_content, envelope={"cards": [clarify_card]})
     result = {
@@ -370,16 +472,85 @@ def _strip_system_tags(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# @mention parser
+# ---------------------------------------------------------------------------
+
+_MENTION_RE = re.compile(r'@(?:"([^"]+)"|(\w+(?:\s+\w+){0,2}))')
+
+# Common English words that follow @mentions but aren't part of the name
+_MENTION_STOP_WORDS = {
+    "show", "me", "what", "did", "i", "send", "sent", "to", "from", "about",
+    "and", "or", "the", "a", "an", "my", "your", "his", "her", "their",
+    "how", "many", "many", "all", "any", "some", "that", "this", "these",
+    "those", "for", "with", "in", "on", "at", "by", "of", "is", "are",
+    "was", "were", "be", "been", "has", "have", "had", "do", "does", "did",
+    "can", "could", "would", "should", "will", "may", "might",
+    "compare", "analyze", "analyse", "review", "check", "show", "find",
+    "search", "look", "get", "fetch", "list", "tell", "give", "help",
+}
+
+
+def _extract_mentions(text: str) -> list[str]:
+    """Extract @Company or @Contact Name mentions from user message.
+
+    Examples:
+        "@Google show me emails" → ["Google"]
+        "emails to @John Smith and @Microsoft" → ["John Smith", "Microsoft"]
+        '@"Acme Corp" outreach' → ["Acme Corp"]
+    """
+    mentions: list[str] = []
+    for match in _MENTION_RE.finditer(text):
+        name = match.group(1) or match.group(2)
+        if not name or len(name) < 2:
+            continue
+        name = name.strip()
+        # For multi-word names, trim trailing stop words
+        words = name.split()
+        while words and words[-1].lower() in _MENTION_STOP_WORDS:
+            words.pop()
+        name = " ".join(words).strip()
+        if name and len(name) >= 2:
+            mentions.append(name)
+    return mentions
+
+
+# ---------------------------------------------------------------------------
 # History formatting
 # ---------------------------------------------------------------------------
 
 def _format_history(messages: list[dict[str, Any]], limit: int = 20) -> str:
-    """Format recent messages into a compact history string."""
+    """Format recent messages into a compact history string.
+
+    Includes envelope card summaries so the planner can see what tools
+    were previously called and what results were returned.
+    """
     recent = messages[-limit:]
     parts: list[str] = []
     for m in recent:
         role = m.get("role", "user")
-        content = (m.get("content") or "")[:500]
+        content = (m.get("content") or "")[:2000]
+        # Append card summaries from envelope so planner sees tool activity
+        envelope = m.get("envelope") or {}
+        cards = envelope.get("cards", [])
+        if cards:
+            card_summaries: list[str] = []
+            for c in cards:
+                kind = c.get("kind", "?")
+                data = c.get("data", {})
+                if kind == "email_list":
+                    card_summaries.append(f"email_search: {data.get('total', '?')} emails")
+                elif kind == "job_list":
+                    card_summaries.append(f"job_search: {data.get('total', '?')} jobs")
+                elif kind == "audit":
+                    card_summaries.append(f"resume_audit: score={data.get('overall_score', '?')}")
+                elif kind == "sources":
+                    card_summaries.append(f"web_search: {len(data.get('sources', []))} sources")
+                elif kind == "info":
+                    card_summaries.append("career_data: loaded")
+                elif kind == "clarify":
+                    card_summaries.append("clarification: asked")
+            if card_summaries:
+                content += f" [tools: {', '.join(card_summaries)}]"
         parts.append(f"{role.upper()}: {content}")
     return "\n".join(parts)
 
@@ -514,15 +685,44 @@ async def _run_turn_core(
     language = get_content_language()
     output_language = get_language_name(language)
 
+    # --- Early LLM health check: fail fast with actionable message ---
+    from app.llm import get_llm_config
+    from app.config import settings as _cfg
+    llm_cfg = get_llm_config()
+    api_key = llm_cfg.api_key  # already resolved by get_llm_config()
+    # For providers that require a key, check it's not empty
+    _PROVIDERS_NEED_KEY = {"openai", "anthropic", "openrouter", "gemini", "deepseek", "groq", "azure_foundry"}
+    if llm_cfg.provider in _PROVIDERS_NEED_KEY and not api_key:
+        _pname = llm_cfg.provider.replace("_", " ").title()
+        _err = (
+            f"No API key configured for **{_pname}**. "
+            f"Please go to **Settings → LLM Configuration**, select {_pname}, "
+            f"and enter your API key."
+        )
+        await db.add_chat_message(thread_id, "user", user_message)
+        await db.add_chat_message(thread_id, "assistant", _err, envelope={"cards": [], "actions": [], "stats": None, "pending_action": None, "followups": [], "sources": []})
+        return {
+            "assistant_content": _err,
+            "cards": [], "actions": [], "stats": None,
+            "pending_action": None, "memory_candidates": [],
+            "followups": [], "sources": [], "model_info": None,
+        }
+
     # Load context
     messages = await db.list_chat_messages(thread_id, limit=50)
     memories = await db.list_active_chat_memories(limit=20)
 
     # --- Gateway: fast intent classification (no LLM call) ---
     from app.services.chat_gateway import classify_intent
-    gateway = await classify_intent(user_message, resume_id=resume_id)
+    conv_state = _get_conversation_state(thread_id)
+    gateway = await classify_intent(
+        user_message,
+        resume_id=resume_id,
+        context=build_gateway_context(conv_state),
+    )
+    _persist_gateway_state(conv_state, gateway, user_message)
 
-    # --- Contextual follow-up: only if there are previous job results to reference ---
+    # --- Contextual follow-up: previous results OR an active topic to refer back to ---
     if gateway.contextual_follow_up:
         has_job_context = any(
             card.get("kind") == "job_list"
@@ -530,11 +730,11 @@ async def _run_turn_core(
             if m.get("role") == "assistant"
             for card in (m.get("envelope") or {}).get("cards", [])
         )
-        if has_job_context:
+        if has_job_context or conv_state.active_topic:
             return await _handle_contextual_follow_up(
                 thread_id, user_message, gateway, _emit, messages, memories,
             )
-        # No job context — fall through to normal planner path
+        # No prior context — fall through to normal planner path
 
     # --- Clarification: gateway detected ambiguity ---
     if gateway.needs_clarification or gateway.intent == ChatIntent.CLARIFY:
@@ -554,7 +754,8 @@ async def _run_turn_core(
         )
 
     if gateway.intent in (ChatIntent.PROFILE, ChatIntent.APPLICATIONS,
-                          ChatIntent.SKILLS, ChatIntent.MARKET):
+                          ChatIntent.SKILLS, ChatIntent.MARKET) \
+            or gateway.force_preferred:
         return await _handle_direct_tool(
             thread_id, user_message, gateway, _emit, messages, memories,
         )
@@ -562,12 +763,15 @@ async def _run_turn_core(
     # --- Resume audit: selection flow ---
     if gateway.needs_selection:
         await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
+        is_compare = gateway.multi_select
         selection_card = {
             "kind": "resume_selection",
             "data": {
                 "needs_selection": True,
-                "prompt": "Which resume would you like to audit?",
+                "prompt": "Select 2 resumes to compare:" if is_compare else "Which resume would you like to audit?",
                 "resumes": gateway.resumes,
+                "multi_select": is_compare,
+                "max_select": gateway.max_select,
             },
         }
         envelope = {
@@ -575,10 +779,10 @@ async def _run_turn_core(
             "actions": [],
             "stats": None,
             "pending_action": None,
-            "followups": ["Audit my master resume", "Compare all resumes"],
+            "followups": ["Compare all resumes", "Audit my master resume"] if is_compare else ["Audit my master resume", "Compare all resumes"],
             "sources": [],
         }
-        assistant_content = "Which resume would you like me to audit?"
+        assistant_content = "Select 2 resumes to compare side by side." if is_compare else "Which resume would you like me to audit?"
         await db.add_chat_message(thread_id, "assistant", assistant_content, envelope=envelope)
         result = {
             "assistant_content": assistant_content,
@@ -617,7 +821,7 @@ async def _run_turn_core(
             "actions": [],
             "stats": None,
             "pending_action": None,
-            "followups": ["Tell me more", "What else can you do?"],
+            "followups": ["Tell me more", "Show me what else you can do"],
             "sources": [],
         }
         await db.add_chat_message(thread_id, "assistant", _strip_system_tags(agent_result["answer"]), envelope=envelope)
@@ -651,6 +855,7 @@ async def _run_turn_core(
         history=_format_history(messages),
         tool_catalog=tool_catalog_text,
         output_language=output_language,
+        gateway_signals=format_gateway_signals(gateway),
     ) + gateway_context
 
     from app.prompts import get_merged_system_prompt
@@ -676,12 +881,35 @@ async def _run_turn_core(
     memory_candidates = plan.get("memory_candidates", [])
     plan_title = plan.get("title", "")
 
+    # Gateway-forced tool calls: if the planner returned empty tool_calls but the
+    # gateway detected a clear pattern (e.g. email queries), force the tool call.
+    if not tool_calls and gateway.preferred_tools:
+        # For @mention tools, inject entity_name args from mentions
+        if gateway.mentions and "search_entity_emails" in gateway.preferred_tools:
+            forced = [
+                {"tool": "search_entity_emails", "args": {"entity_name": m}}
+                for m in gateway.mentions
+            ]
+        else:
+            forced = [{"tool": t, "args": {}} for t in gateway.preferred_tools]
+            # For compare_resumes, extract names from the [compare: ...] message
+            if "compare_resumes" in gateway.preferred_tools:
+                import re as _re
+                cm = _re.match(r"^\[compare:\s*(.+?)\]\s*$", user_message.strip(), _re.IGNORECASE)
+                if cm:
+                    names = [n.strip() for n in cm.group(1).split(",") if n.strip()]
+                    forced = [{"tool": "compare_resumes", "args": {"keywords": ", ".join(names)}}]
+        logger.info("Gateway forcing tool calls (planner returned empty): %s", forced)
+        tool_calls = forced
+
     # Planner-level clarification fallback (gateway missed it)
     # BUT: if the gateway said needs_clarification=False, override the planner's clarify
     # (the user's intent was clear — planner may have been confused)
     if plan.get("intent") == "clarify" and not tool_calls:
-        if not gateway.needs_clarification:
-            logger.info("Planner returned clarify but gateway says intent is clear — overriding to query")
+        if not gateway.needs_clarification or not followups:
+            # Gateway says it's clear, or planner returned clarify with no followup questions
+            # (truncated JSON) — override to query and let the planner answer
+            logger.info("Planner returned clarify but gateway says intent is clear (or no followups) — overriding to query")
             plan["intent"] = "query"
         else:
             logger.info("Planner returned clarify intent with %d questions", len(followups))
@@ -714,10 +942,10 @@ async def _run_turn_core(
                 "pending_action": None,
                 "memory_candidates": [],
                 "followups": followups,
-            "sources": [],
-        }
-        await _emit(TurnCompleteEvent(data=result))
-        return result
+                "sources": [],
+            }
+            await _emit(TurnCompleteEvent(data=result))
+            return result
 
     if plan_title and len(messages) <= 1:
         try:
@@ -741,23 +969,45 @@ async def _run_turn_core(
         await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.RUNNING))
 
         try:
-            result = await execute_tool(tool_name, tool_args)
-            tool_results[tool_name] = result
-            await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.SUCCESS))
-            if _is_stats_tool(tool_name):
-                stats = result
-        except ToolRequiresConfirmation as e:
-            token = _store_pending(e.tool, e.args, e.summary)
-            pending_action = {
-                "token": token,
-                "tool": e.tool,
-                "summary": e.summary,
-            }
-            await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.SUCCESS, message="Pending confirmation"))
+            from app.services.tool_execution import execute_tool_with_policy, ToolExecutionStatus
+            result = await execute_tool_with_policy(tool_name, tool_args)
+            
+            if result.status == ToolExecutionStatus.COMPLETED:
+                tool_results[tool_name] = result.data
+                await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.SUCCESS))
+                if _is_stats_tool(tool_name):
+                    stats = result.data
+            
+            elif result.status == ToolExecutionStatus.PENDING_CONFIRMATION:
+                token = await db.add_pending_action(
+                    thread_id=thread_id,
+                    tool=result.tool,
+                    args=result.data or {},
+                    summary=result.summary or ""
+                )
+                pending_action = {
+                    "token": token,
+                    "tool": result.tool,
+                    "summary": result.summary,
+                    "args": result.data or {},
+                }
+                await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.SUCCESS, message="Pending confirmation"))
+            
+            elif result.status == ToolExecutionStatus.FAILED:
+                logger.warning("Tool %s failed: %s", tool_name, result.error)
+                tool_results[tool_name] = {"error": result.error}
+                await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.FAILED, message=result.error or "Unknown error"))
+                
         except Exception as e:
-            logger.warning("Tool %s failed: %s", tool_name, e)
+            logger.warning("Tool execution unexpected error %s: %s", tool_name, e)
             tool_results[tool_name] = {"error": str(e)}
             await _emit(ToolExecutionEvent(tool=tool_name, status=ToolExecStatus.FAILED, message=str(e)))
+
+    # Update conversation state with tool results
+    conv_state = _get_conversation_state(thread_id)
+    _update_conversation_state(
+        conv_state, tool_results, intent=gateway.intent.value
+    )
 
     # Phase 2.5: RAG
     await _emit(AgentStatusEvent(status=AgentStatus.EVALUATING, message="Gathering additional context..."))
@@ -779,11 +1029,17 @@ async def _run_turn_core(
 
     career_data = await _build_career_context()
     resume_context = f"\nRESUME BEING ANALYZED: {gateway_resume_filename} (id={gateway.resume_id})" if gateway.resume_id else ""
-    conversation_ctx = _build_conversation_context(messages)
+    
+    from app.services.context_builder import build_chat_context
+    conv_state = _get_conversation_state(thread_id)
+    chat_ctx = build_chat_context(messages, conv_state)
+    conversation_ctx = chat_ctx.entity_summary
+    conversation_history = chat_ctx.history_text
 
     thinking_prompt = CHAT_THINKING_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
+        conversation_history=conversation_history,
         career_data=career_data,
         tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context,
         rag_context=rag_context,
@@ -811,6 +1067,7 @@ async def _run_turn_core(
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
+        conversation_history=conversation_history,
         career_data=career_data,
         tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context,
         rag_context=rag_context,
@@ -832,9 +1089,26 @@ async def _run_turn_core(
         )
     except Exception as e:
         logger.error("Answer generation failed: %s", e)
+        from app.llm import _scrub_secrets
+        _detail = _scrub_secrets(str(e))
+        # Extract a user-friendly hint from the error
+        _hint = ""
+        _lower = _detail.lower()
+        if "auth" in _lower or "401" in _lower or "403" in _lower or "api key" in _lower or "invalid" in _lower and "key" in _lower:
+            _hint = f"**Authentication failed** — your API key may be invalid or expired.\n\nTechnical detail: `{_detail[:200]}`"
+        elif "not found" in _lower or "404" in _lower or "does not exist" in _lower:
+            _hint = f"**Model not found** — the model `{llm_cfg.model}` may not exist for {llm_cfg.provider}.\n\nTechnical detail: `{_detail[:200]}`"
+        elif "rate" in _lower or "429" in _lower or "limit" in _lower:
+            _hint = f"**Rate limited** — too many requests. Please wait a moment and try again.\n\nTechnical detail: `{_detail[:200]}`"
+        elif "timeout" in _lower or "timed out" in _lower:
+            _hint = f"**Request timed out** — the model took too long to respond. Try a simpler question.\n\nTechnical detail: `{_detail[:200]}`"
+        elif "connection" in _lower or "connect" in _lower or "refused" in _lower:
+            _hint = f"**Connection failed** — cannot reach the API server. Check your network or API base URL.\n\nTechnical detail: `{_detail[:200]}`"
+        else:
+            _hint = f"Technical detail: `{_detail[:300]}`"
         assistant_content = (
-            "I wasn't able to generate a complete answer right now. "
-            "Please try again in a moment, or check your API configuration."
+            f"I wasn't able to generate a complete answer right now.\n\n{_hint}\n\n"
+            f"Please check your **Settings → LLM Configuration** and try again."
         )
 
     # Strip system-reminder and other XML tags that may leak from the LLM
@@ -961,7 +1235,8 @@ async def _handle_job_search(
         summary_parts.append(f"Skills: {', '.join(params['skills'])}")
     summary_parts.append("Sources: LinkedIn, Exa, RSS, RemoteOK, Keejob")
 
-    token = _store_pending(
+    token = await db.add_pending_action(
+        thread_id=thread_id,
         tool="search_mcp_jobs",
         args={
             "query": query,
@@ -1043,11 +1318,21 @@ async def _handle_direct_tool(
     tool_results: dict[str, Any] = {}
     for tool_name in gateway.preferred_tools:
         try:
-            result = await execute_tool(tool_name, {})
-            tool_results[tool_name] = result
+            # A single forced tool (slash command) may carry parsed args,
+            # e.g. /search_mcp_jobs → {"query": "..."}.
+            args: dict[str, Any] = {}
+            if len(gateway.preferred_tools) == 1 and getattr(gateway, "slash_args", None):
+                args = dict(gateway.slash_args)
+            tool_result = await execute_tool(tool_name, args)
+            tool_results[tool_name] = tool_result
         except Exception as e:
             logger.warning("Direct tool %s failed: %s", tool_name, e)
             tool_results[tool_name] = {"error": str(e)}
+
+    intent_value = getattr(getattr(gateway, "intent", None), "value", None)
+    _update_conversation_state(
+        _get_conversation_state(thread_id), tool_results, intent=intent_value
+    )
 
     await _emit(AgentStatusEvent(
         status=AgentStatus.GENERATING_ANSWER,
@@ -1058,6 +1343,10 @@ async def _handle_direct_tool(
     output_language = get_language_name(language)
     career_data = await _build_career_context()
     conversation_ctx = _build_conversation_context(messages)
+    from app.services.context_builder import build_chat_context
+    conversation_history = build_chat_context(
+        messages, _get_conversation_state(thread_id)
+    ).history_text
     system_prompt = get_merged_system_prompt("ask", [])
 
     tool_summary = json.dumps(tool_results, ensure_ascii=False, default=str)
@@ -1065,6 +1354,7 @@ async def _handle_direct_tool(
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
+        conversation_history=conversation_history,
         career_data=career_data,
         tool_stats=tool_summary,
         rag_context="",
@@ -1202,10 +1492,17 @@ async def _handle_contextual_follow_up(
         f"5. Do NOT re-fetch jobs — use only the results provided above.\n"
     )
 
-    answer_text = await complete(
-        prompt,
-        max_tokens=2000,
-    )
+    try:
+        answer_text = await complete(
+            prompt,
+            max_tokens=2000,
+        )
+    except Exception as e:
+        logger.error("Contextual follow-up LLM failed: %s", e)
+        answer_text = (
+            "I wasn't able to generate a complete answer right now. "
+            "Please try again in a moment, or check your API configuration."
+        )
 
     await _emit(AgentStatusEvent(status=AgentStatus.COMPLETE, message="Done"))
 
@@ -1368,13 +1665,14 @@ async def confirm_pending(token: str, thread_id: str) -> dict[str, Any]:
     """Execute a previously pending write tool and persist results to conversation."""
     from app.services.chat_tools import execute_tool, execute_tool_confirmed
 
-    entry = _get_pending(token)
+    entry = await db.get_pending_action(token, thread_id)
     if entry is None:
-        raise ValueError("Pending action not found or expired")
+        raise ValueError("Action expired or already confirmed")
 
-    _remove_pending(token)
+    # Mark as confirmed/executed
+    await db.update_pending_action_status(token, thread_id, "confirmed")
 
-    # search_mcp_jobs is a read tool — execute directly
+    # Actually execute
     if entry["tool"] == "search_mcp_jobs":
         result = await execute_tool(entry["tool"], entry["args"])
     else:
@@ -1382,14 +1680,8 @@ async def confirm_pending(token: str, thread_id: str) -> dict[str, Any]:
 
     # Persist the execution result as a chat message so the LLM has context
     jobs = result.get("jobs", [])
-    result_text = result.get("query", entry["summary"])
     if jobs:
-        job_lines = [f"{j.get('title', 'N/A')} at {j.get('company', 'N/A')} ({j.get('location', 'N/A')})" for j in jobs[:10]]
-        result_text = (
-            f"Job search completed. Found {result.get('total_results', len(jobs))} results "
-            f"({len(jobs)} returned) from sources: {', '.join(result.get('sources', {}).keys())}.\n\n"
-            f"Top results:\n" + "\n".join(f"- {line}" for line in job_lines)
-        )
+        result_text = f"Found {len(jobs)} jobs."
     else:
         error = result.get("error")
         result_text = f"Job search completed with no results." + (f" Error: {error}" if error else "")
@@ -1423,13 +1715,13 @@ async def confirm_pending(token: str, thread_id: str) -> dict[str, Any]:
     }
 
 
-async def cancel_pending(token: str) -> dict[str, Any]:
+async def cancel_pending(token: str, thread_id: str) -> dict[str, Any]:
     """Discard a pending write action."""
-    entry = _get_pending(token)
+    entry = await db.get_pending_action(token, thread_id)
     if entry is None:
         raise ValueError("Pending action not found or expired")
 
-    _remove_pending(token)
+    await db.delete_pending_action(token, thread_id)
 
     return {
         "ok": True,
@@ -1676,7 +1968,7 @@ def _tool_to_card_kind(tool_name: str) -> str:
         "get_job_verdict": "job",
         "search_mcp_jobs": "job_list",
         "get_career_summary": "info",
-        "compare_resumes": "info",
+        "compare_resumes": "resume_comparison",
         "get_applications": "info",
         "get_rejections": "info",
         "get_contacts": "info",
@@ -1684,6 +1976,7 @@ def _tool_to_card_kind(tool_name: str) -> str:
         "get_skill_suggestions": "info",
         "fetch_emails": "email_list",
         "search_emails": "email_list",
+        "search_sent_emails": "email_list",
         "web_search": "sources",
     }
     return mapping.get(tool_name, "info")

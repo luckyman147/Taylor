@@ -123,6 +123,7 @@
     "createAndPreview": "Create & Preview",
     "unsavedDraft": "Unsaved Draft",
     "personalInfo": "Personal Information",
+    "chooseFromProfile": "Choose from Profile",
     "summary": "Summary",
     "experience": "Experience",
     "education": "Education",
@@ -158,7 +159,25 @@
       "removeGroup": "Remove Group",
       "groupName": "Group Name",
       "groupNamePlaceholder": "e.g., Frontend, Backend, DevOps",
-      "skillPlaceholder": "Type a skill and press Enter"
+      "skillPlaceholder": "Type a skill and press Enter",
+      "addFromProfile": "Add from Profile"
+    },
+    "skillsDialog": {
+      "title": "Add Skills from Profile",
+      "description": "Select skills from your career profile to add to this resume.",
+      "searchPlaceholder": "Search skills...",
+      "loading": "Loading your skills...",
+      "loadError": "Failed to load skills from your profile.",
+      "retry": "Retry",
+      "allAdded": "All profile skills already added",
+      "allAddedHint": "Add more skills to your profile to import them here.",
+      "goToProfile": "Go to Profile",
+      "addSelected": "Add Selected ({count})",
+      "noSkills": "No skills in your profile yet",
+      "noSkillsHint": "Add skills to your career profile first, then import them here.",
+      "grouped": "Grouped",
+      "list": "List",
+      "uncategorized": "Uncategorized"
     },
     "languagesForm": {
       "instructions": "Add languages as tags.",
@@ -493,7 +512,10 @@
       "spacingItems": "Items",
       "spacingLines": "Lines",
       "typography": "Typography",
-      "padding": "Padding",
+      "paddingTop": "Padding Top",
+      "paddingRight": "Padding Right",
+      "paddingBottom": "Padding Bottom",
+      "paddingLeft": "Padding Left",
       "fontSize": "Font Size",
       "baseFontSize": "Base",
       "headerScale": "Headers",
@@ -522,6 +544,23 @@
         ",": "Comma",
         "|": "Pipe"
       },
+      "avatarShow": "Show Avatar",
+      "avatarShape": "Shape",
+      "avatarShapeOptions": {
+        "circle": "Circle",
+        "rounded": "Rounded",
+        "square": "Square",
+        "none": "None"
+      },
+      "avatarSize": "Size",
+      "avatarSizeOptions": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "avatarBorder": "Border",
+      "avatarPosition": "Position",
+      "avatarInfoGap": "Info Gap",
       "weightOptions": {
         "light": "Light",
         "regular": "Regular",
@@ -610,7 +649,11 @@
         "linkedin": "linkedin.com/in/john",
         "github": "github.com/john"
       },
-      "displayAsLink": "Show as link"
+      "displayAsLink": "Show as link",
+      "uploadPhoto": "Upload Photo",
+      "changePhoto": "Change Photo",
+      "removePhoto": "Remove Photo",
+      "uploadError": "Failed to upload photo"
     },
     "leftPanel": {
       "editorPanel": "Editor Panel",
@@ -644,7 +687,8 @@
       "verticalSpacing": "Vertical Spacing",
       "borders": "Borders",
       "comingSoon": "Coming soon",
-      "comingSoonHint": "These settings are not available yet."
+      "comingSoonHint": "These settings are not available yet.",
+      "avatar": "Avatar"
     },
     "sectionOrder": {
       "hint": "Drag sections to control who appears first and last. Personal Info is fixed at the top.",
@@ -1020,6 +1064,7 @@
     "llmConfiguration": {
       "selectedProvider": "SELECTED: {provider}",
       "modelLabel": "Model",
+      "free": "Free",
       "defaultModel": "DEFAULT: {model}",
       "apiKeyLabel": "API Key",
       "apiKeyOptionalForOllama": "(Optional for Ollama)",
@@ -1871,6 +1916,14 @@
   "profile": {
     "title": "My Profile",
     "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "avatar": {
+      "upload": "Upload avatar",
+      "alt": "Profile avatar",
+      "hint": "JPG, PNG or WebP. Max 5 MB.",
+      "remove": "Remove",
+      "tooLarge": "Image must be under 5 MB.",
+      "invalidType": "Please select an image file."
+    },
     "header": {
       "sourceFrom": "From resume"
     },
@@ -1914,6 +1967,7 @@
       "noDescription": "No description",
       "showReadme": "Show README",
       "hideReadme": "Hide README",
+      "readme": "README",
       "connectTitle": "Connect GitHub"
     },
     "tabs": {
@@ -1974,6 +2028,13 @@
       "uploaded": "Resume uploaded.",
       "save": "Save profile"
     },
+    "export": {
+      "button": "Export Profile"
+    },
+    "import": {
+      "previewTitle": "Preview Imported Profile",
+      "confirm": "Confirm Import"
+    },
     "skills": {
       "title": "Skills",
       "empty": "No skills yet. Add the skills you want the career advisor and ROI engine to know about.",
@@ -2031,6 +2092,12 @@
       "description": "Which skills are worth learning next? The ROI engine scores skills against your saved job descriptions using demand, salary impact, learning effort and what you already know.",
       "refresh": "Refresh",
       "getAdvice": "Ask AI what to learn",
+      "suggestProjects": "Suggest Projects",
+      "projectIdeas": "Project Ideas",
+      "projectIdeasDescription": "AI-generated project ideas to strengthen your portfolio, based on your skills and career goals.",
+      "projectIdeasLoading": "Generating project ideas…",
+      "projectIdeasContextLabel": "What kind of projects interest you?",
+      "projectIdeasContextPlaceholder": "e.g. AI tools, open-source, full-stack apps, mobile games…",
       "skill": "Skill",
       "jobsUnlocked": "Jobs unlocked",
       "salaryImpact": "Salary impact",
@@ -2066,7 +2133,9 @@
       "difficulty": "Difficulty",
       "difficultyEasy": "Easy",
       "difficultyMedium": "Medium",
-      "difficultyHard": "Hard"
+      "difficultyHard": "Hard",
+      "saveAsFuture": "Save as Future Project",
+      "saved": "Saved"
     },
     "market": {
       "title": "Market Position",
@@ -2109,6 +2178,12 @@
         "q2": "Which skill should I learn next?",
         "q3": "How can I improve my interview-to-accepted rate?",
         "q4": "What salary should I target?"
+      },
+      "confirm": {
+        "pendingAction": "Tool Execution Confirmation Required",
+        "execute": "Confirm & Execute",
+        "cancel": "Cancel",
+        "arguments": "Show Arguments"
       }
     },
     "education": {
@@ -2163,7 +2238,24 @@
       "search": "Search projects…",
       "noResults": "No projects match your search.",
       "repoSearch": "Search repositories…",
-      "noRepoResults": "No repositories match your search."
+      "noRepoResults": "No repositories match your search.",
+      "status": {
+        "label": "Status",
+        "completed": "Completed",
+        "in_progress": "In Progress",
+        "future": "Future"
+      },
+      "statusFilter": {
+        "all": "All",
+        "completed": "Completed",
+        "in_progress": "In Progress",
+        "future": "Future"
+      },
+      "attachments": "Attachments",
+      "uploadAttachment": "Upload file",
+      "selectAll": "Select all",
+      "selected": "{count} selected",
+      "bulkDelete": "Delete {count}"
     },
     "achievements": {
       "title": "Achievements",
@@ -2269,10 +2361,10 @@
       "description": "Ask about your career, skills, applications, or get advice on your next move."
     },
     "suggestions": {
-      "q1": "Why am I getting rejected?",
-      "q2": "Which skill should I learn next?",
-      "q3": "How can I improve my interview-to-offer rate?",
-      "q4": "What salary should I target?"
+      "q1": "Help me understand why I'm getting rejected",
+      "q2": "Suggest the next skill I should learn",
+      "q3": "Improve my interview-to-offer rate",
+      "q4": "Tell me what salary to target"
     },
     "sidebar": {
       "threads": "Threads",

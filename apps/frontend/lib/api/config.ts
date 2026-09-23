@@ -10,6 +10,7 @@ export type LLMProvider =
   | 'gemini'
   | 'deepseek'
   | 'groq'
+  | 'huggingface'
   | 'ollama';
 
 // Reasoning-effort levels supported by LiteLLM. `null` (or absent) means
@@ -78,6 +79,36 @@ export async function fetchLlmConfig(): Promise<LLMConfig> {
 export async function fetchLlmApiKey(): Promise<string> {
   const config = await fetchLlmConfig();
   return config.api_key ?? '';
+}
+
+// Fetch available models for a given provider
+interface ProviderModelsResponse {
+  provider: string;
+  models: string[];
+  free_models: string[];
+}
+
+const _modelsCache = new Map<string, ProviderModelsResponse>();
+async function fetchProviderModelsResponse(provider: LLMProvider): Promise<ProviderModelsResponse> {
+  const cached = _modelsCache.get(provider);
+  if (cached) return cached;
+  const res = await apiFetch(`/config/models/${provider}`, { credentials: 'include' });
+  if (!res.ok) return { provider, models: [], free_models: [] };
+  const data = (await res.json()) as ProviderModelsResponse;
+  const models: string[] = data.models || [];
+  _modelsCache.set(provider, { ...data, models });
+  return data;
+}
+
+export async function fetchProviderModels(provider: LLMProvider): Promise<string[]> {
+  const data = await fetchProviderModelsResponse(provider);
+  return data.models || [];
+}
+
+// Models that are ungated / free-to-use for the provider (empty array if unknown)
+export async function fetchProviderFreeModels(provider: LLMProvider): Promise<string[]> {
+  const data = await fetchProviderModelsResponse(provider);
+  return data.free_models || [];
 }
 
 // Update LLM configuration
@@ -174,10 +205,116 @@ export const PROVIDER_INFO: Record<
     defaultModel: 'deepseek/deepseek-chat',
     requiresKey: true,
   },
-  gemini: { name: 'Google Gemini', defaultModel: 'gemini-3-flash-preview', requiresKey: true },
+  gemini: { name: 'Google Gemini', defaultModel: 'gemini-2.0-flash-lite', requiresKey: true },
   deepseek: { name: 'DeepSeek', defaultModel: 'deepseek-chat', requiresKey: true },
   groq: { name: 'Groq', defaultModel: 'llama-3.3-70b-versatile', requiresKey: true },
+  huggingface: {
+    name: 'Hugging Face',
+    defaultModel: 'meta-llama/Llama-3.3-70B-Instruct',
+    requiresKey: true,
+    requiresBaseUrl: false,
+  },
   ollama: { name: 'Ollama (Local)', defaultModel: 'gemma3:4b', requiresKey: false },
+};
+
+// Models available per provider (for the dropdown)
+export const PROVIDER_MODELS: Record<LLMProvider, string[]> = {
+  openai: [
+    'gpt-5-nano-2025-08-07',
+    'gpt-5-mini-2025-08-07',
+    'gpt-5-2025-08-07',
+    'gpt-4o-2024-11-20',
+    'gpt-4o-mini-2024-07-18',
+    'gpt-4-turbo-2024-04-09',
+    'o3-mini-2025-01-31',
+    'o3-2025-04-16',
+    'o4-mini-2025-04-16',
+  ],
+  openai_compatible: [],
+  azure_foundry: [
+    'gpt-4o-2024-11-20',
+    'gpt-4o-mini-2024-07-18',
+    'gpt-4-turbo-2024-04-09',
+    'mistral-large-latest',
+    'mistral-small-latest',
+    'Phi-4',
+    'DeepSeek-R1',
+  ],
+  anthropic: [
+    'claude-sonnet-4-20250514',
+    'claude-haiku-4-5-20251001',
+    'claude-3-5-sonnet-20241022',
+    'claude-3-5-haiku-20241022',
+    'claude-3-opus-20240229',
+  ],
+  openrouter: [
+    'deepseek/deepseek-chat',
+    'deepseek/deepseek-r1',
+    'anthropic/claude-sonnet-4',
+    'anthropic/claude-haiku-4-5',
+    'openai/gpt-4o',
+    'openai/gpt-4o-mini',
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-pro',
+    'meta-llama/llama-3.3-70b-instruct',
+    'qwen/qwen-2.5-72b-instruct',
+  ],
+  gemini: [
+    'gemini-3-flash-preview',
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-pro',
+    'gemini-1.5-flash',
+  ],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  groq: [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'llama-3.1-70b-versatile',
+    'llama-3.2-90b-text-preview',
+    'gemma2-9b-it',
+    'mixtral-8x7b-32768',
+    'qwen-qwq-32b',
+  ],
+  huggingface: [
+    'meta-llama/Llama-3.3-70B-Instruct',
+    'meta-llama/Llama-3.1-8B-Instruct',
+    'meta-llama/Llama-3.2-3B-Instruct',
+    'Qwen/Qwen2.5-72B-Instruct',
+    'Qwen/Qwen2.5-32B-Instruct',
+    'Qwen/Qwen2.5-14B-Instruct',
+    'Qwen/Qwen2.5-7B-Instruct',
+    'Qwen/QwQ-32B',
+    'microsoft/Phi-4',
+    'microsoft/Phi-3.5-mini-instruct',
+    'mistralai/Mistral-7B-Instruct-v0.3',
+    'mistralai/Mistral-7B-v0.3',
+    'HuggingFaceH4/zephyr-7b-beta',
+    'allenai/OLMo-2-7B-free',
+    'allenai/Llama-3.1-Tulu-3-8B',
+    'deepseek-ai/DeepSeek-R1',
+    'google/gemma-2-27b-it',
+    'CohereForAI/c4ai-command-r-plus',
+  ],
+  ollama: [
+    'gemma3:4b',
+    'gemma3:12b',
+    'gemma3:27b',
+    'llama3.3:8b',
+    'llama3.3:70b',
+    'llama3.2:3b',
+    'llama3.1:8b',
+    'llama3.1:70b',
+    'qwen3:8b',
+    'qwen3:32b',
+    'mistral:7b',
+    'deepseek-r1:8b',
+    'deepseek-r1:32b',
+    'phi4:14b',
+    'codellama:13b',
+  ],
 };
 
 // Feature configuration types
@@ -401,6 +538,7 @@ export type ApiKeyProvider =
   | 'openrouter'
   | 'deepseek'
   | 'groq'
+  | 'huggingface'
   | 'openai_compatible'
   | 'ollama';
 
@@ -409,6 +547,7 @@ export type ApiKeyProvider =
 // providers pass through). Keys are persisted under the key-store name.
 export function llmProviderToKeyProvider(provider: LLMProvider): ApiKeyProvider {
   if (provider === 'gemini') return 'google';
+  if (provider === 'huggingface') return 'huggingface';
   return provider as ApiKeyProvider;
 }
 
@@ -430,6 +569,7 @@ export interface ApiKeysUpdateRequest {
   openrouter?: string;
   deepseek?: string;
   groq?: string;
+  huggingface?: string;
   openai_compatible?: string;
   ollama?: string;
 }
@@ -449,6 +589,7 @@ export const API_KEY_PROVIDER_INFO: Record<ApiKeyProvider, { name: string; descr
     openrouter: { name: 'OpenRouter', description: 'Access multiple providers' },
     deepseek: { name: 'DeepSeek', description: 'DeepSeek chat models' },
     groq: { name: 'Groq', description: 'Llama, Mixtral, Gemma on Groq' },
+    huggingface: { name: 'Hugging Face', description: 'Open-source models via Inference API' },
     openai_compatible: { name: 'OpenAI-Compatible', description: 'Self-hosted / proxy endpoints' },
     ollama: { name: 'Ollama', description: 'Local Ollama server' },
   };

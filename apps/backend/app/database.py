@@ -44,6 +44,7 @@ from app.models import (
     ChatThread,
     Improvement,
     Job,
+    PendingAction,
     PracticeSession,
     Resume,
     SentEmail,
@@ -305,6 +306,7 @@ class Database:
             "awards": row.awards or [],
             "source_resume_id": row.source_resume_id,
             "source_resume_title": row.source_resume_title,
+            "avatar": row.avatar,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -358,6 +360,8 @@ class Database:
             "description": row.description or [],
             "languages": row.languages or [],
             "readme": row.readme,
+            "status": row.status or "completed",
+            "attachments": row.attachments or [],
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -1385,6 +1389,109 @@ class Database:
     # -- Chat thread/message/memory operations -------------------------------
 
     @staticmethod
+    def _pending_action_to_dict(row: PendingAction) -> dict[str, Any]:
+        import json as _json
+        try:
+            args = _json.loads(row.args_json) if row.args_json else {}
+        except (ValueError, TypeError):
+            args = {}
+        return {
+            "token": row.token,
+            "thread_id": row.thread_id,
+            "tool": row.tool,
+            "args": args,
+            "summary": row.summary,
+            "status": row.status,
+            "created_at": row.created_at,
+            "expires_at": row.expires_at,
+        }
+
+    async def add_pending_action(self, thread_id: str, tool: str, args: dict[str, Any], summary: str, expires_in_minutes: int = 60) -> str:
+        """Store a pending tool action in the database and return a secure token."""
+        from app.models import PendingAction
+        import json as _json
+        import uuid
+        from datetime import datetime, timedelta, timezone
+
+        token = uuid.uuid4().hex
+        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)).isoformat()
+        now = _now()
+
+        async with self._session() as session:
+            row = PendingAction(
+                token=token,
+                thread_id=thread_id,
+                tool=tool,
+                args_json=_json.dumps(args),
+                summary=summary,
+                status="pending",
+                created_at=now,
+                expires_at=expires_at
+            )
+            session.add(row)
+            await session.commit()
+            return token
+
+    async def get_pending_action(self, token: str, thread_id: str) -> dict[str, Any] | None:
+        """Retrieve a pending action by token, ensuring it belongs to the given thread and is not expired."""
+        from app.models import PendingAction
+        from datetime import datetime, timezone
+
+        async with self._session() as session:
+            result = await session.execute(
+                select(PendingAction).where(
+                    PendingAction.token == token,
+                    PendingAction.thread_id == thread_id,
+                    PendingAction.status == "pending"
+                )
+            )
+            row = result.scalars().first()
+            if not row:
+                return None
+            
+            expires_at = datetime.fromisoformat(row.expires_at)
+            if datetime.now(timezone.utc) > expires_at:
+                return None
+                
+            return self._pending_action_to_dict(row)
+
+    async def delete_pending_action(self, token: str, thread_id: str) -> bool:
+        """Delete a pending action by token and thread_id."""
+        from app.models import PendingAction
+
+        async with self._session() as session:
+            result = await session.execute(
+                select(PendingAction).where(
+                    PendingAction.token == token,
+                    PendingAction.thread_id == thread_id
+                )
+            )
+            row = result.scalars().first()
+            if row:
+                await session.delete(row)
+                await session.commit()
+                return True
+            return False
+
+    async def update_pending_action_status(self, token: str, thread_id: str, status: str) -> bool:
+        """Update the status of a pending action."""
+        from app.models import PendingAction
+
+        async with self._session() as session:
+            result = await session.execute(
+                select(PendingAction).where(
+                    PendingAction.token == token,
+                    PendingAction.thread_id == thread_id
+                )
+            )
+            row = result.scalars().first()
+            if row:
+                row.status = status
+                await session.commit()
+                return True
+            return False
+
+    @staticmethod
     def _chat_thread_to_dict(row: ChatThread) -> dict[str, Any]:
         import json as _json
         skills_raw = getattr(row, "skills", "[]")
@@ -1920,6 +2027,7 @@ class Database:
             "awards",
             "source_resume_id",
             "source_resume_title",
+            "avatar",
         )
         async with self._session() as session:
             row = await session.get(CareerProfile, profile["profile_id"])
@@ -2174,6 +2282,15 @@ class Database:
             result = await session.execute(select(CareerProject))
             return [self._career_project_to_dict(row) for row in result.scalars().all()]
 
+    async def get_career_project(self, project_id: str) -> dict[str, Any] | None:
+        """Return a single project node or ``None``."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(CareerProject).where(CareerProject.project_id == project_id)
+            )
+            row = result.scalar_one_or_none()
+            return self._career_project_to_dict(row) if row else None
+
     async def create_career_project(
         self,
         name: str,
@@ -2184,6 +2301,8 @@ class Database:
         description: list[str] | None = None,
         languages: list[str] | None = None,
         readme: str | None = None,
+        status: str = "completed",
+        attachments: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Create a project node."""
         now = _now()
@@ -2198,6 +2317,8 @@ class Database:
                 description=description or [],
                 languages=languages or [],
                 readme=readme,
+                status=status,
+                attachments=attachments or [],
                 created_at=now,
                 updated_at=now,
             )
@@ -2222,6 +2343,8 @@ class Database:
                 "description",
                 "languages",
                 "readme",
+                "status",
+                "attachments",
             ):
                 if key in updates:
                     setattr(row, key, updates[key])

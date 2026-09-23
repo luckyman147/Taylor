@@ -272,7 +272,7 @@ async def confirm_action(request: ConfirmRequest) -> ConfirmResponse:
 async def cancel_action(request: CancelRequest) -> dict:
     """Cancel a pending write action."""
     try:
-        result = await cancel_pending(request.token)
+        result = await cancel_pending(request.token, request.thread_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

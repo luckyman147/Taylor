@@ -42,8 +42,9 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "compare_resumes": ToolSpec(
         name="compare_resumes",
-        description="Compare uploaded resumes side by side. Returns actual content (skills, work experience, education, summary) for meaningful comparison. Pass optional keywords to filter by title.",
+        description="Compare uploaded resumes side by side. Returns actual content (skills, work experience, education, summary) for meaningful comparison. Pass resume_ids to compare specific resumes, or keywords to filter by title.",
         params={
+            "resume_ids": {"type": "list[str]", "required": False, "default": []},
             "keywords": {"type": "str", "required": False, "default": "", "max_len": 200},
         },
         write=False,
@@ -76,7 +77,7 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "get_skill_suggestions": ToolSpec(
         name="get_skill_suggestions",
-        description="Get forgotten or missing skills that appear in target jobs but not in the user's profile.",
+        description="Get skill suggestions: forgotten skills, missing skills from target jobs, and new skills worth learning. Use when the user asks to suggest, recommend, or list skills in any language.",
         params={},
         write=False,
     ),
@@ -94,13 +95,13 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "get_contacts": ToolSpec(
         name="get_contacts",
-        description="Get the user's networking contacts.",
+        description="Get the user's own networking contacts (people they have saved/reached out to — NOT a live job or company search).",
         params={},
         write=False,
     ),
     "get_companies": ToolSpec(
         name="get_companies",
-        description="Get the user's tracked companies.",
+        description="Get the user's own tracked/saved companies (their CRM list — NOT a live job-board search). Use for questions about companies the user saved, contacted, or hasn't contacted yet.",
         params={},
         write=False,
     ),
@@ -195,13 +196,14 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
     ),
     "search_mcp_jobs": ToolSpec(
         name="search_mcp_jobs",
-        description="Search for jobs across all enabled external sources (LinkedIn, Exa web search, RSS feeds, RemoteOK, Keejob, Tunisian freelance boards). Returns live job listings with title, company, location, and URL.",
+        description="Search for LIVE jobs across external sources (LinkedIn, Exa, RSS, RemoteOK, Keejob, Tunisian boards). Returns open listings with title, company, location, and URL. Never use this for the user's own saved companies/contacts — use get_companies/get_contacts for those.",
         params={
             "query": {"type": "str", "required": True, "max_len": 200},
             "limit": {"type": "int", "required": False, "default": 10},
             "seniority": {"type": "str", "required": False, "default": ""},
             "location": {"type": "str", "required": False, "default": ""},
             "remote": {"type": "str", "required": False, "default": ""},
+            "sources": {"type": "list[str]", "required": False, "default": []},
         },
         write=False,
     ),
@@ -233,6 +235,24 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
         description="Search Gmail using IMAP syntax. Query examples: FROM \"hr@company.com\", SUBJECT \"interview\", FROM \"linkedin\" SUBJECT \"job\", SINCE \"01-Sep-2026\".",
         params={
             "query": {"type": "str", "required": True, "max_len": 200},
+            "max_results": {"type": "int", "required": False, "default": 10},
+        },
+        write=False,
+    ),
+    "search_sent_emails": ToolSpec(
+        name="search_sent_emails",
+        description="Search emails you SENT from Gmail. Searches the Sent Mail folder. Query examples: ALL, FROM \"me@company.com\", SUBJECT \"application\", SINCE \"01-Sep-2026\".",
+        params={
+            "query": {"type": "str", "required": False, "default": "ALL", "max_len": 200},
+            "max_results": {"type": "int", "required": False, "default": 10},
+        },
+        write=False,
+    ),
+    "search_entity_emails": ToolSpec(
+        name="search_entity_emails",
+        description="Search ALL emails (sent + received) for a specific company or contact. Use when the user mentions @Company or @ContactName. Searches both INBOX and Sent Mail folders.",
+        params={
+            "entity_name": {"type": "str", "required": True, "max_len": 200},
             "max_results": {"type": "int", "required": False, "default": 10},
         },
         write=False,
@@ -319,7 +339,7 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         if name == "get_career_summary":
             return await _get_career_summary()
         elif name == "compare_resumes":
-            return await _compare_resumes(args.get("keywords", ""))
+            return await _compare_resumes(args.get("resume_ids"), args.get("keywords", ""))
         elif name == "get_ats_audit":
             return await _get_ats_audit(args.get("resume_id"))
         elif name == "get_funnel_stats":
@@ -355,6 +375,10 @@ async def _execute_read_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return await _fetch_emails(args.get("max_results", 10))
         elif name == "search_emails":
             return await _search_emails(args["query"], args.get("max_results", 10))
+        elif name == "search_sent_emails":
+            return await _search_sent_emails(args.get("query", "ALL"), args.get("max_results", 10))
+        elif name == "search_entity_emails":
+            return await _search_entity_emails(args["entity_name"], args.get("max_results", 10))
         else:
             return {"error": f"Unknown read tool: {name}"}
     except Exception as e:
@@ -414,13 +438,19 @@ async def _get_career_summary() -> dict[str, Any]:
     }
 
 
-async def _compare_resumes(keywords: str = "") -> dict[str, Any]:
+async def _compare_resumes(resume_ids: list[str] | None = None, keywords: str = "") -> dict[str, Any]:
     """Compare uploaded resumes side by side with actual content."""
     resumes = await db.list_resumes()
     if not resumes:
         return {"resumes": [], "hint": "No resumes uploaded yet."}
 
-    if keywords:
+    # Filter by specific resume IDs if provided
+    if resume_ids:
+        id_set = set(resume_ids)
+        resumes = [r for r in resumes if r.get("resume_id") in id_set]
+        if not resumes:
+            return {"resumes": [], "hint": "No resumes matched the provided IDs."}
+    elif keywords:
         # Parse multiple resume names: "frontend, backend" or "frontend and backend"
         import re
         parts = re.split(r'\s*,\s*|\s+and\s+', keywords)
@@ -758,7 +788,7 @@ async def _get_resume_for_audit(resume_id: str) -> dict[str, Any]:
     }
 
 
-async def _search_mcp_jobs(query: str, limit: int = 10, seniority: str = "", location: str = "", remote: str = "") -> dict[str, Any]:
+async def _search_mcp_jobs(query: str, limit: int = 10, seniority: str = "", location: str = "", remote: str = "", sources: list[str] | None = None) -> dict[str, Any]:
     """Search all enabled MCP sources for live job listings."""
     from app.services.job_scraper import get_mcp_manager
     from app.schemas.job_scraper import JobSearchFilters, ExperienceLevel, WorkType
@@ -805,7 +835,7 @@ async def _search_mcp_jobs(query: str, limit: int = 10, seniority: str = "", loc
     )
 
     try:
-        jobs, mcp_status = await manager.search_all(query, filters)
+        jobs, mcp_status = await manager.search_all(query, filters, sources=sources)
     except Exception as e:
         logger.error("MCP search failed: %s", e)
         return {"error": f"MCP search failed: {e}", "jobs": [], "sources": {}}
@@ -998,7 +1028,7 @@ Extract:
 Return JSON only:"""
 
     try:
-        result = await complete_json(prompt, schema_type="enrichment")
+        result = await complete_json(prompt, schema_type="keywords")
         return result if isinstance(result, dict) else {"is_job_alert": False}
     except Exception as e:
         logger.warning("Entity extraction failed: %s", e)
@@ -1008,6 +1038,14 @@ Return JSON only:"""
 async def _fetch_emails_with_entities(max_results: int = 10) -> dict[str, Any]:
     """Fetch unread emails with LLM entity extraction."""
     from app.services.gmail import get_unread_emails
+    from app.services.gmail.client import _load_gmail_config
+
+    config = _load_gmail_config()
+    if not config:
+        return {
+            "error": "Gmail is not configured. Please set your sender email and SMTP app password in Settings → Email Configuration.",
+            "configured": False,
+        }
 
     emails = await get_unread_emails(max_results)
     if not emails:
@@ -1032,6 +1070,14 @@ async def _fetch_emails_with_entities(max_results: int = 10) -> dict[str, Any]:
 async def _search_emails_with_entities(query: str, max_results: int = 10) -> dict[str, Any]:
     """Search emails with LLM entity extraction."""
     from app.services.gmail import search_emails
+    from app.services.gmail.client import _load_gmail_config
+
+    config = _load_gmail_config()
+    if not config:
+        return {
+            "error": "Gmail is not configured. Please set your sender email and SMTP app password in Settings → Email Configuration.",
+            "configured": False,
+        }
 
     emails = await search_emails(query, max_results)
     if not emails:
@@ -1051,6 +1097,90 @@ async def _search_emails_with_entities(query: str, max_results: int = 10) -> dic
         })
 
     return {"emails": results, "total": len(results), "query": query}
+
+
+async def _search_sent_emails(query: str = "ALL", max_results: int = 10) -> dict[str, Any]:
+    """Search emails in the Sent Mail folder with entity extraction."""
+    from app.services.gmail import search_sent_emails
+    from app.services.gmail.client import _load_gmail_config
+
+    config = _load_gmail_config()
+    if not config:
+        return {
+            "error": "Gmail is not configured. Please set your sender email and SMTP app password in Settings → Email Configuration.",
+            "configured": False,
+        }
+
+    emails = await search_sent_emails(query, max_results)
+    if not emails:
+        return {"emails": [], "total": 0, "hint": f"No sent emails matched '{query}'."}
+
+    results = []
+    for e in emails:
+        entities = await _extract_entities_from_email(e.body, e.subject)
+        results.append({
+            "uid": e.uid,
+            "subject": e.subject,
+            "sender": e.sender,
+            "date": e.date,
+            "snippet": e.snippet,
+            "body": e.body,
+            "entities": entities,
+        })
+
+    return {"emails": results, "total": len(results), "query": query, "folder": "sent"}
+
+
+async def _search_entity_emails(entity_name: str, max_results: int = 10) -> dict[str, Any]:
+    """Search all emails (sent + received) for a specific company or contact."""
+    from app.services.gmail import search_emails, search_sent_emails
+    from app.services.gmail.client import _load_gmail_config
+
+    config = _load_gmail_config()
+    if not config:
+        return {
+            "error": "Gmail is not configured. Please set your sender email and SMTP app password in Settings → Email Configuration.",
+            "configured": False,
+        }
+
+    query = f'FROM "{entity_name}"'
+
+    # Search both inbox and sent in parallel
+    import asyncio
+    inbox_task = asyncio.create_task(search_emails(query, max_results))
+    sent_task = asyncio.create_task(search_sent_emails(query, max_results))
+    inbox_emails, sent_emails = await asyncio.gather(inbox_task, sent_task)
+
+    # Deduplicate by subject + date
+    seen: set[tuple[str, str]] = set()
+    all_emails: list[dict[str, Any]] = []
+
+    for folder, emails_list in [("inbox", inbox_emails), ("sent", sent_emails)]:
+        for e in emails_list:
+            key = (e.subject.strip().lower(), e.date.strip()[:16])
+            if key in seen:
+                continue
+            seen.add(key)
+            entities = await _extract_entities_from_email(e.body, e.subject)
+            all_emails.append({
+                "uid": e.uid,
+                "subject": e.subject,
+                "sender": e.sender,
+                "date": e.date,
+                "snippet": e.snippet,
+                "body": e.body,
+                "folder": folder,
+                "entities": entities,
+            })
+
+    # Sort by date (most recent first)
+    all_emails.sort(key=lambda x: x.get("date", ""), reverse=True)
+
+    return {
+        "emails": all_emails[:max_results],
+        "total": len(all_emails),
+        "entity": entity_name,
+    }
 
 
 # ---------------------------------------------------------------------------

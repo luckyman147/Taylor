@@ -19,6 +19,7 @@ Generic, reusable guides (Swiss design system, Next.js performance) live in [`..
 |-----|---------|
 | [backend-architecture](architecture/backend-architecture.md) | Backend modules, API, services |
 | [backend-guide](architecture/backend-guide.md) | Module-by-module backend tour |
+| [chat-gateway](architecture/chat-gateway.md) | Chat gateway routing, signals, conversation state |
 | [frontend-architecture](architecture/frontend-architecture.md) | Components, pages, state |
 | [frontend-workflow](architecture/frontend-workflow.md) | User flows in the frontend |
 | [prompt-workflow-design](architecture/prompt-workflow-design.md) | Improver pipeline design (superseded — historical) |

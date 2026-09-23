@@ -221,6 +221,146 @@ async def test_llm_connection(request: LLMConfigRequest | None = None) -> dict:
     return await check_llm_health(config, include_details=True, test_prompt=test_prompt)
 
 
+# ── Provider models registry ──────────────────────────────────────────
+
+_PROVIDER_MODELS: dict[str, list[str]] = {
+    "openai": [
+        "gpt-5-nano-2025-08-07",
+        "gpt-5-mini-2025-08-07",
+        "gpt-5-2025-08-07",
+        "gpt-4o-2024-11-20",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4-turbo-2024-04-09",
+        "o3-mini-2025-01-31",
+        "o3-2025-04-16",
+        "o4-mini-2025-04-16",
+    ],
+    "openai_compatible": [],
+    "azure_foundry": [
+        "gpt-4o-2024-11-20",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4-turbo-2024-04-09",
+        "mistral-large-latest",
+        "mistral-small-latest",
+        "Phi-4",
+        "DeepSeek-R1",
+    ],
+    "anthropic": [
+        "claude-sonnet-4-20250514",
+        "claude-haiku-4-5-20251001",
+        "claude-3-5-sonnet-20241022",
+        "claude-3-5-haiku-20241022",
+        "claude-3-opus-20240229",
+    ],
+    "openrouter": [
+        "deepseek/deepseek-chat",
+        "deepseek/deepseek-r1",
+        "anthropic/claude-sonnet-4",
+        "anthropic/claude-haiku-4-5",
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "google/gemini-2.5-flash",
+        "google/gemini-2.5-pro",
+        "meta-llama/llama-3.3-70b-instruct",
+        "qwen/qwen-2.5-72b-instruct",
+    ],
+    "gemini": [
+        "gemini-2.0-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-3-flash-preview",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+    ],
+    "deepseek": [
+        "deepseek-chat",
+        "deepseek-reasoner",
+    ],
+    "groq": [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama-3.1-70b-versatile",
+        "llama-3.2-90b-text-preview",
+        "gemma2-9b-it",
+        "mixtral-8x7b-32768",
+        "qwen-qwq-32b",
+    ],
+    "huggingface": [
+        "meta-llama/Llama-3.3-70B-Instruct",
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "meta-llama/Llama-3.2-3B-Instruct",
+        "Qwen/Qwen2.5-72B-Instruct",
+        "Qwen/Qwen2.5-32B-Instruct",
+        "Qwen/Qwen2.5-14B-Instruct",
+        "Qwen/Qwen2.5-7B-Instruct",
+        "Qwen/QwQ-32B",
+        "microsoft/Phi-4",
+        "microsoft/Phi-3.5-mini-instruct",
+        "mistralai/Mistral-7B-Instruct-v0.3",
+        "mistralai/Mistral-7B-v0.3",
+        "HuggingFaceH4/zephyr-7b-beta",
+        "allenai/OLMo-2-7B-free",
+        "allenai/Llama-3.1-Tulu-3-8B",
+        "deepseek-ai/DeepSeek-R1",
+        "google/gemma-2-27b-it",
+        "CohereForAI/c4ai-command-r-plus",
+    ],
+    "ollama": [
+        "gemma3:4b",
+        "gemma3:12b",
+        "gemma3:27b",
+        "llama3.3:8b",
+        "llama3.3:70b",
+        "llama3.2:3b",
+        "llama3.1:8b",
+        "llama3.1:70b",
+        "qwen3:8b",
+        "qwen3:32b",
+        "mistral:7b",
+        "deepseek-r1:8b",
+        "deepseek-r1:32b",
+        "phi4:14b",
+        "codellama:13b",
+    ],
+}
+
+# Models that are ungated and free-to-use (open license, no access request) so
+# the Settings page can surface them as such. Providers/models not listed are
+# either gated or unverified — never assume free.
+_PROVIDER_FREE_MODELS: dict[str, frozenset[str]] = {
+    "huggingface": frozenset(
+        {
+            "Qwen/Qwen2.5-72B-Instruct",
+            "Qwen/Qwen2.5-32B-Instruct",
+            "Qwen/Qwen2.5-14B-Instruct",
+            "Qwen/Qwen2.5-7B-Instruct",
+            "Qwen/QwQ-32B",
+            "microsoft/Phi-4",
+            "microsoft/Phi-3.5-mini-instruct",
+            "mistralai/Mistral-7B-Instruct-v0.3",
+            "mistralai/Mistral-7B-v0.3",
+            "HuggingFaceH4/zephyr-7b-beta",
+            "allenai/OLMo-2-7B-free",
+            "allenai/Llama-3.1-Tulu-3-8B",
+            "deepseek-ai/DeepSeek-R1",
+        }
+    ),
+}
+
+
+@router.get("/models/{provider}")
+async def get_provider_models(provider: str) -> dict:
+    """Return available models for a given LLM provider.
+
+    ``free_models`` lists the models in ``models`` that are ungated and
+    free-to-use on the provider (open license, no access request).
+    """
+    models = _PROVIDER_MODELS.get(provider, [])
+    free_models = sorted(_PROVIDER_FREE_MODELS.get(provider, frozenset()))
+    return {"provider": provider, "models": models, "free_models": free_models}
+
+
 @router.get("/features", response_model=FeatureConfigResponse)
 async def get_feature_config() -> FeatureConfigResponse:
     """Get current feature configuration."""
@@ -467,6 +607,7 @@ SUPPORTED_PROVIDERS = [
     "openrouter",
     "deepseek",
     "groq",
+    "huggingface",
     "openai_compatible",
     "ollama",
 ]
@@ -563,6 +704,13 @@ async def update_api_keys(request: ApiKeysUpdateRequest) -> ApiKeysUpdateRespons
         elif "groq" in stored_keys:
             del stored_keys["groq"]
         updated.append("groq")
+
+    if request.huggingface is not None:
+        if request.huggingface:
+            stored_keys["huggingface"] = request.huggingface
+        elif "huggingface" in stored_keys:
+            del stored_keys["huggingface"]
+        updated.append("huggingface")
 
     if request.openai_compatible is not None:
         if request.openai_compatible:
