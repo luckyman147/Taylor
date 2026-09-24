@@ -44,11 +44,16 @@ class AgentPlanner:
 
         query = state.get("query", "")
         data_gaps = state.get("data_gaps", [])
+        agent_context = state.get("context") or {}
+        gateway_signals = agent_context.get("gateway_signals") or "(none)"
 
         prompt = f"""You are a tool-selection planner. Given the user's query and available tools,
 decide which tools to call next (if any).
 
 User query: {query}
+
+Gateway signals (advisory — topics, actions, follow-up/shift/reset hints from the same classifier the chat planner uses):
+{gateway_signals}
 
 Available tools:
 {tool_descriptions}

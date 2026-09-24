@@ -10,12 +10,15 @@ follow-up reference detection, and topic-shift detection.
 Phase 2: multi-topic gate (compound multi-domain → planner), locked
 precedence (explicit routes beat the gate), and context-only company/contact
 entity extraction.
+
+Phase 3: topic_reset / topic_history signals split from noun-based shift.
 """
 
 from app.services.chat_gateway import (
     ChatIntent,
     ConversationContext,
     _detect_followup_reference,
+    _detect_topic_reset,
     _detect_topic_shift,
     _extract_entities,
     _extract_signals,
@@ -202,6 +205,18 @@ def test_topic_shift_reset_phrase():
     assert _detect_topic_shift(
         "Actually forget that — explain Kubernetes", ctx, False
     ) is True
+    assert _detect_topic_reset(
+        "Actually forget that — explain Kubernetes", ctx
+    ) is True
+
+
+def test_topic_reset_requires_active_topic():
+    ctx = ConversationContext(active_topic="jobs")
+    assert _detect_topic_reset("Actually forget that", ctx) is True
+    assert _detect_topic_reset("Actually forget that", None) is False
+    assert _detect_topic_reset("Actually forget that", ConversationContext()) is False
+    # Pure reset phrase with no strong noun is NOT a noun-based shift
+    assert _detect_topic_shift("Actually forget that", ctx, False) is False
 
 
 def test_topic_shift_new_domain_noun():
@@ -228,9 +243,28 @@ async def test_topic_shift_signal_in_classify():
         "Actually forget that — explain Kubernetes", context=ctx
     )
     assert decision.topic_shift is True
+    assert decision.topic_reset is True
+    assert decision.topic_history == []
     assert decision.has_followup_reference is False
     assert decision.intent == ChatIntent.UNKNOWN
     assert decision.needs_clarification is False
+
+
+async def test_topic_history_reaches_planner_bound_decision():
+    from app.services.chat_gateway import TopicState
+
+    ctx = ConversationContext(
+        active_topic="salary",
+        topic_stack=[
+            TopicState(topic="jobs", confidence=0.9, turn=1),
+            TopicState(topic="salary", confidence=0.9, turn=2),
+        ],
+        turn=2,
+    )
+    decision = await classify_intent("what about equity?", context=ctx)
+    assert decision.topic_history == ["jobs", "salary"]
+    assert decision.has_followup_reference is True
+    assert decision.topic_reset is False
 
 
 # ---------------------------------------------------------------------------

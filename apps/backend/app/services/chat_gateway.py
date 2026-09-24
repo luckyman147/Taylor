@@ -8,6 +8,7 @@ else falls through to the planner WITH structured signals attached.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -43,11 +44,17 @@ class ChatIntent(str, Enum):
 
 @dataclass
 class TopicState:
-    """One entry in the per-thread topic stack (recency / decay)."""
+    """One entry in the per-thread topic stack (recency / decay).
+
+    ``demoted`` marks entries superseded by a topic shift — retained for
+    history/observability but treated as inactive. Age (``current_turn -
+    turn > 4``) is computed at read time, never by mutating the entry.
+    """
 
     topic: str
     confidence: float
     turn: int
+    demoted: bool = False
 
 
 @dataclass
@@ -571,16 +578,30 @@ def _detect_followup_reference(msg: str, context: ConversationContext | None) ->
     return bool(_FOLLOWUP_REF_PATTERNS.search(msg))
 
 
+def _detect_topic_reset(
+    msg: str,
+    context: ConversationContext | None,
+) -> bool:
+    """True for explicit topic-reset language when an active topic exists."""
+    if context is None:
+        return False
+    current = context.active_topic or (
+        context.topic_stack[-1].topic if context.topic_stack else None
+    )
+    if current is None:
+        return False
+    return bool(_TOPIC_RESET_PATTERNS.search(msg))
+
+
 def _detect_topic_shift(
     msg: str,
     context: ConversationContext | None,
     has_followup_ref: bool,
 ) -> bool:
-    """True when the message pivots away from the active topic.
+    """True when the message pivots to a strong new-domain noun.
 
-    Explicit reset phrases always win; otherwise a strong new-domain noun
-    that doesn't overlap the active topic counts. Follow-up reference
-    language suppresses shift detection (it's a continuation, not a pivot).
+    Noun-based only — explicit reset phrases are ``_detect_topic_reset``.
+    Follow-up reference language suppresses shift (continuation, not pivot).
     """
     if context is None:
         return False
@@ -589,8 +610,6 @@ def _detect_topic_shift(
     )
     if current is None:
         return False
-    if _TOPIC_RESET_PATTERNS.search(msg):
-        return True
     if has_followup_ref:
         return False
     matched = {
@@ -639,6 +658,8 @@ class GatewayDecision:
     active_topic: str | None = None
     has_followup_reference: bool = False
     topic_shift: bool = False
+    topic_reset: bool = False
+    topic_history: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         # Preserve the old `x or []` normalization for explicit None.
@@ -648,6 +669,7 @@ class GatewayDecision:
         self.topics = self.topics or []
         self.actions = self.actions or []
         self.entities = self.entities or {}
+        self.topic_history = self.topic_history or []
 
 
 def format_gateway_signals(decision: GatewayDecision) -> str:
@@ -662,6 +684,15 @@ def format_gateway_signals(decision: GatewayDecision) -> str:
             lines.append(f"- {bucket}: {', '.join(values)}")
     if decision.active_topic:
         lines.append(f"- Active topic from previous turns: {decision.active_topic}")
+    if decision.topic_history:
+        lines.append(
+            f"- Recent topic history: {', '.join(decision.topic_history)}"
+        )
+    if decision.topic_reset:
+        lines.append(
+            "- Topic reset detected: clear prior topic context and treat this "
+            "as a fresh topic"
+        )
     if decision.topic_shift:
         lines.append(
             "- Topic shift detected: treat this message as a NEW topic, "
@@ -699,6 +730,41 @@ async def classify_intent(
     resume_id: str | None = None,
     context: ConversationContext | None = None,
 ) -> GatewayDecision:
+    """Classify user intent, log decision evidence, return the decision.
+
+    Thin public wrapper around ``_route_message`` so every path emits a single
+    structured ``gateway_classification`` log (evidence only — no message text).
+    """
+    decision = await _route_message(user_message, resume_id, context)
+    _log_gateway_classification(decision)
+    return decision
+
+
+def _log_gateway_classification(decision: GatewayDecision) -> None:
+    """Emit structured decision evidence. Never log message/tool/resume content."""
+    payload = {
+        "event": "gateway_classification",
+        "intent": decision.intent.value,
+        "confidence": decision.confidence,
+        "topics": decision.topics,
+        "actions": decision.actions,
+        "active_topic": decision.active_topic,
+        "has_followup_reference": decision.has_followup_reference,
+        "topic_shift": decision.topic_shift,
+        "preferred_tools": decision.preferred_tools,
+        "force_preferred": decision.force_preferred,
+    }
+    logger.info(
+        "gateway_classification %s",
+        json.dumps(payload, sort_keys=True, separators=(",", ":")),
+    )
+
+
+async def _route_message(
+    user_message: str,
+    resume_id: str | None = None,
+    context: ConversationContext | None = None,
+) -> GatewayDecision:
     """Classify user intent and determine routing.
 
     Fast, no LLM calls. Precedence: explicit routes (resume_id, slash,
@@ -712,7 +778,11 @@ async def classify_intent(
     # Advisory signals — extracted once, attached to planner-bound decisions.
     topics, actions, entities = _extract_signals(msg, context)
     has_followup_ref = _detect_followup_reference(msg, context)
+    topic_reset = _detect_topic_reset(msg, context)
     topic_shift = _detect_topic_shift(msg, context, has_followup_ref)
+    topic_history = (
+        [t.topic for t in context.topic_stack][-5:] if context else []
+    )
     signal_fields: dict[str, Any] = {
         "topics": topics,
         "actions": actions,
@@ -720,6 +790,8 @@ async def classify_intent(
         "active_topic": context.active_topic if context else None,
         "has_followup_reference": has_followup_ref,
         "topic_shift": topic_shift,
+        "topic_reset": topic_reset,
+        "topic_history": topic_history,
     }
 
     # If a resume_id was explicitly provided (e.g. from file upload), use it directly
@@ -936,13 +1008,14 @@ async def classify_intent(
 
     # Vague/ambiguous patterns — only if no specific intent or general query matched
     if _check_clarify_patterns(msg):
-        logger.info("Gateway: clarify pattern matched for message=%s", msg[:60])
+        logger.info("Gateway: clarify pattern matched (vague_pattern)")
         return GatewayDecision(
             intent=ChatIntent.CLARIFY,
             confidence=0.3,
             needs_clarification=True,
             clarification_reason="vague_pattern",
             suggested_intents=["job_search", "resume_audit", "profile", "market", "skills"],
+            **signal_fields,
         )
 
     # Pure conversational / social messages — no clarification needed, just answer

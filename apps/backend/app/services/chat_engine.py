@@ -69,8 +69,24 @@ class ConversationState:
         self.turn: int = 0
 
 
+def _effective_active_topic(state: ConversationState) -> str | None:
+    """Active topic for the next classify call — demoted/aged-out entries read as None."""
+    if not state.active_topic:
+        return None
+    for entry in reversed(state.topic_stack):
+        if entry.topic == state.active_topic:
+            if entry.demoted or (state.turn - entry.turn) > 4:
+                return None
+            return state.active_topic
+    return state.active_topic
+
+
 def build_gateway_context(state: ConversationState) -> ConversationContext:
-    """Snapshot thread state into the gateway's ConversationContext."""
+    """Snapshot thread state into the gateway's ConversationContext.
+
+    ``active_topic`` is the *effective* topic: the matching stack entry must
+    be non-demoted and at most 4 turns old, else None (decay without mutation).
+    """
     last_intent: ChatIntent | None = None
     if state.previous_intent:
         try:
@@ -78,7 +94,7 @@ def build_gateway_context(state: ConversationState) -> ConversationContext:
         except ValueError:
             last_intent = None
     return ConversationContext(
-        active_topic=state.active_topic,
+        active_topic=_effective_active_topic(state),
         active_job_id=state.active_job_id,
         active_resume_id=state.active_resume_id,
         active_company=state.active_company,
@@ -97,7 +113,11 @@ def _persist_gateway_state(
     user_message: str,
     count_turn: bool = True,
 ) -> None:
-    """Record this turn's gateway decision into thread state."""
+    """Record this turn's gateway decision into thread state.
+
+    topic_reset clears the stack; topic_shift demotes entries (retain for
+    history) then pushes the new primary topic; stack is capped at 10.
+    """
     if count_turn:
         state.turn += 1
         state.recent_user_messages.append(user_message)
@@ -113,9 +133,14 @@ def _persist_gateway_state(
         state.active_resume_id = resume_id
 
     topics: list[str] = getattr(gateway, "topics", None) or []
-    if getattr(gateway, "topic_shift", False):
+    if getattr(gateway, "topic_reset", False):
         state.active_topic = None
         state.topic_stack = []
+    elif getattr(gateway, "topic_shift", False):
+        for entry in state.topic_stack:
+            entry.demoted = True
+        if not topics:
+            state.active_topic = None
     if topics:
         primary = topics[0]
         if primary != state.active_topic:
@@ -127,7 +152,7 @@ def _persist_gateway_state(
                     turn=state.turn,
                 )
             )
-            state.topic_stack = state.topic_stack[-5:]
+            state.topic_stack = state.topic_stack[-10:]
 
 
 def _should_handle_jobs_followup(
@@ -234,6 +259,8 @@ async def _handle_clarification(
             gateway.active_topic = new_decision.active_topic
             gateway.has_followup_reference = new_decision.has_followup_reference
             gateway.topic_shift = new_decision.topic_shift
+            gateway.topic_reset = new_decision.topic_reset
+            gateway.topic_history = list(new_decision.topic_history)
             gateway.needs_clarification = False
             # Same user turn — update intent/topics without double-counting.
             _persist_gateway_state(state, gateway, resolved, count_turn=False)
@@ -836,7 +863,9 @@ async def _run_turn_core(
     # --- Agent Loop ---
     await _emit(AgentStatusEvent(status=AgentStatus.DISCOVERING_TOOLS, message="Finding the best tools for your request..."))
 
-    agent_result = await _try_agent_loop_fn(user_message, mode, skills, thread_id, messages, memories)
+    agent_result = await _try_agent_loop_fn(
+        user_message, mode, skills, thread_id, messages, memories, gateway
+    )
     if agent_result is not None:
         await db.add_chat_message(thread_id, "user", user_message, envelope={"resume_id": resume_id} if resume_id else None)
         envelope = {
@@ -1597,8 +1626,11 @@ async def run_turn_stream(
         thread_id: str,
         messages: list[dict[str, Any]],
         memories: list[dict[str, Any]],
+        gateway: Any = None,
     ) -> dict[str, Any] | None:
-        return await _try_agent_loop_stream(user_message, mode, skills, thread_id, messages, memories, _emit)
+        return await _try_agent_loop_stream(
+            user_message, mode, skills, thread_id, messages, memories, _emit, gateway
+        )
 
     return await _run_turn_core(thread_id, user_message, resume_id, _emit=_emit, _try_agent_loop_fn=_agent_loop_stream, eval_requested=eval_requested)
 
@@ -1624,6 +1656,7 @@ async def _try_agent_loop_stream(
     messages: list[dict[str, Any]],
     memories: list[dict[str, Any]],
     _emit,
+    gateway: Any = None,
 ) -> dict[str, Any] | None:
     """Try agent loop with streaming events."""
     msg_lower = user_message.lower()
@@ -1646,6 +1679,7 @@ async def _try_agent_loop_stream(
         "thread_id": thread_id,
         "history": _format_history(messages, limit=10),
         "memories": _format_memories(memories),
+        "gateway_signals": format_gateway_signals(gateway) if gateway else "",
     }
 
     try:
@@ -1778,6 +1812,7 @@ async def _try_agent_loop(
     thread_id: str,
     messages: list[dict[str, Any]],
     memories: list[dict[str, Any]],
+    gateway: Any = None,
 ) -> dict[str, Any] | None:
     """Try to handle a query with the autonomous agent loop.
 
@@ -1802,6 +1837,7 @@ async def _try_agent_loop(
         "thread_id": thread_id,
         "history": _format_history(messages, limit=10),
         "memories": _format_memories(memories),
+        "gateway_signals": format_gateway_signals(gateway) if gateway else "",
     }
 
     try:

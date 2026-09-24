@@ -3,6 +3,8 @@
 Covers Phase 1 refactor wiring: _persist_gateway_state,
 build_gateway_context, _update_conversation_state, and the direct-tool
 path's obligation to record executed tools.
+
+Phase 3: topic demotion/reset, stack cap 10, effective active-topic age-out.
 """
 
 from types import SimpleNamespace
@@ -47,7 +49,7 @@ def test_persist_and_build_gateway_context_roundtrip():
     assert [t.topic for t in ctx.topic_stack] == ["jobs"]
 
 
-def test_persist_topic_shift_clears_stack_then_pushes_new_topic():
+def test_persist_topic_shift_demotes_but_retains_stack():
     state = ConversationState()
     _persist_gateway_state(
         state,
@@ -69,7 +71,96 @@ def test_persist_topic_shift_clears_stack_then_pushes_new_topic():
         "Actually forget that — explain Kubernetes",
     )
     assert state.active_topic == "technology"
+    assert [t.topic for t in state.topic_stack] == ["jobs", "technology"]
+    assert state.topic_stack[0].demoted is True
+    assert state.topic_stack[1].demoted is False
+
+
+def test_persist_topic_reset_clears_stack_then_pushes_new_topic():
+    state = ConversationState()
+    _persist_gateway_state(
+        state,
+        GatewayDecision(
+            intent=ChatIntent.GENERAL, confidence=0.9, topics=["jobs"]
+        ),
+        "find python jobs",
+    )
+    _persist_gateway_state(
+        state,
+        GatewayDecision(
+            intent=ChatIntent.UNKNOWN,
+            confidence=0.5,
+            topics=["technology"],
+            topic_reset=True,
+            topic_shift=True,
+        ),
+        "Actually forget that — explain Kubernetes",
+    )
+    assert state.active_topic == "technology"
     assert [t.topic for t in state.topic_stack] == ["technology"]
+    assert state.topic_stack[0].demoted is False
+
+
+def test_effective_active_topic_ages_out_after_four_turns():
+    state = ConversationState()
+    _persist_gateway_state(
+        state,
+        GatewayDecision(
+            intent=ChatIntent.GENERAL, confidence=0.9, topics=["jobs"]
+        ),
+        "find python jobs",
+    )
+    # turn=1, entry.turn=1 → age 0 → still active
+    assert build_gateway_context(state).active_topic == "jobs"
+    # Simulate four intervening turns with no topic push (age = 5 > 4)
+    state.turn = 6
+    assert build_gateway_context(state).active_topic is None
+    # Stack entry retained for history
+    assert [t.topic for t in state.topic_stack] == ["jobs"]
+
+
+def test_demoted_entry_is_not_effective_active_topic():
+    state = ConversationState()
+    _persist_gateway_state(
+        state,
+        GatewayDecision(
+            intent=ChatIntent.GENERAL, confidence=0.9, topics=["jobs"]
+        ),
+        "find python jobs",
+    )
+    _persist_gateway_state(
+        state,
+        GatewayDecision(
+            intent=ChatIntent.UNKNOWN,
+            confidence=0.5,
+            topics=[],
+            topic_shift=True,
+        ),
+        "moving on to something else",
+    )
+    # Shift with no new primary topic: active cleared, stack demoted but retained
+    assert state.active_topic is None
+    assert [t.topic for t in state.topic_stack] == ["jobs"]
+    assert state.topic_stack[0].demoted is True
+    assert build_gateway_context(state).active_topic is None
+
+
+def test_topic_stack_caps_at_ten():
+    state = ConversationState()
+    for i in range(12):
+        _persist_gateway_state(
+            state,
+            GatewayDecision(
+                intent=ChatIntent.GENERAL,
+                confidence=0.5,
+                topics=[f"topic{i}"],
+            ),
+            f"message {i}",
+        )
+    assert len(state.topic_stack) == 10
+    # Oldest two trimmed; newest retained
+    assert state.topic_stack[0].topic == "topic2"
+    assert state.topic_stack[-1].topic == "topic11"
 
 
 def test_update_conversation_state_writes_job_entity_and_tools():
@@ -111,6 +202,19 @@ def test_format_gateway_signals_renders_shift_and_followup():
 
     empty = format_gateway_signals(GatewayDecision(intent=ChatIntent.PROFILE))
     assert empty == "(no gateway signals)"
+
+
+def test_format_gateway_signals_renders_history_and_reset():
+    text = format_gateway_signals(
+        GatewayDecision(
+            intent=ChatIntent.GENERAL,
+            confidence=0.7,
+            topic_history=["jobs", "salary"],
+            topic_reset=True,
+        )
+    )
+    assert "Recent topic history: jobs, salary" in text
+    assert "Topic reset detected" in text
 
 
 @pytest.mark.asyncio
