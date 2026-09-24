@@ -70,7 +70,7 @@ except Exception as e:
 
 ## Adding Prompts
 
-Add new prompt templates to `apps/backend/app/prompts/templates.py`.
+Add new prompt templates to the matching `apps/backend/app/prompts/*.py` SRP module (see the prompt-layout table in `apps/backend/CLAUDE.md`), and re-export any public name from `app/prompts/templates.py`.
 
 ### Prompt Guidelines
 
@@ -120,6 +120,6 @@ All LLM calls have configurable timeouts:
 | File | Purpose |
 |------|---------|
 | `apps/backend/app/llm.py` | LiteLLM wrapper with JSON mode |
-| `apps/backend/app/prompts/templates.py` | Prompt templates |
+| `apps/backend/app/prompts/templates.py` | Re-export barrel for prompt modules (`improve`, `chat`, `career`, …) |
 | `apps/backend/app/prompts/enrichment.py` | Enrichment-specific prompts |
 | `apps/backend/app/config.py` | Provider configuration |

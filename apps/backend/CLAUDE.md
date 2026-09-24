@@ -61,9 +61,21 @@ Prompts are **plain Python string constants** — no Jinja, no external prompt f
 
 | File | Holds |
 |------|-------|
-| `app/prompts/templates.py` | Resume parse, keyword extraction, the 3 improve variants, diff prompt, skill-target plan, cover-letter / outreach / title, `RESUME_SCHEMA_EXAMPLE`, `CRITICAL_TRUTHFULNESS_RULES`, `LANGUAGE_NAMES` + `get_language_name()` |
+| `app/prompts/templates.py` | Permanent re-export barrel — import here (or via `app.prompts`) for back-compat |
+| `app/prompts/language.py` | `LANGUAGE_NAMES`, `get_language_name()` |
+| `app/prompts/schemas.py` | `RESUME_SCHEMA_EXAMPLE`, `IMPROVE_SCHEMA_EXAMPLE`, `RESUME_SCHEMA` |
+| `app/prompts/parse.py` | `PARSE_RESUME_PROMPT`, `EXTRACT_KEYWORDS_PROMPT` |
+| `app/prompts/truthfulness.py` | `CRITICAL_TRUTHFULNESS_RULES*`, `STAR_BULLET_GUIDE` |
+| `app/prompts/improve.py` | Improve variants (`IMPROVE_RESUME_PROMPT_*`), diff prompt, skill-target plan |
+| `app/prompts/correspondence.py` | Cover-letter / outreach / title prompts |
+| `app/prompts/interview.py` | Interview prep + practice feedback prompts |
+| `app/prompts/career.py` | Career advisor, skill, project, matched-project prompts |
+| `app/prompts/job_intel.py` | `JOB_DNA_PROMPT`, `SHOULD_APPLY_PROMPT` |
+| `app/prompts/chat.py` | Chat planner/answer/thinking/audit prompts, modes, skills, helpers |
+| `app/prompts/agent.py` | Agent-loop think/answer prompts |
 | `app/prompts/enrichment.py` | `ANALYZE_RESUME_PROMPT`, `ENHANCE_DESCRIPTION_PROMPT`, `REGENERATE_ITEM_PROMPT`, `REGENERATE_SKILLS_PROMPT` |
 | `app/prompts/refinement.py` | `KEYWORD_INJECTION_PROMPT`, `VALIDATION_POLISH_PROMPT`, `AI_PHRASE_BLACKLIST`, `AI_PHRASE_REPLACEMENTS` |
+| `app/prompts/resume_wizard.py` | `RESUME_WIZARD_TURN_PROMPT` |
 | `app/prompts/__init__.py` | Re-exports template constants; placeholder validation |
 
 **Loading / parameterization:** services `from app.prompts import ...` then call `PROMPT.format(**vars)`. So `{placeholder}` = a real format key, and any *literal* `{}` (e.g. JSON examples) **must be doubled `{{ }}`** — see `EXTRACT_KEYWORDS_PROMPT`, `DIFF_IMPROVE_PROMPT`, the enrichment prompts. `PARSE_RESUME_PROMPT` is the exception: it embeds the schema via `{schema}` so it does *not* double-brace.

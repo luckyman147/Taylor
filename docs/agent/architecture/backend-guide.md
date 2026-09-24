@@ -28,7 +28,7 @@ apps/backend/app/
 ├── services/       # parser, improver, cover_letter
 ├── schemas/        # Pydantic models (models.py, applications.py)
 ├── scripts/        # migrate_tinydb_to_sqlite.py (one-time importer)
-└── prompts/        # templates.py
+└── prompts/        # SRP prompt modules + templates.py barrel
 ```
 
 ## Database Operations

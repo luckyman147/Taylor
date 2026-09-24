@@ -93,7 +93,7 @@ The career graph stores the resume's education, projects and achievements as the
 | `apps/backend/app/services/link_verifier.py` | URL verification + `<title>` extraction for learning-resource links |
 | `apps/backend/app/routers/profile.py` | All `/profile` endpoints |
 | `apps/backend/app/schemas/profile.py` | Pydantic request/response models |
-| `apps/backend/app/prompts/templates.py` | `CAREER_ADVISOR_*`, `CAREER_GAP_ANALYSIS_PROMPT`, `CAREER_ROI_ADVICE_PROMPT`, `SKILL_RESOURCES_PROMPT`, `SKILL_SUGGESTIONS_PROMPT`, `MATCHED_PROJECTS_PROMPT` |
+| `apps/backend/app/prompts/career.py` (barrel: `templates.py`) | `CAREER_ADVISOR_*`, `CAREER_GAP_ANALYSIS_PROMPT`, `CAREER_ROI_ADVICE_PROMPT`, `SKILL_RESOURCES_PROMPT`, `SKILL_SUGGESTIONS_PROMPT`, `MATCHED_PROJECTS_PROMPT` |
 | `apps/backend/app/models.py` / `app/database.py` | `career_profiles` / `career_skills` / `career_certifications` / `career_education` / `career_projects` / `career_achievements` / `career_entry_skills` / `skill_resources` tables + facade |
 | `apps/backend/app/services/career_graph.py` | `fulfill_profile_from_resume` (seed/auto-fulfill), `extract_entry_skills` (catalog-aware edge extraction) |
 | `apps/backend/app/services/matched_projects.py` | JD-matched project selection (scoring), suggestions for the picker step, batched single-phrase PSR generation, Projects-section merge (user selection or auto top-2) for the tailoring pipeline |

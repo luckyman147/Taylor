@@ -43,7 +43,7 @@ const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 - Type hints on ALL functions
 - Async functions for I/O operations (database, LLM calls)
 - Pydantic models for all request/response schemas
-- Prompts go in `app/prompts/templates.py`
+- Prompts go in the matching `app/prompts/*.py` SRP module (see `apps/backend/CLAUDE.md` prompt layout); re-export via `templates.py` / `app.prompts`
 
 ### Error Handling
 

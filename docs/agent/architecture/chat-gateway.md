@@ -129,7 +129,7 @@ multi-topic gate, which only decides *planner vs deterministic*):
 
 `format_gateway_signals(decision)` renders these into the
 `{gateway_signals}` block of `CHAT_PLANNER_PROMPT` (see
-`apps/backend/app/prompts/templates.py`) and into the **agent-loop context**
+`apps/backend/app/prompts/chat.py`, re-exported via `templates.py`) and into the **agent-loop context**
 (`context["gateway_signals"]`, same serialized string). The agent tool
 planner (`app/agent/planner.py`) surfaces that block in its prompt. The
 prompt states signals are advisory: the planner may combine tools when
