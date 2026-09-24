@@ -130,6 +130,28 @@ def _persist_gateway_state(
             state.topic_stack = state.topic_stack[-5:]
 
 
+def _should_handle_jobs_followup(
+    gateway: Any,
+    user_message: str,
+    has_job_context: bool,
+) -> bool:
+    """True only for deterministic jobs continuation (param mutation / list filter).
+
+    Requires prior job-list cards. Structural job params (role/location/
+    remote/seniority) also need a follow-up reference so a fresh search like
+    "find remote go jobs" never becomes a continuation. Skills-only params are
+    excluded so "their tech stack" never mutates a job search.
+    """
+    if not has_job_context:
+        return False
+    if getattr(gateway, "contextual_follow_up", False):
+        return True
+    if not getattr(gateway, "has_followup_reference", False):
+        return False
+    job_params = _extract_job_params(user_message)
+    return bool(set(job_params) & {"role", "location", "remote", "seniority"})
+
+
 def _update_conversation_state(
     state: ConversationState,
     tool_results: dict[str, Any],
@@ -722,19 +744,20 @@ async def _run_turn_core(
     )
     _persist_gateway_state(conv_state, gateway, user_message)
 
-    # --- Contextual follow-up: previous results OR an active topic to refer back to ---
-    if gateway.contextual_follow_up:
-        has_job_context = any(
-            card.get("kind") == "job_list"
-            for m in messages
-            if m.get("role") == "assistant"
-            for card in (m.get("envelope") or {}).get("cards", [])
+    # --- Follow-up routing: deterministic jobs continuation vs planner ---
+    # Jobs handler only for job-list context + explicit continuation
+    # (contextual flag or structural job params with a follow-up reference).
+    # Everything else with follow-up signals falls through to the planner.
+    has_job_context = any(
+        card.get("kind") == "job_list"
+        for m in messages
+        if m.get("role") == "assistant"
+        for card in (m.get("envelope") or {}).get("cards", [])
+    )
+    if _should_handle_jobs_followup(gateway, user_message, has_job_context):
+        return await _handle_contextual_follow_up(
+            thread_id, user_message, gateway, _emit, messages, memories,
         )
-        if has_job_context or conv_state.active_topic:
-            return await _handle_contextual_follow_up(
-                thread_id, user_message, gateway, _emit, messages, memories,
-            )
-        # No prior context — fall through to normal planner path
 
     # --- Clarification: gateway detected ambiguity ---
     if gateway.needs_clarification or gateway.intent == ChatIntent.CLARIFY:

@@ -6,6 +6,10 @@ instead of the user's own get_companies/get_contacts data.
 
 Also covers Phase 1 refactor signals: UNKNOWN vs GENERAL labelling,
 follow-up reference detection, and topic-shift detection.
+
+Phase 2: multi-topic gate (compound multi-domain → planner), locked
+precedence (explicit routes beat the gate), and context-only company/contact
+entity extraction.
 """
 
 from app.services.chat_gateway import (
@@ -13,7 +17,9 @@ from app.services.chat_gateway import (
     ConversationContext,
     _detect_followup_reference,
     _detect_topic_shift,
+    _extract_entities,
     _extract_signals,
+    _is_multi_topic,
     classify_intent,
 )
 
@@ -225,3 +231,145 @@ async def test_topic_shift_signal_in_classify():
     assert decision.has_followup_reference is False
     assert decision.intent == ChatIntent.UNKNOWN
     assert decision.needs_clarification is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — multi-topic gate (locked routing matrix)
+# ---------------------------------------------------------------------------
+
+def test_is_multi_topic_requires_two_career_and_two_actions():
+    assert _is_multi_topic(["jobs", "resume"], ["search", "analyze"]) is True
+    # Two topics alone are NOT enough (protects the MARKET salary fast path).
+    assert _is_multi_topic(["salary", "jobs"], ["explain"]) is False
+    assert _is_multi_topic(["salary", "jobs"], []) is False
+    # Two actions on a single career topic are NOT multi-topic (protects AUDIT).
+    assert _is_multi_topic(["resume", "technology"], ["analyze"]) is False
+    # Non-career topics don't count toward the career-topic floor.
+    assert _is_multi_topic(["technology", "general"], ["search", "analyze"]) is False
+
+
+async def test_multi_topic_compound_request_routes_to_planner():
+    decision = await classify_intent(
+        "Find React jobs and tell me whether my resume fits them"
+    )
+    assert decision.intent == ChatIntent.GENERAL
+    assert decision.confidence == 0.7
+    assert decision.force_preferred is False
+    assert decision.preferred_tools == []
+    assert decision.needs_clarification is False
+    assert "jobs" in decision.topics
+    assert "resume" in decision.topics
+    assert "search" in decision.actions
+    assert "analyze" in decision.actions
+
+
+async def test_multi_topic_does_not_steal_audit(isolated_db):
+    decision = await classify_intent("audit my resume against this job")
+    assert decision.intent == ChatIntent.RESUME_AUDIT
+
+
+async def test_multi_topic_does_not_steal_market_fast_path():
+    # Single action (or none) — two career topics alone must not divert MARKET.
+    decision = await classify_intent(
+        "What salary can I expect for React jobs in Germany?"
+    )
+    assert decision.intent == ChatIntent.MARKET
+
+
+async def test_multi_topic_does_not_steal_compare(isolated_db):
+    decision = await classify_intent("Compare my resume with this job")
+    # Existing compare path wins (step 4) — selection card or clarify.
+    assert decision.needs_selection is True or decision.needs_clarification is True
+
+
+async def test_slash_beats_multi_topic():
+    decision = await classify_intent(
+        "/get_companies find react jobs and audit my resume"
+    )
+    assert decision.force_preferred is True
+    assert decision.preferred_tools == ["get_companies"]
+
+
+async def test_remote_positions_followup_is_job_search_with_signal():
+    ctx = ConversationContext(
+        active_topic="jobs", last_tools=["search_mcp_jobs"]
+    )
+    decision = await classify_intent(
+        "Which ones have remote positions?", context=ctx
+    )
+    assert decision.intent == ChatIntent.JOB_SEARCH
+    assert decision.has_followup_reference is True
+
+
+async def test_tech_stack_followup_stays_planner_bound():
+    ctx = ConversationContext(
+        active_topic="jobs", last_tools=["search_mcp_jobs"]
+    )
+    decision = await classify_intent(
+        "What about their tech stack?", context=ctx
+    )
+    assert decision.contextual_follow_up is False
+    assert decision.force_preferred is False
+    assert decision.intent in (ChatIntent.GENERAL, ChatIntent.UNKNOWN)
+    assert decision.has_followup_reference is True
+
+
+async def test_contacts_email_followup_stays_planner_bound():
+    ctx = ConversationContext(
+        active_topic="contacts", last_tools=["get_contacts"]
+    )
+    decision = await classify_intent(
+        "Which of those contacts should I email?", context=ctx
+    )
+    assert decision.force_preferred is False
+    assert decision.intent in (ChatIntent.GENERAL, ChatIntent.UNKNOWN)
+
+
+async def test_compare_these_with_resume_stays_planner_bound():
+    ctx = ConversationContext(
+        active_topic="jobs", last_tools=["search_mcp_jobs"]
+    )
+    decision = await classify_intent(
+        "Can you compare these with my resume?", context=ctx
+    )
+    assert decision.force_preferred is False
+    assert decision.needs_selection is False
+    assert decision.intent in (ChatIntent.GENERAL, ChatIntent.UNKNOWN)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — entity extraction (known context only, no free-text names)
+# ---------------------------------------------------------------------------
+
+def test_entities_company_contact_from_known_context_only():
+    ctx = ConversationContext(
+        active_company="Acme Corp",
+        last_tool_results=[
+            {"contacts": [{"name": "Jane Doe", "company": "Acme Corp"}]},
+            {"jobs": [{"company": "Beta LLC"}]},
+        ],
+    )
+    entities = _extract_entities(
+        "What about Jane Doe and Beta LLC?", ["python"], ctx
+    )
+    assert "Jane Doe" in entities.get("contact", [])
+    assert "Beta LLC" in entities.get("company", [])
+    # Active company not mentioned in the message → not emitted.
+    assert "Acme Corp" not in entities.get("company", [])
+
+
+def test_entities_do_not_invent_names_without_context():
+    entities = _extract_entities(
+        "Ask Jordan about React", ["react"], ConversationContext()
+    )
+    assert "Jordan" not in entities.get("contact", [])
+    assert "Jordan" not in entities.get("company", [])
+    assert "react" in entities.get("technology", [])
+
+
+def test_entities_company_only_when_mentioned():
+    ctx = ConversationContext(active_company="Acme Corp")
+    entities = _extract_entities("How is Acme Corp doing?", [], ctx)
+    assert entities.get("company") == ["Acme Corp"]
+    entities2 = _extract_entities("unrelated message", [], ctx)
+    assert "company" not in entities2

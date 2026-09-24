@@ -355,7 +355,10 @@ _CAREER_TOPIC_LABELS: frozenset[str] = frozenset(_TOPIC_LEXICON) - {"technology"
 
 _ACTION_LEXICON: dict[str, tuple[str, ...]] = {
     "search": ("search", "find", "discover", "look for", "hunt"),
-    "analyze": ("analyze", "analyse", "analysis", "assess", "evaluate", "review", "audit", "score"),
+    "analyze": (
+        "analyze", "analyse", "analysis", "assess", "evaluate", "review", "audit", "score",
+        "fit", "fits", "match", "matches", "suitable", "suit",
+    ),
     "compare": ("compare", "comparison", "versus", "diff", "side by side", "difference"),
     "create": ("create", "add", "insert"),
     "update": ("update", "edit", "modify", "change", "revise", "tweak"),
@@ -430,8 +433,17 @@ def _match_lexicon(msg_lower: str, lexicon: dict[str, tuple[str, ...]]) -> list[
     return hits
 
 
-def _extract_entities(msg: str, tech_keywords: list[str]) -> dict[str, list[str]]:
-    """Best-effort entity buckets: technology + locations. Advisory only."""
+def _extract_entities(
+    msg: str,
+    tech_keywords: list[str],
+    context: ConversationContext | None = None,
+) -> dict[str, list[str]]:
+    """Best-effort entity buckets: technology, locations, company, contact.
+
+    Advisory only. Company/contact names are resolved **only** from known
+    context (active entities + prior tool-result fields) when the value is
+    actually mentioned in the message — never inferred from free text.
+    """
     entities: dict[str, list[str]] = {}
     if tech_keywords:
         entities["technology"] = tech_keywords
@@ -456,10 +468,70 @@ def _extract_entities(msg: str, tech_keywords: list[str]) -> dict[str, list[str]
 
     if locations:
         entities["locations"] = locations
+
+    # --- company / contact: known context values mentioned in the message ---
+    company_candidates: list[str] = []
+    contact_candidates: list[str] = []
+    if context is not None:
+        if context.active_company:
+            company_candidates.append(context.active_company)
+        if context.active_contact:
+            contact_candidates.append(context.active_contact)
+        for result in context.last_tool_results:
+            if not isinstance(result, dict):
+                continue
+            top_company = result.get("company")
+            if isinstance(top_company, str) and top_company:
+                company_candidates.append(top_company)
+            for key in ("name", "full_name", "contact"):
+                val = result.get(key)
+                if isinstance(val, str) and val:
+                    contact_candidates.append(val)
+            nested = (
+                ("jobs", ("company",), ("name", "full_name")),
+                ("contacts", ("company",), ("name", "full_name")),
+                ("companies", ("company", "name"), ()),
+            )
+            for list_key, company_keys, contact_keys in nested:
+                items = result.get(list_key)
+                if not isinstance(items, list):
+                    continue
+                for item in items[:50]:
+                    if not isinstance(item, dict):
+                        continue
+                    for ck in company_keys:
+                        cv = item.get(ck)
+                        if isinstance(cv, str) and cv:
+                            company_candidates.append(cv)
+                    for nk in contact_keys:
+                        nv = item.get(nk)
+                        if isinstance(nv, str) and nv:
+                            contact_candidates.append(nv)
+
+    def _mentioned(name: str) -> bool:
+        return len(name) >= 3 and re.search(
+            rf"\b{re.escape(name)}\b", msg, re.IGNORECASE
+        ) is not None
+
+    companies: list[str] = []
+    contacts: list[str] = []
+    for name in company_candidates:
+        if _mentioned(name) and name not in companies:
+            companies.append(name)
+    for name in contact_candidates:
+        if _mentioned(name) and name not in contacts:
+            contacts.append(name)
+    if companies:
+        entities["company"] = companies[:5]
+    if contacts:
+        entities["contact"] = contacts[:5]
     return entities
 
 
-def _extract_signals(msg: str) -> tuple[list[str], list[str], dict[str, list[str]]]:
+def _extract_signals(
+    msg: str,
+    context: ConversationContext | None = None,
+) -> tuple[list[str], list[str], dict[str, list[str]]]:
     """Extract (topics, actions, entities) from a message — advisory only."""
     msg_lower = msg.lower()
     topics = _match_lexicon(msg_lower, _TOPIC_LEXICON)
@@ -468,7 +540,7 @@ def _extract_signals(msg: str) -> tuple[list[str], list[str], dict[str, list[str
         kw for kw in _TOPIC_LEXICON["technology"]
         if re.search(rf"\b{re.escape(kw)}\b", msg_lower)
     ]
-    entities = _extract_entities(msg, tech_hits)
+    entities = _extract_entities(msg, tech_hits, context)
     return topics, actions, entities
 
 
@@ -477,6 +549,17 @@ def _label_general_or_unknown(topics: list[str]) -> ChatIntent:
     if any(t in _CAREER_TOPIC_LABELS for t in topics):
         return ChatIntent.GENERAL
     return ChatIntent.UNKNOWN
+
+
+def _is_multi_topic(topics: list[str], actions: list[str]) -> bool:
+    """True for a compound multi-domain request that must reach the planner.
+
+    Requires >= 2 distinct career-domain topics AND >= 2 distinct actions so
+    single-topic fast paths (MARKET salary, AUDIT, compare) never get stolen —
+    two topics alone are not enough.
+    """
+    career_topics = set(topics) & _CAREER_TOPIC_LABELS
+    return len(career_topics) >= 2 and len(set(actions)) >= 2
 
 
 def _detect_followup_reference(msg: str, context: ConversationContext | None) -> bool:
@@ -618,14 +701,16 @@ async def classify_intent(
 ) -> GatewayDecision:
     """Classify user intent and determine routing.
 
-    Fast, no LLM calls. Returns a routing decision with intent,
-    preferred tools, and confidence score, plus advisory signals
-    (topics/actions/entities/follow-up) on planner-bound paths.
+    Fast, no LLM calls. Precedence: explicit routes (resume_id, slash,
+    force-preferred own-data, resume ID, compare, @mention, sent-email) beat
+    the multi-topic gate, which beats single-topic deterministic matchers.
+    Returns advisory signals (topics/actions/entities/follow-up) on
+    planner-bound paths.
     """
     msg = user_message.strip()
 
     # Advisory signals — extracted once, attached to planner-bound decisions.
-    topics, actions, entities = _extract_signals(msg)
+    topics, actions, entities = _extract_signals(msg, context)
     has_followup_ref = _detect_followup_reference(msg, context)
     topic_shift = _detect_topic_shift(msg, context, has_followup_ref)
     signal_fields: dict[str, Any] = {
@@ -681,6 +766,17 @@ async def classify_intent(
             )
         # Unknown /token — fall through and treat as normal text
 
+    # Explicit force-preferred own-data route (companies / contacts) —
+    # must beat topic detection and every semantic matcher.
+    if _COMPANY_CONTACT_PATTERNS.search(msg):
+        logger.info("Gateway: companies/contacts intent detected")
+        return GatewayDecision(
+            intent=ChatIntent.GENERAL,
+            preferred_tools=["get_companies", "get_contacts"],
+            confidence=0.9,
+            force_preferred=True,
+        )
+
     # Check for explicit resume ID in message
     id_match = _RESUME_ID_PATTERN.search(msg)
     if id_match:
@@ -733,9 +829,30 @@ async def classify_intent(
                 **signal_fields,
             )
 
-    # Check if this is a resume audit intent
-    if _AUDIT_KEYWORDS.search(msg):
-        return await _classify_audit_intent()
+    # Sent email queries — force search_sent_emails
+    if _SENT_EMAIL_PATTERNS.search(msg):
+        logger.info("Gateway: sent email intent detected")
+        return GatewayDecision(
+            intent=ChatIntent.GENERAL,
+            preferred_tools=["search_sent_emails"],
+            confidence=0.9,
+            **signal_fields,
+        )
+
+    # Multi-topic gate — compound multi-domain request → planner with signals.
+    # Runs AFTER every explicit/deterministic route, BEFORE single-topic
+    # matchers, so AUDIT/JOB_SEARCH/etc. can't swallow mixed requests.
+    if _is_multi_topic(topics, actions):
+        logger.info(
+            "Gateway: multi-topic request detected (topics=%s actions=%s), "
+            "passing to planner",
+            topics, actions,
+        )
+        return GatewayDecision(
+            intent=ChatIntent.GENERAL,
+            confidence=0.7,
+            **signal_fields,
+        )
 
     # Contextual follow-up — references to previous results (check before job search)
     if _CONTEXTUAL_FOLLOWUP_PATTERNS.search(msg):
@@ -750,6 +867,10 @@ async def classify_intent(
                 **{**signal_fields, "has_followup_reference": True},
             )
 
+    # Check if this is a resume audit intent
+    if _AUDIT_KEYWORDS.search(msg):
+        return await _classify_audit_intent()
+
     # Job search
     if _JOB_SEARCH_PATTERNS.search(msg):
         logger.info("Gateway: job search intent detected")
@@ -757,16 +878,6 @@ async def classify_intent(
             intent=ChatIntent.JOB_SEARCH,
             preferred_tools=["search_mcp_jobs"],
             confidence=0.95,
-            **signal_fields,
-        )
-
-    # Sent email queries — force search_sent_emails
-    if _SENT_EMAIL_PATTERNS.search(msg):
-        logger.info("Gateway: sent email intent detected")
-        return GatewayDecision(
-            intent=ChatIntent.GENERAL,
-            preferred_tools=["search_sent_emails"],
-            confidence=0.9,
             **signal_fields,
         )
 
@@ -808,16 +919,6 @@ async def classify_intent(
             preferred_tools=["get_market_position"],
             confidence=0.85,
             **signal_fields,
-        )
-
-    # The user's own tracked companies / contacts (not a live job search)
-    if _COMPANY_CONTACT_PATTERNS.search(msg):
-        logger.info("Gateway: companies/contacts intent detected")
-        return GatewayDecision(
-            intent=ChatIntent.GENERAL,
-            preferred_tools=["get_companies", "get_contacts"],
-            confidence=0.9,
-            force_preferred=True,
         )
 
     # General information query — has question words or topic keywords, let planner handle it

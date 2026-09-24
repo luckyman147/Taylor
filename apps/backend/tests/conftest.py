@@ -244,6 +244,10 @@ async def isolated_db(tmp_path, monkeypatch):
     import app.services.chat_audit as chat_audit_module
 
     monkeypatch.setattr(chat_audit_module, "db", test_db)
+    # Gateway's audit/compare classifiers call db.list_resumes directly.
+    import app.services.chat_gateway as chat_gateway_module
+
+    monkeypatch.setattr(chat_gateway_module, "db", test_db)
     try:
         yield test_db
     finally:

@@ -16,6 +16,7 @@ from app.services.chat_engine import (
     _conversation_states,
     _get_conversation_state,
     _handle_direct_tool,
+    _should_handle_jobs_followup,
     _update_conversation_state,
     build_gateway_context,
     _persist_gateway_state,
@@ -142,3 +143,51 @@ async def test_direct_tool_records_state(isolated_db: Database):
         assert state.previous_intent == "market"
     finally:
         _conversation_states.pop(thread_id, None)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — jobs follow-up gate (deterministic jobs vs planner)
+# ---------------------------------------------------------------------------
+
+def test_jobs_followup_remote_positions_with_job_cards():
+    gw = SimpleNamespace(contextual_follow_up=False, has_followup_reference=True)
+    assert _should_handle_jobs_followup(
+        gw, "Which ones have remote positions?", True
+    ) is True
+
+
+def test_jobs_followup_tech_stack_rejected_despite_job_cards():
+    # Skills-only / no structural job params → planner, never jobs handler.
+    gw = SimpleNamespace(contextual_follow_up=False, has_followup_reference=True)
+    assert _should_handle_jobs_followup(
+        gw, "What about their tech stack?", True
+    ) is False
+
+
+def test_jobs_followup_requires_job_context_cards():
+    gw = SimpleNamespace(contextual_follow_up=True, has_followup_reference=True)
+    assert _should_handle_jobs_followup(
+        gw, "narrow down those results", False
+    ) is False
+
+
+def test_jobs_followup_contextual_flag_without_params():
+    gw = SimpleNamespace(contextual_follow_up=True, has_followup_reference=True)
+    assert _should_handle_jobs_followup(
+        gw, "narrow down those results", True
+    ) is True
+
+
+def test_jobs_followup_fresh_search_not_treated_as_continuation():
+    # "find remote go jobs" has structural params but no follow-up reference.
+    gw = SimpleNamespace(contextual_follow_up=False, has_followup_reference=False)
+    assert _should_handle_jobs_followup(
+        gw, "find remote go jobs", True
+    ) is False
+
+
+def test_jobs_followup_compare_these_not_jobs_continuation():
+    gw = SimpleNamespace(contextual_follow_up=False, has_followup_reference=True)
+    assert _should_handle_jobs_followup(
+        gw, "Can you compare these with my resume?", True
+    ) is False
