@@ -53,6 +53,19 @@ def _normalize_skill_key(skill: str) -> str:
     return re.sub(r"\s+", " ", skill.strip()).casefold()
 
 
+def _normalize_company(company: str) -> str:
+    """Normalize a company name for comparison.
+
+    Strips location suffixes after '|' or ' - ', collapses whitespace,
+    and casefolds for case-insensitive matching.
+    """
+    if not company:
+        return ""
+    # Take only the part before location separator
+    normalized = company.split("|")[0].split(" - ")[0]
+    return re.sub(r"\s+", " ", normalized.strip()).casefold()
+
+
 def _extract_jd_skill_keys(
     job_keywords: dict[str, Any],
     job_description: str,
@@ -158,15 +171,18 @@ async def refine_resume(
                     [v.value for v in critical_violations],
                 )
                 # Fix violations before returning
-                current = fix_alignment_violations(current, alignment.violations)
+                current = fix_alignment_violations(current, alignment.violations, master=master_resume)
                 passes += 1
             else:
                 # Non-critical violations - fix and continue
-                current = fix_alignment_violations(current, alignment.violations)
+                current = fix_alignment_violations(current, alignment.violations, master=master_resume)
                 passes += 1
 
     # Calculate final match percentage
     final_match = calculate_keyword_match(current, job_keywords)
+
+    # Post-refinement guard: restore any work experience entries lost during refinement
+    current, restore_warnings = _restore_missing_work_experience(initial_tailored, current)
 
     return RefinementResult(
         refined_data=current,
@@ -377,12 +393,12 @@ def validate_master_alignment(
 
     # Check work experience companies (should not add new companies)
     tailored_companies = set(
-        exp.get("company", "").lower()
+        _normalize_company(exp.get("company", ""))
         for exp in tailored.get("workExperience", [])
         if isinstance(exp, dict)
     )
     master_companies = set(
-        exp.get("company", "").lower()
+        _normalize_company(exp.get("company", ""))
         for exp in master.get("workExperience", [])
         if isinstance(exp, dict)
     )
@@ -426,8 +442,14 @@ def _prepare_job_description(job_description: str) -> tuple[str, bool]:
     return job_description[:MAX_JD_LENGTH], was_truncated
 
 
-def _validate_resume_structure(data: dict[str, Any]) -> bool:
+def _validate_resume_structure(
+    data: dict[str, Any], baseline: dict[str, Any] | None = None
+) -> bool:
     """LLM-014: Validate resume maintains required structure after keyword injection.
+
+    Args:
+        data: The resume data to validate
+        baseline: Optional baseline resume to compare against (pre-injection state)
 
     Returns:
         True if structure is valid, False otherwise.
@@ -445,6 +467,19 @@ def _validate_resume_structure(data: dict[str, Any]) -> bool:
         if field in data and not isinstance(data[field], list):
             logger.warning("Resume structure invalid: '%s' is not a list", field)
             return False
+
+    # If baseline provided, ensure workExperience hasn't been shortened
+    if baseline and "workExperience" in baseline:
+        baseline_we = baseline.get("workExperience", [])
+        data_we = data.get("workExperience", [])
+        if isinstance(baseline_we, list) and isinstance(data_we, list):
+            if len(data_we) < len(baseline_we):
+                logger.warning(
+                    "Resume structure invalid: workExperience shortened from %d to %d",
+                    len(baseline_we),
+                    len(data_we),
+                )
+                return False
 
     return True
 
@@ -499,7 +534,7 @@ async def inject_keywords(
             logger.warning("Keyword injection returned non-dict: %s", type(result))
             return tailored
 
-        if not _validate_resume_structure(result):
+        if not _validate_resume_structure(result, tailored):
             logger.warning(
                 "Keyword injection corrupted resume structure, using original"
             )
@@ -515,6 +550,7 @@ async def inject_keywords(
 def fix_alignment_violations(
     tailored: dict[str, Any],
     violations: list[AlignmentViolation],
+    master: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Remove or correct alignment violations.
 
@@ -523,6 +559,7 @@ def fix_alignment_violations(
     Args:
         tailored: Tailored resume data
         violations: List of alignment violations to fix
+        master: Master resume data (source of truth) - required for company restoration
 
     Returns:
         Fixed resume data
@@ -546,18 +583,45 @@ def fix_alignment_violations(
             ]
 
         elif violation.violation_type == "fabricated_company":
-            # SVC-002: Remove the fabricated work experience entry
+            # SVC-002: Fix the fabricated work experience entry by restoring
+            # the original company name from master (match by normalized name)
             logger.error("Critical: Fabricated company detected: %s", violation.value)
-            if "workExperience" in fixed:
-                fixed["workExperience"] = [
+            if "workExperience" in fixed and master:
+                master_companies = [
                     exp
-                    for exp in fixed["workExperience"]
-                    if exp.get("company", "").lower() != violation.value.lower()
+                    for exp in master.get("workExperience", [])
+                    if isinstance(exp, dict)
                 ]
-                logger.info(
-                    "Removed fabricated company '%s' from resume",
-                    violation.value,
-                )
+                for exp in fixed["workExperience"]:
+                    if not isinstance(exp, dict):
+                        continue
+                    exp_company = _normalize_company(exp.get("company", ""))
+                    if exp_company == violation.value:
+                        # Find matching master entry by normalized company
+                        master_match = next(
+                            (
+                                m
+                                for m in master_companies
+                                if _normalize_company(m.get("company", "")) == violation.value
+                            ),
+                            None,
+                        )
+                        if master_match:
+                            # Restore the original company name from master
+                            original_company = master_match.get("company", "")
+                            logger.info(
+                                "Restored company '%s' from master for entry: %s",
+                                original_company,
+                                exp.get("title", ""),
+                            )
+                            exp["company"] = original_company
+                        else:
+                            # No master match - keep the entry but log warning
+                            # (don't delete, to avoid losing all experiences)
+                            logger.warning(
+                                "No master match for company '%s', keeping entry to preserve work experience",
+                                violation.value,
+                            )
 
     return fixed
 
@@ -691,6 +755,71 @@ def _extract_all_text_cached(data_json: str) -> str:
                     parts.extend(str(i) for i in items)
 
     return " ".join(p for p in parts if p)
+
+
+def _restore_missing_work_experience(
+    baseline: dict[str, Any],
+    refined: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """Restore missing work experience entries from baseline.
+
+    If the refined resume has fewer work experience entries than the baseline,
+    restore the missing ones by matching on normalized company/title.
+
+    Args:
+        baseline: Resume data before refinement (with full work experience)
+        refined: Resume data after refinement (may have lost entries)
+
+    Returns:
+        Tuple of (restored resume data, list of warnings)
+    """
+    warnings: list[str] = []
+    baseline_we = baseline.get("workExperience", [])
+    refined_we = refined.get("workExperience", [])
+
+    if not isinstance(baseline_we, list) or not isinstance(refined_we, list):
+        return refined, warnings
+
+    if len(refined_we) >= len(baseline_we):
+        return refined, warnings
+
+    # Build lookup of refined entries by normalized company
+    refined_by_company = {}
+    for exp in refined_we:
+        if isinstance(exp, dict):
+            key = _normalize_company(exp.get("company", ""))
+            if key:
+                refined_by_company[key] = exp
+
+    restored_we = list(refined_we)
+    restored_count = 0
+
+    for base_exp in baseline_we:
+        if not isinstance(base_exp, dict):
+            continue
+        key = _normalize_company(base_exp.get("company", ""))
+        if key and key not in refined_by_company:
+            # This entry was lost - restore it from baseline
+            restored_we.append(copy.deepcopy(base_exp))
+            restored_count += 1
+            logger.info(
+                "Restored missing work experience entry: %s",
+                base_exp.get("company", "Unknown"),
+            )
+
+    if restored_count > 0:
+        refined["workExperience"] = restored_we
+        warnings.append(
+            f"Refinement dropped {restored_count} experience entr{'y' if restored_count == 1 else 'ies'}; "
+            f"restored from pre-refinement baseline"
+        )
+        logger.warning(
+            "Restored %d missing work experience entr%s after refinement",
+            restored_count,
+            "y" if restored_count == 1 else "ies",
+        )
+
+    return refined, warnings
 
 
 def _deep_copy(data: dict[str, Any]) -> dict[str, Any]:

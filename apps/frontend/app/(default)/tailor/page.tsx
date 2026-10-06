@@ -108,7 +108,9 @@ export default function TailorPage() {
       .catch(() => {
         // Silently ignore — modal still works without it
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [showDiffModal, selectedJobId]);
 
   const router = useRouter();
@@ -704,6 +706,7 @@ export default function TailorPage() {
           detailedChanges={pendingResult?.data?.detailed_changes}
           shouldApply={modalShouldApply ?? undefined}
           errorMessage={diffConfirmError ?? undefined}
+          warnings={pendingResult?.data?.warnings}
         />
       )}
 

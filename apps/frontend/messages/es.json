@@ -31,7 +31,8 @@
     "unknown": "Desconocido",
     "keysCleared": "Claves API borradas con éxito",
     "databaseReset": "Base de datos restablecida con éxito",
-    "popupBlocked": "Se bloqueó la ventana emergente. Permite las ventanas emergentes o abre manualmente esta URL: {url}"
+    "popupBlocked": "Se bloqueó la ventana emergente. Permite las ventanas emergentes o abre manualmente esta URL: {url}",
+    "done": "Listo"
   },
   "home": {
     "brandLine1": "Currículum",
@@ -905,7 +906,8 @@
       "languageChanges": "Cambios en idiomas",
       "awardChanges": "Cambios en premios",
       "rejectButton": "Rechazar y regenerar",
-      "confirmButton": "Confirmar y guardar"
+      "confirmButton": "Confirmar y guardar",
+      "warningsTitle": "Advertencias de refinamiento"
     },
     "regenerateDialog": {
       "title": "¿Regenerar el currículum personalizado?",
@@ -1178,6 +1180,74 @@
       "invalidPort": "Número de puerto no válido.",
       "togglePasswordVisibility": "Mostrar u ocultar la contraseña de aplicación"
     }
+  },
+  "emailSignature": {
+    "label": "Firma de correo (HTML)",
+    "placeholder": "<p><strong>Tu nombre</strong><br>Cargo<br><a href=\"https://tusitio.com\">Sitio web</a></p>",
+    "hint": "Opcional. Se añade a la parte HTML de los correos salientes al enviar. Los clientes de solo texto reciben una versión simplificada. Déjalo vacío para usar la línea de contacto automática.",
+    "preview": "Vista previa",
+    "tooLong": "La firma es demasiado larga (máx. {count} caracteres). Acórtala en la pestaña HTML.",
+    "modes": {
+      "visual": "Visual",
+      "html": "HTML"
+    },
+    "form": {
+      "name": "Nombre completo",
+      "title": "Cargo",
+      "company": "Empresa",
+      "phone": "Teléfono",
+      "email": "Correo",
+      "website": "Sitio web",
+      "linkedin": "LinkedIn",
+      "color": "Color de acento",
+      "layout": {
+        "label": "Diseño",
+        "stacked": "Apilado",
+        "inline": "En línea",
+        "table": "Dos columnas"
+      },
+      "generate": "Generar",
+      "fromProfile": "Rellenar desde el perfil",
+      "details": "Datos de contacto",
+      "seedHint": "La identidad se rellena desde tu perfil profesional: cambia el diseño y el color.",
+      "regenerateHint": "La vista previa se actualiza al escribir. Rellena los campos y cambia a HTML para ediciones detalladas.",
+      "styles": "Estilo de texto",
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "underline": "Subrayado",
+      "divider": "Línea divisoria",
+      "usePhoto": "Foto de perfil",
+      "noPhoto": "Sube una foto de perfil para usarla como logo.",
+      "tagline": "Lema",
+      "sections": {
+        "layout": "Diseño",
+        "style": "Estilo",
+        "position": "Posición y espaciado"
+      },
+      "photoPosition": {
+        "label": "Posición de la foto",
+        "top": "Arriba",
+        "left": "Izquierda",
+        "right": "Derecha"
+      },
+      "align": {
+        "label": "Alineación",
+        "left": "Izquierda",
+        "center": "Centro",
+        "right": "Derecha"
+      },
+      "nameSize": "Tamaño del nombre",
+      "photoSize": "Tamaño de la foto",
+      "spacing": {
+        "label": "Espaciado",
+        "compact": "Compacto",
+        "normal": "Normal",
+        "relaxed": "Amplio"
+      },
+      "padding": "Relleno exterior"
+    },
+    "edit": "Editar firma",
+    "title": "Firma de correo"
   },
   "resumeViewer": {
     "resumeNotFound": "Currículum no encontrado",
@@ -1484,6 +1554,8 @@
       "editHint": "Click to edit",
       "viewDetails": "View details",
       "address": "Dirección",
+      "city": "Ciudad",
+      "country": "País",
       "email": "Enviar correo a esta empresa"
     },
     "size": {
@@ -1509,7 +1581,8 @@
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "trash": "Trash"
     },
     "form": {
       "addTitle": "Add Company",
@@ -1520,6 +1593,8 @@
       "email": "Email",
       "phone": "Phone",
       "address": "Address",
+      "city": "City",
+      "country": "Country",
       "website": "Website",
       "linkedin": "LinkedIn URL",
       "industry": "Industry",
@@ -1531,6 +1606,10 @@
       "none": "None",
       "validation": "Company name is required.",
       "invalidYear": "Year must be between 1600 and 2100.",
+      "companyDescription": "Descripción",
+      "companyDescriptionPlaceholder": "¿A qué se dedica esta empresa? Lo obtenemos del sitio web si lo dejas vacío.",
+      "descriptionOrWebsite": "Añade una descripción o un sitio web — usamos el sitio web para obtener una automáticamente.",
+      "autoFetchHint": "¿Vacío? Obtenemos la descripción del sitio web una sola vez — puedes editarla cuando quieras.",
       "failed": "Could not save the company.",
       "save": "Save Changes",
       "submit": "Add Company"
@@ -1553,6 +1632,9 @@
       "clearFilters": "Limpiar filtros",
       "size": "Size",
       "type": "Type",
+      "address": "Dirección",
+      "city": "Ciudad",
+      "country": "País",
       "groupBy": "Group by",
       "groupNone": "No grouping",
       "groupSize": "Company size",
@@ -1563,6 +1645,7 @@
       "sortDateDesc": "Más recientes primero",
       "sortDateAsc": "Más antiguos primero",
       "status": "Status",
+      "statusNone": "Sin estado",
       "columns": "Columns",
       "import": "Import",
       "export": "Export CSV",
@@ -1656,9 +1739,8 @@
     },
     "bulkEmail": {
       "title": "Correo masivo",
-      "description": "Envía correos personalizados generados por IA a {count} empresas. Cada correo será investigado y personalizado.",
+      "description": "Envía correos personalizados generados por IA a {count} empresas. Cada correo será personalizado.",
       "stepConfigure": "Configurar",
-      "stepResearch": "Investigar",
       "stepGenerate": "Generar",
       "stepPreview": "Vista previa",
       "stepSending": "Enviando",
@@ -1666,9 +1748,6 @@
       "instructionLabel": "Instrucciones adicionales",
       "instructionPlaceholder": "p. ej. Menciona mis 5 años de experiencia, menos de 100 palabras",
       "generateAll": "Generar todos",
-      "researchingAll": "Investigando empresas...",
-      "researching": "Investigando {company}...",
-      "researchSources": "Fuentes encontradas: {sources}",
       "generating": "Generando correos personalizados...",
       "sendAll": "Enviar todos",
       "edit": "Editar",
@@ -1678,8 +1757,6 @@
       "progress": "{sent} de {total} enviados",
       "done": "¡Todos los correos enviados!",
       "close": "Cerrar",
-      "research": "Investigar",
-      "researchSummary": "Resumen de investigación",
       "regen": "Regenerar",
       "regenTarget": "Qué regenerar",
       "regenBoth": "Ambos",
@@ -1765,7 +1842,7 @@
     "form": {
       "addTitle": "Add Contact",
       "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
+      "description": "Descripción",
       "name": "Full name",
       "namePlaceholder": "e.g. Jane Doe",
       "company": "Company",
@@ -1782,7 +1859,6 @@
       "save": "Save Changes",
       "submit": "Add Contact",
       "email": "Email",
-      "description": "Descripción",
       "descriptionPlaceholder": "Notas opcionales sobre este contacto…",
       "linkedinUrl": "URL de LinkedIn",
       "linkedinUrlPlaceholder": "https://linkedin.com/in/…",

@@ -1,9 +1,13 @@
 """Unit tests for refiner pure functions — no LLM calls needed."""
 
 import copy
+import logging
 import pytest
 
 from app.services.refiner import (
+    _normalize_company,
+    _restore_missing_work_experience,
+    _validate_resume_structure,
     analyze_keyword_gaps,
     calculate_keyword_match,
     fix_alignment_violations,
@@ -325,3 +329,211 @@ class TestCalculateKeywordMatch:
         pct = calculate_keyword_match(sample_resume, keywords)
         # "Go" is not in the sample resume as a standalone word
         assert pct == 0.0
+
+
+class TestNormalizeCompany:
+    """Tests for _normalize_company() — company name normalization."""
+
+    def test_strips_location_suffix_pipe(self):
+        assert _normalize_company("Barmajti IT | Remote") == "barmajti it"
+
+    def test_strips_location_suffix_dash(self):
+        assert _normalize_company("JCI Hammam Sousse - Tunisia") == "jci hammam sousse"
+
+    def test_casefold_and_whitespace(self):
+        assert _normalize_company("  BARMAJTI   IT  |  Remote  ") == "barmajti it"
+
+    def test_empty_string(self):
+        assert _normalize_company("") == ""
+
+    def test_none_input(self):
+        assert _normalize_company(None) == ""
+
+    def test_no_suffix_unchanged(self):
+        assert _normalize_company("Acme Corp") == "acme corp"
+
+
+class TestValidateMasterAlignmentNormalized:
+    """Tests for validate_master_alignment() with normalized company comparison."""
+
+    def test_no_violation_for_location_suffix_difference(self, sample_resume, master_resume):
+        """Companies differing only by '| Location' suffix should NOT be flagged."""
+        tailored = copy.deepcopy(sample_resume)
+        # Modify to have location suffix (like master_resume likely has)
+        tailored["workExperience"][0]["company"] = "Tech Corp | Remote"
+        master_resume["workExperience"][0]["company"] = "Tech Corp"
+
+        report = validate_master_alignment(tailored, master_resume)
+        company_violations = [v for v in report.violations if v.violation_type == "fabricated_company"]
+        assert len(company_violations) == 0
+
+    def test_still_flags_genuinely_new_company(self, sample_resume, master_resume):
+        """A completely new company should still be flagged as fabricated."""
+        tailored = copy.deepcopy(sample_resume)
+        tailored["workExperience"].append({
+            "id": 99,
+            "title": "Engineer",
+            "company": "Totally Fake Corp",
+            "years": "2020 - 2021",
+            "description": ["Did things"],
+        })
+        report = validate_master_alignment(tailored, master_resume)
+        company_violations = [v for v in report.violations if v.violation_type == "fabricated_company"]
+        assert len(company_violations) == 1
+        assert "totally fake corp" in company_violations[0].value
+
+
+class TestFixAlignmentViolationsNeverEmptiesWorkExperience:
+    """Tests that fix_alignment_violations never empties workExperience."""
+
+    def test_restores_company_from_master_on_match(self, sample_resume, master_resume):
+        """When normalized company matches, restore master's original company string."""
+        tailored = copy.deepcopy(sample_resume)
+        tailored["workExperience"][0]["company"] = "Tech Corp"  # Without suffix
+        master_resume["workExperience"][0]["company"] = "Tech Corp | Remote"
+
+        violations = [
+            AlignmentViolation(
+                field_path="workExperience",
+                violation_type="fabricated_company",
+                value="tech corp",  # normalized
+                severity="critical",
+            )
+        ]
+        fixed = fix_alignment_violations(tailored, violations, master=master_resume)
+        # Should restore the master's company string
+        assert fixed["workExperience"][0]["company"] == "Tech Corp | Remote"
+
+    def test_never_empties_work_experience(self, sample_resume, master_resume):
+        """Even with multiple fabricated companies, should not empty the list."""
+        tailored = copy.deepcopy(sample_resume)
+        # Add two fabricated companies
+        tailored["workExperience"].extend([
+            {"id": 3, "title": "Eng", "company": "Fake Co 1", "years": "2020", "description": []},
+            {"id": 4, "title": "Eng", "company": "Fake Co 2", "years": "2021", "description": []},
+        ])
+        violations = [
+            AlignmentViolation(
+                field_path="workExperience",
+                violation_type="fabricated_company",
+                value="fake co 1",
+                severity="critical",
+            ),
+            AlignmentViolation(
+                field_path="workExperience",
+                violation_type="fabricated_company",
+                value="fake co 2",
+                severity="critical",
+            ),
+        ]
+        fixed = fix_alignment_violations(tailored, violations, master=master_resume)
+        # Should keep at least the original entries
+        assert len(fixed["workExperience"]) >= len(sample_resume["workExperience"])
+
+    def test_keeps_entry_with_no_master_match_logs_warning(self, sample_resume, master_resume, caplog):
+        """Entry with no master match should be kept (not deleted)."""
+        tailored = copy.deepcopy(sample_resume)
+        tailored["workExperience"].append({
+            "id": 99,
+            "title": "Engineer",
+            "company": "Unique Corp",
+            "years": "2020 - 2021",
+            "description": ["Did things"],
+        })
+        violations = [
+            AlignmentViolation(
+                field_path="workExperience",
+                violation_type="fabricated_company",
+                value="unique corp",
+                severity="critical",
+            )
+        ]
+        with caplog.at_level(logging.WARNING):
+            fixed = fix_alignment_violations(tailored, violations, master=master_resume)
+        # Entry should still be there (not deleted)
+        assert any(exp.get("company") == "Unique Corp" for exp in fixed["workExperience"])
+        # Warning should have been logged
+        assert any("No master match" in record.message for record in caplog.records)
+
+
+class TestValidateResumeStructureWithBaseline:
+    """Tests for _validate_resume_structure() with baseline comparison."""
+
+    def test_accepts_same_length_work_experience(self, sample_resume):
+        assert _validate_resume_structure(sample_resume, baseline=sample_resume) is True
+
+    def test_rejects_shorter_work_experience(self, sample_resume):
+        """Should reject if workExperience has fewer entries than baseline."""
+        data = copy.deepcopy(sample_resume)
+        data["workExperience"] = data["workExperience"][:1]  # Reduce to 1 entry
+        assert _validate_resume_structure(data, baseline=sample_resume) is False
+
+    def test_rejects_missing_work_experience(self, sample_resume):
+        """Should reject if workExperience key is missing."""
+        data = copy.deepcopy(sample_resume)
+        del data["workExperience"]
+        assert _validate_resume_structure(data, baseline=sample_resume) is False
+
+    def test_rejects_empty_work_experience(self, sample_resume):
+        """Should reject if workExperience is empty list when baseline has entries."""
+        data = copy.deepcopy(sample_resume)
+        data["workExperience"] = []
+        assert _validate_resume_structure(data, baseline=sample_resume) is False
+
+    def test_accepts_without_baseline(self, sample_resume):
+        """Should accept if no baseline provided (backwards compat)."""
+        data = copy.deepcopy(sample_resume)
+        data["workExperience"] = []
+        assert _validate_resume_structure(data, baseline=None) is True
+
+
+class TestRestoreMissingWorkExperience:
+    """Tests for _restore_missing_work_experience() post-refinement guard."""
+
+    def test_restores_missing_entries(self, sample_resume):
+        """Should restore entries lost during refinement."""
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+        refined["workExperience"] = refined["workExperience"][:1]  # Lose one entry
+
+        restored, warnings = _restore_missing_work_experience(baseline, refined)
+
+        assert len(restored["workExperience"]) == len(baseline["workExperience"])
+        assert len(warnings) == 1
+        assert "restored" in warnings[0].lower()
+
+    def test_no_op_when_equal_or_more(self, sample_resume):
+        """Should not add entries if refined has same or more."""
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+
+        restored, warnings = _restore_missing_work_experience(baseline, refined)
+        assert len(restored["workExperience"]) == len(refined["workExperience"])
+        assert len(warnings) == 0
+
+        # Add extra entry
+        refined["workExperience"].append({"id": 99, "title": "Extra", "company": "Extra Co", "years": "2022", "description": []})
+        restored, warnings = _restore_missing_work_experience(baseline, refined)
+        assert len(restored["workExperience"]) == len(refined["workExperience"])
+        assert len(warnings) == 0
+
+    def test_handles_missing_keys_gracefully(self):
+        """Should not crash if workExperience key is missing."""
+        baseline = {"workExperience": [{"id": 1, "company": "Test"}]}
+        refined = {"workExperience": []}
+        restored, warnings = _restore_missing_work_experience(baseline, refined)
+        assert restored["workExperience"] == baseline["workExperience"]
+        assert len(warnings) == 1
+
+    def test_matches_by_normalized_company(self, sample_resume):
+        """Should match entries by normalized company name."""
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+        # Change company in refined (LLM normalization) - remove "| Remote" suffix
+        refined["workExperience"][0]["company"] = "Tech Corp"
+        baseline["workExperience"][0]["company"] = "Tech Corp | Remote"
+
+        restored, warnings = _restore_missing_work_experience(baseline, refined)
+        # Should recognize it's the same company and not add duplicate
+        assert len(restored["workExperience"]) == len(baseline["workExperience"])
+        assert len(warnings) == 0

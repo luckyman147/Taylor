@@ -31,7 +31,8 @@
     "unknown": "未知",
     "keysCleared": "API密钥已成功清除",
     "databaseReset": "数据库已成功重置",
-    "popupBlocked": "弹窗被阻止。请允许弹窗或手动打开此链接：{url}"
+    "popupBlocked": "弹窗被阻止。请允许弹窗或手动打开此链接：{url}",
+    "done": "完成"
   },
   "home": {
     "brandLine1": "简历",
@@ -905,7 +906,8 @@
       "languageChanges": "语言变更",
       "awardChanges": "奖项变更",
       "rejectButton": "拒绝并重新生成",
-      "confirmButton": "确认并保存"
+      "confirmButton": "确认并保存",
+      "warningsTitle": "优化阶段警告"
     },
     "regenerateDialog": {
       "title": "重新生成定制简历？",
@@ -1178,6 +1180,74 @@
       "invalidPort": "端口号无效。",
       "togglePasswordVisibility": "切换应用密码可见性"
     }
+  },
+  "emailSignature": {
+    "label": "邮件签名 (HTML)",
+    "placeholder": "<p><strong>您的姓名</strong><br>职位<br><a href=\"https://yoursite.com\">网站</a></p>",
+    "hint": "可选。发送时附加到外发邮件的 HTML 部分。纯文本客户端会收到简化版本。留空则使用自动联系方式行。",
+    "preview": "预览",
+    "tooLong": "签名过长（最多 {count} 个字符）。请在 HTML 标签页中缩短。",
+    "modes": {
+      "visual": "可视化",
+      "html": "HTML"
+    },
+    "form": {
+      "name": "姓名",
+      "title": "职位",
+      "company": "公司",
+      "phone": "电话",
+      "email": "邮箱",
+      "website": "网站",
+      "linkedin": "LinkedIn",
+      "color": "强调色",
+      "layout": {
+        "label": "布局",
+        "stacked": "堆叠",
+        "inline": "单行",
+        "table": "两栏"
+      },
+      "generate": "生成",
+      "fromProfile": "从资料填充",
+      "details": "联系方式",
+      "seedHint": "身份信息已从职业资料填充 — 只需调整布局和颜色。",
+      "regenerateHint": "输入时预览会更新。填写字段后可切换到 HTML 进行精细编辑。",
+      "styles": "文字样式",
+      "bold": "粗体",
+      "italic": "斜体",
+      "underline": "下划线",
+      "divider": "分隔线",
+      "usePhoto": "头像",
+      "noPhoto": "上传头像后即可用作 logo。",
+      "tagline": "标语",
+      "sections": {
+        "layout": "布局",
+        "style": "样式",
+        "position": "位置与间距"
+      },
+      "photoPosition": {
+        "label": "照片位置",
+        "top": "顶部",
+        "left": "左侧",
+        "right": "右侧"
+      },
+      "align": {
+        "label": "对齐",
+        "left": "左对齐",
+        "center": "居中",
+        "right": "右对齐"
+      },
+      "nameSize": "姓名字号",
+      "photoSize": "照片尺寸",
+      "spacing": {
+        "label": "间距",
+        "compact": "紧凑",
+        "normal": "正常",
+        "relaxed": "宽松"
+      },
+      "padding": "外边距"
+    },
+    "edit": "编辑签名",
+    "title": "邮件签名"
   },
   "resumeViewer": {
     "resumeNotFound": "未找到简历",
@@ -1484,6 +1554,8 @@
       "editHint": "Click to edit",
       "viewDetails": "View details",
       "address": "地址",
+      "city": "城市",
+      "country": "国家",
       "email": "给这家公司发邮件"
     },
     "size": {
@@ -1509,7 +1581,8 @@
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "trash": "Trash"
     },
     "form": {
       "addTitle": "Add Company",
@@ -1520,6 +1593,8 @@
       "email": "Email",
       "phone": "Phone",
       "address": "Address",
+      "city": "City",
+      "country": "Country",
       "website": "Website",
       "linkedin": "LinkedIn URL",
       "industry": "Industry",
@@ -1531,6 +1606,10 @@
       "none": "None",
       "validation": "Company name is required.",
       "invalidYear": "Year must be between 1600 and 2100.",
+      "companyDescription": "描述",
+      "companyDescriptionPlaceholder": "这家公司是做什么的？留空则从网站获取。",
+      "descriptionOrWebsite": "添加描述或网站 — 我们会自动从网站获取描述。",
+      "autoFetchHint": "留空？我们会从网站获取一次描述 — 随时可编辑。",
       "failed": "Could not save the company.",
       "save": "Save Changes",
       "submit": "Add Company"
@@ -1553,6 +1632,9 @@
       "clearFilters": "清除筛选",
       "size": "Size",
       "type": "Type",
+      "address": "地址",
+      "city": "城市",
+      "country": "国家",
       "groupBy": "Group by",
       "groupNone": "No grouping",
       "groupSize": "Company size",
@@ -1563,6 +1645,7 @@
       "sortDateDesc": "最新优先",
       "sortDateAsc": "最早优先",
       "status": "Status",
+      "statusNone": "无状态",
       "columns": "Columns",
       "import": "Import",
       "export": "Export CSV",
@@ -1656,9 +1739,8 @@
     },
     "bulkEmail": {
       "title": "批量邮件",
-      "description": "向 {count} 家公司发送AI生成的个性化邮件。每封邮件都会经过研究和定制。",
+      "description": "向 {count} 家公司发送AI生成的个性化邮件。每封邮件都会进行定制。",
       "stepConfigure": "配置",
-      "stepResearch": "研究",
       "stepGenerate": "生成",
       "stepPreview": "预览",
       "stepSending": "发送中",
@@ -1666,9 +1748,6 @@
       "instructionLabel": "额外指示",
       "instructionPlaceholder": "例如：提及我5年的经验，100字以内",
       "generateAll": "全部生成",
-      "researchingAll": "正在研究公司...",
-      "researching": "正在研究 {company}...",
-      "researchSources": "找到的来源: {sources}",
       "generating": "正在生成个性化邮件...",
       "sendAll": "全部发送",
       "edit": "编辑",
@@ -1678,8 +1757,6 @@
       "progress": "已发送 {sent} / 共 {total}",
       "done": "所有邮件已发送！",
       "close": "关闭",
-      "research": "研究",
-      "researchSummary": "研究摘要",
       "regen": "重新生成",
       "regenTarget": "重新生成内容",
       "regenBoth": "两者",
@@ -1765,7 +1842,7 @@
     "form": {
       "addTitle": "Add Contact",
       "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
+      "description": "描述",
       "name": "Full name",
       "namePlaceholder": "e.g. Jane Doe",
       "company": "Company",
@@ -1782,7 +1859,6 @@
       "save": "Save Changes",
       "submit": "Add Contact",
       "email": "Email",
-      "description": "描述",
       "descriptionPlaceholder": "关于此联系人的可选备注…",
       "linkedinUrl": "LinkedIn URL",
       "linkedinUrlPlaceholder": "https://linkedin.com/in/…",
@@ -2031,7 +2107,7 @@
       "searchPlaceholder": "搜索技能",
       "noResults": "没有与搜索匹配的技能。",
       "alreadyExists": "该技能已存在于你的档案中。",
-      "duplicateWarning": "\u201c{name}\u201d 已存在于你的资料中。你可以从下方列表中编辑它。",
+      "duplicateWarning": "“{name}” 已存在于你的资料中。你可以从下方列表中编辑它。",
       "add": "Add skill",
       "edit": "Edit skill",
       "delete": "Delete skill",

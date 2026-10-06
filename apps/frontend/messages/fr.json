@@ -31,7 +31,8 @@
     "unknown": "Inconnu",
     "keysCleared": "Clés API supprimées avec succès",
     "databaseReset": "Base de données réinitialisée avec succès",
-    "popupBlocked": "Fenêtre contextuelle bloquée. Veuillez autoriser les fenêtres contextuelles ou ouvrir cette URL manuellement : {url}"
+    "popupBlocked": "Fenêtre contextuelle bloquée. Veuillez autoriser les fenêtres contextuelles ou ouvrir cette URL manuellement : {url}",
+    "done": "Terminé"
   },
   "home": {
     "brandLine1": "Resume",
@@ -905,7 +906,8 @@
       "languageChanges": "Modifications des langues",
       "awardChanges": "Modifications des récompenses",
       "rejectButton": "Rejeter et régénérer",
-      "confirmButton": "Confirmer et enregistrer"
+      "confirmButton": "Confirmer et enregistrer",
+      "warningsTitle": "Avertissements de raffinement"
     },
     "regenerateDialog": {
       "title": "Régénérer le CV personnalisé ?",
@@ -1178,6 +1180,74 @@
       "invalidPort": "Numéro de port invalide.",
       "togglePasswordVisibility": "Afficher ou masquer le mot de passe d'application"
     }
+  },
+  "emailSignature": {
+    "label": "Signature e-mail (HTML)",
+    "placeholder": "<p><strong>Votre nom</strong><br>Titre<br><a href=\"https://votresite.com\">Site web</a></p>",
+    "hint": "Facultatif. Ajouté à la partie HTML des e-mails sortants à l'envoi. Les clients en texte brut reçoivent une version simplifiée. Laissez vide pour utiliser la ligne de contact automatique.",
+    "preview": "Aperçu",
+    "tooLong": "Signature trop longue (max {count} caractères). Raccourcissez-la dans l'onglet HTML.",
+    "modes": {
+      "visual": "Visuel",
+      "html": "HTML"
+    },
+    "form": {
+      "name": "Nom complet",
+      "title": "Titre",
+      "company": "Entreprise",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "website": "Site web",
+      "linkedin": "LinkedIn",
+      "color": "Couleur d'accent",
+      "layout": {
+        "label": "Disposition",
+        "stacked": "Empilé",
+        "inline": "En ligne",
+        "table": "Deux colonnes"
+      },
+      "generate": "Générer",
+      "fromProfile": "Remplir depuis le profil",
+      "details": "Coordonnées",
+      "seedHint": "L'identité est remplie depuis votre profil de carrière — modifiez la mise en page et la couleur.",
+      "regenerateHint": "L'aperçu se met à jour en tapant. Remplissez les champs et passez en HTML pour des modifications précises.",
+      "styles": "Style de texte",
+      "bold": "Gras",
+      "italic": "Italique",
+      "underline": "Souligné",
+      "divider": "Ligne de séparation",
+      "usePhoto": "Photo de profil",
+      "noPhoto": "Téléversez une photo de profil pour l’utiliser comme logo.",
+      "tagline": "Slogan",
+      "sections": {
+        "layout": "Disposition",
+        "style": "Style",
+        "position": "Position et espacement"
+      },
+      "photoPosition": {
+        "label": "Position de la photo",
+        "top": "Haut",
+        "left": "Gauche",
+        "right": "Droite"
+      },
+      "align": {
+        "label": "Alignement",
+        "left": "Gauche",
+        "center": "Centre",
+        "right": "Droite"
+      },
+      "nameSize": "Taille du nom",
+      "photoSize": "Taille de la photo",
+      "spacing": {
+        "label": "Espacement",
+        "compact": "Compact",
+        "normal": "Normal",
+        "relaxed": "Espacé"
+      },
+      "padding": "Marge extérieure"
+    },
+    "edit": "Modifier la signature",
+    "title": "Signature e-mail"
   },
   "resumeViewer": {
     "resumeNotFound": "CV introuvable",
@@ -1484,6 +1554,8 @@
       "editHint": "Click to edit",
       "viewDetails": "View details",
       "address": "Adresse",
+      "city": "Ville",
+      "country": "Pays",
       "email": "Envoyer un e-mail à cette entreprise"
     },
     "size": {
@@ -1509,7 +1581,8 @@
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "trash": "Trash"
     },
     "form": {
       "addTitle": "Add Company",
@@ -1520,6 +1593,8 @@
       "email": "Email",
       "phone": "Phone",
       "address": "Address",
+      "city": "City",
+      "country": "Country",
       "website": "Website",
       "linkedin": "LinkedIn URL",
       "industry": "Industry",
@@ -1531,6 +1606,10 @@
       "none": "None",
       "validation": "Company name is required.",
       "invalidYear": "Year must be between 1600 and 2100.",
+      "companyDescription": "Description",
+      "companyDescriptionPlaceholder": "Que fait cette entreprise ? On la récupère depuis le site web si laissé vide.",
+      "descriptionOrWebsite": "Ajoutez une description ou un site web — le site web sert à en récupérer une automatiquement.",
+      "autoFetchHint": "Vide ? On récupère la description du site web une seule fois — modifiable à tout moment.",
       "failed": "Could not save the company.",
       "save": "Save Changes",
       "submit": "Add Company"
@@ -1553,6 +1632,9 @@
       "clearFilters": "Effacer les filtres",
       "size": "Size",
       "type": "Type",
+      "address": "Adresse",
+      "city": "Ville",
+      "country": "Pays",
       "groupBy": "Group by",
       "groupNone": "No grouping",
       "groupSize": "Company size",
@@ -1563,6 +1645,7 @@
       "sortDateDesc": "Plus récents d'abord",
       "sortDateAsc": "Plus anciens d'abord",
       "status": "Status",
+      "statusNone": "Sans statut",
       "columns": "Columns",
       "import": "Import",
       "export": "Export CSV",
@@ -1656,9 +1739,8 @@
     },
     "bulkEmail": {
       "title": "E-mails en masse",
-      "description": "Envoyer des e-mails personnalisés générés par l'IA à {count} entreprises. Chaque e-mail sera investigué et personnalisé.",
+      "description": "Envoyer des e-mails personnalisés générés par l'IA à {count} entreprises. Chaque e-mail sera personnalisé.",
       "stepConfigure": "Configurer",
-      "stepResearch": "Rechercher",
       "stepGenerate": "Générer",
       "stepPreview": "Aperçu",
       "stepSending": "Envoi",
@@ -1666,9 +1748,6 @@
       "instructionLabel": "Instructions supplémentaires",
       "instructionPlaceholder": "ex. Mentionnez mes 5 ans d'expérience, moins de 100 mots",
       "generateAll": "Tout générer",
-      "researchingAll": "Recherche des entreprises...",
-      "researching": "Recherche de {company}...",
-      "researchSources": "Sources trouvées : {sources}",
       "generating": "Génération des e-mails personnalisés...",
       "sendAll": "Tout envoyer",
       "edit": "Modifier",
@@ -1678,8 +1757,6 @@
       "progress": "{sent} sur {total} envoyés",
       "done": "Tous les e-mails envoyés !",
       "close": "Fermer",
-      "research": "Rechercher",
-      "researchSummary": "Résumé de la recherche",
       "regen": "Régénérer",
       "regenTarget": "Que régénérer",
       "regenBoth": "Les deux",
@@ -1765,7 +1842,7 @@
     "form": {
       "addTitle": "Add Contact",
       "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
+      "description": "Description",
       "name": "Full name",
       "namePlaceholder": "e.g. Jane Doe",
       "company": "Company",
@@ -1782,7 +1859,6 @@
       "save": "Save Changes",
       "submit": "Add Contact",
       "email": "Email",
-      "description": "Description",
       "descriptionPlaceholder": "Notes optionnelles sur ce contact…",
       "linkedinUrl": "URL LinkedIn",
       "linkedinUrlPlaceholder": "https://linkedin.com/in/…",
@@ -2031,7 +2107,7 @@
       "searchPlaceholder": "Rechercher des compétences",
       "noResults": "Aucune compétence ne correspond à votre recherche.",
       "alreadyExists": "Cette compétence existe déjà dans votre profil.",
-      "duplicateWarning": "\u00ab {name} \u00bb existe déjà dans votre profil. Vous pouvez le modifier dans la liste ci-dessous.",
+      "duplicateWarning": "« {name} » existe déjà dans votre profil. Vous pouvez le modifier dans la liste ci-dessous.",
       "add": "Add skill",
       "edit": "Edit skill",
       "delete": "Delete skill",

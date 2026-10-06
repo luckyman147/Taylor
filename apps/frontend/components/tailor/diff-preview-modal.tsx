@@ -27,6 +27,7 @@ interface DiffPreviewModalProps {
   recommendationsError?: string | null;
   onRecommendationAction?: (id: string, action: 'accept' | 'reject' | 'apply') => void;
   onRegenerateRecommendations?: (rejectedIds: string[]) => void;
+  warnings?: string[];
 }
 
 export function DiffPreviewModal({
@@ -44,6 +45,7 @@ export function DiffPreviewModal({
   recommendationsError,
   onRecommendationAction,
   onRegenerateRecommendations,
+  warnings,
 }: DiffPreviewModalProps) {
   const { t } = useTranslations();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -51,10 +53,15 @@ export function DiffPreviewModal({
   );
 
   // Recommendation action states
-  const [recStatuses, setRecStatuses] = useState<Record<string, 'accepted' | 'rejected' | 'applied'>>({});
+  const [recStatuses, setRecStatuses] = useState<
+    Record<string, 'accepted' | 'rejected' | 'applied'>
+  >({});
 
   const handleRecAction = (id: string, action: 'accept' | 'reject' | 'apply') => {
-    setRecStatuses((prev) => ({ ...prev, [id]: action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'applied' }));
+    setRecStatuses((prev) => ({
+      ...prev,
+      [id]: action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'applied',
+    }));
     onRecommendationAction?.(id, action);
   };
 
@@ -165,6 +172,23 @@ export function DiffPreviewModal({
           </p>
         </DialogHeader>
 
+        {/* Warnings from refinement */}
+        {warnings && warnings.length > 0 && (
+          <div className="border border-amber-300 bg-amber-50 p-3 mt-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className=" text-xs font-bold uppercase text-amber-800">
+                {t('tailor.diffModal.warningsTitle')}
+              </span>
+            </div>
+            <ul className=" text-xs text-amber-800 list-disc list-inside space-y-1">
+              {warnings.map((warning, idx) => (
+                <li key={idx}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Summary cards */}
         <div className="border border-[#e6e3dc] bg-white p-4 mt-4">
           <div className="flex items-center gap-2 mb-3">
@@ -226,24 +250,36 @@ export function DiffPreviewModal({
               <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
                 {t('tailor.jobIntel.shouldApply.title')}
               </span>
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 border rounded ${
-                shouldApply.verdict === 'yes' ? 'bg-green-100 text-green-700 border-green-300' :
-                shouldApply.verdict === 'conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                'bg-red-100 text-red-700 border-red-300'
-              }`}>
-                {shouldApply.verdict === 'yes' ? t('tailor.jobIntel.shouldApply.verdictYes') :
-                 shouldApply.verdict === 'conditional' ? t('tailor.jobIntel.shouldApply.verdictConditional') :
-                 t('tailor.jobIntel.shouldApply.verdictNo')}
+              <span
+                className={`text-[10px] font-bold uppercase px-2 py-0.5 border rounded ${
+                  shouldApply.verdict === 'yes'
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : shouldApply.verdict === 'conditional'
+                      ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                      : 'bg-red-100 text-red-700 border-red-300'
+                }`}
+              >
+                {shouldApply.verdict === 'yes'
+                  ? t('tailor.jobIntel.shouldApply.verdictYes')
+                  : shouldApply.verdict === 'conditional'
+                    ? t('tailor.jobIntel.shouldApply.verdictConditional')
+                    : t('tailor.jobIntel.shouldApply.verdictNo')}
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs">
-              <span className="font-bold">{shouldApply.match_percent}% {t('tailor.jobIntel.shouldApply.matchPercent')}</span>
+              <span className="font-bold">
+                {shouldApply.match_percent}% {t('tailor.jobIntel.shouldApply.matchPercent')}
+              </span>
               <span className="text-ink-soft">{shouldApply.verdict_reason}</span>
             </div>
             {shouldApply.ghost_risk_percent >= 30 && (
-              <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 border rounded ${
-                shouldApply.ghost_risk_percent >= 60 ? 'bg-red-100 text-red-700 border-red-300' : 'bg-yellow-100 text-yellow-700 border-yellow-300'
-              }`}>
+              <span
+                className={`ml-auto text-[10px] font-bold px-2 py-0.5 border rounded ${
+                  shouldApply.ghost_risk_percent >= 60
+                    ? 'bg-red-100 text-red-700 border-red-300'
+                    : 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                }`}
+              >
                 {shouldApply.ghost_risk_percent}% {t('tailor.jobIntel.redFlags.ghostRisk')}
               </span>
             )}
@@ -257,7 +293,9 @@ export function DiffPreviewModal({
         )}
 
         {/* Recruiter Recommendations */}
-        {(recommendations && recommendations.length > 0) || isGeneratingRecommendations || recommendationsError ? (
+        {(recommendations && recommendations.length > 0) ||
+        isGeneratingRecommendations ||
+        recommendationsError ? (
           <ChangeSection
             title={t('tailor.jobIntel.recommendations.title')}
             count={recommendations?.length ?? 0}
@@ -304,7 +342,9 @@ export function DiffPreviewModal({
                             <div className="mt-1.5 p-2 bg-gray-50 border border-[#e6e3dc] text-[10px] text-ink-soft">
                               <span className="font-mono">{rec.change.path}</span>
                               {rec.change.before && (
-                                <span className="ml-2 line-through text-red-600">{rec.change.before}</span>
+                                <span className="ml-2 line-through text-red-600">
+                                  {rec.change.before}
+                                </span>
                               )}
                               {rec.change.after && (
                                 <span className="ml-2 text-green-700">{rec.change.after}</span>
@@ -314,14 +354,20 @@ export function DiffPreviewModal({
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           {status && (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                              status === 'accepted' ? 'bg-green-100 text-green-700' :
-                              status === 'rejected' ? 'bg-red-100 text-red-700' :
-                              'bg-blue-100 text-blue-700'
-                            }`}>
-                              {status === 'accepted' ? t('tailor.jobIntel.recommendations.accepted') :
-                               status === 'rejected' ? t('tailor.jobIntel.recommendations.rejected') :
-                               t('tailor.jobIntel.recommendations.applied')}
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                status === 'accepted'
+                                  ? 'bg-green-100 text-green-700'
+                                  : status === 'rejected'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-blue-100 text-blue-700'
+                              }`}
+                            >
+                              {status === 'accepted'
+                                ? t('tailor.jobIntel.recommendations.accepted')
+                                : status === 'rejected'
+                                  ? t('tailor.jobIntel.recommendations.rejected')
+                                  : t('tailor.jobIntel.recommendations.applied')}
                             </span>
                           )}
                           {!status && (

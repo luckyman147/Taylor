@@ -9,6 +9,7 @@ import unicodedata
 from collections.abc import Awaitable
 from pathlib import Path
 from typing import Any, NoReturn
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 from app.schemas import (
     ATSScore,
     ATSSubScores,
+    BatchUploadResultItem,
     GenerateContentRequest,
     GenerateContentResponse,
     GenerateInterviewPrepResponse,
@@ -67,7 +69,11 @@ from app.services.improver import (
     _prepare_keywords_for_prompt,
 )
 from app.services.mcp.github import get_matched_repos_for_job
-from app.services.refiner import refine_resume, calculate_keyword_match
+from app.services.refiner import (
+    refine_resume,
+    calculate_keyword_match,
+    _restore_missing_work_experience,
+)
 from app.services.ats import compute_ats_score
 from app.schemas.refinement import RefinementConfig
 from app.services.cover_letter import (
@@ -595,7 +601,8 @@ async def _generate_auxiliary_messages(
     task_labels: list[str] = []
 
     # Title generation is always on (no feature flag)
-    generation_tasks.append(generate_resume_title(job_content, language))
+    candidate_name = improved_data.get("personalInfo", {}).get("name", "")
+    generation_tasks.append(generate_resume_title(job_content, language, candidate_name))
     task_labels.append("title")
 
     if enable_cover_letter:
@@ -1316,6 +1323,14 @@ async def _improve_preview_flow(
         if refinement_attempted:
             response_warnings.append(f"Refinement failed: {str(e)}")
 
+    # Router-level guard: restore work experience if refinement lost entries
+    # (defense in depth - also covers full-output fallback path)
+    if master_data:
+        improved_data, restore_warnings = _restore_missing_work_experience(
+            master_data, improved_data
+        )
+        response_warnings.extend(restore_warnings)
+
     # Deterministic skill presentation: trim to JD-relevant, evidenced skills
     # and group them by category (additional.skillGroups). Runs after
     # refinement so refiner-injected JD skills survive the trim.
@@ -1731,6 +1746,14 @@ async def improve_resume_endpoint(
             if refinement_attempted:
                 response_warnings.append(f"Refinement failed: {str(e)}")
 
+        # Router-level guard: restore work experience if refinement lost entries
+        # (defense in depth - also covers full-output fallback path)
+        if master_data:
+            improved_data, restore_warnings = _restore_missing_work_experience(
+                master_data, improved_data
+            )
+            response_warnings.extend(restore_warnings)
+
         # Deterministic skill presentation: trim to JD-relevant, evidenced
         # skills and group them by category (additional.skillGroups). Runs
         # after refinement so refiner-injected JD skills survive the trim.
@@ -2036,6 +2059,12 @@ async def download_resume_pdf(
     borderAboveHeader: float = Query(0, ge=0, le=10),
     borderBelowHeader: float = Query(0, ge=0, le=10),
     borderSectionTitles: float = Query(1, ge=0, le=10),
+    avatarShow: bool = Query(False),
+    avatarShape: str = Query("circle", pattern="^(circle|rounded|square|none)$"),
+    avatarSize: str = Query("medium", pattern="^(small|medium|large)$"),
+    avatarBorder: float = Query(0, ge=0, le=10),
+    avatarPosition: str = Query("left", pattern="^(left|center|right)$"),
+    avatarInfoGap: int = Query(3, ge=1, le=5),
     lang: str | None = Query(None, pattern="^[a-z]{2}(-[A-Z]{2})?$"),
 ) -> Response:
     """Generate a PDF for a resume using headless Chromium.
@@ -2112,7 +2141,7 @@ async def download_resume_pdf(
         f"&compactMode={str(compactMode).lower()}"
         f"&showContactIcons={str(showContactIcons).lower()}"
         f"&accentColor={accentColor}"
-        f"{f'&customAccentColor={customAccentColor}' if customAccentColor else ''}"
+        f"{f'&customAccentColor={quote(customAccentColor)}' if customAccentColor else ''}"
         f"&workShowBy={workShowBy}"
         f"&workDatesBy={workDatesBy}"
         f"&workLocationBy={workLocationBy}"
@@ -2146,10 +2175,25 @@ async def download_resume_pdf(
         f"&borderAboveHeader={borderAboveHeader}"
         f"&borderBelowHeader={borderBelowHeader}"
         f"&borderSectionTitles={borderSectionTitles}"
+        f"&avatarShow={str(avatarShow).lower()}"
+        f"&avatarShape={avatarShape}"
+        f"&avatarSize={avatarSize}"
+        f"&avatarBorder={avatarBorder}"
+        f"&avatarPosition={avatarPosition}"
+        f"&avatarInfoGap={avatarInfoGap}"
     )
     if lang:
         params = f"{params}&lang={lang}"
     url = f"{settings.frontend_base_url}/print/resumes/{resume_id}?{params}"
+
+    avatar_url = resume.get("processed_data", {}).get("personalInfo", {}).get("avatar", "")
+    logger.info(
+        "PDF render: resume_id=%s avatarShow=%s avatar_url=%s print_url=%s",
+        resume_id,
+        avatarShow,
+        avatar_url or "(empty)",
+        url,
+    )
 
     # Use the exact margins provided; compact mode only affects spacing.
     pdf_margins = {
@@ -2589,3 +2633,303 @@ async def download_cover_letter_pdf(
         "Content-Disposition": f'attachment; filename="cover_letter_{resume_id}.pdf"'
     }
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
+# ---------------------------------------------------------------------------
+# Batch upload & bulk export
+# ---------------------------------------------------------------------------
+
+MAX_BATCH_FILES = 10
+
+
+@router.post("/upload/batch", response_model=list[BatchUploadResultItem])
+async def upload_resumes_batch(
+    files: list[UploadFile] = File(...),
+) -> list[BatchUploadResultItem]:
+    """Upload and process multiple resume files (PDF/DOCX) at once.
+
+    Each file goes through the same pipeline as a single upload:
+    parse to Markdown → optional LLM parse to structured JSON.
+    No file is auto-promoted to master.
+    """
+    if len(files) > MAX_BATCH_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files. Maximum: {MAX_BATCH_FILES}",
+        )
+
+    results: list[BatchUploadResultItem] = []
+
+    for upload_file in files:
+        filename = upload_file.filename or "resume.pdf"
+
+        # Validate file type
+        if upload_file.content_type not in ALLOWED_TYPES:
+            results.append(
+                BatchUploadResultItem(
+                    filename=filename,
+                    error=f"Invalid file type: {upload_file.content_type}",
+                )
+            )
+            continue
+
+        # Read and validate size
+        content = await upload_file.read()
+        if len(content) > MAX_FILE_SIZE:
+            results.append(
+                BatchUploadResultItem(
+                    filename=filename,
+                    error=f"File too large. Maximum: {MAX_FILE_SIZE // (1024 * 1024)}MB",
+                )
+            )
+            continue
+
+        if len(content) == 0:
+            results.append(
+                BatchUploadResultItem(filename=filename, error="Empty file")
+            )
+            continue
+
+        # Convert to markdown
+        try:
+            markdown_content = await parse_document(content, filename)
+        except Exception as e:
+            logger.error(f"Document parsing failed for {filename}: {e}")
+            results.append(
+                BatchUploadResultItem(
+                    filename=filename,
+                    error="Failed to parse document",
+                )
+            )
+            continue
+
+        if not markdown_content or not markdown_content.strip():
+            results.append(
+                BatchUploadResultItem(
+                    filename=filename,
+                    error="Could not extract text from file",
+                )
+            )
+            continue
+
+        # Store in database
+        resume = await db.create_resume_atomic_master(
+            content=markdown_content,
+            content_type="md",
+            filename=filename,
+            processed_data=None,
+            processing_status="processing",
+            original_markdown=markdown_content,
+            as_master=False,
+        )
+
+        # Try LLM parse
+        try:
+            processed_data = await parse_resume_to_json(markdown_content)
+            await db.update_resume(
+                resume["resume_id"],
+                {
+                    "processed_data": processed_data,
+                    "processing_status": "ready",
+                },
+            )
+            results.append(
+                BatchUploadResultItem(
+                    filename=filename,
+                    resume_id=resume["resume_id"],
+                    processing_status="ready",
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Resume parsing to JSON failed for {filename}: {e}")
+            await db.update_resume(
+                resume["resume_id"], {"processing_status": "failed"}
+            )
+            results.append(
+                BatchUploadResultItem(
+                    filename=filename,
+                    resume_id=resume["resume_id"],
+                    processing_status="failed",
+                    error="LLM parsing failed",
+                )
+            )
+
+    return results
+
+
+@router.get("/export/all-pdf")
+async def export_all_resumes_pdf(
+    filter: str = Query("all", pattern="^(all|masters|tailored)$"),
+) -> Response:
+    """Export ready resumes as a ZIP of PDF files.
+
+    Args:
+        filter: "all", "masters", or "tailored"
+
+    Each resume is rendered with its own template_settings (fonts, layout, etc.)
+    via the shared Playwright browser, up to 5 in parallel.
+    """
+    import io
+    import zipfile
+
+    CONCURRENT_LIMIT = 5
+
+    resumes = await db.list_resumes()
+    ready_resumes = [r for r in resumes if r.get("processing_status") == "ready"]
+
+    if filter == "masters":
+        ready_resumes = [r for r in ready_resumes if r.get("is_master")]
+    elif filter == "tailored":
+        ready_resumes = [r for r in ready_resumes if not r.get("is_master")]
+
+    if not ready_resumes:
+        raise HTTPException(
+            status_code=404, detail="No ready resumes to export"
+        )
+
+    # Fetch full resume data (with template_settings) for each
+    full_resumes: list[dict[str, Any]] = []
+    for r in ready_resumes:
+        full = await db.get_resume(r["resume_id"])
+        if full:
+            full_resumes.append(full)
+
+    semaphore = asyncio.Semaphore(CONCURRENT_LIMIT)
+
+    def _build_print_url(resume: dict[str, Any]) -> str:
+        """Build the frontend print URL with all template settings."""
+        resume_id = resume["resume_id"]
+        ts = resume.get("template_settings") or {}
+
+        def _get(*keys: str, default: Any = "") -> Any:
+            val = ts
+            for k in keys:
+                if isinstance(val, dict):
+                    val = val.get(k)
+                else:
+                    return default
+            return val if val is not None else default
+
+        def _bool(val: Any) -> str:
+            return str(bool(val)).lower()
+
+        params = (
+            f"template={_get('template', default='swiss-single')}"
+            f"&pageSize={_get('pageSize', default='A4')}"
+            f"&marginTop={_get('margins', 'top', default=10)}"
+            f"&marginBottom={_get('margins', 'bottom', default=10)}"
+            f"&marginLeft={_get('margins', 'left', default=10)}"
+            f"&marginRight={_get('margins', 'right', default=10)}"
+            f"&sectionSpacing={_get('spacing', 'section', default=3)}"
+            f"&itemSpacing={_get('spacing', 'item', default=2)}"
+            f"&lineHeight={_get('lineHeight', default=135)}"
+            f"&listLineHeight={_get('listLineHeight', default=125)}"
+            f"&dateFormat={_get('dateFormat', default='short')}"
+            f"&headerAlign={_get('alignment', 'header', default='center')}"
+            f"&dateAlign={_get('alignment', 'date', default='right')}"
+            f"&locationAlign={_get('alignment', 'location', default='left')}"
+            f"&skillsLayout={_get('skillsLayout', default='comma')}"
+            f"&fontSize={_get('fontSize', 'base', default=3)}"
+            f"&headerScale={_get('fontSize', 'headerScale', default=3)}"
+            f"&headerFont={_get('fontSize', 'headerFont', default='serif')}"
+            f"&bodyFont={_get('fontSize', 'bodyFont', default='sans-serif')}"
+            f"&compactMode={_bool(_get('compactMode', default=False))}"
+            f"&showContactIcons={_bool(_get('showContactIcons', default=False))}"
+            f"&accentColor={_get('accentColor', default='blue')}"
+        )
+        custom_color = _get("customAccentColor", default=None)
+        if custom_color:
+            params += f"&customAccentColor={quote(custom_color)}"
+
+        params += (
+            f"&workShowBy={_get('workExperience', 'showBy', default='position')}"
+            f"&workDatesBy={_get('workExperience', 'datesBy', default='position')}"
+            f"&workLocationBy={_get('workExperience', 'locationBy', default='company')}"
+            f"&educationShowBy={_get('education', 'showBy', default='institution')}"
+            f"&educationLayout={_get('education', 'layout', default='stacked')}"
+            f"&bulletMarker={_get('advanced', 'bulletMarker', default='•')}"
+            f"&listSeparator={_get('advanced', 'listSeparator', default=',')}"
+            f"&sizeFullName={_get('advanced', 'textSizes', 'fullName', default=21)}"
+            f"&sizePrimaryHeading={_get('advanced', 'textSizes', 'primaryHeading', default=12)}"
+            f"&sizeSecondaryHeading={_get('advanced', 'textSizes', 'secondaryHeading', default=10.5)}"
+            f"&sizeSectionTitle={_get('advanced', 'textSizes', 'sectionTitle', default=12.5)}"
+            f"&sizeBodyCopy={_get('advanced', 'textSizes', 'bodyCopy', default=10.5)}"
+            f"&sizeMinorCopy={_get('advanced', 'textSizes', 'minorCopy', default=8)}"
+            f"&weightFullName={_get('advanced', 'textWeights', 'fullName', default='bold')}"
+            f"&weightPrimaryHeading={_get('advanced', 'textWeights', 'primaryHeading', default='regular')}"
+            f"&weightSecondaryHeading={_get('advanced', 'textWeights', 'secondaryHeading', default='bold')}"
+            f"&weightSectionTitle={_get('advanced', 'textWeights', 'sectionTitle', default='bold')}"
+            f"&weightBodyCopy={_get('advanced', 'textWeights', 'bodyCopy', default='regular')}"
+            f"&weightMinorCopy={_get('advanced', 'textWeights', 'minorCopy', default='regular')}"
+            f"&transformFullName={_get('advanced', 'textTransforms', 'fullName', default='as-written')}"
+            f"&transformPrimaryHeading={_get('advanced', 'textTransforms', 'primaryHeading', default='as-written')}"
+            f"&transformSecondaryHeading={_get('advanced', 'textTransforms', 'secondaryHeading', default='as-written')}"
+            f"&transformSectionTitle={_get('advanced', 'textTransforms', 'sectionTitle', default='uppercase')}"
+            f"&transformBodyCopy={_get('advanced', 'textTransforms', 'bodyCopy', default='as-written')}"
+            f"&transformMinorCopy={_get('advanced', 'textTransforms', 'minorCopy', default='as-written')}"
+            f"&vspaceBetweenSections={_get('advanced', 'verticalSpacing', 'betweenSections', default=12)}"
+            f"&vspaceTitlesContent={_get('advanced', 'verticalSpacing', 'titlesContent', default=3)}"
+            f"&vspacePrimarySecondary={_get('advanced', 'verticalSpacing', 'primarySecondaryHeadings', default=3)}"
+            f"&vspaceContentBlocks={_get('advanced', 'verticalSpacing', 'contentBlocks', default=3)}"
+            f"&vspaceListItems={_get('advanced', 'verticalSpacing', 'listItems', default=2)}"
+            f"&borderAboveHeader={_get('advanced', 'borders', 'aboveHeader', 'thickness', default=0)}"
+            f"&borderBelowHeader={_get('advanced', 'borders', 'belowHeader', 'thickness', default=0)}"
+            f"&borderSectionTitles={_get('advanced', 'borders', 'sectionTitles', 'thickness', default=1)}"
+            f"&avatarShow={_bool(_get('avatar', 'show', default=False))}"
+            f"&avatarShape={_get('avatar', 'shape', default='circle')}"
+            f"&avatarSize={_get('avatar', 'size', default='medium')}"
+            f"&avatarBorder={_get('avatar', 'border', default=0)}"
+            f"&avatarPosition={_get('avatar', 'position', default='left')}"
+            f"&avatarInfoGap={_get('avatar', 'infoGap', default=3)}"
+        )
+
+        return f"{settings.frontend_base_url}/print/resumes/{resume_id}?{params}"
+
+    async def _render_one(
+        resume: dict[str, Any],
+    ) -> tuple[str, bytes | None, str | None]:
+        resume_id = resume["resume_id"]
+        is_master = resume.get("is_master", False)
+        title = resume.get("title") or resume.get("filename") or resume_id
+        safe_name = (
+            title.strip().replace(" ", "_")
+            .replace("/", "_")
+            .replace("\\", "_")
+        )
+        prefix = "Master" if is_master else "Tailored"
+        pdf_filename = f"{prefix}_{safe_name}.pdf"
+        url = _build_print_url(resume)
+
+        async with semaphore:
+            try:
+                pdf_bytes = await render_resume_pdf(
+                    url, page_size="A4", selector=".resume-print"
+                )
+                return pdf_filename, pdf_bytes, None
+            except Exception as e:
+                return pdf_filename, None, f"{resume_id} ({title}): {e}"
+
+    tasks = [_render_one(r) for r in full_resumes]
+    results = await asyncio.gather(*tasks)
+
+    zip_buffer = io.BytesIO()
+    errors: list[str] = []
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for pdf_filename, pdf_bytes, error in results:
+            if error:
+                errors.append(error)
+            elif pdf_bytes:
+                zf.writestr(pdf_filename, pdf_bytes)
+
+        if errors:
+            zf.writestr("errors.txt", "\n".join(errors))
+
+    zip_buffer.seek(0)
+    return Response(
+        content=zip_buffer.read(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="resumes_export.zip"'
+        },
+    )

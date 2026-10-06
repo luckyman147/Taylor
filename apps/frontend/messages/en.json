@@ -31,7 +31,8 @@
     "unknown": "Unknown",
     "keysCleared": "API keys cleared successfully",
     "databaseReset": "Database reset successfully",
-    "popupBlocked": "Popup blocked. Please allow popups or open this URL manually: {url}"
+    "popupBlocked": "Popup blocked. Please allow popups or open this URL manually: {url}",
+    "done": "Done"
   },
   "home": {
     "brandLine1": "Resume",
@@ -906,7 +907,8 @@
       "languageChanges": "Language Changes",
       "awardChanges": "Award Changes",
       "rejectButton": "Reject & Regenerate",
-      "confirmButton": "Confirm & Save"
+      "confirmButton": "Confirm & Save",
+      "warningsTitle": "Refinement Warnings"
     },
     "regenerateDialog": {
       "title": "Regenerate tailored resume?",
@@ -1179,6 +1181,74 @@
       "invalidPort": "Invalid port number.",
       "togglePasswordVisibility": "Show or hide the app password"
     }
+  },
+  "emailSignature": {
+    "label": "Email Signature (HTML)",
+    "placeholder": "<p><strong>Your Name</strong><br>Title<br><a href=\"https://yoursite.com\">Website</a></p>",
+    "hint": "Optional. Appended to the HTML part of outgoing emails when you send. Plain text clients get a stripped fallback. Leave empty to use the automatic contact line instead.",
+    "preview": "Preview",
+    "tooLong": "Signature is too long (max {count} characters). Shorten it in the HTML tab.",
+    "modes": {
+      "visual": "Visual",
+      "html": "HTML"
+    },
+    "form": {
+      "name": "Full name",
+      "title": "Title",
+      "company": "Company",
+      "phone": "Phone",
+      "email": "Email",
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "color": "Accent color",
+      "layout": {
+        "label": "Layout",
+        "stacked": "Stacked",
+        "inline": "Inline",
+        "table": "Two-column"
+      },
+      "generate": "Generate",
+      "fromProfile": "Fill from profile",
+      "details": "Contact details",
+      "seedHint": "Identity is filled from your career profile — tweak layout and color.",
+      "regenerateHint": "The preview updates as you type. Fill the fields and switch to HTML if you need fine-grained edits.",
+      "styles": "Text style",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "divider": "Divider line",
+      "usePhoto": "Profile photo",
+      "noPhoto": "Upload a profile photo to use it as your logo.",
+      "tagline": "Tagline",
+      "sections": {
+        "layout": "Layout",
+        "style": "Style",
+        "position": "Position & spacing"
+      },
+      "photoPosition": {
+        "label": "Photo position",
+        "top": "Top",
+        "left": "Left",
+        "right": "Right"
+      },
+      "align": {
+        "label": "Text align",
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      },
+      "nameSize": "Name size",
+      "photoSize": "Photo size",
+      "spacing": {
+        "label": "Spacing",
+        "compact": "Compact",
+        "normal": "Normal",
+        "relaxed": "Relaxed"
+      },
+      "padding": "Outer padding"
+    },
+    "edit": "Edit signature",
+    "title": "Email signature"
   },
   "resumeViewer": {
     "resumeNotFound": "Resume not found",
@@ -1485,6 +1555,8 @@
       "editHint": "Click to edit",
       "viewDetails": "View details",
       "address": "Address",
+      "city": "City",
+      "country": "Country",
       "email": "Email this company"
     },
     "size": {
@@ -1510,7 +1582,8 @@
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "trash": "Trash"
     },
     "form": {
       "addTitle": "Add Company",
@@ -1521,6 +1594,8 @@
       "email": "Email",
       "phone": "Phone",
       "address": "Address",
+      "city": "City",
+      "country": "Country",
       "website": "Website",
       "linkedin": "LinkedIn URL",
       "industry": "Industry",
@@ -1532,6 +1607,10 @@
       "none": "None",
       "validation": "Company name is required.",
       "invalidYear": "Year must be between 1600 and 2100.",
+      "companyDescription": "Description",
+      "companyDescriptionPlaceholder": "What does this company do? We fetch it from the website if left empty.",
+      "descriptionOrWebsite": "Add a description or a website — the website is used to fetch one automatically.",
+      "autoFetchHint": "Empty? We fetch a description from the website once — you can edit it anytime.",
       "failed": "Could not save the company.",
       "save": "Save Changes",
       "submit": "Add Company"
@@ -1554,6 +1633,9 @@
       "clearFilters": "Clear filters",
       "size": "Size",
       "type": "Type",
+      "address": "Address",
+      "city": "City",
+      "country": "Country",
       "groupBy": "Group by",
       "groupNone": "No grouping",
       "groupSize": "Company size",
@@ -1564,6 +1646,7 @@
       "sortDateDesc": "Newest first",
       "sortDateAsc": "Oldest first",
       "status": "Status",
+      "statusNone": "No status",
       "columns": "Columns",
       "import": "Import",
       "export": "Export CSV",
@@ -1657,9 +1740,8 @@
     },
     "bulkEmail": {
       "title": "Bulk Email",
-      "description": "Send personalized AI-generated emails to {count} companies. Each email will be researched and customized.",
+      "description": "Send personalized AI-generated emails to {count} companies. Each email will be customized.",
       "stepConfigure": "Configure",
-      "stepResearch": "Research",
       "stepGenerate": "Generate",
       "stepPreview": "Preview",
       "stepSending": "Sending",
@@ -1667,9 +1749,6 @@
       "instructionLabel": "Additional Instructions",
       "instructionPlaceholder": "e.g., Mention my 5 years of experience, keep it under 100 words",
       "generateAll": "Generate All",
-      "researchingAll": "Researching companies...",
-      "researching": "Researching {company}...",
-      "researchSources": "Sources found: {sources}",
       "generating": "Generating personalized emails...",
       "sendAll": "Send All",
       "edit": "Edit",
@@ -1679,8 +1758,6 @@
       "progress": "{sent} of {total} sent",
       "done": "All emails sent!",
       "close": "Close",
-      "research": "Research",
-      "researchSummary": "Research Summary",
       "regen": "Regenerate",
       "regenTarget": "What to regenerate",
       "regenBoth": "Both",
@@ -1766,7 +1843,7 @@
     "form": {
       "addTitle": "Add Contact",
       "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
+      "description": "Description",
       "name": "Full name",
       "namePlaceholder": "e.g. Jane Doe",
       "company": "Company",
@@ -1783,7 +1860,6 @@
       "save": "Save Changes",
       "submit": "Add Contact",
       "email": "Email",
-      "description": "Description",
       "descriptionPlaceholder": "Optional notes about this contact…",
       "linkedinUrl": "LinkedIn URL",
       "linkedinUrlPlaceholder": "https://linkedin.com/in/…",
@@ -2253,7 +2329,6 @@
       },
       "attachments": "Attachments",
       "uploadAttachment": "Upload file",
-      "selectAll": "Select all",
       "selected": "{count} selected",
       "bulkDelete": "Delete {count}"
     },

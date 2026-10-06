@@ -114,6 +114,7 @@ async def generate_cover_letter(
         prompt=prompt,
         system_prompt="You are a professional career coach and resume writer. Write compelling, personalized cover letters.",
         max_tokens=2048,
+        metadata={"trace_name": "cover_letter", "tags": ["email"]},
     )
 
     return strip_ats_analysis(result)
@@ -170,40 +171,76 @@ async def generate_outreach_message(
 
     result = await complete(
         prompt=prompt,
-        system_prompt="You are a professional networking coach. Write genuine, engaging cold outreach messages.",
+        system_prompt="You are a professional networking coach. Write genuine, engaging cold outreach messages with a real email structure: greeting line, blank line, body paragraphs separated by blank lines, sign-off, and name.",
         max_tokens=1024,
+        metadata={"trace_name": "outreach_message", "tags": ["email"]},
     )
 
-    return result.strip()
+    return _normalize_outreach_lines(result)
+
+
+def _normalize_outreach_lines(text: str) -> str:
+    """Ensure a generated outreach message has a greeting + paragraph blank lines."""
+    body = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not body:
+        return ""
+    if body.startswith("```"):
+        lines = body.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        body = "\n".join(lines).strip()
+    lines = [ln.rstrip() for ln in body.split("\n")]
+    if lines and lines[0].strip():
+        rest = lines[1:]
+        while rest and not rest[0].strip():
+            rest.pop(0)
+        lines = [lines[0], ""] + rest
+    out: list[str] = []
+    blank = False
+    for ln in lines:
+        if not ln.strip():
+            blank = True
+            continue
+        if blank and out:
+            out.append("")
+        out.append(ln)
+        blank = False
+    return "\n".join(out).strip()
 
 
 async def generate_resume_title(
     job_description: str,
     language: str = "en",
+    candidate_name: str | None = None,
 ) -> str:
     """Generate a short descriptive title from a job description.
 
     Args:
         job_description: Target job description text
         language: Output language code (en, es, zh, ja)
+        candidate_name: Optional candidate's name to include in the title
 
     Returns:
-        Generated title like "Senior Frontend Engineer @ Stripe"
+        Generated title like "John Doe - Senior Frontend Engineer @ Stripe"
     """
     output_language = get_language_name(language)
 
     prompt = GENERATE_TITLE_PROMPT.format(
         job_description=job_description,
         output_language=output_language,
+        candidate_name=candidate_name or "",
     )
 
     result = await complete(
         prompt=prompt,
         system_prompt="You extract job titles and company names from job descriptions.",
-        max_tokens=60,
+        max_tokens=80,
         temperature=0.3,
+        metadata={"trace_name": "resume_title", "tags": ["resume"]},
     )
 
-    # Strip quotes and whitespace, truncate to 80 chars
+    # Strip quotes and whitespace, truncate to 100 chars
     title = result.strip().strip("\"'")
-    return title[:80]
+    return title[:100]

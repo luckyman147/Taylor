@@ -31,7 +31,8 @@
     "unknown": "不明",
     "keysCleared": "APIキーが正常にクリアされました",
     "databaseReset": "データベースが正常にリセットされました",
-    "popupBlocked": "ポップアップがブロックされました。ポップアップを許可するか、次のURLを手動で開いてください: {url}"
+    "popupBlocked": "ポップアップがブロックされました。ポップアップを許可するか、次のURLを手動で開いてください: {url}",
+    "done": "完了"
   },
   "home": {
     "brandLine1": "履歴書",
@@ -905,7 +906,8 @@
       "languageChanges": "言語の変更",
       "awardChanges": "賞の変更",
       "rejectButton": "拒否して再生成",
-      "confirmButton": "確認して保存"
+      "confirmButton": "確認して保存",
+      "warningsTitle": "改善段階での警告"
     },
     "regenerateDialog": {
       "title": "カスタマイズ済み履歴書を再生成しますか？",
@@ -1178,6 +1180,74 @@
       "invalidPort": "ポート番号が無効です。",
       "togglePasswordVisibility": "アプリパスワードの表示を切り替える"
     }
+  },
+  "emailSignature": {
+    "label": "メール署名 (HTML)",
+    "placeholder": "<p><strong>お名前</strong><br>役職<br><a href=\"https://yoursite.com\">ウェブサイト</a></p>",
+    "hint": "任意。送信時、送信メールの HTML 部分に追加されます。テキスト専用クライアントには簡略版が渡されます。空にすると自動の連絡行を使用します。",
+    "preview": "プレビュー",
+    "tooLong": "署名が長すぎます（最大 {count} 文字）。HTML タブで短くしてください。",
+    "modes": {
+      "visual": "ビジュアル",
+      "html": "HTML"
+    },
+    "form": {
+      "name": "氏名",
+      "title": "役職",
+      "company": "会社",
+      "phone": "電話",
+      "email": "メール",
+      "website": "ウェブサイト",
+      "linkedin": "LinkedIn",
+      "color": "アクセントカラー",
+      "layout": {
+        "label": "レイアウト",
+        "stacked": "縦積み",
+        "inline": "インライン",
+        "table": "2 列"
+      },
+      "generate": "生成",
+      "fromProfile": "プロフィールから入力",
+      "details": "連絡先詳細",
+      "seedHint": "身份情報はキャリアプロフィールから入力されます。レイアウトと色を変更してください。",
+      "regenerateHint": "入力に合わせてプレビューが更新されます。詳細編集は HTML タブに切り替えてください。",
+      "styles": "文字スタイル",
+      "bold": "太字",
+      "italic": "斜体",
+      "underline": "下線",
+      "divider": "区切り線",
+      "usePhoto": "プロフィール写真",
+      "noPhoto": "ロゴとして使うにはプロフィール写真をアップロードしてください。",
+      "tagline": "タグライン",
+      "sections": {
+        "layout": "レイアウト",
+        "style": "スタイル",
+        "position": "配置と間隔"
+      },
+      "photoPosition": {
+        "label": "写真の位置",
+        "top": "上",
+        "left": "左",
+        "right": "右"
+      },
+      "align": {
+        "label": "配置",
+        "left": "左揃え",
+        "center": "中央揃え",
+        "right": "右揃え"
+      },
+      "nameSize": "名前のサイズ",
+      "photoSize": "写真のサイズ",
+      "spacing": {
+        "label": "間隔",
+        "compact": "コンパクト",
+        "normal": "標準",
+        "relaxed": "ゆったり"
+      },
+      "padding": "外側の余白"
+    },
+    "edit": "署名を編集",
+    "title": "メール署名"
   },
   "resumeViewer": {
     "resumeNotFound": "履歴書が見つかりません",
@@ -1484,6 +1554,8 @@
       "editHint": "Click to edit",
       "viewDetails": "View details",
       "address": "住所",
+      "city": "都市",
+      "country": "国",
       "email": "この企業にメールを送信"
     },
     "size": {
@@ -1509,7 +1581,8 @@
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "trash": "Trash"
     },
     "form": {
       "addTitle": "Add Company",
@@ -1520,6 +1593,8 @@
       "email": "Email",
       "phone": "Phone",
       "address": "Address",
+      "city": "City",
+      "country": "Country",
       "website": "Website",
       "linkedin": "LinkedIn URL",
       "industry": "Industry",
@@ -1531,6 +1606,10 @@
       "none": "None",
       "validation": "Company name is required.",
       "invalidYear": "Year must be between 1600 and 2100.",
+      "companyDescription": "説明",
+      "companyDescriptionPlaceholder": "この会社の事業内容。空欄の場合はウェブサイトから取得します。",
+      "descriptionOrWebsite": "説明またはウェブサイトを入力してください — ウェブサイトから自動的に取得します。",
+      "autoFetchHint": "空欄の場合、ウェブサイトから一度だけ取得します。いつでも編集できます。",
       "failed": "Could not save the company.",
       "save": "Save Changes",
       "submit": "Add Company"
@@ -1553,6 +1632,9 @@
       "clearFilters": "フィルターをクリア",
       "size": "Size",
       "type": "Type",
+      "address": "住所",
+      "city": "都市",
+      "country": "国",
       "groupBy": "Group by",
       "groupNone": "No grouping",
       "groupSize": "Company size",
@@ -1563,6 +1645,7 @@
       "sortDateDesc": "新しい順",
       "sortDateAsc": "古い順",
       "status": "Status",
+      "statusNone": "ステータスなし",
       "columns": "Columns",
       "import": "Import",
       "export": "Export CSV",
@@ -1656,9 +1739,8 @@
     },
     "bulkEmail": {
       "title": "一括メール",
-      "description": "{count}件の企業にAI生成の個人化メールを送信します。各メールは調査され、カスタマイズされます。",
+      "description": "{count}件の企業にAI生成の個人化メールを送信します。各メールはカスタマイズされます。",
       "stepConfigure": "設定",
-      "stepResearch": "調査",
       "stepGenerate": "生成",
       "stepPreview": "プレビュー",
       "stepSending": "送信中",
@@ -1666,9 +1748,6 @@
       "instructionLabel": "追加指示",
       "instructionPlaceholder": "例：5年の経験に言及、100語以内",
       "generateAll": "すべて生成",
-      "researchingAll": "企業を調査中...",
-      "researching": "{company}を調査中...",
-      "researchSources": "検出されたソース: {sources}",
       "generating": "個人化メールを生成中...",
       "sendAll": "すべて送信",
       "edit": "編集",
@@ -1678,8 +1757,6 @@
       "progress": "{total}件中{sent}件送信済み",
       "done": "すべてのメールを送信しました！",
       "close": "閉じる",
-      "research": "調査",
-      "researchSummary": "調査概要",
       "regen": "再生成",
       "regenTarget": "再生成する内容",
       "regenBoth": "両方",
@@ -1765,7 +1842,7 @@
     "form": {
       "addTitle": "Add Contact",
       "editTitle": "Edit Contact",
-      "description": "Save the details of a person in your professional network.",
+      "description": "説明",
       "name": "Full name",
       "namePlaceholder": "e.g. Jane Doe",
       "company": "Company",
@@ -1782,7 +1859,6 @@
       "save": "Save Changes",
       "submit": "Add Contact",
       "email": "Email",
-      "description": "説明",
       "descriptionPlaceholder": "この連絡先に関するオプションのメモ…",
       "linkedinUrl": "LinkedIn URL",
       "linkedinUrlPlaceholder": "https://linkedin.com/in/…",

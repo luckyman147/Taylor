@@ -36,9 +36,17 @@ Job Description:
 Candidate Resume (JSON):
 {resume_data}
 
+Required structure (multi-line, real blank lines):
+1. A short greeting line on its own line (e.g. "Hi Hiring Team,").
+2. ONE blank line.
+3. Body paragraphs, each separated by ONE blank line.
+4. A short sign-off on its own line ("Best," / "Regards,"), then your name on the next line.
+
+Never collapse the message into a single line. Never skip the greeting.
+
 Guidelines:
 - 70-100 words maximum (shorter than a cover letter)
-- First sentence: Reference specific detail from job description (team, product, technical challenge) - never open with "I'm reaching out" or "I saw your posting"
+- First body sentence: Reference specific detail from job description (team, product, technical challenge) - never open with "I'm reaching out" or "I saw your posting"
 - One sentence on strongest matching qualification with a concrete metric if available
 - End with low-friction ask: "Worth a quick chat?" not "I'd love the opportunity to discuss"
 - Tone: How you'd message a former colleague, not a stranger
@@ -54,10 +62,13 @@ IMPORTANT: Write in {output_language}.
 Job Description:
 {job_description}
 
+Candidate Name: {candidate_name}
+
 Rules:
-- Format: "Role @ Company" (e.g., "Senior Frontend Engineer @ Stripe")
-- If the company name is not found, return just the role (e.g., "Senior Frontend Engineer")
-- Maximum 60 characters
+- Format: "Candidate Name - Role @ Company" (e.g., "John Doe - Senior Frontend Engineer @ Stripe")
+- If the company name is not found, return "Candidate Name - Role" (e.g., "John Doe - Senior Frontend Engineer")
+- If candidate name is not provided, use just "Role @ Company"
+- Maximum 100 characters
 - Use the most specific role title mentioned
 - Do not add any other text, quotes, or formatting
 

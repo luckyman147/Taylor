@@ -154,6 +154,7 @@ export interface Data {
   job_analysis?: ShouldApplyResponse;
   recommendations?: RecruiterRecommendation[];
   preview_hash?: string;
+  warnings?: string[];
 }
 
 export interface ImprovedResult {
