@@ -5,12 +5,17 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app import llm_cache
 from app.main import app
 
 
 @pytest.fixture
 def client():
     """Async HTTP client for testing FastAPI endpoints."""
+    # The /status LLM probe is memoized in-process (llm_cache). Clear it so a
+    # stubbed config from one test can't satisfy (or poison) another test's
+    # health probe.
+    llm_cache.invalidate()
     transport = ASGITransport(app=app)
     return AsyncClient(transport=transport, base_url="http://test")
 
@@ -49,7 +54,7 @@ class TestStatusEndpoint:
     @patch("app.routers.health.check_llm_health", new_callable=AsyncMock)
     @patch("app.routers.health.get_llm_config")
     async def test_status_ready(self, mock_config, mock_health, mock_db, client):
-        mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai"})()
+        mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai", "model": "test-model"})()
         mock_health.return_value = {"healthy": True}
         mock_db.get_stats.return_value = {
             "total_resumes": 1,
@@ -71,7 +76,7 @@ class TestStatusEndpoint:
     @patch("app.routers.health.check_llm_health", new_callable=AsyncMock)
     @patch("app.routers.health.get_llm_config")
     async def test_status_setup_required(self, mock_config, mock_health, mock_db, client):
-        mock_config.return_value = type("C", (), {"api_key": "", "provider": "openai"})()
+        mock_config.return_value = type("C", (), {"api_key": "", "provider": "openai", "model": "test-model"})()
         mock_health.return_value = {"healthy": False}
         mock_db.get_stats.return_value = {
             "total_resumes": 0,
@@ -93,7 +98,7 @@ class TestStatusEndpoint:
     ):
         """A failing LLM health probe degrades llm_healthy, not the endpoint:
         /status still returns 200 and the DB check still runs."""
-        mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai"})()
+        mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai", "model": "test-model"})()
         mock_health.side_effect = RuntimeError("llm boom")
         mock_db.get_stats.return_value = {
             "total_resumes": 2,
@@ -118,7 +123,7 @@ class TestStatusEndpoint:
     ):
         """A failing DB stats query degrades its fields, not the endpoint:
         /status still returns 200 and the LLM check still runs."""
-        mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai"})()
+        mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai", "model": "test-model"})()
         mock_health.return_value = {"healthy": True}
         mock_db.get_stats.side_effect = RuntimeError("db boom")
         async with client:
@@ -138,7 +143,7 @@ class TestStatusEndpoint:
         """openai_compatible (like ollama) runs without an API key, so it must
         report llm_configured=True to stay consistent with the health check."""
         mock_config.return_value = type(
-            "C", (), {"api_key": "", "provider": "openai_compatible"}
+            "C", (), {"api_key": "", "provider": "openai_compatible", "model": "test-model"}
         )()
         mock_health.return_value = {"healthy": True}
         mock_db.get_stats.return_value = {
@@ -151,3 +156,48 @@ class TestStatusEndpoint:
             resp = await client.get("/api/v1/status")
         assert resp.status_code == 200
         assert resp.json()["llm_configured"] is True
+
+    @patch("app.routers.health.db", new_callable=AsyncMock)
+    @patch("app.routers.health.check_llm_health", new_callable=AsyncMock)
+    @patch("app.routers.health.get_llm_config")
+    async def test_status_reports_llm_usage_counters(
+        self, mock_config, mock_health, mock_db, client
+    ):
+        """/status surfaces in-process LLM token usage (per call-site tag plus
+        totals) so rate-limit burn can be read off the status page."""
+        from types import SimpleNamespace
+
+        from app.llm import record_llm_usage, reset_llm_usage
+
+        mock_config.return_value = type(
+            "C", (), {"api_key": "sk-test", "provider": "openai", "model": "test-model"}
+        )()
+        mock_health.return_value = {"healthy": True}
+        mock_db.get_stats.return_value = {
+            "total_resumes": 1,
+            "total_jobs": 0,
+            "total_improvements": 0,
+            "has_master_resume": True,
+            "master_resume_count": 1,
+        }
+        reset_llm_usage()
+        record_llm_usage(
+            SimpleNamespace(
+                usage=SimpleNamespace(prompt_tokens=12, completion_tokens=34)
+            ),
+            "chat_planner",
+        )
+        try:
+            async with client:
+                resp = await client.get("/api/v1/status")
+        finally:
+            reset_llm_usage()
+
+        assert resp.status_code == 200
+        usage = resp.json()["llm_usage"]
+        assert usage["totals"] == {
+            "calls": 1,
+            "prompt_tokens": 12,
+            "completion_tokens": 34,
+        }
+        assert usage["by_tag"]["chat_planner"]["calls"] == 1

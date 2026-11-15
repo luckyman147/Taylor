@@ -38,12 +38,53 @@ _init_lock = asyncio.Lock()  # Lock to prevent race condition during initializat
 _subprocess_lock = asyncio.Lock()
 _subprocess_supported = True
 
+# One quick retry when the Playwright driver (node) subprocess dies right
+# after spawn — transient on Windows (AV/resource contention) and it surfaces
+# as a plain Exception, not a playwright Error.
+_DRIVER_RETRY_DELAY = 1.0
+_DRIVER_CLOSED_MSG = "Connection closed while reading from the driver"
+
+
+def _is_driver_connection_error(error: BaseException) -> bool:
+    """True when the Playwright driver subprocess died mid-connection.
+
+    Playwright raises this as a *plain* Exception (see
+    ``playwright/_impl/_transport.py``), so it is NOT a ``playwright.Error``
+    and would otherwise escape every ``except PlaywrightError`` handler as a
+    raw ASGI 500 with a full traceback.
+    """
+    return _DRIVER_CLOSED_MSG in str(error)
+
+
+async def _dispose_renderer_state() -> None:
+    """Best-effort teardown of the module-global browser/driver state.
+
+    Used when the persistent driver died: close anything half-open, swallow
+    secondary errors from the dead connection, and clear the globals so the
+    next call re-initializes from scratch. Never raises.
+    """
+    global _playwright, _browser
+    browser, playwright = _browser, _playwright
+    _browser = None
+    _playwright = None
+    if browser is not None:
+        try:
+            await asyncio.wait_for(browser.close(), timeout=5)
+        except Exception:
+            pass
+    if playwright is not None:
+        try:
+            await asyncio.wait_for(playwright.stop(), timeout=5)
+        except Exception:
+            pass
+
 
 async def init_pdf_renderer() -> None:
     """Initialize the Playwright browser instance.
 
     Uses asyncio.Lock to prevent race conditions when multiple
     concurrent requests try to initialize the browser simultaneously.
+    Retries once when the driver connection drops during startup.
     """
     global _playwright, _browser
 
@@ -56,8 +97,32 @@ async def init_pdf_renderer() -> None:
         # Double-check after acquiring lock
         if _browser is not None:
             return
-        _playwright = await async_playwright().start()
-        _browser = await _launch_browser(_playwright)
+        for attempt in (0, 1):
+            started = None
+            try:
+                started = await async_playwright().start()
+                _playwright = started
+                _browser = await _launch_browser(_playwright)
+                return
+            except Exception as e:
+                # Drop any half-open state so the retry (or the next request)
+                # starts clean instead of reusing a dead driver.
+                _playwright = None
+                _browser = None
+                if started is not None:
+                    try:
+                        await asyncio.wait_for(started.stop(), timeout=5)
+                    except Exception:
+                        pass
+                if attempt == 0 and _is_driver_connection_error(e):
+                    logger.warning(
+                        "Playwright driver connection dropped during init; "
+                        "retrying once: %s",
+                        e,
+                    )
+                    await asyncio.sleep(_DRIVER_RETRY_DELAY)
+                    continue
+                raise
 
 
 def _resolve_pdf_format(page_size: str) -> str:
@@ -156,6 +221,11 @@ async def _render_page_to_pdf(
     await page.wait_for_function(
         "() => document.fonts.ready.then(() => true)", timeout=_NAV_TIMEOUT_MS
     )
+    # Wait for all images (e.g. avatar) to finish loading before generating PDF.
+    await page.wait_for_function(
+        "() => Array.from(document.images).every(img => img.complete)",
+        timeout=_NAV_TIMEOUT_MS,
+    )
     return await page.pdf(
         format=pdf_format,
         print_background=True,
@@ -174,7 +244,12 @@ async def _render_with_browser(
     try:
         return await _render_page_to_pdf(page, url, selector, pdf_format, pdf_margins)
     finally:
-        await page.close()
+        # Never let page teardown clobber an already-successful render or the
+        # real error (a dead driver fails close() too).
+        try:
+            await page.close()
+        except Exception:
+            pass
 
 
 def _run_in_new_loop(coro: Awaitable[bytes]) -> bytes:
@@ -203,14 +278,33 @@ def _render_resume_pdf_sync(
     pdf_margins: dict,
 ) -> bytes:
     async def _run() -> bytes:
-        async with async_playwright() as playwright:
-            browser = await _launch_browser(playwright)
+        for attempt in (0, 1):
             try:
-                return await _render_with_browser(
-                    browser, url, selector, pdf_format, pdf_margins
-                )
-            finally:
-                await browser.close()
+                async with async_playwright() as playwright:
+                    browser = await _launch_browser(playwright)
+                    try:
+                        return await _render_with_browser(
+                            browser, url, selector, pdf_format, pdf_margins
+                        )
+                    finally:
+                        # A dead driver also fails close(); never let teardown
+                        # clobber an already-successful render (or the real
+                        # error we want to retry on).
+                        try:
+                            await browser.close()
+                        except Exception:
+                            pass
+            except Exception as e:
+                # Fresh driver per attempt: if the driver subprocess died at
+                # startup, retry once with a clean one before failing.
+                if attempt == 0 and _is_driver_connection_error(e):
+                    logger.warning(
+                        "Playwright driver died during render; retrying once: %s",
+                        e,
+                    )
+                    await asyncio.sleep(_DRIVER_RETRY_DELAY)
+                    continue
+                raise
 
     return _run_in_new_loop(_run())
 
@@ -226,7 +320,16 @@ async def _render_resume_pdf_in_thread(
     )
 
 
-def _raise_playwright_error(error: PlaywrightError, url: str) -> NoReturn:
+def _raise_playwright_error(error: Exception, url: str) -> NoReturn:
+    # Already-mapped errors pass through unchanged (keeps the curated
+    # "executable missing" message instead of the generic fallback).
+    if isinstance(error, PDFRenderError):
+        raise error
+    # NotImplementedError signals "this loop can't spawn subprocesses" — the
+    # caller uses it to switch to the thread-based renderer, so it must
+    # propagate raw (also relied on by the test suite's skip logic).
+    if isinstance(error, NotImplementedError):
+        raise error
     error_msg = str(error)
     if "Executable doesn't exist" in error_msg:
         exe = sys.executable.replace("\\", "/")
@@ -302,14 +405,29 @@ async def render_resume_pdf(
     if _browser is not None:
         try:
             return await _render_with_browser(_browser, url, selector, pdf_format, pdf_margins)
-        except PlaywrightError as e:
-            _raise_playwright_error(e, url)
+        except Exception as e:
+            if not _is_driver_connection_error(e):
+                _raise_playwright_error(e, url)
+            # Persistent driver died mid-render: tear down the dead state and
+            # fall through to the init path, which re-launches (and itself
+            # retries once on driver death).
+            logger.error(
+                "Persistent Playwright driver died mid-render; reinitializing: %s", e
+            )
+            await _dispose_renderer_state()
 
     async with _subprocess_lock:
         subprocess_supported = _subprocess_supported
         if subprocess_supported and not _loop_supports_subprocess():
             _subprocess_supported = False
             subprocess_supported = False
+            logger.warning(
+                "PDF: event loop %s lacks subprocess support; using the "
+                "per-request renderer for the rest of this process (uvicorn "
+                "picks SelectorEventLoop on Windows when --reload or "
+                "workers > 1 is used).",
+                asyncio.get_running_loop().__class__.__name__,
+            )
 
     if subprocess_supported:
         try:
@@ -318,7 +436,11 @@ async def render_resume_pdf(
             async with _subprocess_lock:
                 _subprocess_supported = False
             subprocess_supported = False
-        except PlaywrightError as e:
+            logger.warning(
+                "PDF: loop cannot spawn subprocesses (NotImplementedError); "
+                "using the per-request renderer for the rest of this process."
+            )
+        except Exception as e:
             _raise_playwright_error(e, url)
 
     if not subprocess_supported:
@@ -326,7 +448,7 @@ async def render_resume_pdf(
             return await _render_resume_pdf_in_thread(
                 url, selector, pdf_format, pdf_margins
             )
-        except PlaywrightError as e:
+        except Exception as e:
             _raise_playwright_error(e, url)
 
     if _browser is None:
@@ -334,5 +456,5 @@ async def render_resume_pdf(
 
     try:
         return await _render_with_browser(_browser, url, selector, pdf_format, pdf_margins)
-    except PlaywrightError as e:
+    except Exception as e:
         _raise_playwright_error(e, url)

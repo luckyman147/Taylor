@@ -5,7 +5,12 @@ permanent re-export barrel so existing ``from app.prompts.templates import ...``
 call sites keep working unchanged.
 """
 
-from app.prompts.language import LANGUAGE_NAMES, get_language_name
+from app.prompts.language import (
+    LANGUAGE_NAMES,
+    detect_language,
+    get_language_name,
+    resolve_correspondence_language,
+)
 from app.prompts.schemas import (
     IMPROVE_SCHEMA_EXAMPLE,
     RESUME_SCHEMA,
@@ -40,6 +45,7 @@ from app.prompts.interview import (
     INTERVIEW_PRACTICE_FEEDBACK_PROMPT,
     INTERVIEW_PREP_PROMPT,
 )
+from app.prompts.outreach_analytics import OUTREACH_ANALYSIS_PROMPT
 from app.prompts.career import (
     CAREER_ADVISOR_PROMPT,
     CAREER_ADVISOR_SYSTEM_PROMPT,
@@ -64,10 +70,18 @@ from app.prompts.chat import (
     get_skill_allowlist,
 )
 from app.prompts.agent import AGENT_ANSWER_PROMPT, AGENT_THINK_PROMPT
+from app.prompts.leads import (
+    LEAD_CLASSIFY_PROMPT,
+    LEAD_CLASSIFY_SYSTEM_PROMPT,
+    LEAD_CRITERIA_PROMPT,
+    LEAD_CRITERIA_SYSTEM_PROMPT,
+)
 
 __all__ = [
     "LANGUAGE_NAMES",
+    "detect_language",
     "get_language_name",
+    "resolve_correspondence_language",
     "RESUME_SCHEMA_EXAMPLE",
     "IMPROVE_SCHEMA_EXAMPLE",
     "RESUME_SCHEMA",
@@ -93,6 +107,7 @@ __all__ = [
     "GENERATE_TITLE_PROMPT",
     "INTERVIEW_PREP_PROMPT",
     "INTERVIEW_PRACTICE_FEEDBACK_PROMPT",
+    "OUTREACH_ANALYSIS_PROMPT",
     "CAREER_ADVISOR_SYSTEM_PROMPT",
     "CAREER_ADVISOR_PROMPT",
     "CAREER_GAP_ANALYSIS_PROMPT",
@@ -115,4 +130,8 @@ __all__ = [
     "CHAT_AUDIT_PROMPT",
     "AGENT_THINK_PROMPT",
     "AGENT_ANSWER_PROMPT",
+    "LEAD_CRITERIA_SYSTEM_PROMPT",
+    "LEAD_CRITERIA_PROMPT",
+    "LEAD_CLASSIFY_SYSTEM_PROMPT",
+    "LEAD_CLASSIFY_PROMPT",
 ]

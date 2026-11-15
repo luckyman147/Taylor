@@ -26,13 +26,11 @@ describe('chat API client', () => {
 
   describe('listThreads', () => {
     it('calls GET /api/v1/chat/threads', async () => {
-      fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify([]), { status: 200 }),
-      );
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
       await listThreads();
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/v1/chat/threads',
-        expect.objectContaining({ signal: expect.anything() }),
+        expect.objectContaining({ signal: expect.anything() })
       );
     });
   });
@@ -40,15 +38,14 @@ describe('chat API client', () => {
   describe('createThread', () => {
     it('sends mode in POST body', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ thread_id: '1', mode: 'coach', title: 'New Chat' }),
-          { status: 200 },
-        ),
+        new Response(JSON.stringify({ thread_id: '1', mode: 'coach', title: 'New Chat' }), {
+          status: 200,
+        })
       );
       const result = await createThread('coach');
       const [, init] = fetchMock.mock.calls[0];
       expect(init.method).toBe('POST');
-      expect(JSON.parse(init.body)).toEqual({ mode: 'coach', title: undefined });
+      expect(JSON.parse(init.body)).toEqual({ mode: 'coach', title: undefined, skills: [] });
       expect(result.thread_id).toBe('1');
     });
   });
@@ -84,14 +81,18 @@ describe('chat API client', () => {
             followups: [],
             sources: [],
           }),
-          { status: 200 },
-        ),
+          { status: 200 }
+        )
       );
       const result = await sendTurn('t1', 'Hi');
       const [url, init] = fetchMock.mock.calls[0];
       expect(url).toBe('/api/v1/chat/threads/t1/turn');
       expect(init.method).toBe('POST');
-      expect(JSON.parse(init.body)).toEqual({ message: 'Hi' });
+      expect(JSON.parse(init.body)).toEqual({
+        message: 'Hi',
+        resume_id: null,
+        eval_requested: false,
+      });
       expect(result.assistant_content).toBe('Hello!');
     });
   });
@@ -99,10 +100,9 @@ describe('chat API client', () => {
   describe('confirmAction', () => {
     it('sends token in POST body', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ ok: true, message: 'Done', result_card: null }),
-          { status: 200 },
-        ),
+        new Response(JSON.stringify({ ok: true, message: 'Done', result_card: null }), {
+          status: 200,
+        })
       );
       const result = await confirmAction('abc123', 'thread-456');
       const [, init] = fetchMock.mock.calls[0];
@@ -114,12 +114,9 @@ describe('chat API client', () => {
   describe('cancelAction', () => {
     it('sends token in POST body', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ ok: true, message: 'Cancelled' }),
-          { status: 200 },
-        ),
+        new Response(JSON.stringify({ ok: true, message: 'Cancelled' }), { status: 200 })
       );
-      const result = await cancelAction('abc123');
+      const result = await cancelAction('abc123', 'thread-456');
       expect(result.ok).toBe(true);
     });
   });
@@ -127,10 +124,7 @@ describe('chat API client', () => {
   describe('saveMemory', () => {
     it('sends statement and source_thread_id', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ ok: true, saved: [] }),
-          { status: 200 },
-        ),
+        new Response(JSON.stringify({ ok: true, saved: [] }), { status: 200 })
       );
       await saveMemory('I like remote work', 't1');
       const [, init] = fetchMock.mock.calls[0];
@@ -153,18 +147,13 @@ describe('chat API client', () => {
   describe('error handling', () => {
     it('throws on non-OK response with detail', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ detail: 'Thread not found' }),
-          { status: 404 },
-        ),
+        new Response(JSON.stringify({ detail: 'Thread not found' }), { status: 404 })
       );
       await expect(listThreads()).rejects.toThrow('Thread not found');
     });
 
     it('throws on non-OK response without detail', async () => {
-      fetchMock.mockResolvedValueOnce(
-        new Response('{}', { status: 500 }),
-      );
+      fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }));
       await expect(listThreads()).rejects.toThrow(/status 500/);
     });
   });

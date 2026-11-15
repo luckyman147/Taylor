@@ -96,7 +96,9 @@ export function CompanyApprovalDialog({
               <div className="flex items-center gap-3 px-4 py-3">
                 <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">{t('companies.approval.industry')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('companies.approval.industry')}
+                  </p>
                   <p className="text-sm font-medium">{industry}</p>
                 </div>
               </div>

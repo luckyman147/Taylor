@@ -4,11 +4,17 @@ import logging
 
 from fastapi import APIRouter
 
+from app import llm_cache
 from app.database import db
-from app.llm import check_llm_health, get_llm_config
+from app.llm import check_llm_health, get_llm_config, get_llm_usage
 from app.schemas import HealthResponse, StatusResponse
 
 logger = logging.getLogger(__name__)
+
+# The frontend polls GET /status on mount and every 30 min; each poll used to
+# run a live ~64-token completion against the provider. Cache the probe for 10
+# min (keyed on the provider config, so key/model changes re-probe immediately).
+_LLM_PROBE_TTL = 600.0
 
 router = APIRouter(tags=["Health"])
 
@@ -21,6 +27,21 @@ _EMPTY_DB_STATS = {
     "has_master_resume": False,
     "master_resume_count": 0,
 }
+
+
+def _llm_usage_summary() -> dict:
+    """Aggregate in-process LLM token counters into a status-page payload."""
+    by_tag = get_llm_usage()
+    return {
+        "totals": {
+            "calls": sum(v.get("calls", 0) for v in by_tag.values()),
+            "prompt_tokens": sum(v.get("prompt_tokens", 0) for v in by_tag.values()),
+            "completion_tokens": sum(
+                v.get("completion_tokens", 0) for v in by_tag.values()
+            ),
+        },
+        "by_tag": by_tag,
+    }
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -46,8 +67,14 @@ async def get_status() -> StatusResponse:
         config = get_llm_config()
         # ollama / openai_compatible run without a key, matching check_llm_health.
         llm_configured = bool(config.api_key) or config.provider in ("ollama", "openai_compatible")
-        llm_status = await check_llm_health(config)
-        llm_healthy = bool(llm_status.get("healthy"))
+        probe = await llm_cache.get_or_compute(
+            llm_cache.make_key(
+                "llm_health", config.provider, config.model, config.api_key
+            ),
+            lambda: check_llm_health(config),
+            ttl=_LLM_PROBE_TTL,
+        )
+        llm_healthy = bool(probe.get("healthy"))
     except Exception:
         logger.exception("Status: LLM health check failed")
 
@@ -67,4 +94,5 @@ async def get_status() -> StatusResponse:
         has_master_resume=has_master_resume,
         master_resume_count=master_resume_count,
         database_stats=db_stats,
+        llm_usage=_llm_usage_summary(),
     )

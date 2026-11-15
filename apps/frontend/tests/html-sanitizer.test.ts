@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
+import { sanitizeHtml, sanitizeSignatureHtml } from '@/lib/utils/html-sanitizer';
 
 /**
  * sanitizeHtml guards every `dangerouslySetInnerHTML` sink (rich-text bullets,
@@ -43,5 +43,33 @@ describe('sanitizeHtml', () => {
     const out = sanitizeHtml('<img src=x onerror="alert(1)">');
     expect(out).not.toContain('img');
     expect(out).not.toContain('onerror');
+  });
+});
+
+describe('sanitizeSignatureHtml', () => {
+  it('keeps email-signature structure (tables, styles, links)', () => {
+    const out = sanitizeSignatureHtml(
+      '<table style="border:0"><tr><td style="color:#111"><strong>Name</strong><br><a href="https://x.com">Site</a></td></tr></table>'
+    );
+    expect(out).toContain('<strong>Name</strong>');
+    expect(out).toContain('href="https://x.com"');
+    expect(out).toContain('<table');
+    expect(out).toContain('style=');
+  });
+
+  it('strips <script> blocks with content', () => {
+    const out = sanitizeSignatureHtml('<p>Hi</p><script>alert(1)</script>');
+    expect(out).not.toContain('script');
+    expect(out).not.toContain('alert');
+    expect(out).toContain('Hi');
+  });
+
+  it('drops event handlers and javascript: URLs', () => {
+    const out = sanitizeSignatureHtml(
+      '<a href="javascript:alert(1)" onclick="evil()">x</a>'
+    );
+    expect(out).not.toContain('javascript:');
+    expect(out).not.toContain('onclick');
+    expect(out).toContain('x');
   });
 });

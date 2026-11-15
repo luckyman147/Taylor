@@ -9,7 +9,10 @@ import { HistoryList } from '@/components/interview-practice/history-list';
 import { PracticePanel } from '@/components/interview-practice/practice-panel';
 import { ScenarioLibrary } from '@/components/interview-practice/scenario-library';
 import { UpcomingInterviews } from '@/components/interview-practice/upcoming-interviews';
-import { type ActiveScenario, type PracticeScenario } from '@/components/interview-practice/scenarios';
+import {
+  type ActiveScenario,
+  type PracticeScenario,
+} from '@/components/interview-practice/scenarios';
 
 export default function InterviewPracticePage() {
   const router = useRouter();
@@ -28,10 +31,7 @@ export default function InterviewPracticePage() {
 
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white pl-16">
-      <SidebarNav
-        currentPage="interview-practice"
-        onNavigate={(page) => router.push(page)}
-      />
+      <SidebarNav currentPage="interview-practice" onNavigate={(page) => router.push(page)} />
       <main className="flex min-h-0 w-full max-w-[104rem] flex-col overflow-y-auto">
         <div className="flex flex-col gap-6 p-6 md:p-8">
           <header className="flex flex-col gap-1">

@@ -78,7 +78,15 @@ type SortBy = 'date-desc' | 'date-asc';
 
 /** Fields editable inline (click a cell). */
 type EditableField =
-  'phone' | 'industry' | 'address' | 'company_size' | 'company_type' | 'status' | 'year_founded';
+  | 'phone'
+  | 'industry'
+  | 'address'
+  | 'city'
+  | 'country'
+  | 'company_size'
+  | 'company_type'
+  | 'status'
+  | 'year_founded';
 
 interface EditingCell {
   companyId: string;
@@ -90,6 +98,8 @@ type ColumnKey =
   | 'phone'
   | 'industry'
   | 'address'
+  | 'city'
+  | 'country'
   | 'size'
   | 'type'
   | 'status'
@@ -101,6 +111,8 @@ const ALL_COLUMNS: ColumnKey[] = [
   'phone',
   'industry',
   'address',
+  'city',
+  'country',
   'size',
   'type',
   'status',
@@ -135,6 +147,8 @@ const EXPORT_HEADERS = [
   'email',
   'phone',
   'address',
+  'city',
+  'country',
   'website',
   'company_size',
   'company_type',
@@ -150,6 +164,8 @@ const IMPORT_FIELDS: CompanyField[] = [
   'email',
   'phone',
   'address',
+  'city',
+  'country',
   'website',
   'company_size',
   'company_type',
@@ -162,12 +178,22 @@ const IMPORT_FIELDS: CompanyField[] = [
 const STATUS_VALUES: CompanyStatus[] = [
   'watching',
   'contacted',
+  'second_contact',
   'applied',
   'interviewing',
   'negotiating',
   'won',
   'lost',
+  'trash',
 ];
+
+/**
+ * Sentinel status-filter value matching companies with no status set
+ * (`status === null`), rendered as "—" in the table.
+ */
+const STATUS_NONE = '__none__';
+
+type StatusFilterValue = CompanyStatus | typeof STATUS_NONE;
 
 const PAGE_SIZE_OPTIONS = ['10', '25', '50'];
 
@@ -193,18 +219,24 @@ export function CompaniesTable() {
   const [search, setSearch] = useState('');
   const [sizeFilter, setSizeFilter] = useState<CompanySize | ''>('');
   const [typeFilter, setTypeFilter] = useState<CompanyType | ''>('');
-  const [statusFilter, setStatusFilter] = useState<CompanyStatus | ''>('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue[]>([]);
+  const [addressFilter, setAddressFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
+  const [countryFilter, setCountryFilter] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [sortBy, setSortBy] = useState<SortBy>('date-desc');
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
 
   // Load saved column prefs after hydration (a lazy useState initializer would
   // read localStorage during hydration and mismatch the SSR'd defaults).
+  const didLoadPrefs = useRef(false);
   useEffect(() => {
     setVisibleColumns(loadColumnPrefs());
+    didLoadPrefs.current = true;
   }, []);
 
   useEffect(() => {
+    if (!didLoadPrefs.current) return;
     try {
       window.localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
     } catch {
@@ -278,6 +310,10 @@ export function CompaniesTable() {
         return company.industry ?? '';
       case 'address':
         return company.address ?? '';
+      case 'city':
+        return company.city ?? '';
+      case 'country':
+        return company.country ?? '';
       case 'company_size':
         return company.company_size ?? '';
       case 'company_type':
@@ -326,7 +362,15 @@ export function CompaniesTable() {
     const matches = companies.filter((company) => {
       if (sizeFilter && company.company_size !== sizeFilter) return false;
       if (typeFilter && company.company_type !== typeFilter) return false;
-      if (statusFilter && company.status !== statusFilter) return false;
+      if (statusFilter.length > 0) {
+        const statusKey: StatusFilterValue = company.status ?? STATUS_NONE;
+        if (!statusFilter.includes(statusKey)) return false;
+      }
+      if (addressFilter) {
+        if (!(company.address ?? '').toLowerCase().includes(addressFilter)) return false;
+      }
+      if (cityFilter && (company.city ?? '').toLowerCase() !== cityFilter) return false;
+      if (countryFilter && (company.country ?? '').toLowerCase() !== countryFilter) return false;
       if (!query) return true;
       return (
         company.name.toLowerCase().includes(query) ||
@@ -340,7 +384,7 @@ export function CompaniesTable() {
       const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
       return sortBy === 'date-asc' ? ta - tb : tb - ta;
     });
-  }, [companies, search, sizeFilter, typeFilter, statusFilter, sortBy]);
+  }, [companies, search, sizeFilter, typeFilter, statusFilter, addressFilter, cityFilter, countryFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageRows = useMemo(() => {
@@ -350,7 +394,7 @@ export function CompaniesTable() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sizeFilter, typeFilter, statusFilter, groupBy, sortBy]);
+  }, [search, sizeFilter, typeFilter, statusFilter, addressFilter, cityFilter, countryFilter, groupBy, sortBy]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -379,7 +423,8 @@ export function CompaniesTable() {
   const groupLabel = (key: string): string => {
     if (groupBy === 'size') return key ? sizeLabel(key as CompanySize) : '—';
     if (groupBy === 'type') return key ? typeLabel(key as CompanyType) : '—';
-    if (groupBy === 'status') return key ? statusLabel(key as CompanyStatus) : '—';
+    if (groupBy === 'status')
+      return key ? statusLabel(key as CompanyStatus) : t('companies.toolbar.statusNone');
     return key || '—';
   };
 
@@ -389,6 +434,8 @@ export function CompaniesTable() {
       company.email,
       company.phone,
       company.address,
+      company.city,
+      company.country,
       company.website,
       company.company_size,
       company.company_type,
@@ -499,7 +546,33 @@ export function CompaniesTable() {
     ] as CompanyType[]
   ).map((ty) => ({ id: ty, label: typeLabel(ty) }));
   const statusOptions = STATUS_VALUES.map((s) => ({ id: s, label: statusLabel(s) }));
+  // Filter-only option for companies with no status; kept out of `statusOptions`
+  // so the inline status editor never commits the sentinel as a real value.
+  const statusFilterOptions = [
+    { id: STATUS_NONE, label: t('companies.toolbar.statusNone') },
+    ...statusOptions,
+  ];
   const allOption = { id: '', label: t('companies.toolbar.all') };
+  const cityOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const company of companies) {
+      const value = company.city?.trim();
+      if (value) values.add(value);
+    }
+    return [...values]
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ id: value.toLowerCase(), label: value }));
+  }, [companies]);
+  const countryOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const company of companies) {
+      const value = company.country?.trim();
+      if (value) values.add(value);
+    }
+    return [...values]
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ id: value.toLowerCase(), label: value }));
+  }, [companies]);
   const groupByOptions: { id: GroupBy; label: string }[] = [
     { id: 'none', label: t('companies.toolbar.groupNone') },
     { id: 'size', label: t('companies.toolbar.groupSize') },
@@ -519,6 +592,8 @@ export function CompaniesTable() {
     { id: 'phone', label: t('companies.table.phone') },
     { id: 'industry', label: t('companies.table.industry') },
     { id: 'address', label: t('companies.table.address') },
+    { id: 'city', label: t('companies.table.city') },
+    { id: 'country', label: t('companies.table.country') },
     { id: 'size', label: t('companies.table.size') },
     { id: 'type', label: t('companies.table.type') },
     { id: 'status', label: t('companies.table.status') },
@@ -533,14 +608,20 @@ export function CompaniesTable() {
   const activeFilterCount =
     (sizeFilter ? 1 : 0) +
     (typeFilter ? 1 : 0) +
-    (statusFilter ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0) +
+    (addressFilter ? 1 : 0) +
+    (cityFilter ? 1 : 0) +
+    (countryFilter ? 1 : 0) +
     (groupBy !== 'none' ? 1 : 0) +
     (sortBy !== 'date-desc' ? 1 : 0);
 
   const clearFilters = () => {
     setSizeFilter('');
     setTypeFilter('');
-    setStatusFilter('');
+    setStatusFilter([]);
+    setAddressFilter('');
+    setCityFilter('');
+    setCountryFilter('');
     setGroupBy('none');
     setSortBy('date-desc');
   };
@@ -660,8 +741,16 @@ export function CompaniesTable() {
               typeOptions={typeOptions}
               onTypeFilter={(value) => setTypeFilter(value as CompanyType | '')}
               statusFilter={statusFilter}
-              statusOptions={statusOptions}
-              onStatusFilter={(value) => setStatusFilter(value as CompanyStatus | '')}
+              statusOptions={statusFilterOptions}
+              onStatusFilter={(value) => setStatusFilter(value as StatusFilterValue[])}
+              addressFilter={addressFilter}
+              onAddressFilter={setAddressFilter}
+              cityFilter={cityFilter}
+              cityOptions={cityOptions}
+              onCityFilter={setCityFilter}
+              countryFilter={countryFilter}
+              countryOptions={countryOptions}
+              onCountryFilter={setCountryFilter}
               groupBy={groupBy}
               groupByOptions={groupByOptions}
               onGroupBy={(value) => setGroupBy(value as GroupBy)}
@@ -784,6 +873,10 @@ export function CompaniesTable() {
                   )}
                   {visibleColumns.address && (
                     <th className="px-4 py-3">{t('companies.table.address')}</th>
+                  )}
+                  {visibleColumns.city && <th className="px-4 py-3">{t('companies.table.city')}</th>}
+                  {visibleColumns.country && (
+                    <th className="px-4 py-3">{t('companies.table.country')}</th>
                   )}
                   {visibleColumns.size && (
                     <th className="px-4 py-3">{t('companies.table.size')}</th>
@@ -1315,6 +1408,46 @@ function CompanyRow({
               title={company.address ?? undefined}
             >
               {company.address || '—'}
+            </span>
+          )}
+        </td>
+      )}
+      {visibleColumns.city && (
+        <td className="max-w-40 px-4 py-3">
+          {isEditing('city') ? (
+            <InlineTextEditor
+              initialValue={company.city ?? ''}
+              ariaLabel={fieldLabel('city')}
+              onCommit={commit('city')}
+              onCancel={onCancelEdit}
+            />
+          ) : (
+            <span
+              {...editableCellProps('city')}
+              className="block cursor-text truncate text-ink-soft hover:text-primary"
+              title={company.city ?? undefined}
+            >
+              {company.city || '—'}
+            </span>
+          )}
+        </td>
+      )}
+      {visibleColumns.country && (
+        <td className="max-w-40 px-4 py-3">
+          {isEditing('country') ? (
+            <InlineTextEditor
+              initialValue={company.country ?? ''}
+              ariaLabel={fieldLabel('country')}
+              onCommit={commit('country')}
+              onCancel={onCancelEdit}
+            />
+          ) : (
+            <span
+              {...editableCellProps('country')}
+              className="block cursor-text truncate text-ink-soft hover:text-primary"
+              title={company.country ?? undefined}
+            >
+              {company.country || '—'}
             </span>
           )}
         </td>

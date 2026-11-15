@@ -20,9 +20,12 @@ import {
   type ListSeparator,
   type TextWeightOption,
   type TextTransformOption,
+  type AvatarShape,
+  type AvatarSize,
+  type AvatarPosition,
   DEFAULT_TEMPLATE_SETTINGS,
 } from '@/lib/types/template-settings';
-import { API_BASE } from '@/lib/api/client';
+import { API_BASE, INTERNAL_API_ORIGIN } from '@/lib/api/client';
 import { translate } from '@/lib/i18n/server';
 import { resolveLocale } from '@/lib/i18n/locale';
 import { withLocalizedDefaultSections } from '@/lib/utils/section-helpers';
@@ -52,6 +55,7 @@ type PageProps = {
     bodyFont?: string;
     compactMode?: string;
     showContactIcons?: string;
+    showContactSeparators?: string;
     accentColor?: string;
     customAccentColor?: string;
     workShowBy?: string;
@@ -87,6 +91,12 @@ type PageProps = {
     borderAboveHeader?: string;
     borderBelowHeader?: string;
     borderSectionTitles?: string;
+    avatarShow?: string;
+    avatarShape?: string;
+    avatarSize?: string;
+    avatarBorder?: string;
+    avatarPosition?: string;
+    avatarInfoGap?: string;
     lang?: string;
   }>;
 };
@@ -128,6 +138,24 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
   if (value === 'true') return true;
   if (value === 'false') return false;
   return defaultValue;
+}
+
+const AVATAR_SHAPES: AvatarShape[] = ['circle', 'rounded', 'square', 'none'];
+function parseAvatarShape(value: string | undefined): AvatarShape {
+  if (value && AVATAR_SHAPES.includes(value as AvatarShape)) return value as AvatarShape;
+  return DEFAULT_TEMPLATE_SETTINGS.avatar.shape;
+}
+
+const AVATAR_SIZES: AvatarSize[] = ['small', 'medium', 'large'];
+function parseAvatarSize(value: string | undefined): AvatarSize {
+  if (value && AVATAR_SIZES.includes(value as AvatarSize)) return value as AvatarSize;
+  return DEFAULT_TEMPLATE_SETTINGS.avatar.size;
+}
+
+const AVATAR_POSITIONS: AvatarPosition[] = ['left', 'center', 'right'];
+function parseAvatarPosition(value: string | undefined): AvatarPosition {
+  if (value && AVATAR_POSITIONS.includes(value as AvatarPosition)) return value as AvatarPosition;
+  return DEFAULT_TEMPLATE_SETTINGS.avatar.position;
 }
 
 async function fetchResumeData(id: string): Promise<ResumeData> {
@@ -375,6 +403,33 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
   const t = (key: string, params?: Record<string, string | number>) =>
     translate(locale, key, params);
   const localizedResumeData = withLocalizedDefaultSections(resumeData, t);
+
+  // Resolve relative avatar URLs to absolute backend URLs, then embed as
+  // base64 data URIs so Chromium doesn't need a network fetch.
+  if (localizedResumeData.personalInfo?.avatar) {
+    let avatarUrl = localizedResumeData.personalInfo.avatar;
+    if (avatarUrl.startsWith('/')) {
+      avatarUrl = `${INTERNAL_API_ORIGIN}${avatarUrl}`;
+    }
+    try {
+      const avatarRes = await fetch(avatarUrl, { cache: 'no-store' });
+      if (avatarRes.ok) {
+        const contentType = avatarRes.headers.get('content-type') || 'image/jpeg';
+        const avatarBuf = Buffer.from(await avatarRes.arrayBuffer());
+        const dataUri = `data:${contentType};base64,${avatarBuf.toString('base64')}`;
+        localizedResumeData.personalInfo = {
+          ...localizedResumeData.personalInfo,
+          avatar: dataUri,
+        };
+      } else {
+        console.warn(
+          `[PRINT] avatar fetch failed: ${avatarRes.status} for ${avatarUrl}`
+        );
+      }
+    } catch (err) {
+      console.error(`[PRINT] avatar fetch failed for ${avatarUrl}:`, err);
+    }
+  }
   const additionalSectionLabels = {
     technicalSkills: t('resume.additionalLabels.technicalSkills'),
     languages: t('resume.additionalLabels.languages'),
@@ -468,8 +523,20 @@ export default async function PrintResumePage({ params, searchParams }: PageProp
       resolvedSearchParams?.showContactIcons,
       DEFAULT_TEMPLATE_SETTINGS.showContactIcons
     ),
+    showContactSeparators: parseBoolean(
+      resolvedSearchParams?.showContactSeparators,
+      DEFAULT_TEMPLATE_SETTINGS.showContactSeparators
+    ),
     accentColor: parseAccentColor(resolvedSearchParams?.accentColor),
     customAccentColor: resolvedSearchParams?.customAccentColor || null,
+    avatar: {
+      show: parseBoolean(resolvedSearchParams?.avatarShow, DEFAULT_TEMPLATE_SETTINGS.avatar.show),
+      shape: parseAvatarShape(resolvedSearchParams?.avatarShape),
+      size: parseAvatarSize(resolvedSearchParams?.avatarSize),
+      border: parseFloat(resolvedSearchParams?.avatarBorder ?? '') || DEFAULT_TEMPLATE_SETTINGS.avatar.border,
+      position: parseAvatarPosition(resolvedSearchParams?.avatarPosition),
+      infoGap: Math.min(5, Math.max(1, parseInt(resolvedSearchParams?.avatarInfoGap ?? '', 10) || DEFAULT_TEMPLATE_SETTINGS.avatar.infoGap)) as SpacingLevel,
+    },
     workExperience: {
       showBy: parseWorkShowBy(resolvedSearchParams?.workShowBy),
       datesBy: parseWorkDatesBy(resolvedSearchParams?.workDatesBy),

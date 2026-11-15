@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from typing import Any
 
-from app.llm import complete_json
+from app.llm import complete_json, rate_limit_wait
 from app.sandbox.models import Workflow, WorkflowBudget, WorkflowStep
 
 logger = logging.getLogger(__name__)
@@ -77,11 +78,13 @@ RULES:
                 )
                 return self._parse_workflow(response, query)
             except Exception as e:
-                err_str = str(e).lower()
-                is_rate_limit = "429" in err_str or "rate" in err_str or "quota" in err_str
-                if is_rate_limit and attempt < 2:
-                    wait = 10 * (attempt + 1)  # 10s, 20s
-                    logger.warning("Rate limited, retrying in %ds (attempt %d/3)", wait, attempt + 1)
+                # Router already retried transport 429s — one extra attempt
+                # max (see rate_limit_wait), no content-retry multiplication.
+                wait = rate_limit_wait(e)
+                if wait is not None and attempt == 0:
+                    logger.warning(
+                        "Rate limited, retrying in %.0fs (attempt %d/3)", wait, attempt + 1
+                    )
                     await asyncio.sleep(wait)
                     continue
                 logger.error("Workflow generation failed: %s", e)

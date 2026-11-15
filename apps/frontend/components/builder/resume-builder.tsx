@@ -29,6 +29,7 @@ import {
   ChevronDown,
   Loader2,
   Pencil,
+  Undo2,
 } from 'lucide-react';
 import {
   useResumePreview,
@@ -63,6 +64,7 @@ import {
 } from '@/lib/types/template-settings';
 import { withLocalizedDefaultSections, ensureUniqueEntryIds } from '@/lib/utils/section-helpers';
 import { useResumeAutosave } from '@/hooks/use-resume-autosave';
+import { useUndoHistory } from '@/hooks/use-undo-history';
 import { useLanguage } from '@/lib/context/language-context';
 import { buildResumeFilename, downloadBlobAsFile, openUrlInNewTab } from '@/lib/utils/download';
 import type { RegenerateItemInput } from '@/lib/api/enrichment';
@@ -70,6 +72,10 @@ import type { RegenerateItemInput } from '@/lib/api/enrichment';
 type TabId = 'resume' | 'cover-letter' | 'outreach' | 'interview-prep' | 'jd-match';
 type JobContextStatus = 'idle' | 'loading' | 'available' | 'missing';
 type EditorMode = 'design' | 'content';
+type BuilderSnapshot = {
+  resumeData: ResumeData;
+  templateSettings: TemplateSettings;
+};
 
 const STORAGE_KEY = 'resume_builder_draft';
 const SETTINGS_STORAGE_KEY = 'resume_builder_settings';
@@ -153,6 +159,18 @@ const ResumeBuilderContent = () => {
   const [loadingState, setLoadingState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [templateSettings, setTemplateSettings] =
     useState<TemplateSettings>(DEFAULT_TEMPLATE_SETTINGS);
+  const {
+    push: pushUndo,
+    undo: undoLastChange,
+    clear: clearUndoHistory,
+    canUndo,
+  } = useUndoHistory<BuilderSnapshot>();
+  const snapshotRef = useRef<BuilderSnapshot>({ resumeData, templateSettings });
+
+  useEffect(() => {
+    snapshotRef.current = { resumeData, templateSettings };
+  }, [resumeData, templateSettings]);
+
   const { improvedData } = useResumePreview();
   const improvedPreview = improvedData?.data?.resume_preview;
   const improvedCoverLetter = improvedData?.data?.cover_letter;
@@ -237,9 +255,15 @@ const ResumeBuilderContent = () => {
         // Update resume title for downloads
         setResumeTitle(data.title ?? null);
         if (data.processed_resume) {
-          setResumeData(data.processed_resume as ResumeData);
-          setLastSavedData(data.processed_resume as ResumeData);
+          const processed = data.processed_resume as ResumeData;
+          snapshotRef.current = {
+            resumeData: processed,
+            templateSettings: snapshotRef.current.templateSettings,
+          };
+          setResumeData(processed);
+          setLastSavedData(processed);
           setHasUnsavedChanges(false);
+          clearUndoHistory();
         }
       } catch (error) {
         console.error('Failed to reload resume after applying regenerated changes:', error);
@@ -407,6 +431,7 @@ const ResumeBuilderContent = () => {
     const loadResumeData = async () => {
       setLoadingState('loading');
       setIsMaster(false);
+      clearUndoHistory();
 
       // Priority 1: Fetch from API if ID is in URL (most reliable)
       if (resumeId) {
@@ -507,6 +532,7 @@ const ResumeBuilderContent = () => {
     improvedOutreach,
     improvedInterviewPrep,
     resumeId,
+    clearUndoHistory,
   ]);
 
   // Fetch job description when we have a tailored resume
@@ -544,12 +570,20 @@ const ResumeBuilderContent = () => {
     };
   }, [isTailoredResume, resumeId]);
 
-  const handleUpdate = useCallback((newData: ResumeData) => {
-    setResumeData(newData);
-    setHasUnsavedChanges(true);
-    // Auto-save draft to localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
-  }, []);
+  const handleUpdate = useCallback(
+    (newData: ResumeData) => {
+      pushUndo(snapshotRef.current);
+      snapshotRef.current = {
+        resumeData: newData,
+        templateSettings: snapshotRef.current.templateSettings,
+      };
+      setResumeData(newData);
+      setHasUnsavedChanges(true);
+      // Auto-save draft to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    },
+    [pushUndo]
+  );
 
   const handleStartEditTitle = useCallback(() => {
     setEditingTitle(resumeTitle ?? '');
@@ -575,9 +609,17 @@ const ResumeBuilderContent = () => {
     setEditingTitle('');
   }, []);
 
-  const handleSettingsChange = useCallback((newSettings: TemplateSettings) => {
-    setTemplateSettings(newSettings);
-  }, []);
+  const handleSettingsChange = useCallback(
+    (newSettings: TemplateSettings) => {
+      pushUndo(snapshotRef.current);
+      snapshotRef.current = {
+        resumeData: snapshotRef.current.resumeData,
+        templateSettings: newSettings,
+      };
+      setTemplateSettings(newSettings);
+    },
+    [pushUndo]
+  );
 
   // --- Auto-save to the backend -----------------------------------------
   // Debounced on resumeData changes; PATCHes are serialized (latest-wins
@@ -590,9 +632,18 @@ const ResumeBuilderContent = () => {
     [resumeId]
   );
 
-  const handlePersisted = useCallback((nextData: ResumeData) => {
-    setResumeData(nextData);
+  const handlePersisted = useCallback((nextData: ResumeData, savedSnapshot: ResumeData) => {
     setLastSavedData(nextData);
+    const currentResume = snapshotRef.current.resumeData;
+    if (JSON.stringify(currentResume) !== JSON.stringify(savedSnapshot)) {
+      setHasUnsavedChanges(JSON.stringify(currentResume) !== JSON.stringify(nextData));
+      return;
+    }
+    snapshotRef.current = {
+      resumeData: nextData,
+      templateSettings: snapshotRef.current.templateSettings,
+    };
+    setResumeData(nextData);
     setHasUnsavedChanges(false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
   }, []);
@@ -648,8 +699,26 @@ const ResumeBuilderContent = () => {
     }
   };
 
+  const handleUndo = () => {
+    const restored = undoLastChange();
+    if (!restored) {
+      return;
+    }
+    cancelPendingAutosave();
+    snapshotRef.current = restored;
+    setResumeData(restored.resumeData);
+    setTemplateSettings(restored.templateSettings);
+    setHasUnsavedChanges(JSON.stringify(restored.resumeData) !== JSON.stringify(lastSavedData));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(restored.resumeData));
+  };
+
   const handleReset = () => {
     cancelPendingAutosave();
+    pushUndo(snapshotRef.current, true);
+    snapshotRef.current = {
+      resumeData: lastSavedData,
+      templateSettings: snapshotRef.current.templateSettings,
+    };
     setResumeData(lastSavedData);
     setHasUnsavedChanges(false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lastSavedData));
@@ -771,8 +840,21 @@ const ResumeBuilderContent = () => {
   };
 
   // On-demand generation handlers
+  const flushPendingEdits = useCallback(async () => {
+    cancelPendingAutosave();
+    if (JSON.stringify(resumeData) !== JSON.stringify(lastSavedData)) {
+      await saveResume(resumeData);
+    }
+  }, [cancelPendingAutosave, lastSavedData, resumeData, saveResume]);
+
   const doGenerateCoverLetter = async (instruction = '') => {
     if (!resumeId) return;
+    try {
+      await flushPendingEdits();
+    } catch {
+      showNotification(t('builder.alerts.saveFailed'), 'danger');
+      return;
+    }
     setIsGeneratingCoverLetter(true);
     setShowRegenerateDialog(null);
     try {
@@ -802,6 +884,12 @@ const ResumeBuilderContent = () => {
 
   const doGenerateOutreach = async (instruction = '') => {
     if (!resumeId) return;
+    try {
+      await flushPendingEdits();
+    } catch {
+      showNotification(t('builder.alerts.saveFailed'), 'danger');
+      return;
+    }
     setIsGeneratingOutreach(true);
     setShowRegenerateDialog(null);
     try {
@@ -842,6 +930,12 @@ const ResumeBuilderContent = () => {
 
   const doGenerateInterviewPrep = async (instruction = '') => {
     if (!canGenerateInterviewPrep || !resumeId) return;
+    try {
+      await flushPendingEdits();
+    } catch {
+      showNotification(t('builder.alerts.saveFailed'), 'danger');
+      return;
+    }
     setIsGeneratingInterviewPrep(true);
     setInterviewPrepError(null);
     setShowRegenerateDialog(null);
@@ -914,13 +1008,12 @@ const ResumeBuilderContent = () => {
                 <ArrowLeft className="w-4 h-4" />
                 {t('nav.backToDashboard')}
               </Button>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col gap-1">
                 <h1 className="text-3xl font-bold uppercase tracking-tight text-ink md:text-4xl">
                   {t('nav.builder')}
                 </h1>
                 {resumeTitle && (
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-normal text-steel-grey">—</span>
                     {isEditingTitle ? (
                       <input
                         ref={titleInputRef}
@@ -936,7 +1029,7 @@ const ResumeBuilderContent = () => {
                       />
                     ) : (
                       <span
-                        className="text-lg font-normal text-ink truncate max-w-[300px] cursor-pointer group flex items-center gap-1.5"
+                        className="text-lg font-normal text-steel-grey cursor-pointer group flex items-center gap-1.5"
                         onClick={handleStartEditTitle}
                       >
                         {resumeTitle}
@@ -976,7 +1069,7 @@ const ResumeBuilderContent = () => {
               </p>
             </div>
 
-            <div className="flex gap-3 mt-4 md:mt-0">
+            <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
               {/* Resume tab actions */}
               {activeTab === 'resume' && (
                 <>
@@ -988,6 +1081,10 @@ const ResumeBuilderContent = () => {
                   >
                     <Sparkles className="w-4 h-4" />
                     {t('builder.regenerate.buttonLabel')}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo}>
+                    <Undo2 className="w-4 h-4" />
+                    {t('builder.actions.undo')}
                   </Button>
                   <Button
                     variant="warning"
@@ -1407,7 +1504,14 @@ const ResumeBuilderContent = () => {
         {/* Footer */}
         <div className="no-print flex shrink-0 items-center justify-between border-t border-border bg-white px-6 py-3 text-xs font-bold uppercase tracking-wide text-primary">
           <span className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Taylor" width={20} height={20} unoptimized className="h-5 w-5" />
+            <Image
+              src="/logo.png"
+              alt="Taylor"
+              width={20}
+              height={20}
+              unoptimized
+              className="h-5 w-5"
+            />
             {t('builder.footer.moduleLabel')}
           </span>
           <div className="flex items-center gap-4 text-ink-soft">

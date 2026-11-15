@@ -8,7 +8,13 @@ from difflib import SequenceMatcher
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from app.llm import complete_json
+from app import llm_cache
+from app.llm import (
+    complete_json,
+    get_llm_config,
+    get_model_name,
+    get_safe_max_tokens,
+)
 from app.prompts import (
     CRITICAL_TRUTHFULNESS_RULES,
     DEFAULT_IMPROVE_PROMPT_ID,
@@ -584,10 +590,19 @@ async def generate_resume_diffs(
         original_resume=resume_input,
     )
 
+    # The diff response carries each change's original + rewritten text, so it
+    # is one of the largest JSON payloads in the app. 4096 was not enough for
+    # reasoning models (Gemini counts thinking tokens against the output
+    # budget) and truncated mid-JSON. Start at the full-output budget.
+    max_tokens = get_safe_max_tokens(
+        get_model_name(get_llm_config()),
+        requested=8192,
+    )
+
     result = await complete_json(
         prompt=prompt,
         system_prompt="You are an expert resume editor. Output only valid JSON with targeted changes.",
-        max_tokens=4096,
+        max_tokens=max_tokens,
         schema_type="diff",
     )
 
@@ -625,6 +640,10 @@ async def generate_resume_diffs(
 async def extract_job_keywords(job_description: str) -> dict[str, Any]:
     """Extract keywords and requirements from job description.
 
+    Results are memoized on the (sanitized) JD text for an hour, so repeated
+    calls for the same job — including the legacy ``/improve`` and tracker
+    callers — cost one upstream request instead of one per call site.
+
     Args:
         job_description: Raw job description text
 
@@ -635,10 +654,17 @@ async def extract_job_keywords(job_description: str) -> dict[str, Any]:
     sanitized_jd = _sanitize_user_input(job_description)
     prompt = EXTRACT_KEYWORDS_PROMPT.format(job_description=sanitized_jd)
 
-    return await complete_json(
-        prompt=prompt,
-        system_prompt="You are an expert job description analyzer.",
-        schema_type="keywords",
+    async def _extract() -> dict[str, Any]:
+        return await complete_json(
+            prompt=prompt,
+            system_prompt="You are an expert job description analyzer.",
+            schema_type="keywords",
+            max_tokens=1500,  # keyword schema is small; 4096 default was waste
+        )
+
+    return await llm_cache.get_or_compute(
+        llm_cache.make_key("extract_job_keywords", prompt),
+        _extract,
     )
 
 

@@ -16,21 +16,29 @@ Real-render tests skip cleanly (never hard-fail) when no Chromium binary can
 be launched.
 """
 
+import asyncio
 import socket
+from contextlib import nullcontext
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 from playwright.async_api import Error as PlaywrightError
 
+import app.pdf as pdf
 from app.pdf import (
     PDFRenderError,
     _raise_playwright_error,
     _render_page_to_pdf,
     _resolve_pdf_format,
     _resolve_pdf_margins,
+    _render_resume_pdf_sync,
     close_pdf_renderer,
+    init_pdf_renderer,
     render_resume_pdf,
 )
+
+DRIVER_DEATH = Exception("Connection closed while reading from the driver")
 
 
 # A self-contained page that satisfies wait_for_selector(".resume-print")
@@ -283,3 +291,160 @@ class TestRenderResumePdfErrors:
         if "executable" in message:
             pytest.skip(f"chromium unavailable: {exc_info.value}")
         assert "cannot connect to frontend" in message
+
+
+class TestDriverDeathResilience:
+    """The Playwright driver (node) dying right after spawn raises a PLAIN
+    Exception (playwright/_impl/_transport.py), not a playwright.Error — it
+    used to escape every handler as a raw ASGI 500 (the 'Connection closed
+    while reading from the driver' incident). Rendering must instead retry
+    once with a fresh driver and, if it still dies, map to a generic
+    PDFRenderError with no internals leaked.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _reset_renderer_state(self, monkeypatch):
+        monkeypatch.setattr(pdf, "_DRIVER_RETRY_DELAY", 0.0)
+        yield
+        pdf._browser = None
+        pdf._playwright = None
+        pdf._subprocess_supported = True
+
+    async def test_init_retries_once_after_driver_death(self):
+        """A driver death during init must not fail the first attempt's caller:
+        init starts a fresh driver once before giving up."""
+        state = SimpleNamespace(starts=0)
+
+        class _FakePlaywright:
+            async def stop(self):
+                pass
+
+        class _FakeCM:
+            async def start(self):
+                state.starts += 1
+                if state.starts == 1:
+                    raise DRIVER_DEATH
+                return _FakePlaywright()
+
+        sentinel_browser = object()
+        with (
+            pytest.MonkeyPatch.context() as mp,
+            _fake_driver(mp, cm=_FakeCM(), browser=sentinel_browser),
+        ):
+            await init_pdf_renderer()
+
+        assert state.starts == 2
+        assert pdf._browser is sentinel_browser
+
+    async def test_init_gives_up_after_second_driver_death(self):
+        """Two consecutive deaths: init re-raises (mapped upstream) and leaves
+        no half-initialized globals behind."""
+        state = SimpleNamespace(starts=0)
+
+        class _AlwaysDead:
+            async def start(self):
+                state.starts += 1
+                raise DRIVER_DEATH
+
+        with pytest.MonkeyPatch.context() as mp, _fake_driver(mp, cm=_AlwaysDead()):
+            with pytest.raises(Exception, match="Connection closed"):
+                await init_pdf_renderer()
+
+        assert state.starts == 2
+        assert pdf._browser is None
+        assert pdf._playwright is None
+
+    async def test_sync_render_retries_once_after_driver_death(self):
+        """The thread-fallback renderer (per-request driver) must also retry
+        once — this is the path taken under `uvicorn --reload` on Windows.
+        Runs via to_thread like production, so its private event loop can't
+        disturb the test runner's loop bookkeeping."""
+        state = SimpleNamespace(attempts=0)
+
+        class _FakeCM:
+            async def __aenter__(self):
+                state.attempts += 1
+                if state.attempts == 1:
+                    raise DRIVER_DEATH
+                return SimpleNamespace()
+
+            async def __aexit__(self, *exc_info):
+                return False
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(pdf, "async_playwright", lambda: _FakeCM())
+            mp.setattr(
+                pdf, "_launch_browser", AsyncMock(return_value=AsyncMock())
+            )
+            mp.setattr(
+                pdf, "_render_with_browser", AsyncMock(return_value=b"%PDF-1.4 fake")
+            )
+            result = await asyncio.to_thread(
+                _render_resume_pdf_sync,
+                "http://x/print",
+                ".resume-print",
+                "A4",
+                {"top": "10mm"},
+            )
+
+        assert result == b"%PDF-1.4 fake"
+        assert state.attempts == 2
+
+    async def test_driver_death_after_retries_maps_to_generic_error(self):
+        """Exhausted retries must surface as the curated generic PDFRenderError —
+        never the raw driver text (CLAUDE.md rule 2, info-disclosure)."""
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(pdf, "_browser", None)
+            mp.setattr(pdf, "_playwright", None)
+            mp.setattr(pdf, "_subprocess_supported", True)
+            mp.setattr(pdf, "_loop_supports_subprocess", lambda: True)
+            mp.setattr(
+                pdf,
+                "init_pdf_renderer",
+                AsyncMock(side_effect=DRIVER_DEATH),
+            )
+            with pytest.raises(PDFRenderError) as exc_info:
+                await render_resume_pdf("http://x/print")
+
+        message = str(exc_info.value)
+        assert "PDF rendering failed" in message
+        assert "Connection closed" not in message
+
+    async def test_driver_death_on_persistent_browser_reinitializes(self):
+        """A dead persistent driver must not poison the renderer: the dead
+        state is torn down, re-initialized, and the render retried."""
+        dead_browser = SimpleNamespace(close=AsyncMock())
+        dead_driver = SimpleNamespace(stop=AsyncMock())
+        fresh_browser = object()
+
+        async def _fake_init():
+            pdf._browser = fresh_browser
+            pdf._playwright = SimpleNamespace(stop=AsyncMock())
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(pdf, "_browser", dead_browser)
+            mp.setattr(pdf, "_playwright", dead_driver)
+            mp.setattr(pdf, "_subprocess_supported", True)
+            mp.setattr(pdf, "_loop_supports_subprocess", lambda: True)
+            mp.setattr(pdf, "init_pdf_renderer", _fake_init)
+            render_mock = AsyncMock(side_effect=[DRIVER_DEATH, b"%PDF-1.4 healed"])
+            mp.setattr(pdf, "_render_with_browser", render_mock)
+            result = await render_resume_pdf("http://x/print")
+
+        assert result == b"%PDF-1.4 healed"
+        assert render_mock.await_count == 2
+        # Dead state was actually torn down (best-effort, never raises).
+        dead_browser.close.assert_awaited()
+        dead_driver.stop.assert_awaited()
+
+
+def _fake_driver(mp, cm=None, browser=None):
+    """Patch app.pdf's Playwright factory (and launcher) for init tests."""
+    if cm is not None:
+        mp.setattr(pdf, "async_playwright", lambda: cm)
+    mp.setattr(
+        pdf,
+        "_launch_browser",
+        AsyncMock(return_value=browser if browser is not None else object()),
+    )
+    return nullcontext()

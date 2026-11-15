@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 
 CHAT_CONTEXT_MAX_TOKENS = 12_000
-HISTORY_BUDGET_TOKENS = 5_000
+# History is sent TWICE per turn (thinking pass + answer pass), so this budget
+# is the single largest duplicated input in chat. 3k tokens (~6 recent turns)
+# preserves reference resolution ("that job") while halving the old 5k copy.
+HISTORY_BUDGET_TOKENS = 3_000
 SUMMARY_BUDGET_TOKENS = 1_000
 MAX_CHARS_PER_TURN = 2_000
 

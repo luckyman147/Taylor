@@ -143,9 +143,19 @@ await improve_resume(original, job, keywords)  # LLM call
 
 ### Cover Letter (`services/cover_letter.py`)
 ```python
-await generate_cover_letter(resume, job) → str    # LLM call
-await generate_outreach_message(resume, job) → str # LLM call
+await generate_cover_letter(
+    resume, job, language, instruction=None,
+    company_name=None, job_title=None, job_keywords=None,
+) → str                                             # LLM call
+await generate_outreach_message(...same args...) → str  # LLM call
 ```
+
+Before formatting the (custom or default) feature prompt, the service prepends
+authoritative job + candidate-additional-info context blocks, then appends the
+user instruction (`HIGHEST PRIORITY`) and a strict output contract. Routers
+derive identity via `_job_identity(job, job_keywords)` and resolve language via
+`resolve_correspondence_language(jd)` (configured setting wins; otherwise
+detect from the JD, default English).
 
 ## PDF Rendering (`pdf.py`)
 

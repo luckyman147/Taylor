@@ -365,9 +365,7 @@ export default function ResumeViewerPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-        <p className=" text-sm font-bold uppercase text-primary">
-          {t('resumeViewer.loading')}
-        </p>
+        <p className=" text-sm font-bold uppercase text-primary">{t('resumeViewer.loading')}</p>
       </div>
     );
   }
@@ -435,10 +433,7 @@ export default function ResumeViewerPage() {
 
   return (
     <div className="min-h-screen bg-background py-12 pl-16 px-4 md:px-8 overflow-y-auto">
-      <SidebarNav
-        currentPage="resumes"
-        onNavigate={(page) => router.push(page)}
-      />
+      <SidebarNav currentPage="resumes" onNavigate={(page) => router.push(page)} />
       <div className="max-w-7xl mx-auto">
         {/* Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">

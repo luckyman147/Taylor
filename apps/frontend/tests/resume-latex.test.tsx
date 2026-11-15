@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { ResumeLatex } from '@/components/resume/resume-latex';
 import type { ResumeData } from '@/components/dashboard/resume-component';
 
@@ -70,5 +70,17 @@ describe('ResumeLatex', () => {
       'https://portfolio.com'
     );
     expect(screen.queryByRole('link', { name: 'portfolio.com' })).not.toBeInTheDocument();
+  });
+
+  it('renders pipe separators between contact items by default', () => {
+    const { container } = render(<ResumeLatex data={data} />);
+    const header = container.querySelector('header') as HTMLElement;
+    expect(within(header).getAllByText('|')).toHaveLength(2);
+  });
+
+  it('hides contact separators when showContactSeparators is false', () => {
+    const { container } = render(<ResumeLatex data={data} showContactSeparators={false} />);
+    const header = container.querySelector('header') as HTMLElement;
+    expect(within(header).queryByText('|')).not.toBeInTheDocument();
   });
 });

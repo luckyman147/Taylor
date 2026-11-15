@@ -1,5 +1,6 @@
 """LiteLLM wrapper for multi-provider AI support."""
 
+import asyncio
 import json
 import logging
 import re
@@ -81,7 +82,7 @@ def _configure_langfuse() -> None:
 _configure_langfuse()
 
 # LLM timeout configuration (seconds) - base values
-LLM_TIMEOUT_HEALTH_CHECK = 30
+LLM_TIMEOUT_HEALTH_CHECK = 45
 LLM_TIMEOUT_COMPLETION = 300
 LLM_TIMEOUT_JSON = 360  # JSON completions may take longer
 
@@ -94,6 +95,148 @@ MAX_JSON_CONTENT_SIZE = 1024 * 1024  # 1MB
 # output limits. Callers should use get_safe_max_tokens() so this is
 # automatically clamped to the model's actual capacity.
 DEFAULT_JSON_MAX_TOKENS = 8192
+
+# ---------------------------------------------------------------------------
+# Global concurrency limiter (rate-limit protection)
+# ---------------------------------------------------------------------------
+# Caps simultaneous in-flight upstream calls. Bursts (asyncio.gather over
+# rerank batches, confirm/regenerate fan-out, multiple SSE steps) otherwise
+# stampede into the provider's per-minute RPM/TPM limit and earn a 429 storm.
+# Requests beyond the cap queue FIFO; the slot is held across the Router's
+# internal retries so a backoff does not let a fresh burst start.
+LLM_MAX_CONCURRENCY = 3
+_llm_semaphore = asyncio.Semaphore(LLM_MAX_CONCURRENCY)
+
+# ---------------------------------------------------------------------------
+# Per-call token usage accounting (observability)
+# ---------------------------------------------------------------------------
+_usage_lock = threading.Lock()
+_usage_stats: dict[str, dict[str, int]] = {}
+_USAGE_TAG_UNSET = "unattributed"
+
+
+def _usage_tag(metadata: dict[str, Any] | None, fallback: str) -> str:
+    """Derive a stable low-cardinality tag for usage accounting."""
+    if metadata:
+        trace = metadata.get("trace_name")
+        if isinstance(trace, str) and trace:
+            return trace
+        tags = metadata.get("tags")
+        if isinstance(tags, list) and tags and isinstance(tags[0], str):
+            return tags[0]
+    return fallback or _USAGE_TAG_UNSET
+
+
+def record_llm_usage(response: Any, tag: str) -> None:
+    """Accumulate prompt/completion token usage from a LiteLLM response.
+
+    Best-effort: a response without a ``usage`` block is silently ignored.
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+    prompt = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion = int(getattr(usage, "completion_tokens", 0) or 0)
+    with _usage_lock:
+        bucket = _usage_stats.setdefault(
+            tag, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
+        )
+        bucket["calls"] += 1
+        bucket["prompt_tokens"] += prompt
+        bucket["completion_tokens"] += completion
+    logging.debug(
+        "LLM usage [%s]: prompt=%d completion=%d (cumulative: %d calls)",
+        tag, prompt, completion, _usage_stats[tag]["calls"],
+    )
+
+
+def get_llm_usage() -> dict[str, dict[str, int]]:
+    """Return a copy of the in-memory per-tag LLM token usage counters."""
+    with _usage_lock:
+        return {tag: dict(v) for tag, v in _usage_stats.items()}
+
+
+def reset_llm_usage() -> None:
+    """Clear the in-memory usage counters (used by tests)."""
+    with _usage_lock:
+        _usage_stats.clear()
+
+
+def rate_limit_wait(error: Exception, default: float = 15.0) -> float | None:
+    """Seconds to wait before ONE extra attempt after a rate-limit error.
+
+    Returns ``None`` when the error is not rate-limit related, so callers
+    skip their fallback retry. Honours a ``Retry-After`` header when the
+    provider surfaced one, otherwise falls back to ``default``.
+
+    The Router already retries 429s internally (with its own backoff), so
+    this exists only for callers that want one deliberate extra attempt
+    after a per-minute quota window rolls over — not for hammering.
+    """
+    err = str(error).lower()
+    if not ("429" in err or "rate limit" in err or "ratelimit" in err or "quota" in err):
+        return None
+    wait = _retry_after_seconds(error)
+    if wait is not None:
+        return min(max(wait, 1.0), 120.0)
+    return default
+
+
+def _retry_after_seconds(error: Exception) -> float | None:
+    """Extract a Retry-After delay from an exception, if present."""
+    response = getattr(error, "response", None)
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+    try:
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        # HTTP-date form — approximate with the delta to now.
+        try:
+            from email.utils import parsedate_to_datetime
+            import datetime as _dt
+
+            target = parsedate_to_datetime(str(raw))
+            delta = (target - _dt.datetime.now(_dt.timezone.utc)).total_seconds()
+            return max(delta, 1.0)
+        except Exception:
+            return None
+
+
+# Provider statuses that mean "the upstream is unhappy, retrying later could
+# work" — rate limits (429), timeouts (408), and 5xx upstream failures.
+_TRANSIENT_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
+
+
+def is_transient_llm_error(exc: BaseException) -> bool:
+    """True when an LLM failure is worth a client-facing HTTP 503.
+
+    Walks the ``__cause__``/``__context__`` chain so both raw litellm
+    exceptions (``complete_json`` re-raises them untouched) and
+    ``complete()``'s ``ValueError`` wrapper (raised ``from e``) classify
+    correctly. Application-level errors (validation, prompts, DB) return
+    ``False`` so callers map them to a plain generic 500.
+
+    Callers should re-raise their own ``HTTPException``s before consulting
+    this (an ``HTTPException`` carries a ``status_code`` too).
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        status = getattr(current, "status_code", None)
+        if isinstance(status, int) and status in _TRANSIENT_STATUS_CODES:
+            return True
+        if isinstance(current, litellm.APIConnectionError):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 class LLMConfig(BaseModel):
@@ -286,7 +429,9 @@ def _join_text_parts(parts: list[str]) -> str | None:
     return joined or None
 
 
-def _extract_message_text(message: Any) -> str | None:
+def _extract_message_text(
+    message: Any, *, allow_reasoning_fallback: bool = True
+) -> str | None:
     """Extract plain text from a LiteLLM message object across providers.
 
     Fallback order:
@@ -296,7 +441,10 @@ def _extract_message_text(message: Any) -> str | None:
       3. message.thinking (Anthropic extended thinking)
 
     Reasoning-only responses are treated as valid content so thinking models
-    can be used without special-casing them in every call site.
+    can be used without special-casing them in every call site. Callers that
+    need real output only (e.g. short extraction tasks) pass
+    ``allow_reasoning_fallback=False`` so chain-of-thought text is never
+    mistaken for the answer.
     """
     content: Any = None
 
@@ -308,6 +456,9 @@ def _extract_message_text(message: Any) -> str | None:
     text = _join_text_parts(_extract_text_parts(content))
     if text:
         return text
+
+    if not allow_reasoning_fallback:
+        return None
 
     # Fallback: reasoning_content (DeepSeek R1, OpenAI o1/o3).
     reasoning = _safe_get(message, "reasoning_content")
@@ -329,13 +480,18 @@ def _safe_get(obj: Any, key: str) -> Any:
     return None
 
 
-def _extract_choice_text(choice: Any) -> str | None:
+def _extract_choice_text(
+    choice: Any, *, allow_reasoning_fallback: bool = True
+) -> str | None:
     """Extract plain text from a LiteLLM choice object.
 
     Tries message.content first, then choice.text, then choice.delta. Handles both
     object attributes and dict keys.
     """
-    content = _extract_message_text(_safe_get(choice, "message"))
+    content = _extract_message_text(
+        _safe_get(choice, "message"),
+        allow_reasoning_fallback=allow_reasoning_fallback,
+    )
     if content:
         return content
 
@@ -593,6 +749,14 @@ def _build_router(config: LLMConfig) -> Router:
     if api_version:
         litellm_params["api_version"] = api_version
 
+    # Optional client-side RPM pacing (LLM_RPM > 0): the Router enforces a
+    # per-minute request cap locally via its pre-call check instead of
+    # letting bursts earn an upstream 429. Pre-call checks also filter out
+    # context-window-infeasible deployments.
+    rpm = getattr(settings, "llm_rpm", 0) or 0
+    if rpm > 0:
+        litellm_params["rpm"] = rpm
+
     return Router(
         model_list=[
             {
@@ -601,6 +765,12 @@ def _build_router(config: LLMConfig) -> Router:
             }
         ],
         num_retries=3,
+        # Space retry attempts ~8s apart (litellm's MAX_RETRY_DELAY caps the
+        # wait at 8s). The default 0.5/1/2s backoff fires all attempts inside
+        # ~4s, which can't ride out a Gemini "high demand" 503 spike — by far
+        # the most common failure we see. A provider-supplied Retry-After
+        # header still takes precedence inside litellm's backoff calculation.
+        retry_after=8,
         retry_policy=RetryPolicy(
             AuthenticationErrorRetries=0,
             BadRequestErrorRetries=0,
@@ -613,6 +783,7 @@ def _build_router(config: LLMConfig) -> Router:
         # cooldowns would blackout the backend on transient failures.
         # Re-enable when a fallback deployment is added.
         disable_cooldowns=True,
+        enable_pre_call_checks=rpm > 0,
     )
 
 
@@ -660,28 +831,27 @@ async def check_llm_health(
             "error_code": "api_key_missing",
         }
 
-    model_name = get_model_name(config)
-
     prompt = test_prompt or "Hi"
 
     try:
-        # Make a minimal test call with timeout
-        # Pass API key directly to avoid race conditions with global os.environ
+        # Probe through the Router so the transport retry policy applies
+        # (TimeoutErrorRetries=2): a single slow/cold connection must not
+        # mark the provider unhealthy. api_key/api_base/api_version ride on
+        # the Router's litellm_params (baked in at build time from this
+        # config), so no per-call key passing is needed.
+        router, config = get_router(config)
         kwargs: dict[str, Any] = {
-            "model": model_name,
+            "model": "primary",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 64,
-            "api_key": _effective_api_key(config.provider, config.api_key),
-            "api_base": _normalize_api_base(config.provider, config.api_base),
             "timeout": LLM_TIMEOUT_HEALTH_CHECK,
         }
-        api_version = _azure_foundry_api_version(config)
-        if api_version:
-            kwargs["api_version"] = api_version
         if config.reasoning_effort:
             kwargs["reasoning_effort"] = config.reasoning_effort
 
-        response = await litellm.acompletion(**kwargs)
+        async with _llm_semaphore:
+            response = await router.acompletion(**kwargs)
+        record_llm_usage(response, "health_probe")
         content = _extract_choice_text(response.choices[0])
         if not content:
             # LLM-003: Empty response (even after reasoning_content / thinking
@@ -741,7 +911,9 @@ async def check_llm_health(
         # Provide a minimal, actionable client-facing hint without leaking secrets.
         error_code = "health_check_failed"
         message = str(e)
-        if "404" in message and "/v1/v1/" in message:
+        if "timeout" in message.lower() or "timed out" in message.lower():
+            error_code = "llm_timeout"
+        elif "404" in message and "/v1/v1/" in message:
             error_code = "duplicate_v1_path"
         elif "404" in message:
             error_code = "not_found_404"
@@ -770,10 +942,16 @@ async def complete(
     max_tokens: int = 4096,
     temperature: float = 0.7,
     metadata: dict[str, Any] | None = None,
+    *,
+    allow_reasoning_fallback: bool = True,
 ) -> str:
     """Make a completion request to the LLM.
 
     Transport retries (429, 500, timeout) are handled by the Router.
+
+    Set ``allow_reasoning_fallback=False`` for short extraction tasks (titles,
+    labels) where chain-of-thought text must never be used as the answer —
+    a reasoning-only response then counts as empty and raises.
     """
     router, config = get_router(config)
     model_name = get_model_name(config)
@@ -797,9 +975,14 @@ async def complete(
         if metadata:
             kwargs["metadata"] = metadata
 
-        response = await router.acompletion(**kwargs)
+        async with _llm_semaphore:
+            response = await router.acompletion(**kwargs)
+        record_llm_usage(response, _usage_tag(metadata, "complete"))
 
-        content = _extract_choice_text(response.choices[0])
+        content = _extract_choice_text(
+            response.choices[0],
+            allow_reasoning_fallback=allow_reasoning_fallback,
+        )
         if not content:
             raise ValueError("Empty response from LLM")
         # Strip thinking tags from reasoning models (deepseek-r1, qwq, etc.)
@@ -1168,6 +1351,42 @@ def _strip_thinking_tags(content: str) -> str:
     return stripped.strip()
 
 
+class TruncatedJSONError(ValueError):
+    """The LLM response stopped mid-JSON (unbalanced braces).
+
+    Subclasses ``ValueError`` so existing callers that only handle ValueError
+    keep working, while ``complete_json`` can retry with a larger token
+    budget instead of repeating an identical request.
+    """
+
+
+def _bump_max_tokens(model_name: str, current: int) -> int:
+    """Double the JSON budget for a truncation retry, clamped to the model.
+
+    Unknown models fall back to ``FALLBACK_MAX_TOKENS`` in
+    ``get_safe_max_tokens``; ``max()`` guarantees we never shrink the budget
+    the caller already requested.
+    """
+    safe = get_safe_max_tokens(model_name, requested=current * 2)
+    return max(current, safe)
+
+
+def _truncation_retry_hint(schema_type: str) -> str:
+    """Schema-aware retry hint for a response cut off mid-JSON."""
+    if schema_type == "diff":
+        return (
+            "\n\nIMPORTANT: Your previous response was cut off before the JSON "
+            "was complete. Return a COMPLETE valid JSON object. Prioritize the "
+            "highest-impact changes and keep the list short (at most 8 changes). "
+            "Start with { and end with }."
+        )
+    return (
+        "\n\nIMPORTANT: Your previous response was cut off before the JSON was "
+        "complete. Return a shorter but COMPLETE valid JSON object. Start with "
+        "{ and end with }."
+    )
+
+
 def _extract_json(content: str, _depth: int = 0) -> str:
     """Extract JSON from LLM response, handling various formats.
 
@@ -1230,10 +1449,14 @@ def _extract_json(content: str, _depth: int = 0) -> str:
                     break
 
         # LLM-001: Check for unbalanced braces - loop ended without depth reaching 0
-        if end_idx == -1 and depth != 0:
+        if end_idx == -1 and depth > 0:
             logging.warning(
                 "JSON extraction found unbalanced braces (depth=%d), possible truncation",
                 depth,
+            )
+            raise TruncatedJSONError(
+                f"Truncated JSON response: {len(content)} chars with "
+                f"{depth} unclosed brace(s). Preview: {content[:200]}"
             )
 
         if end_idx != -1:
@@ -1289,14 +1512,19 @@ async def complete_json(
     # Check if we can use JSON mode
     use_json_mode = _supports_json_mode(model_name)
     json_mode_failed = False
+    current_max_tokens = max_tokens
+    truncation_retry = False
 
     for attempt in range(retries + 1):
+        finish_reason: Any = None
         try:
             kwargs: dict[str, Any] = {
                 "model": "primary",
                 "messages": messages,
-                "max_tokens": max_tokens,
-                "timeout": _calculate_timeout("json", max_tokens, config.provider),
+                "max_tokens": current_max_tokens,
+                "timeout": _calculate_timeout(
+                    "json", current_max_tokens, config.provider
+                ),
             }
             if metadata:
                 kwargs["metadata"] = metadata
@@ -1309,10 +1537,16 @@ async def complete_json(
             # reasoning and return no visible content. Dropping to minimal
             # effort on retry leaves room for the JSON itself. Scoped to this
             # provider so other providers keep their configured effort.
+            # Gemini 3 also counts thinking tokens against maxOutputTokens, but
+            # only downgrade after an actual truncation — an empty/content
+            # failure on Gemini keeps the user's configured effort.
             if (
                 attempt > 0
-                and config.provider == "azure_foundry"
                 and reasoning_effort in ("low", "medium", "high")
+                and (
+                    config.provider == "azure_foundry"
+                    or (truncation_retry and config.provider == "gemini")
+                )
             ):
                 reasoning_effort = "minimal"
             if reasoning_effort:
@@ -1324,10 +1558,18 @@ async def complete_json(
             if use_json_mode and not json_mode_failed:
                 kwargs["response_format"] = {"type": "json_object"}
 
-            response = await router.acompletion(**kwargs)
-            content = _extract_choice_text(response.choices[0])
+            async with _llm_semaphore:
+                response = await router.acompletion(**kwargs)
+            record_llm_usage(response, _usage_tag(metadata, schema_type))
+            choice = response.choices[0]
+            finish_reason = _safe_get(choice, "finish_reason")
+            content = _extract_choice_text(choice)
 
             if not content:
+                if finish_reason == "length":
+                    raise TruncatedJSONError(
+                        "Response hit the output token limit before producing content"
+                    )
                 raise ValueError("Empty response from LLM")
 
             logging.debug(
@@ -1368,6 +1610,37 @@ async def complete_json(
                 )
 
             return result
+
+        except TruncatedJSONError as e:
+            # Content quality — the response stopped mid-JSON. Retrying with
+            # the same budget just truncates again, so grow the output budget
+            # (clamped to the model's limit) and ask for a shorter complete
+            # result. Gemini's thinking tokens share maxOutputTokens, so a
+            # truncation retry also drops reasoning effort to minimal.
+            logging.warning(
+                "LLM response truncated (attempt %d/%d, finish_reason=%s, "
+                "max_tokens=%d): %s",
+                attempt + 1,
+                retries + 1,
+                finish_reason,
+                current_max_tokens,
+                e,
+            )
+            if attempt < retries:
+                bumped = _bump_max_tokens(model_name, current_max_tokens)
+                if bumped > current_max_tokens:
+                    logging.warning(
+                        "Increasing max_tokens %d → %d for truncation retry",
+                        current_max_tokens,
+                        bumped,
+                    )
+                    current_max_tokens = bumped
+                truncation_retry = True
+                messages[-1]["content"] = (
+                    prompt + _truncation_retry_hint(schema_type)
+                )
+                continue
+            raise
 
         except json.JSONDecodeError as e:
             # Content quality — malformed JSON, retry with prompt hint

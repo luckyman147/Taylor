@@ -37,9 +37,7 @@ export const GenericTextForm: React.FC<GenericTextFormProps> = ({
 
   return (
     <div className="space-y-2">
-      <Label className=" text-xs uppercase tracking-wider text-steel-grey">
-        {finalLabel}
-      </Label>
+      <Label className=" text-xs uppercase tracking-wider text-steel-grey">{finalLabel}</Label>
       <Textarea
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}

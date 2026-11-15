@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Upload from 'lucide-react/dist/esm/icons/upload';
+import X from 'lucide-react/dist/esm/icons/x';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
@@ -34,6 +36,8 @@ import {
   updateEducation,
   updateProject,
   updateProfile,
+  uploadProjectAttachment,
+  deleteProjectAttachment,
   type CareerAchievement,
   type CareerCertification,
   type CareerEducation,
@@ -68,9 +72,25 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [expandedReadmes, setExpandedReadmes] = useState<Set<string>>(new Set());
   const [projectSearch, setProjectSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
 
   const refresh = async () => {
     onChanged(await getProfile());
+  };
+
+  const handleBulkDeleteProjects = async () => {
+    if (selectedProjects.size === 0) return;
+    setError(null);
+    try {
+      for (const id of selectedProjects) {
+        await deleteProject(id);
+      }
+      setSelectedProjects(new Set());
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const handleSaved = async (payload: unknown) => {
@@ -108,6 +128,7 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
           github: string;
           website: string;
           description: string[];
+          status: string;
         };
         if (item) {
           await updateProject((item as CareerProject).project_id, {
@@ -117,6 +138,7 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
             github: p.github.trim() || null,
             website: p.website.trim() || null,
             description: p.description,
+            status: p.status as 'completed' | 'in_progress' | 'future',
           });
         } else {
           await createProject({
@@ -126,6 +148,7 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
             github: p.github.trim() || null,
             website: p.website.trim() || null,
             description: p.description,
+            status: p.status as 'completed' | 'in_progress' | 'future',
           });
         }
       } else {
@@ -280,31 +303,59 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
       return (
         <div key={p.project_id} className="py-2.5">
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-ink">{p.name}</div>
-              <div className="truncate text-xs text-ink-soft">
-                {[p.role, p.years, p.github, p.website].filter(Boolean).join(' · ')}
-              </div>
-              {p.languages.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {p.languages.slice(0, 5).map((lang) => (
-                    <span
-                      key={lang}
-                      className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600"
-                    >
-                      {lang}
-                    </span>
-                  ))}
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <input
+                type="checkbox"
+                checked={selectedProjects.has(p.project_id)}
+                onChange={(e) => {
+                  setSelectedProjects((prev) => {
+                    const next = new Set(prev);
+                    if (e.target.checked) next.add(p.project_id);
+                    else next.delete(p.project_id);
+                    return next;
+                  });
+                }}
+                className="h-4 w-4 shrink-0 rounded border-[#c9c5bc] accent-primary"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-semibold text-ink">{p.name}</div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      p.status === 'completed'
+                        ? 'border border-green-200 bg-green-50 text-green-700'
+                        : p.status === 'in_progress'
+                          ? 'border border-amber-200 bg-amber-50 text-amber-700'
+                          : 'border border-slate-200 bg-slate-50 text-slate-500'
+                    }`}
+                  >
+                    {t(`profile.projects.status.${p.status}`)}
+                  </span>
                 </div>
-              )}
-              {p.readme && (
-                <button
-                  onClick={toggleReadme}
-                  className="mt-1 text-xs text-primary hover:underline"
-                >
-                  {readmeOpen ? t('profile.github.hideReadme') : t('profile.github.showReadme')}
-                </button>
-              )}
+                <div className="truncate text-xs text-ink-soft">
+                  {[p.role, p.years, p.github, p.website].filter(Boolean).join(' · ')}
+                </div>
+                {p.languages.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {p.languages.slice(0, 5).map((lang) => (
+                      <span
+                        key={lang}
+                        className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600"
+                      >
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {p.readme && (
+                  <button
+                    onClick={toggleReadme}
+                    className="mt-1 text-xs text-primary hover:underline"
+                  >
+                    {readmeOpen ? t('profile.github.hideReadme') : t('profile.github.showReadme')}
+                  </button>
+                )}
+              </div>
             </div>
             <RowActions
               editLabel={t('profile.projects.edit')}
@@ -339,6 +390,22 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
       </div>
     );
   };
+
+  const filteredProjectIds = bundle.projects
+    .filter((p) => {
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (!projectSearch.trim()) return true;
+      const q = projectSearch.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.role && p.role.toLowerCase().includes(q)) ||
+        (p.github && p.github.toLowerCase().includes(q)) ||
+        (p.website && p.website.toLowerCase().includes(q)) ||
+        (p.description && p.description.some((d) => d.toLowerCase().includes(q))) ||
+        (p.languages && p.languages.some((l) => l.toLowerCase().includes(q)))
+      );
+    })
+    .map((p) => p.project_id);
 
   return (
     <div className="space-y-6">
@@ -383,10 +450,39 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
         <>
           <section className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
             <div className="mb-4 flex items-center justify-between">
-              <div className="text-xs font-bold uppercase tracking-wide text-primary">
-                {t('profile.projects.title')}
+              <div className="flex items-center gap-3">
+                <div className="text-xs font-bold uppercase tracking-wide text-primary">
+                  {t('profile.projects.title')}
+                </div>
+                {bundle.projects.length > 0 && (
+                  <label className="flex items-center gap-1.5 text-xs text-ink-soft cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                    checked={selectedProjects.size > 0 && filteredProjectIds.length > 0 && filteredProjectIds.every((id) => selectedProjects.has(id))}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedProjects(new Set(filteredProjectIds));
+                      else setSelectedProjects(new Set());
+                      }}
+                      className="h-3.5 w-3.5 rounded border-[#c9c5bc] accent-primary"
+                    />
+                    {selectedProjects.size > 0
+                      ? t('profile.projects.selected', { count: String(selectedProjects.size) })
+                      : t('profile.projects.selectAll')}
+                  </label>
+                )}
               </div>
               <div className="flex items-center gap-2">
+                {selectedProjects.size > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleBulkDeleteProjects()}
+                    className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {t('profile.projects.bulkDelete', { count: String(selectedProjects.size) })}
+                  </Button>
+                )}
                 <GitHubImportButton
                   onImported={async (result) => {
                     setImportNotice(
@@ -413,28 +509,45 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
                 <Input
                   placeholder={t('profile.projects.search')}
                   value={projectSearch}
-                  onChange={(e) => setProjectSearch(e.target.value)}
+                  onChange={(e) => { setProjectSearch(e.target.value); setSelectedProjects(new Set()); }}
                   className="h-9 rounded-xl border-[#e6e3dc] pl-9 text-xs"
                 />
+              </div>
+            )}
+            {bundle.projects.length > 0 && (
+              <div className="mb-3 flex gap-1.5">
+                {(['all', 'completed', 'in_progress', 'future'] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setStatusFilter(s); setSelectedProjects(new Set()); }}
+                    className={`rounded-full px-3 py-1 text-[10px] font-semibold transition-colors ${
+                      statusFilter === s
+                        ? 'bg-primary text-white'
+                        : 'border border-[#e6e3dc] bg-secondary text-ink-soft hover:text-ink'
+                    }`}
+                  >
+                    {t(`profile.projects.statusFilter.${s}`)}
+                  </button>
+                ))}
               </div>
             )}
             {bundle.projects.length === 0 ? (
               <p className="text-sm text-ink-soft">{t('profile.projects.empty')}</p>
             ) : (
               (() => {
-                const filtered = projectSearch.trim()
-                  ? bundle.projects.filter((p) => {
-                      const q = projectSearch.toLowerCase();
-                      return (
-                        p.name.toLowerCase().includes(q) ||
-                        (p.role && p.role.toLowerCase().includes(q)) ||
-                        (p.github && p.github.toLowerCase().includes(q)) ||
-                        (p.website && p.website.toLowerCase().includes(q)) ||
-                        (p.description && p.description.some((d) => d.toLowerCase().includes(q))) ||
-                        (p.languages && p.languages.some((l) => l.toLowerCase().includes(q)))
-                      );
-                    })
-                  : bundle.projects;
+                const filtered = bundle.projects.filter((p) => {
+                  if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+                  if (!projectSearch.trim()) return true;
+                  const q = projectSearch.toLowerCase();
+                  return (
+                    p.name.toLowerCase().includes(q) ||
+                    (p.role && p.role.toLowerCase().includes(q)) ||
+                    (p.github && p.github.toLowerCase().includes(q)) ||
+                    (p.website && p.website.toLowerCase().includes(q)) ||
+                    (p.description && p.description.some((d) => d.toLowerCase().includes(q))) ||
+                    (p.languages && p.languages.some((l) => l.toLowerCase().includes(q)))
+                  );
+                });
                 return filtered.length === 0 ? (
                   <p className="text-sm text-ink-soft">{t('profile.projects.noResults')}</p>
                 ) : (
@@ -528,6 +641,8 @@ export function GraphTab({ bundle, section, onChanged }: GraphTabProps) {
         error={error}
         onOpenChange={(open) => !open && setDialog(null)}
         onSubmit={handleSaved}
+        onChanged={onChanged}
+        bundle={bundle}
       />
       <CertificationFormDialog
         open={certDialogOpen}
@@ -605,14 +720,18 @@ interface GraphFormDialogProps {
   error: string | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: unknown) => Promise<void>;
+  onChanged: (bundle: ProfileBundle) => void;
+  bundle: ProfileBundle;
 }
 
-function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDialogProps) {
+function GraphFormDialog({ dialog, error, onOpenChange, onSubmit, onChanged, bundle }: GraphFormDialogProps) {
   const { t } = useTranslations();
   const kind = dialog?.kind ?? 'education';
   const editing = Boolean(dialog?.item);
   const education = dialog?.item as CareerEducation | null;
-  const project = dialog?.item as CareerProject | null;
+  const project = dialog?.item
+    ? bundle.projects.find((p) => p.project_id === (dialog.item as CareerProject).project_id) ?? (dialog.item as CareerProject)
+    : null;
   const achievement = dialog?.item as CareerAchievement | null;
 
   const [institution, setInstitution] = useState('');
@@ -625,6 +744,7 @@ function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDia
   const [website, setWebsite] = useState('');
   const [bulletDraft, setBulletDraft] = useState('');
   const [bullets, setBullets] = useState<string[]>([]);
+  const [status, setStatus] = useState<'completed' | 'in_progress' | 'future'>('completed');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -641,6 +761,7 @@ function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDia
     setGithub(project?.github ?? '');
     setWebsite(project?.website ?? '');
     setBullets(project?.description ?? []);
+    setStatus(project?.status ?? 'completed');
     setTitle(achievement?.title ?? '');
     setDate(achievement?.date ?? '');
     setValidation(null);
@@ -678,7 +799,7 @@ function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDia
       if (kind === 'education') {
         await onSubmit({ institution, degree, years, description });
       } else if (kind === 'projects') {
-        await onSubmit({ name, role, years, github, website, description: bullets });
+        await onSubmit({ name, role, years, github, website, description: bullets, status });
       } else {
         await onSubmit({ title, description, date });
       }
@@ -797,6 +918,18 @@ function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDia
                   />
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label>{t('profile.projects.status.label')}</Label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as 'completed' | 'in_progress' | 'future')}
+                  className="h-9 w-full rounded-xl border border-[#e6e3dc] bg-white px-3 text-sm text-ink"
+                >
+                  <option value="completed">{t('profile.projects.status.completed')}</option>
+                  <option value="in_progress">{t('profile.projects.status.in_progress')}</option>
+                  <option value="future">{t('profile.projects.status.future')}</option>
+                </select>
+              </div>
               <div className="space-y-2">
                 <Label>{t('profile.projects.description')}</Label>
                 {bullets.length === 0 ? (
@@ -838,6 +971,17 @@ function GraphFormDialog({ dialog, error, onOpenChange, onSubmit }: GraphFormDia
                   </Button>
                 </div>
               </div>
+              {editing && project && (
+                <ProjectAttachments project={project} onChanged={onChanged} />
+              )}
+              {editing && project?.readme && (
+                <div className="space-y-1">
+                  <Label>{t('profile.github.readme')}</Label>
+                  <pre className="max-h-40 overflow-y-auto overflow-x-auto whitespace-pre-wrap rounded-xl border border-[#e6e3dc] bg-secondary/30 p-3 text-[11px] text-ink">
+                    {project.readme}
+                  </pre>
+                </div>
+              )}
             </>
           )}
           {kind === 'achievements' && (
@@ -997,5 +1141,98 @@ function CertificationFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ProjectAttachments({
+  project,
+  onChanged,
+}: {
+  project: CareerProject;
+  onChanged: (bundle: ProfileBundle) => void;
+}) {
+  const { t } = useTranslations();
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; name: string; type: string } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    const fileType = file.type.startsWith('image/') ? 'image' : 'document';
+    setPreview({ url: previewUrl, name: file.name, type: fileType });
+    setUploading(true);
+    try {
+      await uploadProjectAttachment(project.project_id, file);
+      onChanged(await getProfile());
+    } finally {
+      setUploading(false);
+      URL.revokeObjectURL(previewUrl);
+      setPreview(null);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }, [project.project_id, onChanged]);
+
+  const handleDelete = useCallback(async (filename: string) => {
+    await deleteProjectAttachment(project.project_id, filename);
+    onChanged(await getProfile());
+  }, [project.project_id, onChanged]);
+
+  return (
+    <div className="space-y-4">
+      <Label>{t('profile.projects.attachments')}</Label>
+      {project.attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {project.attachments.map((att) => (
+            <div
+              key={att.url}
+              className="group relative flex items-center gap-2 rounded-lg border border-[#e6e3dc] bg-paper-tint px-3 py-1.5 text-xs text-ink"
+            >
+              {att.type === 'image' ? (
+                <img src={att.url} alt={att.name} className="h-8 w-8 rounded object-cover" />
+              ) : (
+                <span className="font-mono text-steel-grey">{att.name.split('.').pop()?.toUpperCase()}</span>
+              )}
+              <span className="max-w-[100px] truncate">{att.name}</span>
+              <button
+                type="button"
+                onClick={() => handleDelete(att.url.split('/').pop() || att.name)}
+                className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-destructive text-white group-hover:flex"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {preview && (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-xs text-ink">
+          {preview.type === 'image' ? (
+            <img src={preview.url} alt={preview.name} className="h-10 w-10 rounded object-cover" />
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded bg-primary/10 font-mono text-[10px] font-bold text-primary">
+              {preview.name.split('.').pop()?.toUpperCase()}
+            </span>
+          )}
+          <span className="flex-1 truncate">{preview.name}</span>
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+        </div>
+      )}
+      <div className="border-t border-[#e6e3dc] pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="gap-1.5"
+        >
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {t('profile.projects.uploadAttachment')}
+        </Button>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*,.pdf,.docx,.txt" className="hidden" onChange={handleUpload} />
+    </div>
   );
 }

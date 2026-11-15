@@ -97,7 +97,10 @@ export function PracticePanel({ scenario, onClose, onSessionRecorded }: Practice
       </div>
 
       <div className="flex flex-col gap-3 rounded-2xl border border-[#e6e3dc] bg-paper-tint p-5">
-        <label htmlFor="practice-answer" className="text-sm font-semibold uppercase tracking-wide text-ink">
+        <label
+          htmlFor="practice-answer"
+          className="text-sm font-semibold uppercase tracking-wide text-ink"
+        >
           {t('interviewPractice.practiceAnswerLabel')}
         </label>
         <textarea

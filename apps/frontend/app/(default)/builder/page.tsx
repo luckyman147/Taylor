@@ -10,10 +10,7 @@ export default function BuilderPage() {
 
   return (
     <div className="min-h-screen bg-white pl-16">
-      <SidebarNav
-        currentPage="builder"
-        onNavigate={(page) => router.push(page)}
-      />
+      <SidebarNav currentPage="builder" onNavigate={(page) => router.push(page)} />
       <ResumeBuilder />
     </div>
   );

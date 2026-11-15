@@ -44,10 +44,7 @@ export interface EvalCompareResult {
   autonomous: { trace: EvalTrace; metrics: EvalMetric[] };
 }
 
-export async function runEval(
-  query: string,
-  mode: string = 'autonomous',
-): Promise<EvalRunResult> {
+export async function runEval(query: string, mode: string = 'autonomous'): Promise<EvalRunResult> {
   const res = await apiPost('/eval/run', { query, mode });
   if (!res.ok) throw new Error('Eval run failed');
   return res.json();
@@ -110,8 +107,15 @@ export async function getEvalResult(filename: string): Promise<EvalResultDetail>
 
 export async function runBenchmark(
   mode: string = 'autonomous',
-  dataset: string = 'benchmark.jsonl',
-): Promise<{ run_id: string; filename: string; mode: string; samples_total: number; traces_collected: number; elapsed_seconds: number }> {
+  dataset: string = 'benchmark.jsonl'
+): Promise<{
+  run_id: string;
+  filename: string;
+  mode: string;
+  samples_total: number;
+  traces_collected: number;
+  elapsed_seconds: number;
+}> {
   const res = await apiPost('/eval/benchmark/run', { mode, dataset }, 300_000);
   if (!res.ok) throw new Error('Benchmark run failed');
   return res.json();
@@ -131,7 +135,9 @@ export interface ChatEvalMetrics {
 }
 
 export async function fetchLatestEval(threadId: string): Promise<ChatEvalMetrics | null> {
-  const res = await apiFetch(`/eval/chat/evaluations?thread_id=${encodeURIComponent(threadId)}&limit=1`);
+  const res = await apiFetch(
+    `/eval/chat/evaluations?thread_id=${encodeURIComponent(threadId)}&limit=1`
+  );
   if (!res.ok) return null;
   const data = await res.json();
   if (!Array.isArray(data) || data.length === 0) return null;

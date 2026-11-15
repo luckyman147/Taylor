@@ -3,6 +3,9 @@ data/*.json
 data/config.json
 !data/.gitkeep
 
+# User uploads (avatar images, resume files)
+data/uploads/
+
 # Config file with API keys - NEVER COMMIT
 config.json
 

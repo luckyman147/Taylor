@@ -32,11 +32,13 @@ class CompanyStatus(str, Enum):
 
     watching = "watching"
     contacted = "contacted"
+    second_contact = "second_contact"
     applied = "applied"
     interviewing = "interviewing"
     negotiating = "negotiating"
     won = "won"
     lost = "lost"
+    trash = "trash"
 
 
 class CompanyResponse(BaseModel):
@@ -54,6 +56,9 @@ class CompanyResponse(BaseModel):
     linkedin_url: str | None = None
     industry: str | None = None
     year_founded: int | None = None
+    description: str | None = None
+    city: str | None = None
+    country: str | None = None
     created_at: str
     updated_at: str
 
@@ -65,12 +70,18 @@ class CompanyListResponse(BaseModel):
 
 
 class CompanyCreate(BaseModel):
-    """Create a company — only ``name`` is required."""
+    """Create a company — only ``name`` is required.
+
+    ``description`` is optional; when it is empty and ``website`` is set the
+    endpoint fetches the website once and stores a condensed summary.
+    """
 
     name: str = Field(min_length=1, max_length=200)
     email: str | None = None
     phone: str | None = None
     address: str | None = None
+    city: str | None = None
+    country: str | None = None
     website: str | None = None
     company_size: CompanySize | None = None
     company_type: CompanyType | None = None
@@ -78,6 +89,7 @@ class CompanyCreate(BaseModel):
     linkedin_url: str | None = None
     industry: str | None = None
     year_founded: int | None = Field(default=None, ge=1600, le=2100)
+    description: str | None = Field(default=None, max_length=4000)
 
 
 class CompanyUpdate(BaseModel):
@@ -87,6 +99,8 @@ class CompanyUpdate(BaseModel):
     email: str | None = None
     phone: str | None = None
     address: str | None = None
+    city: str | None = None
+    country: str | None = None
     website: str | None = None
     company_size: CompanySize | None = None
     company_type: CompanyType | None = None
@@ -94,6 +108,7 @@ class CompanyUpdate(BaseModel):
     linkedin_url: str | None = None
     industry: str | None = None
     year_founded: int | None = Field(default=None, ge=1600, le=2100)
+    description: str | None = Field(default=None, max_length=4000)
 
 
 class CompanyActionResponse(BaseModel):

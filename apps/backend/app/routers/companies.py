@@ -26,6 +26,7 @@ from app.schemas import (
     CompanyType,
     CompanyUpdate,
 )
+from app.services.company_describe import fetch_company_description
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ _FIELD_ALIASES: dict[str, set[str]] = {
     "email": {"email", "e-mail", "mail"},
     "phone": {"phone", "phonenumber", "phone_number", "contact", "tel", "telephone", "mobile", "cell"},
     "address": {"address", "streetaddress", "street", "location"},
+    "city": {"city", "town", "locality", "municipality"},
+    "country": {"country", "nation"},
     "website": {"website", "websiteurl", "website_url", "site", "url", "web", "homepage"},
     "company_size": {"companysize", "size", "employees", "headcount", "employeescount"},
     "company_type": {"companytype", "type", "category"},
@@ -45,6 +48,7 @@ _FIELD_ALIASES: dict[str, set[str]] = {
     "industry": {"industry", "sector", "industries"},
     "status": {"status", "state", "phase", "stage"},
     "year_founded": {"yearfounded", "founded", "foundingyear", "year", "foundedyear"},
+    "description": {"description", "companydescription", "company_description", "about", "summary"},
 }
 
 # Order used for the auto-detected mapping payload and the mapping UI.
@@ -53,6 +57,8 @@ _IMPORT_FIELDS: list[str] = [
     "email",
     "phone",
     "address",
+    "city",
+    "country",
     "website",
     "company_size",
     "company_type",
@@ -60,6 +66,7 @@ _IMPORT_FIELDS: list[str] = [
     "industry",
     "status",
     "year_founded",
+    "description",
 ]
 
 _SIZE_VALUES = {s.value for s in CompanySize}
@@ -205,6 +212,8 @@ async def import_companies(
                 email=normalized.get("email", "").strip() or None,
                 phone=normalized.get("phone", "").strip() or None,
                 address=normalized.get("address", "").strip() or None,
+                city=normalized.get("city", "").strip() or None,
+                country=normalized.get("country", "").strip() or None,
                 website=normalized.get("website", "").strip() or None,
                 company_size=company_size,
                 company_type=company_type,
@@ -212,6 +221,7 @@ async def import_companies(
                 industry=normalized.get("industry", "").strip() or None,
                 status=status,
                 year_founded=year_founded,
+                description=normalized.get("description", "").strip() or None,
             )
             created += 1
         except Exception as e:
@@ -233,12 +243,27 @@ async def list_companies() -> CompanyListResponse:
     return CompanyListResponse(companies=[CompanyResponse(**c) for c in companies])
 
 
+async def _safe_fetch_description(url: str) -> str:
+    """Fetch a company description for ``url``; returns ``""`` on failure.
+
+    A failed fetch must never fail the surrounding create/update — the user
+    can always add a description manually later.
+    """
+    try:
+        return await fetch_company_description(url)
+    except Exception as exc:
+        logger.warning("Company description fetch failed for %s: %s", url, exc)
+        return ""
+
+
 @router.post("", response_model=CompanyResponse, status_code=201)
 async def create_company(request: CompanyCreate) -> CompanyResponse:
     """Create a company; dedupes (case-insensitively) on name.
 
     Creating a company whose name already exists returns the existing row so
-    double-submits never duplicate entries.
+    double-submits never duplicate entries. When ``description`` is empty and
+    ``website`` is set, the website is fetched once to fill the description
+    (existing rows are returned without refetching).
     """
     payload = request.model_dump()
     if "company_size" in payload and payload["company_size"] is not None:
@@ -248,6 +273,14 @@ async def create_company(request: CompanyCreate) -> CompanyResponse:
     if "status" in payload and payload["status"] is not None:
         payload["status"] = request.status.value
     try:
+        existing = await db.get_company_by_name(payload["name"])
+        if existing is not None:
+            return CompanyResponse(**existing)
+        description = (payload.get("description") or "").strip()
+        website = (payload.get("website") or "").strip()
+        if not description and website:
+            description = await _safe_fetch_description(website)
+        payload["description"] = description or None
         company = await db.create_company(**payload)
     except Exception as e:
         logger.error("Failed to create company: %s", e)
@@ -266,11 +299,28 @@ async def get_company(company_id: str) -> CompanyResponse:
 
 @router.patch("/{company_id}", response_model=CompanyResponse)
 async def update_company(company_id: str, request: CompanyUpdate) -> CompanyResponse:
-    """Update a company's fields (partial)."""
+    """Update a company's fields (partial).
+
+    When the resulting description would be empty and a non-empty ``website``
+    is part of the update, the website is fetched once to backfill the
+    description (e.g. a website added after creation). Patches that don't
+    touch ``website`` never trigger a fetch.
+    """
     updates = request.model_dump(exclude_unset=True)
     for key in ("company_size", "company_type", "status"):
         if key in updates and updates[key] is not None:
             updates[key] = getattr(request, key).value
+    current = await db.get_company(company_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    if "website" in updates and (updates.get("website") or "").strip():
+        new_description = (
+            updates.get("description") if "description" in updates else current.get("description")
+        )
+        if not (new_description or "").strip():
+            fetched = await _safe_fetch_description(str(updates["website"]).strip())
+            if fetched:
+                updates["description"] = fetched
     try:
         updated = await db.update_company(company_id, updates)
     except ValueError as e:

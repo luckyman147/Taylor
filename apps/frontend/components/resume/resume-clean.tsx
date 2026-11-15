@@ -9,11 +9,13 @@ import type {
 import { getSortedSections } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
 import {
+  type AvatarSettings,
   type EducationSettings,
   type ListSeparator,
   type SkillsLayoutMode,
   type WorkExperienceSettings,
 } from '@/lib/types/template-settings';
+import { AvatarImage } from './avatar-image';
 import { arrangeEducationEntry, arrangeWorkEntry, workEntryInlineMeta } from './entry-arrange';
 import { DescriptionList } from './description-list';
 import { ResumeSkillsContent, type SkillGroup } from './resume-skills';
@@ -23,11 +25,13 @@ import styles from './styles/clean.module.css';
 interface ResumeCleanProps {
   data: ResumeData;
   showContactIcons?: boolean;
+  showContactSeparators?: boolean;
   additionalSectionLabels?: Partial<AdditionalSectionLabels>;
   skillsLayout?: SkillsLayoutMode;
   listSeparator?: ListSeparator;
   workExperienceSettings?: WorkExperienceSettings;
   educationSettings?: EducationSettings;
+  avatarSettings?: AvatarSettings;
 }
 
 /**
@@ -45,11 +49,13 @@ interface ResumeCleanProps {
 export const ResumeClean: React.FC<ResumeCleanProps> = ({
   data,
   showContactIcons = false,
+  showContactSeparators = true,
   additionalSectionLabels,
   skillsLayout = 'comma',
   listSeparator = ',',
   workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
   educationSettings = { showBy: 'institution', layout: 'stacked' },
+  avatarSettings = { show: false, shape: 'circle', size: 'medium', border: 0, position: 'left', infoGap: 3 },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -403,7 +409,10 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
   return (
     <div className={styles.container}>
       {personalInfo && (
-        <header className={baseStyles['resume-header']}>
+        <header className={`${baseStyles['resume-header']} ${avatarSettings?.show && data.personalInfo?.avatar ? baseStyles['resume-header-with-avatar'] : ''}`}>
+          {/* Avatar */}
+          <AvatarImage src={data.personalInfo?.avatar || ''} alt={data.personalInfo?.name} settings={avatarSettings} />
+          <div className={baseStyles['resume-avatar-info']}>
           {personalInfo.name && <h1 className={`${styles.name} mb-1`}>{personalInfo.name}</h1>}
           {personalInfo.title && (
             <div className={`${styles.tagline} mb-1`}>{personalInfo.title}</div>
@@ -414,12 +423,13 @@ export const ResumeClean: React.FC<ResumeCleanProps> = ({
             >
               {contactItems.map((item, index) => (
                 <React.Fragment key={index}>
-                  {index > 0 && <span className={styles.sep}>|</span>}
+                  {index > 0 && showContactSeparators && <span className={styles.sep}>|</span>}
                   {item}
                 </React.Fragment>
               ))}
             </div>
           )}
+          </div>
         </header>
       )}
 

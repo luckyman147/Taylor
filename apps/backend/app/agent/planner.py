@@ -8,7 +8,7 @@ import asyncio
 import logging
 from typing import Any
 
-from app.llm import complete_json
+from app.llm import complete_json, rate_limit_wait
 from app.agent.state import TaylorState
 from app.tools.registry import tool_registry
 
@@ -106,11 +106,12 @@ Only call tools that are actually needed. Prefer fewer, more targeted calls."""
                 return valid_actions
 
             except Exception as e:
-                err_str = str(e).lower()
-                is_rate_limit = "429" in err_str or "rate" in err_str or "quota" in err_str
-                if is_rate_limit and attempt < 2:
-                    wait = 10 * (attempt + 1)
-                    logger.warning("Rate limited in planner, retrying in %ds", wait)
+                # The Router already retried 429s with backoff; allow ONE
+                # deliberate extra attempt after a quota window, then give up
+                # instead of multiplying upstream calls (was: 2 extra rounds).
+                wait = rate_limit_wait(e)
+                if wait is not None and attempt == 0:
+                    logger.warning("Rate limited in planner, retrying in %.0fs", wait)
                     await asyncio.sleep(wait)
                     continue
                 logger.error("Planner failed: %s", e)

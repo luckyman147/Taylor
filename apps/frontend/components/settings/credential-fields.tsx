@@ -111,7 +111,12 @@ export function CredentialFields({ authType, data, onChange }: CredentialFieldsP
   }
 
   if (authType === 'custom_headers') {
-    return <CustomHeadersEditor headers={data.headers || {}} onChange={(h) => onChange({ ...data, headers: h })} />;
+    return (
+      <CustomHeadersEditor
+        headers={data.headers || {}}
+        onChange={(h) => onChange({ ...data, headers: h })}
+      />
+    );
   }
 
   if (authType === 'oauth') {
@@ -158,7 +163,15 @@ export function CredentialFields({ authType, data, onChange }: CredentialFieldsP
           <Label className="text-sm">Scopes (comma-separated)</Label>
           <Input
             value={(data.scopes || []).join(', ')}
-            onChange={(e) => onChange({ ...data, scopes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+            onChange={(e) =>
+              onChange({
+                ...data,
+                scopes: e.target.value
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
             placeholder="read, write, admin"
             className="mt-1"
           />
@@ -202,7 +215,12 @@ function CustomHeadersEditor({ headers, onChange }: CustomHeadersEditorProps) {
           {entries.map(([key, value]) => (
             <div key={key} className="flex items-center gap-2">
               <Input value={key} readOnly className="flex-1 bg-[#faf9f7] text-xs" />
-              <Input value={value} readOnly type="password" className="flex-1 bg-[#faf9f7] text-xs" />
+              <Input
+                value={value}
+                readOnly
+                type="password"
+                className="flex-1 bg-[#faf9f7] text-xs"
+              />
               <Button
                 type="button"
                 variant="ghost"

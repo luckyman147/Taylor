@@ -1,10 +1,12 @@
 """API routers."""
 
 from app.routers.applications import router as applications_router
+from app.routers.avatar import router as avatar_router
 from app.routers.chat import router as chat_router
 from app.routers.companies import router as companies_router
 from app.routers.config import router as config_router
 from app.routers.contacts import router as contacts_router
+from app.routers.discovery import router as discovery_router
 from app.routers.email import router as email_router
 from app.routers.enrichment import router as enrichment_router
 from app.routers.eval import router as eval_router
@@ -14,6 +16,7 @@ from app.routers.interview_practice import router as interview_practice_router
 from app.routers.job_intel import router as job_intel_router
 from app.routers.jobs import router as jobs_router
 from app.routers.job_scraper import router as job_scraper_router
+from app.routers.leads import router as leads_router
 from app.routers.mcp import router as mcp_router
 from app.routers.profile import router as profile_router
 from app.routers.resume_wizard import router as resume_wizard_router
@@ -26,6 +29,7 @@ __all__ = [
     "health_router",
     "enrichment_router",
     "applications_router",
+    "avatar_router",
     "chat_router",
     "companies_router",
     "contacts_router",
@@ -38,4 +42,6 @@ __all__ = [
     "email_router",
     "interview_practice_router",
     "eval_router",
+    "discovery_router",
+    "leads_router",
 ]

@@ -2,23 +2,49 @@
 
 import { useState } from 'react';
 import { Search, MapPin, Briefcase, X } from 'lucide-react';
+import { PlatformSelector } from './platform-selector';
 
 const ROLE_SUGGESTIONS = [
-  'React Developer', 'Python Developer', 'Full Stack Engineer',
-  'Frontend Developer', 'Backend Developer', 'DevOps Engineer',
-  'Data Engineer', 'Machine Learning Engineer', 'Product Manager',
-  'UI/UX Designer', 'Mobile Developer', 'QA Engineer',
+  'React Developer',
+  'Python Developer',
+  'Full Stack Engineer',
+  'Frontend Developer',
+  'Backend Developer',
+  'DevOps Engineer',
+  'Data Engineer',
+  'Machine Learning Engineer',
+  'Product Manager',
+  'UI/UX Designer',
+  'Mobile Developer',
+  'QA Engineer',
 ];
 
 const LOCATION_SUGGESTIONS = [
-  'Remote', 'Tunisia', 'Paris, France', 'Berlin, Germany',
-  'Amsterdam, Netherlands', 'London, UK', 'New York, USA',
-  'San Francisco, USA', 'Toronto, Canada', 'Dubai, UAE',
+  'Remote',
+  'Tunisia',
+  'Paris, France',
+  'Berlin, Germany',
+  'Amsterdam, Netherlands',
+  'London, UK',
+  'New York, USA',
+  'San Francisco, USA',
+  'Toronto, Canada',
+  'Dubai, UAE',
 ];
 
 const SKILL_SUGGESTIONS = [
-  'React', 'Python', 'TypeScript', 'Node.js', 'AWS', 'Docker',
-  'PostgreSQL', 'GraphQL', 'Go', 'Rust', 'Java', 'Kubernetes',
+  'React',
+  'Python',
+  'TypeScript',
+  'Node.js',
+  'AWS',
+  'Docker',
+  'PostgreSQL',
+  'GraphQL',
+  'Go',
+  'Rust',
+  'Java',
+  'Kubernetes',
 ];
 
 const SENIORITY_OPTIONS = [
@@ -32,7 +58,7 @@ const SENIORITY_OPTIONS = [
 ];
 
 interface JobSearchFormProps {
-  onSubmit: (query: string) => void;
+  onSubmit: (query: string, sources?: string[]) => void;
 }
 
 export function JobSearchForm({ onSubmit }: JobSearchFormProps) {
@@ -41,6 +67,7 @@ export function JobSearchForm({ onSubmit }: JobSearchFormProps) {
   const [skills, setSkills] = useState<string[]>([]);
   const [seniority, setSeniority] = useState('');
   const [skillInput, setSkillInput] = useState('');
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
 
   const addSkill = (skill: string) => {
     const s = skill.trim();
@@ -80,7 +107,7 @@ export function JobSearchForm({ onSubmit }: JobSearchFormProps) {
   };
 
   const handleSubmit = () => {
-    onSubmit(buildQuery());
+    onSubmit(buildQuery(), selectedSources.length > 0 ? selectedSources : undefined);
   };
 
   return (
@@ -162,7 +189,11 @@ export function JobSearchForm({ onSubmit }: JobSearchFormProps) {
                 className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
               >
                 {s}
-                <button type="button" onClick={() => removeSkill(s)} className="hover:text-primary/70">
+                <button
+                  type="button"
+                  onClick={() => removeSkill(s)}
+                  className="hover:text-primary/70"
+                >
                   <X className="h-2.5 w-2.5" />
                 </button>
               </span>
@@ -174,7 +205,9 @@ export function JobSearchForm({ onSubmit }: JobSearchFormProps) {
           value={skillInput}
           onChange={(e) => setSkillInput(e.target.value)}
           onKeyDown={handleSkillKeyDown}
-          onBlur={() => { if (skillInput.trim()) addSkill(skillInput); }}
+          onBlur={() => {
+            if (skillInput.trim()) addSkill(skillInput);
+          }}
           placeholder="Type a skill and press Enter"
           className="w-full rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
         />
@@ -212,6 +245,9 @@ export function JobSearchForm({ onSubmit }: JobSearchFormProps) {
           ))}
         </div>
       </div>
+
+      {/* Platform selector */}
+      <PlatformSelector selected={selectedSources} onChange={setSelectedSources} />
 
       {/* Search button */}
       <button

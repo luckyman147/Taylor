@@ -41,6 +41,37 @@ async def test_email_config_defaults(email_env) -> None:
     assert body["sender_email"] == ""
     assert body["use_tls"] is True
     assert body["has_password"] is False
+    assert body.get("email_signature", "") == ""
+
+
+async def test_email_config_signature_mirrors_profile(email_env) -> None:
+    async with _client() as client:
+        r = await client.put(
+            "/api/v1/config/email",
+            json={
+                "smtp_host": "smtp.example.com",
+                "email_signature": "<p><strong>Jane</strong><script>x</script></p>",
+            },
+        )
+        assert r.status_code == 200
+        sig = r.json()["email_signature"]
+        assert "Jane" in sig
+        assert "script" not in sig.lower()
+
+        # Profile is the source of truth.
+        prof = await client.get("/api/v1/profile")
+        assert "Jane" in (prof.json()["profile"].get("email_signature") or "")
+
+        # Reload config returns same signature.
+        r2 = await client.get("/api/v1/config/email")
+        assert r2.json()["email_signature"] == sig
+
+        # Clear via empty string.
+        r3 = await client.put(
+            "/api/v1/config/email", json={"email_signature": ""}
+        )
+        assert r3.status_code == 200
+        assert r3.json()["email_signature"] in (None, "")
 
 
 async def test_email_config_save_and_roundtrip(email_env) -> None:

@@ -1,7 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, FileCode, File, Eye, Check, TrendingUp, Target, Award, Bookmark, ExternalLink, Loader2, X, Mail, Building2, Briefcase, MapPin, User, UserPlus } from 'lucide-react';
+import {
+  FileText,
+  FileCode,
+  File,
+  Eye,
+  Check,
+  TrendingUp,
+  Target,
+  Award,
+  Bookmark,
+  ExternalLink,
+  Loader2,
+  X,
+  Mail,
+  Building2,
+  Briefcase,
+  MapPin,
+  User,
+  UserPlus,
+} from 'lucide-react';
 import { saveJobFromChat } from '@/lib/api/chat';
 import { JobSearchForm } from './job-search-form';
 import type { ToolCard } from '@/lib/api/chat';
@@ -10,8 +29,9 @@ interface ToolCardsProps {
   cards: ToolCard[];
   threadId?: string;
   onSelectResume?: (id: string) => void;
+  onCompareResumes?: (names: string[]) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
-  onJobSearch?: (query: string) => void;
+  onJobSearch?: (query: string, sources?: string[]) => void;
   onViewEmail?: (email: EmailItem) => void;
   onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
   onAddCompany?: (data: { name: string; website?: string }) => void;
@@ -24,6 +44,7 @@ function formatCardTitle(kind: string): string {
   const titles: Record<string, string> = {
     audit: 'Resume Audit',
     resume_selection: 'Select Resume',
+    resume_comparison: 'Resume Comparison',
     file: 'Resume',
     stats: 'Career Stats',
     evidence: 'Skill Evidence',
@@ -58,37 +79,269 @@ function getExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';
 }
 
-function ResumeSelectionCard({ data, onSelect }: { data: Record<string, unknown>; onSelect?: (id: string) => void }) {
-  const resumes = (data.resumes || []) as { resume_id: string; title: string; is_master: boolean; has_data: boolean }[];
+function ResumeSelectionCard({
+  data,
+  onSelect,
+  onCompare,
+}: {
+  data: Record<string, unknown>;
+  onSelect?: (id: string) => void;
+  onCompare?: (names: string[]) => void;
+}) {
+  const resumes = (data.resumes || []) as {
+    resume_id: string;
+    title: string;
+    is_master: boolean;
+    has_data: boolean;
+  }[];
   const prompt = (data.prompt as string) || 'Choose a resume:';
+  const multiSelect = data.multi_select as boolean;
+  const maxSelect = (data.max_select as number) || 0;
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const idToTitle = new Map(resumes.map((r) => [r.resume_id, r.title]));
+
+  const toggle = (id: string) => {
+    if (!multiSelect) {
+      onSelect?.(id);
+      return;
+    }
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (maxSelect === 0 || next.size < maxSelect) {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-2 text-[13px]">
       <p className="text-ink-soft">{prompt}</p>
       <div className="flex flex-wrap gap-2">
-        {resumes.map((r) => (
-          <button
-            key={r.resume_id}
-            onClick={() => onSelect?.(r.resume_id)}
-            disabled={!r.has_data}
-            className="flex items-center gap-2 rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-left text-[13px] transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FileText className="h-4 w-4 text-ink-muted" />
-            <div>
-              <div className="font-medium text-ink">{r.title}</div>
-              <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
-                {r.is_master && <span className="flex items-center gap-0.5"><Check className="h-3 w-3" /> Master</span>}
-                {!r.has_data && <span>Processing…</span>}
+        {resumes.map((r) => {
+          const isSelected = selected.has(r.resume_id);
+          return (
+            <button
+              key={r.resume_id}
+              onClick={() => toggle(r.resume_id)}
+              disabled={!r.has_data}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                multiSelect && isSelected
+                  ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                  : 'border-[#e6e3dc] bg-white hover:border-primary/40 hover:bg-primary/5'
+              }`}
+            >
+              {multiSelect && (
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                    isSelected
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-[#d1cec7] bg-white'
+                  }`}
+                >
+                  {isSelected && <Check className="h-3 w-3" />}
+                </div>
+              )}
+              {!multiSelect && <FileText className="h-4 w-4 text-ink-muted" />}
+              <div>
+                <div className="font-medium text-ink">{r.title}</div>
+                <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                  {r.is_master && (
+                    <span className="flex items-center gap-0.5">
+                      <Check className="h-3 w-3" /> Master
+                    </span>
+                  )}
+                  {!r.has_data && <span>Processing…</span>}
+                </div>
               </div>
+            </button>
+          );
+        })}
+      </div>
+      {multiSelect && selected.size >= 2 && onCompare && (
+        <button
+          onClick={() => {
+            const names = Array.from(selected).map((id) => idToTitle.get(id) || id);
+            onCompare(names);
+          }}
+          className="mt-1 flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#17304f]"
+        >
+          Compare {selected.size} Resumes
+        </button>
+      )}
+      {multiSelect && maxSelect > 0 && selected.size > 0 && selected.size < 2 && (
+        <p className="text-[11px] text-ink-muted">
+          Select {2 - selected.size} more resume{selected.size === 0 ? 's' : ''} to compare
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ResumeComparisonCard({ data }: { data: Record<string, unknown> }) {
+  const resumes = (data.resumes || []) as Array<{
+    resume_id: string;
+    title: string;
+    is_master: boolean;
+    skills: string[];
+    work_experience: Array<{ title: string; company: string; duration: string; bullets?: string[] }>;
+    education: Array<{ degree: string; school: string; year: string }>;
+    summary: string;
+    skills_count: number;
+    work_entries: number;
+  }>;
+
+  if (resumes.length < 2) {
+    return <p className="text-[13px] text-ink-soft">Need at least 2 resumes to compare.</p>;
+  }
+
+  const [a, b] = resumes;
+  const sharedSkills = a.skills.filter((s) => b.skills.includes(s));
+  const aOnly = a.skills.filter((s) => !b.skills.includes(s));
+  const bOnly = b.skills.filter((s) => !a.skills.includes(s));
+
+  return (
+    <div className="text-[13px]">
+      {/* Header */}
+      <div className="mb-3 grid grid-cols-2 gap-3">
+        {[a, b].map((r) => (
+          <div key={r.resume_id} className="rounded-lg bg-white border border-[#e6e3dc] px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-ink-muted" />
+              <span className="font-semibold text-ink truncate">{r.title}</span>
+              {r.is_master && (
+                <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
+                  Master
+                </span>
+              )}
             </div>
-          </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Skills comparison */}
+      <div className="mb-3">
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          Skills
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
+          {/* A's skills */}
+          <div className="space-y-1">
+            <div className="text-[11px] font-medium text-ink-muted">{a.title}</div>
+            <div className="flex flex-wrap gap-1">
+              {aOnly.slice(0, 10).map((s) => (
+                <span key={s} className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700">
+                  {s}
+                </span>
+              ))}
+              {sharedSkills.map((s) => (
+                <span
+                  key={s}
+                  className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+          {/* B's skills */}
+          <div className="space-y-1">
+            <div className="text-[11px] font-medium text-ink-muted">{b.title}</div>
+            <div className="flex flex-wrap gap-1">
+              {bOnly.slice(0, 10).map((s) => (
+                <span key={s} className="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] text-violet-700">
+                  {s}
+                </span>
+              ))}
+              {sharedSkills.map((s) => (
+                <span
+                  key={s}
+                  className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        {sharedSkills.length > 0 && (
+          <p className="mt-1 text-[10px] text-emerald-600">
+            {sharedSkills.length} shared skill{sharedSkills.length !== 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+
+      {/* Work experience comparison */}
+      <div className="mb-3">
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          Work Experience
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
+          {[a, b].map((r) => (
+            <div key={r.resume_id} className="space-y-1.5">
+              {r.work_experience.length === 0 && (
+                <p className="text-[11px] text-ink-muted italic">No experience listed</p>
+              )}
+              {r.work_experience.slice(0, 2).map((w, i) => (
+                <div key={i} className="rounded bg-white border border-[#e6e3dc] px-2.5 py-1.5">
+                  <div className="font-medium text-ink">{w.title || 'Untitled'}</div>
+                  <div className="text-[11px] text-ink-muted">
+                    {w.company}{w.duration ? ` · ${w.duration}` : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Education comparison */}
+      <div className="mb-3">
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          Education
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
+          {[a, b].map((r) => (
+            <div key={r.resume_id} className="space-y-1.5">
+              {r.education.length === 0 && (
+                <p className="text-[11px] text-ink-muted italic">No education listed</p>
+              )}
+              {r.education.slice(0, 2).map((e, i) => (
+                <div key={i} className="rounded bg-white border border-[#e6e3dc] px-2.5 py-1.5">
+                  <div className="font-medium text-ink">{e.degree || 'Degree'}</div>
+                  <div className="text-[11px] text-ink-muted">
+                    {e.school}{e.year ? ` · ${e.year}` : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-3">
+        {[a, b].map((r) => (
+          <div key={r.resume_id} className="flex gap-3 text-[11px] text-ink-muted">
+            <span>{r.skills_count} skills</span>
+            <span>{r.work_entries} roles</span>
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-function FileCard({ data, onView }: { data: Record<string, unknown>; onView?: (filename: string, resumeId: string) => void }) {
+function FileCard({
+  data,
+  onView,
+}: {
+  data: Record<string, unknown>;
+  onView?: (filename: string, resumeId: string) => void;
+}) {
   const filename = (data.filename as string) || (data.title as string) || 'Resume';
   const resumeId = data.resume_id as string;
   const ext = getExtension(filename);
@@ -126,12 +379,20 @@ function CareerSummaryCard({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-2 text-[13px] leading-relaxed">
       {name && (
-        <div><span className="font-semibold">{name}</span>{title && <> · {title}</>}</div>
+        <div>
+          <span className="font-semibold">{name}</span>
+          {title && <> · {title}</>}
+        </div>
       )}
       {skills.length > 0 && (
         <div>
           <span className="font-medium">Skills:</span>{' '}
-          <span className="text-ink-soft">{skills.slice(0, 8).map((s) => typeof s === 'string' ? s : s.name).join(', ')}</span>
+          <span className="text-ink-soft">
+            {skills
+              .slice(0, 8)
+              .map((s) => (typeof s === 'string' ? s : s.name))
+              .join(', ')}
+          </span>
           {skills.length > 8 && <span className="text-ink-muted"> +{skills.length - 8} more</span>}
         </div>
       )}
@@ -147,20 +408,29 @@ function CareerSummaryCard({ data }: { data: Record<string, unknown> }) {
 
 function readinessColor(readiness: string): string {
   switch (readiness) {
-    case 'strong': return 'text-emerald-600';
-    case 'adequate': return 'text-amber-600';
-    case 'weak': return 'text-red-500';
-    default: return 'text-ink-muted';
+    case 'strong':
+      return 'text-emerald-600';
+    case 'adequate':
+      return 'text-amber-600';
+    case 'weak':
+      return 'text-red-500';
+    default:
+      return 'text-ink-muted';
   }
 }
 
 function levelColor(level: string): string {
   switch (level) {
-    case 'expert': return 'bg-emerald-100 text-emerald-700';
-    case 'advanced': return 'bg-blue-100 text-blue-700';
-    case 'intermediate': return 'bg-amber-100 text-amber-700';
-    case 'beginner': return 'bg-gray-100 text-gray-600';
-    default: return 'bg-gray-100 text-gray-600';
+    case 'expert':
+      return 'bg-emerald-100 text-emerald-700';
+    case 'advanced':
+      return 'bg-blue-100 text-blue-700';
+    case 'intermediate':
+      return 'bg-amber-100 text-amber-700';
+    case 'beginner':
+      return 'bg-gray-100 text-gray-600';
+    default:
+      return 'bg-gray-100 text-gray-600';
   }
 }
 
@@ -173,10 +443,21 @@ function percentileColor(percentile: number): string {
 
 function MarketPositionCard({ data }: { data: Record<string, unknown> }) {
   const skills = (data.skills || []) as { skill: string; percentile: number; level: string }[];
-  const domains = (data.domains || []) as { domain: string; percentile: number; seniority: string; readiness: string }[];
+  const domains = (data.domains || []) as {
+    domain: string;
+    percentile: number;
+    seniority: string;
+    readiness: string;
+  }[];
   const currentRole = data.current_role as string | undefined;
   const specialization = (data.specialization || []) as string[];
-  const recommendedRoles = (data.recommended_roles || []) as { role: string; domain: string; seniority: string; match_score: number; reason?: string }[];
+  const recommendedRoles = (data.recommended_roles || []) as {
+    role: string;
+    domain: string;
+    seniority: string;
+    match_score: number;
+    reason?: string;
+  }[];
   const verdict = data.verdict as string | undefined;
 
   return (
@@ -191,7 +472,12 @@ function MarketPositionCard({ data }: { data: Record<string, unknown> }) {
       {specialization.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {specialization.map((s) => (
-            <span key={s} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{s}</span>
+            <span
+              key={s}
+              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+            >
+              {s}
+            </span>
           ))}
         </div>
       )}
@@ -214,7 +500,9 @@ function MarketPositionCard({ data }: { data: Record<string, unknown> }) {
                   </div>
                 </div>
                 <span className="w-10 text-right text-[11px] text-ink-soft">{s.percentile}</span>
-                <span className={`w-20 rounded-full px-1.5 py-0.5 text-center text-[10px] font-medium ${levelColor(s.level)}`}>
+                <span
+                  className={`w-20 rounded-full px-1.5 py-0.5 text-center text-[10px] font-medium ${levelColor(s.level)}`}
+                >
                   {s.level}
                 </span>
               </div>
@@ -233,12 +521,17 @@ function MarketPositionCard({ data }: { data: Record<string, unknown> }) {
           </div>
           <div className="space-y-1">
             {domains.slice(0, 5).map((d) => (
-              <div key={d.domain} className="flex items-center justify-between rounded-lg bg-white/60 px-2.5 py-1.5">
+              <div
+                key={d.domain}
+                className="flex items-center justify-between rounded-lg bg-white/60 px-2.5 py-1.5"
+              >
                 <span className="font-medium text-ink">{d.domain}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-ink-muted">{d.seniority}</span>
                   <span className="w-10 text-right text-[11px] text-ink-soft">{d.percentile}%</span>
-                  <span className={`text-[11px] font-medium ${readinessColor(d.readiness)}`}>{d.readiness}</span>
+                  <span className={`text-[11px] font-medium ${readinessColor(d.readiness)}`}>
+                    {d.readiness}
+                  </span>
                 </div>
               </div>
             ))}
@@ -248,16 +541,25 @@ function MarketPositionCard({ data }: { data: Record<string, unknown> }) {
 
       {recommendedRoles.length > 0 && (
         <div className="space-y-1.5">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Recommended Roles</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+            Recommended Roles
+          </div>
           <div className="space-y-1">
             {recommendedRoles.slice(0, 5).map((r) => (
-              <div key={r.role} className="flex items-center justify-between rounded-lg bg-white/60 px-2.5 py-1.5">
+              <div
+                key={r.role}
+                className="flex items-center justify-between rounded-lg bg-white/60 px-2.5 py-1.5"
+              >
                 <div>
                   <span className="font-medium text-ink">{r.role}</span>
-                  <span className="ml-1.5 text-[11px] text-ink-muted">{r.domain}/{r.seniority}</span>
+                  <span className="ml-1.5 text-[11px] text-ink-muted">
+                    {r.domain}/{r.seniority}
+                  </span>
                 </div>
                 {r.match_score != null && (
-                  <span className="text-[11px] font-medium text-primary">{r.match_score}% match</span>
+                  <span className="text-[11px] font-medium text-primary">
+                    {r.match_score}% match
+                  </span>
                 )}
               </div>
             ))}
@@ -345,7 +647,12 @@ function SaveJobDialog({
           </div>
           {job.url && (
             <div className="text-[12px] text-ink-muted truncate">
-              <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
                 {job.url}
               </a>
             </div>
@@ -407,9 +714,7 @@ function JobListCard({ data }: { data: Record<string, unknown> }) {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="font-semibold text-ink">
-                  {job.title}
-                </div>
+                <div className="font-semibold text-ink">{job.title}</div>
                 <div className="text-ink-soft">
                   {job.company}
                   {job.location && job.location !== 'Not specified' && (
@@ -460,7 +765,13 @@ function JobListCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function ClarifyCard({ data, onClarify }: { data: Record<string, unknown>; onClarify?: (intent: string) => void }) {
+function ClarifyCard({
+  data,
+  onClarify,
+}: {
+  data: Record<string, unknown>;
+  onClarify?: (intent: string) => void;
+}) {
   const options = (data.options || []) as { label: string; intent: string }[];
   if (options.length === 0) return null;
 
@@ -506,11 +817,13 @@ function SourcesCard({ data }: { data: Record<string, unknown> }) {
         if (!hostname && s.url) {
           try {
             hostname = new URL(s.url).hostname.replace('www.', '');
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
-        const favicon = s.favicon_url || (hostname
-          ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
-          : '');
+        const favicon =
+          s.favicon_url ||
+          (hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32` : '');
         return (
           <a
             key={i}
@@ -545,7 +858,9 @@ function SourcesCard({ data }: { data: Record<string, unknown> }) {
 }
 
 function GenericCard({ data }: { data: Record<string, unknown> }) {
-  const entries = Object.entries(data).filter(([k, v]) => v != null && k !== 'needs_selection' && k !== 'resumes' && k !== 'prompt');
+  const entries = Object.entries(data).filter(
+    ([k, v]) => v != null && k !== 'needs_selection' && k !== 'resumes' && k !== 'prompt'
+  );
   if (entries.length === 0) return <div className="text-[13px] text-ink-muted">(no data)</div>;
 
   return (
@@ -554,16 +869,22 @@ function GenericCard({ data }: { data: Record<string, unknown> }) {
         const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
         if (typeof value === 'object' && value !== null) {
           if (Array.isArray(value)) {
-            const items = value.slice(0, 5).map((v) =>
-              typeof v === 'object' && v !== null
-                ? (v as Record<string, unknown>).name || (v as Record<string, unknown>).title || JSON.stringify(v).slice(0, 60)
-                : String(v)
-            );
+            const items = value
+              .slice(0, 5)
+              .map((v) =>
+                typeof v === 'object' && v !== null
+                  ? (v as Record<string, unknown>).name ||
+                    (v as Record<string, unknown>).title ||
+                    JSON.stringify(v).slice(0, 60)
+                  : String(v)
+              );
             return (
               <div key={key}>
                 <span className="font-medium">{label}:</span>{' '}
                 <span className="text-ink-soft">{items.join(', ')}</span>
-                {value.length > 5 && <span className="text-ink-muted"> +{value.length - 5} more</span>}
+                {value.length > 5 && (
+                  <span className="text-ink-muted"> +{value.length - 5} more</span>
+                )}
               </div>
             );
           }
@@ -616,7 +937,14 @@ interface EmailListCardProps {
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
 }
 
-function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume }: EmailListCardProps) {
+function EmailListCard({
+  data,
+  onViewEmail,
+  onAddContact,
+  onAddCompany,
+  onSaveJob,
+  onTailorResume,
+}: EmailListCardProps) {
   const emails = (data.emails as EmailItem[]) || [];
   const total = (data.total as number) || 0;
   const hint = data.hint as string | undefined;
@@ -632,10 +960,13 @@ function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJo
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-ink-muted">{total} email{total !== 1 ? 's' : ''}</div>
+      <div className="text-xs text-ink-muted">
+        {total} email{total !== 1 ? 's' : ''}
+      </div>
       {emails.map((email) => {
         const entities = email.entities;
-        const hasEntities = entities && (entities.company || entities.contacts?.length || entities.job_title);
+        const hasEntities =
+          entities && (entities.company || entities.contacts?.length || entities.job_title);
         return (
           <div
             key={email.uid}
@@ -645,7 +976,9 @@ function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJo
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <Mail className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
-                <span className="text-sm font-medium truncate">{email.subject || '(no subject)'}</span>
+                <span className="text-sm font-medium truncate">
+                  {email.subject || '(no subject)'}
+                </span>
                 {entities?.match_percentage && (
                   <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">
                     {entities.match_percentage} match
@@ -679,7 +1012,7 @@ function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJo
                 {entities.contacts && entities.contacts.length > 0 && (
                   <div className="flex items-center gap-1.5 text-xs">
                     <User className="h-3 w-3 text-ink-muted" />
-                    <span>{entities.contacts.map(c => c.name).join(', ')}</span>
+                    <span>{entities.contacts.map((c) => c.name).join(', ')}</span>
                   </div>
                 )}
               </div>
@@ -688,7 +1021,13 @@ function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJo
             <div className="mt-2 flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
               {entities?.contacts && entities.contacts.length > 0 && onAddContact && (
                 <button
-                  onClick={() => onAddContact({ name: entities.contacts![0].name, email: entities.contacts![0].email, company: entities.company })}
+                  onClick={() =>
+                    onAddContact({
+                      name: entities.contacts![0].name,
+                      email: entities.contacts![0].email,
+                      company: entities.company,
+                    })
+                  }
                   className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
                 >
                   <UserPlus className="h-3 w-3" />
@@ -706,7 +1045,13 @@ function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJo
               )}
               {entities?.job_title && entities?.company && onSaveJob && (
                 <button
-                  onClick={() => onSaveJob({ title: entities.job_title!, company: entities.company!, location: entities.location })}
+                  onClick={() =>
+                    onSaveJob({
+                      title: entities.job_title!,
+                      company: entities.company!,
+                      location: entities.location,
+                    })
+                  }
                   className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
                 >
                   <Bookmark className="h-3 w-3" />
@@ -715,7 +1060,13 @@ function EmailListCard({ data, onViewEmail, onAddContact, onAddCompany, onSaveJo
               )}
               {entities?.job_description && entities?.company && onTailorResume && (
                 <button
-                  onClick={() => onTailorResume({ job_description: entities.job_description!, company: entities.company!, role: entities.job_title || '' })}
+                  onClick={() =>
+                    onTailorResume({
+                      job_description: entities.job_description!,
+                      company: entities.company!,
+                      role: entities.job_title || '',
+                    })
+                  }
                   className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 transition-colors"
                 >
                   <FileText className="h-3 w-3" />
@@ -739,33 +1090,99 @@ function isMarketPositionData(data: Record<string, unknown>): boolean {
   return first && 'skill' in first && 'percentile' in first;
 }
 
-function CardBody({ kind, data, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume, onClarify }: { kind: string; data: Record<string, unknown>; onSelectResume?: (id: string) => void; onViewFile?: (filename: string, resumeId: string) => void; onJobSearch?: (query: string) => void; onViewEmail?: (email: EmailItem) => void; onAddContact?: (data: { name: string; email?: string; company?: string }) => void; onAddCompany?: (data: { name: string; website?: string }) => void; onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void; onTailorResume?: (data: { job_description: string; company: string; role: string }) => void; onClarify?: (intent: string) => void }) {
-  if (data.needs_selection) return <ResumeSelectionCard data={data} onSelect={onSelectResume} />;
+function CardBody({
+  kind,
+  data,
+  onSelectResume,
+  onCompareResumes,
+  onViewFile,
+  onJobSearch,
+  onViewEmail,
+  onAddContact,
+  onAddCompany,
+  onSaveJob,
+  onTailorResume,
+  onClarify,
+}: {
+  kind: string;
+  data: Record<string, unknown>;
+  onSelectResume?: (id: string) => void;
+  onCompareResumes?: (names: string[]) => void;
+  onViewFile?: (filename: string, resumeId: string) => void;
+  onJobSearch?: (query: string, sources?: string[]) => void;
+  onViewEmail?: (email: EmailItem) => void;
+  onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
+  onAddCompany?: (data: { name: string; website?: string }) => void;
+  onSaveJob?: (data: { title: string; company: string; location?: string; url?: string }) => void;
+  onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
+  onClarify?: (intent: string) => void;
+}) {
+  if (data.needs_selection)
+    return (
+      <ResumeSelectionCard
+        data={data}
+        onSelect={onSelectResume}
+        onCompare={onCompareResumes}
+      />
+    );
+  if (kind === 'resume_comparison') return <ResumeComparisonCard data={data} />;
   if (kind === 'file') return <FileCard data={data} onView={onViewFile} />;
   if (kind === 'info') return <CareerSummaryCard data={data} />;
   if (kind === 'job_list') return <JobListCard data={data} />;
-  if (kind === 'email_list') return <EmailListCard data={data} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} />;
-  if (kind === 'job_search_form') return <JobSearchForm onSubmit={(q) => onJobSearch?.(q)} />;
+  if (kind === 'email_list')
+    return (
+      <EmailListCard
+        data={data}
+        onViewEmail={onViewEmail}
+        onAddContact={onAddContact}
+        onAddCompany={onAddCompany}
+        onSaveJob={onSaveJob}
+        onTailorResume={onTailorResume}
+      />
+    );
+  if (kind === 'job_search_form') return <JobSearchForm onSubmit={(q, sources) => onJobSearch?.(q, sources)} />;
   if (kind === 'sources') return <SourcesCard data={data} />;
   if (kind === 'clarify') return <ClarifyCard data={data} onClarify={onClarify} />;
   if (kind === 'stats' && isMarketPositionData(data)) return <MarketPositionCard data={data} />;
   return <GenericCard data={data} />;
 }
 
-export function ToolCards({ cards, onSelectResume, onViewFile, onJobSearch, onViewEmail, onAddContact, onAddCompany, onSaveJob, onTailorResume, onClarify }: ToolCardsProps) {
+export function ToolCards({
+  cards,
+  onSelectResume,
+  onCompareResumes,
+  onViewFile,
+  onJobSearch,
+  onViewEmail,
+  onAddContact,
+  onAddCompany,
+  onSaveJob,
+  onTailorResume,
+  onClarify,
+}: ToolCardsProps) {
   if (cards.length === 0) return null;
 
   return (
     <div className="space-y-2">
       {cards.map((card, i) => (
-        <div
-          key={i}
-          className="rounded-xl border border-[#e6e3dc] bg-[#faf9f7] p-3.5"
-        >
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+        <div key={i} className="rounded-xl border border-[#e6e3dc] bg-[#faf9f7] p-3.5">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
             {formatCardTitle(card.kind)}
           </div>
-          <CardBody kind={card.kind} data={card.data} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} onClarify={onClarify} />
+          <CardBody
+            kind={card.kind}
+            data={card.data}
+            onSelectResume={onSelectResume}
+            onCompareResumes={onCompareResumes}
+            onViewFile={onViewFile}
+            onJobSearch={onJobSearch}
+            onViewEmail={onViewEmail}
+            onAddContact={onAddContact}
+            onAddCompany={onAddCompany}
+            onSaveJob={onSaveJob}
+            onTailorResume={onTailorResume}
+            onClarify={onClarify}
+          />
         </div>
       ))}
     </div>

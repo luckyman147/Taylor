@@ -6,6 +6,7 @@ import { RetroTabs } from '@/components/ui/retro-tabs';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
+import { cn } from '@/lib/utils';
 import {
   RotateCcw,
   GripVertical,
@@ -45,6 +46,9 @@ import {
   type TextStyleTarget,
   type TextWeightOption,
   type TextTransformOption,
+  type AvatarShape,
+  type AvatarSize,
+  type AvatarPosition,
   DEFAULT_TEMPLATE_SETTINGS,
   applyTemplatePreset,
   SECTION_SPACING_MAP,
@@ -220,6 +224,13 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
     });
   };
 
+  const handlePaddingChange = (side: 'top' | 'right' | 'bottom' | 'left', value: SpacingLevel) => {
+    onChange({
+      ...settings,
+      spacing: { ...settings.spacing, padding: { ...settings.spacing.padding, [side]: value } },
+    });
+  };
+
   const handleFontChange = (key: keyof TemplateSettings['fontSize'], value: SpacingLevel) => {
     onChange({
       ...settings,
@@ -247,6 +258,10 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
 
   const handleShowContactIconsToggle = () => {
     onChange({ ...settings, showContactIcons: !settings.showContactIcons });
+  };
+
+  const handleShowContactSeparatorsToggle = () => {
+    onChange({ ...settings, showContactSeparators: !settings.showContactSeparators });
   };
 
   const handleBulletMarkerChange = (bulletMarker: BulletMarker) => {
@@ -332,6 +347,16 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
 
   const handleCustomAccentChange = (hex: string) => {
     onChange({ ...settings, customAccentColor: hex || null });
+  };
+
+  const handleAvatarChange = <K extends keyof TemplateSettings['avatar']>(
+    key: K,
+    value: TemplateSettings['avatar'][K]
+  ) => {
+    onChange({
+      ...settings,
+      avatar: { ...settings.avatar, [key]: value },
+    });
   };
 
   const handleReset = () => {
@@ -693,6 +718,114 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
               )}
             </CollapsibleGroup>
 
+            {/* Avatar */}
+            <CollapsibleGroup title={t('builder.designGroups.avatar')}>
+              <div className="space-y-3">
+                <SwitchRow
+                  checked={settings.avatar.show}
+                  onChange={() => handleAvatarChange('show', !settings.avatar.show)}
+                  label={t('builder.formatting.avatarShow')}
+                />
+                {settings.avatar.show && (
+                  <>
+                    <div>
+                      <div className="mb-1.5 text-xs font-semibold text-ink-soft">
+                        {t('builder.formatting.avatarShape')}
+                      </div>
+                      <div className="flex gap-2">
+                        {(['circle', 'rounded', 'square', 'none'] as AvatarShape[]).map((shape) => (
+                          <button
+                            key={shape}
+                            type="button"
+                            onClick={() => handleAvatarChange('shape', shape)}
+                            className={cn(
+                              'flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-2 transition-all',
+                              settings.avatar.shape === shape
+                                ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
+                                : 'border-[#e6e3dc] bg-white hover:border-primary hover:bg-paper-tint'
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                'h-6 w-6 bg-ink-soft',
+                                shape === 'circle' && 'rounded-full',
+                                shape === 'rounded' && 'rounded-[4px]',
+                                shape === 'square' && 'rounded-none',
+                                shape === 'none' && 'rounded-none opacity-50'
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                'text-[10px] font-medium uppercase tracking-wide',
+                                settings.avatar.shape === shape ? 'text-primary' : 'text-ink-soft'
+                              )}
+                            >
+                              {t(`builder.formatting.avatarShapeOptions.${shape}`)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-1.5 text-xs font-semibold text-ink-soft">
+                        {t('builder.formatting.avatarSize')}
+                      </div>
+                      <div className="flex gap-2">
+                        {(['small', 'medium', 'large'] as AvatarSize[]).map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => handleAvatarChange('size', size)}
+                            className={cn(
+                              'flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-2 transition-all',
+                              settings.avatar.size === size
+                                ? 'border-primary bg-primary/5 shadow-sw-xs ring-1 ring-primary'
+                                : 'border-[#e6e3dc] bg-white hover:border-primary hover:bg-paper-tint'
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                'rounded-full bg-ink-soft',
+                                size === 'small' && 'h-4 w-4',
+                                size === 'medium' && 'h-6 w-6',
+                                size === 'large' && 'h-8 w-8'
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                'text-[10px] font-medium uppercase tracking-wide',
+                                settings.avatar.size === size ? 'text-primary' : 'text-ink-soft'
+                              )}
+                            >
+                              {t(`builder.formatting.avatarSizeOptions.${size}`)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <PtStepper
+                      label={t('builder.formatting.avatarBorder')}
+                      value={settings.avatar.border}
+                      min={0}
+                      max={10}
+                      step={1}
+                      onChange={(v) => handleAvatarChange('border', v)}
+                    />
+                    <AlignmentSelector
+                      label={t('builder.formatting.avatarPosition')}
+                      value={settings.avatar.position}
+                      onChange={(v) => handleAvatarChange('position', v as AvatarPosition)}
+                    />
+                    <SpacingStepper
+                      label={t('builder.formatting.avatarInfoGap')}
+                      value={settings.avatar.infoGap}
+                      onChange={(v) => handleAvatarChange('infoGap', v)}
+                    />
+                  </>
+                )}
+              </div>
+            </CollapsibleGroup>
+
             {/* Alignments & Layouts */}
             <CollapsibleGroup title={t('builder.designGroups.alignmentsLayouts')}>
               <div className="space-y-3">
@@ -716,7 +849,7 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
 
             {/* Page Setup */}
             <CollapsibleGroup title={t('builder.designGroups.pageSetup')}>
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2">
                 {(Object.keys(PAGE_SIZE_INFO) as PageSize[]).map((size) => (
                   <button
                     key={size}
@@ -735,62 +868,65 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
                   </button>
                 ))}
               </div>
+            </CollapsibleGroup>
 
-              <div className="mb-4">
+            {/* Controls */}
+            <CollapsibleGroup title={t('builder.designGroups.controls')}>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <SpacingStepper
+                    label={t('builder.formatting.paddingTop')}
+                    value={settings.spacing.padding.top}
+                    onChange={(v) => handlePaddingChange('top', v)}
+                  />
+                  <SpacingStepper
+                    label={t('builder.formatting.paddingRight')}
+                    value={settings.spacing.padding.right}
+                    onChange={(v) => handlePaddingChange('right', v)}
+                  />
+                  <SpacingStepper
+                    label={t('builder.formatting.paddingBottom')}
+                    value={settings.spacing.padding.bottom}
+                    onChange={(v) => handlePaddingChange('bottom', v)}
+                  />
+                  <SpacingStepper
+                    label={t('builder.formatting.paddingLeft')}
+                    value={settings.spacing.padding.left}
+                    onChange={(v) => handlePaddingChange('left', v)}
+                  />
+                </div>
                 <Dropdown
                   options={marginOptions}
                   value={settings.marginUnit}
                   onChange={(v) => handleMarginUnitChange(v as MarginUnit)}
                   label={t('builder.formatting.marginUnit')}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <MarginSlider
-                  label={t('builder.formatting.margin.top')}
-                  value={settings.margins.top}
-                  onChange={(v) => handleMarginChange('top', v)}
-                  unit={settings.marginUnit}
-                />
-                <MarginSlider
-                  label={t('builder.formatting.margin.bottom')}
-                  value={settings.margins.bottom}
-                  onChange={(v) => handleMarginChange('bottom', v)}
-                  unit={settings.marginUnit}
-                />
-                <MarginSlider
-                  label={t('builder.formatting.margin.left')}
-                  value={settings.margins.left}
-                  onChange={(v) => handleMarginChange('left', v)}
-                  unit={settings.marginUnit}
-                />
-                <MarginSlider
-                  label={t('builder.formatting.margin.right')}
-                  value={settings.margins.right}
-                  onChange={(v) => handleMarginChange('right', v)}
-                  unit={settings.marginUnit}
-                />
-              </div>
-            </CollapsibleGroup>
-
-            {/* Controls: Heights & Paddings */}
-            <CollapsibleGroup title={t('builder.designGroups.controls')}>
-              <div className="space-y-3">
-                <SpacingStepper
-                  label={t('builder.formatting.spacingSection')}
-                  value={settings.spacing.section}
-                  onChange={(v) => handleSpacingChange('section', v)}
-                />
-                <SpacingStepper
-                  label={t('builder.formatting.spacingItems')}
-                  value={settings.spacing.item}
-                  onChange={(v) => handleSpacingChange('item', v)}
-                />
-                <SpacingStepper
-                  label={t('builder.formatting.padding')}
-                  value={settings.spacing.padding}
-                  onChange={(v) => handleSpacingChange('padding', v)}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <MarginSlider
+                    label={t('builder.formatting.margin.top')}
+                    value={settings.margins.top}
+                    onChange={(v) => handleMarginChange('top', v)}
+                    unit={settings.marginUnit}
+                  />
+                  <MarginSlider
+                    label={t('builder.formatting.margin.bottom')}
+                    value={settings.margins.bottom}
+                    onChange={(v) => handleMarginChange('bottom', v)}
+                    unit={settings.marginUnit}
+                  />
+                  <MarginSlider
+                    label={t('builder.formatting.margin.left')}
+                    value={settings.margins.left}
+                    onChange={(v) => handleMarginChange('left', v)}
+                    unit={settings.marginUnit}
+                  />
+                  <MarginSlider
+                    label={t('builder.formatting.margin.right')}
+                    value={settings.margins.right}
+                    onChange={(v) => handleMarginChange('right', v)}
+                    unit={settings.marginUnit}
+                  />
+                </div>
               </div>
             </CollapsibleGroup>
           </>
@@ -897,6 +1033,13 @@ export const FormattingControls: React.FC<FormattingControlsProps> = ({
                     onChange={handleShowContactIconsToggle}
                     label={t('builder.formatting.contactIcons')}
                   />
+                  {(settings.template === 'clean' || settings.template === 'latex') && (
+                    <SwitchRow
+                      checked={settings.showContactSeparators}
+                      onChange={handleShowContactSeparatorsToggle}
+                      label={t('builder.formatting.contactSeparators')}
+                    />
+                  )}
                 </div>
               </CollapsibleGroup>
             </CollapsibleGroup>

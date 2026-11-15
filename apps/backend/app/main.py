@@ -20,10 +20,12 @@ from app.database import db
 from app.pdf import close_pdf_renderer, init_pdf_renderer
 from app.routers import (
     applications_router,
+    avatar_router,
     chat_router,
     companies_router,
     config_router,
     contacts_router,
+    discovery_router,
     email_router,
     enrichment_router,
     eval_router,
@@ -33,6 +35,7 @@ from app.routers import (
     job_intel_router,
     jobs_router,
     job_scraper_router,
+    leads_router,
     mcp_router,
     profile_router,
     resume_wizard_router,
@@ -136,11 +139,13 @@ app.include_router(resumes_router, prefix="/api/v1")
 app.include_router(jobs_router, prefix="/api/v1")
 app.include_router(enrichment_router, prefix="/api/v1")
 app.include_router(applications_router, prefix="/api/v1")
+app.include_router(avatar_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")
 app.include_router(contacts_router, prefix="/api/v1")
 app.include_router(resume_wizard_router, prefix="/api/v1")
 app.include_router(mcp_router, prefix="/api/v1")
 app.include_router(job_scraper_router, prefix="/api/v1")
+app.include_router(leads_router, prefix="/api/v1")
 app.include_router(github_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(job_intel_router, prefix="/api/v1")
@@ -148,6 +153,7 @@ app.include_router(email_router, prefix="/api/v1")
 app.include_router(interview_practice_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(eval_router, prefix="/api/v1")
+app.include_router(discovery_router, prefix="/api/v1")
 
 
 @app.get("/")

@@ -322,6 +322,9 @@ class TestGenerateContentInstruction:
             "Need FastAPI",
             "en",
             instruction="Mention my Python backend experience",
+            company_name=None,
+            job_title=None,
+            job_keywords=None,
         )
         mock_db.update_resume.assert_awaited_once_with(
             "res-123", {"cover_letter": "Dear hiring manager..."}
@@ -346,7 +349,13 @@ class TestGenerateContentInstruction:
 
         assert resp.status_code == 200
         mock_generate.assert_awaited_once_with(
-            sample_resume, "Need FastAPI", "en", instruction=None
+            sample_resume,
+            "Need FastAPI",
+            "en",
+            instruction=None,
+            company_name=None,
+            job_title=None,
+            job_keywords=None,
         )
 
     @patch("app.routers.resumes.generate_outreach_message", new_callable=AsyncMock)
@@ -372,11 +381,92 @@ class TestGenerateContentInstruction:
         assert resp.status_code == 200
         assert resp.json()["content"] == "Hi, I saw your posting..."
         mock_generate.assert_awaited_once_with(
-            sample_resume, "Need FastAPI", "en", instruction="Keep it short"
+            sample_resume,
+            "Need FastAPI",
+            "en",
+            instruction="Keep it short",
+            company_name=None,
+            job_title=None,
+            job_keywords=None,
         )
         mock_db.update_resume.assert_awaited_once_with(
             "res-123", {"outreach_message": "Hi, I saw your posting..."}
         )
+
+    @patch("app.routers.resumes.generate_cover_letter", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_cover_letter_uses_job_metadata_and_detects_french(
+        self, mock_db, mock_generate, client, mock_resume_record, sample_resume
+    ):
+        french_jd = (
+            "Nous recherchons un stagiaire pour développer des composants d'IA "
+            "avec notre équipe."
+        )
+        job_keywords = {
+            "company": "Nugget Finder",
+            "role": "Stage PIE",
+            "industry": "Gaming",
+            "key_responsibilities": ["Développer des composants d'IA"],
+            "keywords": ["IA", "LLM"],
+        }
+        mock_db.get_resume.return_value = {
+            **mock_resume_record,
+            "parent_id": "master-1",
+            "processed_data": sample_resume,
+        }
+        mock_db.get_improvement_by_tailored_resume.return_value = {"job_id": "job-1"}
+        mock_db.get_job.return_value = {
+            "job_id": "job-1",
+            "content": french_jd,
+            "job_keywords": job_keywords,
+        }
+        mock_generate.return_value = "Madame, Monsieur..."
+
+        async with client:
+            resp = await client.post(
+                "/api/v1/resumes/res-123/generate-cover-letter",
+                json={"instruction": "Mentionne mon expérience FastAPI"},
+            )
+
+        assert resp.status_code == 200
+        mock_generate.assert_awaited_once_with(
+            sample_resume,
+            french_jd,
+            "fr",
+            instruction="Mentionne mon expérience FastAPI",
+            company_name="Nugget Finder",
+            job_title="Stage PIE",
+            job_keywords=job_keywords,
+        )
+
+    @patch("app.routers.resumes.generate_interview_prep", new_callable=AsyncMock)
+    @patch("app.routers.resumes.db", new_callable=AsyncMock)
+    async def test_interview_prep_detects_french_job_description(
+        self, mock_db, mock_generate, client, mock_resume_record, sample_resume
+    ):
+        french_jd = (
+            "Nous recherchons un stagiaire pour développer des composants d'IA "
+            "avec notre équipe."
+        )
+        mock_db.get_resume.return_value = {
+            **mock_resume_record,
+            "parent_id": "master-1",
+            "processed_data": sample_resume,
+        }
+        mock_db.get_improvement_by_tailored_resume.return_value = {"job_id": "job-1"}
+        mock_db.get_job.return_value = {"job_id": "job-1", "content": french_jd}
+        mock_generate.return_value = InterviewPrepData.model_validate(
+            SAMPLE_INTERVIEW_PREP
+        )
+
+        async with client:
+            resp = await client.post(
+                "/api/v1/resumes/res-123/generate-interview-prep",
+                json={"instruction": "Focus sur l'IA"},
+            )
+
+        assert resp.status_code == 200
+        assert mock_generate.await_args.args[2] == "fr"
 
 
 class TestRetryProcessing:

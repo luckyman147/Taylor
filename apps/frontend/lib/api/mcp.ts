@@ -207,9 +207,7 @@ export async function disconnectMCPServer(serverId: string): Promise<void> {
   await apiPost(`/mcp/servers/${serverId}/disconnect`, {});
 }
 
-export async function fetchMCPServerHealth(
-  serverId: string
-): Promise<{
+export async function fetchMCPServerHealth(serverId: string): Promise<{
   server_id: string;
   health_score: number;
   healthy: boolean;
@@ -249,9 +247,7 @@ export async function discoverMCPTools(): Promise<{
   return res.json();
 }
 
-export async function testMCPServer(
-  serverId: string
-): Promise<{
+export async function testMCPServer(serverId: string): Promise<{
   success: boolean;
   latency_ms: number;
   error?: string;

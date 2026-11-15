@@ -12,10 +12,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-white pl-16">
-      <SidebarNav
-        currentPage="resume-wizard"
-        onNavigate={(page) => router.push(page)}
-      />
+      <SidebarNav currentPage="resume-wizard" onNavigate={(page) => router.push(page)} />
       <ResumeWizardPage />
     </div>
   );

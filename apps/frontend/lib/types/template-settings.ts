@@ -31,6 +31,19 @@ export type DateRangeFormat = 'short' | 'long' | 'mmmyyyy' | 'years';
 
 export type SkillsLayoutMode = 'comma' | 'list' | 'columns';
 
+export type AvatarShape = 'circle' | 'rounded' | 'square' | 'none';
+export type AvatarSize = 'small' | 'medium' | 'large';
+export type AvatarPosition = 'left' | 'center' | 'right';
+
+export interface AvatarSettings {
+  shape: AvatarShape;
+  size: AvatarSize;
+  border: number; // px, 0 = no border
+  position: AvatarPosition;
+  show: boolean;
+  infoGap: SpacingLevel; // gap between avatar and info block
+}
+
 export type MarginUnit = 'mm' | 'percent';
 
 export type WorkShowBy = 'company' | 'position';
@@ -46,10 +59,17 @@ export interface MarginSettings {
   right: number;
 }
 
+export interface PaddingSettings {
+  top: SpacingLevel;
+  right: SpacingLevel;
+  bottom: SpacingLevel;
+  left: SpacingLevel;
+}
+
 export interface SpacingSettings {
   section: SpacingLevel; // Gap between major sections
   item: SpacingLevel; // Gap between items within sections
-  padding: SpacingLevel; // Inner content padding
+  padding: PaddingSettings; // Inner content padding (per side)
 }
 
 export interface AlignmentSettings {
@@ -185,8 +205,10 @@ export interface TemplateSettings {
   marginUnit: MarginUnit; // Unit of the margin values ('mm' or percent of page)
   compactMode: boolean; // Apply tighter spacing across the board
   showContactIcons: boolean; // Show icons next to contact info
+  showContactSeparators: boolean; // Show "|" separators between contact items (Clean/LaTeX)
   accentColor: AccentColor; // Accent color for Modern template
   customAccentColor: string | null; // Custom hex accent color (overrides preset when set)
+  avatar: AvatarSettings; // Avatar display settings
   advanced: AdvancedSettings; // Advanced styles, sizes, weights, transforms, spacing & borders
 }
 
@@ -197,7 +219,7 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
   template: 'swiss-single',
   pageSize: 'A4',
   margins: { top: 10, bottom: 10, left: 10, right: 10 },
-  spacing: { section: 3, item: 2, padding: 3 },
+  spacing: { section: 3, item: 2, padding: { top: 3, right: 3, bottom: 3, left: 3 } },
   fontSize: { base: 3, headerScale: 3, headerFont: 'serif', bodyFont: 'sans-serif' },
   lineHeight: 135,
   listLineHeight: 125,
@@ -209,8 +231,10 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
   marginUnit: 'mm',
   compactMode: false,
   showContactIcons: false,
+  showContactSeparators: true,
   accentColor: 'blue',
   customAccentColor: null,
+  avatar: { shape: 'circle', size: 'medium', border: 0, position: 'left', show: false, infoGap: 3 },
   advanced: DEFAULT_ADVANCED_SETTINGS,
 };
 
@@ -225,7 +249,11 @@ export function normalizeTemplateSettings(settings?: Partial<TemplateSettings>):
     ...DEFAULT_TEMPLATE_SETTINGS,
     ...settings,
     margins: { ...DEFAULT_TEMPLATE_SETTINGS.margins, ...settings?.margins },
-    spacing: { ...DEFAULT_TEMPLATE_SETTINGS.spacing, ...settings?.spacing },
+    spacing: {
+      ...DEFAULT_TEMPLATE_SETTINGS.spacing,
+      ...settings?.spacing,
+      padding: { ...DEFAULT_TEMPLATE_SETTINGS.spacing.padding, ...(settings?.spacing?.padding as Partial<import('@/lib/types/template-settings').PaddingSettings> | undefined) },
+    },
     fontSize: { ...DEFAULT_TEMPLATE_SETTINGS.fontSize, ...settings?.fontSize },
     alignment: { ...DEFAULT_TEMPLATE_SETTINGS.alignment, ...settings?.alignment },
     workExperience: {
@@ -233,6 +261,7 @@ export function normalizeTemplateSettings(settings?: Partial<TemplateSettings>):
       ...settings?.workExperience,
     },
     education: { ...DEFAULT_TEMPLATE_SETTINGS.education, ...settings?.education },
+    avatar: { ...DEFAULT_TEMPLATE_SETTINGS.avatar, ...settings?.avatar },
     advanced: {
       ...DEFAULT_TEMPLATE_SETTINGS.advanced,
       ...settings?.advanced,
@@ -437,9 +466,18 @@ export function settingsToCssVars(settings?: TemplateSettings): React.CSSPropert
     // Accent colors for Modern template
     '--resume-accent-primary': accentColors.primary,
     '--resume-accent-light': accentColors.light,
-    '--content-padding': s.compactMode
-      ? `calc(${PADDING_MAP[s.spacing.padding]} * ${compact})`
-      : PADDING_MAP[s.spacing.padding],
+    '--content-padding-top': s.compactMode
+      ? `calc(${PADDING_MAP[s.spacing.padding.top]} * ${compact})`
+      : PADDING_MAP[s.spacing.padding.top],
+    '--content-padding-right': s.compactMode
+      ? `calc(${PADDING_MAP[s.spacing.padding.right]} * ${compact})`
+      : PADDING_MAP[s.spacing.padding.right],
+    '--content-padding-bottom': s.compactMode
+      ? `calc(${PADDING_MAP[s.spacing.padding.bottom]} * ${compact})`
+      : PADDING_MAP[s.spacing.padding.bottom],
+    '--content-padding-left': s.compactMode
+      ? `calc(${PADDING_MAP[s.spacing.padding.left]} * ${compact})`
+      : PADDING_MAP[s.spacing.padding.left],
     // Advanced: text sizes (pt)
     '--size-full-name': sizeVar('fullName'),
     '--size-primary-heading': sizeVar('primaryHeading'),
@@ -471,6 +509,25 @@ export function settingsToCssVars(settings?: TemplateSettings): React.CSSPropert
     '--border-above-header-w': borderWidth(advanced.borders.aboveHeader),
     '--border-below-header-w': borderWidth(advanced.borders.belowHeader),
     '--border-section-titles-w': borderWidth(advanced.borders.sectionTitles),
+    // Avatar settings
+    '--avatar-shape':
+      s.avatar.shape === 'circle'
+        ? '50%'
+        : s.avatar.shape === 'rounded'
+          ? '12%'
+          : s.avatar.shape === 'square'
+            ? '0'
+            : '0',
+    '--avatar-size':
+      s.avatar.size === 'small' ? '48px' : s.avatar.size === 'large' ? '96px' : '72px',
+    '--avatar-border': `${s.avatar.border}px`,
+    '--avatar-position':
+      s.avatar.position === 'left'
+        ? 'flex-start'
+        : s.avatar.position === 'right'
+          ? 'flex-end'
+          : 'center',
+    '--avatar-gap': PADDING_MAP[s.avatar.infoGap],
   } as React.CSSProperties;
 }
 

@@ -29,13 +29,27 @@ const METRIC_LABELS: Record<string, string> = {
 function formatMetricValue(name: string, value: number): string {
   if (name.includes('latency')) return `${(value / 1000).toFixed(1)}s`;
   if (name.includes('cost')) return `$${value.toFixed(3)}`;
-  if (name.includes('rate') || name.includes('recall') || name.includes('mrr') || name.includes('ndcg') || name.includes('accuracy')) {
+  if (
+    name.includes('rate') ||
+    name.includes('recall') ||
+    name.includes('mrr') ||
+    name.includes('ndcg') ||
+    name.includes('accuracy')
+  ) {
     return `${(value * 100).toFixed(0)}%`;
   }
   return value.toFixed(2);
 }
 
-function MetricCard({ name, value, passRate }: { name: string; value: number; passRate: number | null }) {
+function MetricCard({
+  name,
+  value,
+  passRate,
+}: {
+  name: string;
+  value: number;
+  passRate: number | null;
+}) {
   const label = METRIC_LABELS[name] || name;
   const display = formatMetricValue(name, value);
   const passed = passRate !== null ? passRate >= 0.8 : null;
@@ -49,7 +63,9 @@ function MetricCard({ name, value, passRate }: { name: string; value: number; pa
       <div className="flex items-end justify-between">
         <span className="text-2xl font-bold text-ink">{display}</span>
         {passed !== null && (
-          <span className={`text-[10px] font-bold uppercase ${passed ? 'text-success' : 'text-destructive'}`}>
+          <span
+            className={`text-[10px] font-bold uppercase ${passed ? 'text-success' : 'text-destructive'}`}
+          >
             {passed ? 'PASS' : 'FAIL'}
           </span>
         )}
@@ -92,23 +108,26 @@ export function EvalDashboard() {
     loadResults();
   }, [loadResults]);
 
-  const handleSelect = useCallback(async (filename: string) => {
-    if (filename === selectedFilename) {
-      setSelected(null);
-      setSelectedFilename(null);
-      return;
-    }
-    try {
-      setLoadingDetail(true);
-      setSelectedFilename(filename);
-      const detail = await getEvalResult(filename);
-      setSelected(detail);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load detail');
-    } finally {
-      setLoadingDetail(false);
-    }
-  }, [selectedFilename]);
+  const handleSelect = useCallback(
+    async (filename: string) => {
+      if (filename === selectedFilename) {
+        setSelected(null);
+        setSelectedFilename(null);
+        return;
+      }
+      try {
+        setLoadingDetail(true);
+        setSelectedFilename(filename);
+        const detail = await getEvalResult(filename);
+        setSelected(detail);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load detail');
+      } finally {
+        setLoadingDetail(false);
+      }
+    },
+    [selectedFilename]
+  );
 
   const handleRun = useCallback(async () => {
     try {
@@ -165,7 +184,9 @@ export function EvalDashboard() {
 
       {/* Run history */}
       <div>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-ink-soft">Recent Runs</h2>
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
+          Recent Runs
+        </h2>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-steel-grey" />
@@ -173,18 +194,30 @@ export function EvalDashboard() {
         ) : results.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#e6e3dc] py-12">
             <BarChart3 className="mb-3 h-8 w-8 text-steel-grey" />
-            <p className="text-xs text-steel-grey">No eval results yet. Click &quot;Run Eval&quot; to start.</p>
+            <p className="text-xs text-steel-grey">
+              No eval results yet. Click &quot;Run Eval&quot; to start.
+            </p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-[#e6e3dc]">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[#e6e3dc] bg-[#faf9f7]">
-                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Mode</th>
-                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Samples</th>
-                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Traces</th>
-                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Duration</th>
-                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Task Success</th>
+                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                    Mode
+                  </th>
+                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                    Samples
+                  </th>
+                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                    Traces
+                  </th>
+                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                    Duration
+                  </th>
+                  <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                    Task Success
+                  </th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -205,7 +238,9 @@ export function EvalDashboard() {
                       <td className="px-4 py-2.5 text-ink-soft">{r.elapsed_seconds.toFixed(1)}s</td>
                       <td className="px-4 py-2.5">
                         {ts ? (
-                          <span className={`font-bold ${ts.pass_rate !== null && ts.pass_rate >= 0.8 ? 'text-success' : 'text-destructive'}`}>
+                          <span
+                            className={`font-bold ${ts.pass_rate !== null && ts.pass_rate >= 0.8 ? 'text-success' : 'text-destructive'}`}
+                          >
                             {(ts.value * 100).toFixed(0)}%
                           </span>
                         ) : (
@@ -241,11 +276,21 @@ export function EvalDashboard() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-[#e6e3dc] bg-[#faf9f7]">
-                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Query</th>
-                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Status</th>
-                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Tools</th>
-                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Latency</th>
-                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">Cost</th>
+                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                      Query
+                    </th>
+                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                      Status
+                    </th>
+                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                      Tools
+                    </th>
+                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                      Latency
+                    </th>
+                    <th className="px-4 py-2.5 font-bold uppercase tracking-wide text-ink-soft">
+                      Cost
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -253,14 +298,20 @@ export function EvalDashboard() {
                     <tr key={trace.run_id} className="border-b border-[#f0ede8]">
                       <td className="max-w-xs truncate px-4 py-2.5 font-medium">{trace.query}</td>
                       <td className="px-4 py-2.5">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          trace.success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-                        }`}>
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            trace.success
+                              ? 'bg-success/10 text-success'
+                              : 'bg-destructive/10 text-destructive'
+                          }`}
+                        >
                           {trace.success ? 'PASS' : 'FAIL'}
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-ink-soft">{trace.tool_calls.length}</td>
-                      <td className="px-4 py-2.5 text-ink-soft">{(trace.latency_ms / 1000).toFixed(1)}s</td>
+                      <td className="px-4 py-2.5 text-ink-soft">
+                        {(trace.latency_ms / 1000).toFixed(1)}s
+                      </td>
                       <td className="px-4 py-2.5 text-ink-soft">${trace.cost.toFixed(3)}</td>
                     </tr>
                   ))}

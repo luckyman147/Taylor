@@ -217,7 +217,7 @@ async def recover(state: TaylorState) -> dict[str, Any]:
 
 async def generate_answer(state: TaylorState) -> dict[str, Any]:
     """Generate the final answer from collected tool results."""
-    from app.llm import complete
+    from app.llm import complete, rate_limit_wait
 
     await emit_event(state, AgentStatusEvent(
         status=AgentStatus.COMPLETED,
@@ -353,11 +353,11 @@ Write your answer now:"""
             final_answer = response if isinstance(response, str) else response.get("content", "")
             break
         except Exception as e:
-            err_str = str(e).lower()
-            is_rate_limit = "429" in err_str or "rate" in err_str or "quota" in err_str
-            if is_rate_limit and attempt < 2:
-                wait = 10 * (attempt + 1)
-                logger.warning("Rate limited in generate_answer, retrying in %ds", wait)
+            # Router already retried transport 429s — one extra attempt max
+            # (see rate_limit_wait), no content-retry multiplication.
+            wait = rate_limit_wait(e)
+            if wait is not None and attempt == 0:
+                logger.warning("Rate limited in generate_answer, retrying in %.0fs", wait)
                 await asyncio.sleep(wait)
                 continue
             logger.error("Answer generation failed: %s", e)

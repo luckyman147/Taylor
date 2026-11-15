@@ -158,6 +158,16 @@ describe('companies API client', () => {
     });
   });
 
+  it('createCompany forwards description when provided', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ company_id: 'x' }), { status: 201 }));
+    await createCompany({ name: 'Acme Corp', description: 'Hand-typed summary.' });
+    const { options } = lastCall();
+    expect(JSON.parse(String(options.body))).toEqual({
+      name: 'Acme Corp',
+      description: 'Hand-typed summary.',
+    });
+  });
+
   it('surfaces the backend detail message on failure', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ detail: 'A company with this name already exists.' }), {

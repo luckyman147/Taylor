@@ -66,6 +66,19 @@ def _normalize_company(company: str) -> str:
     return re.sub(r"\s+", " ", normalized.strip()).casefold()
 
 
+def _normalize_project_name(name: str) -> str:
+    """Normalize a project name for comparison.
+
+    Project names often carry a technology suffix after '|' (for example
+    ``"Tunisia_oggi | NestJS, React"``). Compare only the leading name so a
+    refiner that rewrites the suffix does not look like a lost project.
+    """
+    if not name:
+        return ""
+    normalized = name.split("|")[0]
+    return re.sub(r"\s+", " ", normalized.strip()).casefold()
+
+
 def _extract_jd_skill_keys(
     job_keywords: dict[str, Any],
     job_description: str,
@@ -183,6 +196,14 @@ async def refine_resume(
 
     # Post-refinement guard: restore any work experience entries lost during refinement
     current, restore_warnings = _restore_missing_work_experience(initial_tailored, current)
+    # Same protection for projects: keyword injection can return a resume that
+    # omits the section entirely, and nothing else downstream restores it.
+    current, project_restore_warnings = _restore_missing_projects(
+        initial_tailored, current
+    )
+    restore_warnings.extend(project_restore_warnings)
+    for warning in restore_warnings:
+        logger.warning(warning)
 
     return RefinementResult(
         refined_data=current,
@@ -478,6 +499,21 @@ def _validate_resume_structure(
                     "Resume structure invalid: workExperience shortened from %d to %d",
                     len(baseline_we),
                     len(data_we),
+                )
+                return False
+
+    # Projects are just as easy for the model to omit; never accept a result
+    # that drops the section or any of its entries when the baseline had them.
+    if baseline:
+        baseline_projects = baseline.get("personalProjects", [])
+        if isinstance(baseline_projects, list) and baseline_projects:
+            data_projects = data.get("personalProjects")
+            data_count = len(data_projects) if isinstance(data_projects, list) else 0
+            if data_count < len(baseline_projects):
+                logger.warning(
+                    "Resume structure invalid: personalProjects shortened from %d to %d",
+                    len(baseline_projects),
+                    data_count,
                 )
                 return False
 
@@ -815,6 +851,71 @@ def _restore_missing_work_experience(
         )
         logger.warning(
             "Restored %d missing work experience entr%s after refinement",
+            restored_count,
+            "y" if restored_count == 1 else "ies",
+        )
+
+    return refined, warnings
+
+
+def _restore_missing_projects(
+    baseline: dict[str, Any],
+    refined: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """Restore project entries dropped by refinement.
+
+    Keyword injection asks the LLM to echo the complete resume and the model
+    sometimes omits ``personalProjects`` entirely. Restore every baseline
+    project whose normalized name is absent from the refined result, keeping
+    any intentional additions the model made.
+
+    Args:
+        baseline: Resume data before refinement (with the projects to keep)
+        refined: Resume data after refinement (may have lost entries)
+
+    Returns:
+        Tuple of (restored resume data, list of warnings)
+    """
+    warnings: list[str] = []
+    baseline_projects = baseline.get("personalProjects")
+    if not isinstance(baseline_projects, list) or not baseline_projects:
+        return refined, warnings
+
+    refined_projects = refined.get("personalProjects")
+    if not isinstance(refined_projects, list):
+        refined_projects = []
+
+    refined_by_name: dict[str, dict[str, Any]] = {}
+    for project in refined_projects:
+        if isinstance(project, dict):
+            key = _normalize_project_name(str(project.get("name") or ""))
+            if key:
+                refined_by_name[key] = project
+
+    restored_projects = list(refined_projects)
+    restored_count = 0
+    for base_project in baseline_projects:
+        if not isinstance(base_project, dict):
+            continue
+        key = _normalize_project_name(str(base_project.get("name") or ""))
+        if key and key not in refined_by_name:
+            restored_projects.append(copy.deepcopy(base_project))
+            refined_by_name[key] = base_project
+            restored_count += 1
+            logger.info(
+                "Restored missing project entry: %s",
+                base_project.get("name", "Unknown"),
+            )
+
+    if restored_count > 0:
+        refined["personalProjects"] = restored_projects
+        warnings.append(
+            f"Refinement dropped {restored_count} project entr"
+            f"{'y' if restored_count == 1 else 'ies'}; "
+            "restored from pre-refinement baseline"
+        )
+        logger.warning(
+            "Restored %d missing project entr%s after refinement",
             restored_count,
             "y" if restored_count == 1 else "ies",
         )

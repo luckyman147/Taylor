@@ -1,23 +1,37 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Camera from 'lucide-react/dist/esm/icons/camera';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import UserRound from 'lucide-react/dist/esm/icons/user-round';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import Upload from 'lucide-react/dist/esm/icons/upload';
+import Download from 'lucide-react/dist/esm/icons/download';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import FileJson from 'lucide-react/dist/esm/icons/file-json';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import File from 'lucide-react/dist/esm/icons/file';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { TagInput } from '@/components/ui/tag-input';
-import { ResumeUploadDialog } from '@/components/dashboard/resume-upload-dialog';
 import { useTranslations } from '@/lib/i18n';
 import {
   getProfileSuggestions,
   seedProfileFromMaster,
   updateProfile,
+  uploadAvatar,
+  exportProfileAsJson,
+  downloadProfilePdf,
+  downloadProfileDocx,
+  importProfilePreview,
   type CareerProfile,
   type ProfileBundle,
 } from '@/lib/api/profile';
+import { ImportPreviewDialog } from './import-preview-dialog';
+import { EmailSignatureField } from '@/components/common/email-signature-field';
 
 interface ProfileTabProps {
   bundle: ProfileBundle;
@@ -44,6 +58,8 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
     linkedin: '',
     github: '',
     summary: '',
+    avatar: '',
+    email_signature: '',
     career_goals: [] as string[],
     target_roles: [] as string[],
     target_locations: [] as string[],
@@ -59,6 +75,19 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
     target_roles: [],
     target_locations: [],
   });
+
+  // ---- Export state ------------------------------------------------------
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  // ---- Import preview state ----------------------------------------------
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ProfileBundle | null>(null);
+  const [importingPreview, setImportingPreview] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +123,8 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
       linkedin: p.linkedin ?? '',
       github: p.github ?? '',
       summary: p.summary ?? '',
+      avatar: p.avatar ?? '',
+      email_signature: p.email_signature ?? '',
       career_goals: p.career_goals ?? [],
       target_roles: p.target_roles ?? [],
       target_locations: p.target_locations ?? [],
@@ -103,6 +134,44 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
     setProfileNotice(null);
     setProfileError(null);
   }, [bundle.profile]);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    if (!exportOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [exportOpen]);
+
+  const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError(t('profile.avatar.tooLarge'));
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setProfileError(t('profile.avatar.invalidType'));
+      return;
+    }
+    setUploadingAvatar(true);
+    setProfileError(null);
+    try {
+      const { url } = await uploadAvatar(file);
+      setForm((f) => ({ ...f, avatar: url }));
+      const updated = await updateProfile({ avatar: url });
+      onProfileSaved(updated);
+    } catch (e) {
+      setProfileError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }, [t, onProfileSaved]);
 
   const saveProfile = async () => {
     setSavingProfile(true);
@@ -121,6 +190,8 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
         linkedin: emptyToNull(form.linkedin),
         github: emptyToNull(form.github),
         summary: emptyToNull(form.summary),
+        avatar: form.avatar || null,
+        email_signature: form.email_signature.trim(),
         career_goals: form.career_goals,
         target_roles: form.target_roles,
         target_locations: form.target_locations,
@@ -166,6 +237,72 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
     }
   };
 
+  // ---- Export handlers ---------------------------------------------------
+  const handleExport = useCallback(
+    async (format: 'json' | 'pdf' | 'docx') => {
+      setExportOpen(false);
+      setExporting(format);
+      setProfileError(null);
+      try {
+        if (format === 'json') {
+          exportProfileAsJson(bundle);
+        } else if (format === 'pdf') {
+          const blob = await downloadProfilePdf();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const name = bundle.profile.name?.trim().replace(/\s+/g, '_') || 'profile';
+          a.download = `${name}_profile.pdf`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } else {
+          const blob = await downloadProfileDocx();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const name = bundle.profile.name?.trim().replace(/\s+/g, '_') || 'profile';
+          a.download = `${name}_profile.docx`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (e) {
+        setProfileError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setExporting(null);
+      }
+    },
+    [bundle]
+  );
+
+  // ---- Import from file --------------------------------------------------
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = '';
+      setImportingPreview(true);
+      setProfileError(null);
+      try {
+        const preview = await importProfilePreview(file);
+        setImportPreview(preview);
+        setImportPreviewOpen(true);
+      } catch (err) {
+        setProfileError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setImportingPreview(false);
+      }
+    },
+    []
+  );
+
+  const handleImported = useCallback(
+    (profile: CareerProfile) => {
+      onProfileSaved(profile);
+      setProfileNotice(t('profile.form.seeded'));
+    },
+    [onProfileSaved, t]
+  );
+
   return (
     <div className="space-y-5 pb-8">
       {/* Provision */}
@@ -184,16 +321,72 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
             {seeding && <Loader2 className="h-4 w-4 animate-spin" />}
             {t('profile.form.seedFromMaster')}
           </Button>
-          <ResumeUploadDialog
-            defaultAsMaster={false}
-            onUploadComplete={() => setProfileNotice(t('profile.form.uploaded'))}
-            trigger={
-              <Button variant="outline" size="sm">
-                <Upload className="h-4 w-4" />
-                {t('profile.form.uploadDesktop')}
-              </Button>
-            }
+
+          {/* Upload from Desktop — triggers import preview */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importingPreview}
+          >
+            {importingPreview ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {t('profile.form.uploadDesktop')}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,.doc"
+            className="hidden"
+            onChange={(e) => void handleFileSelect(e)}
           />
+
+          {/* Export Profile dropdown */}
+          <div ref={exportRef} className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportOpen((o) => !o)}
+              disabled={exporting !== null}
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {t('profile.export.button') || 'Export Profile'}
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+            {exportOpen && (
+              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#e6e3dc] rounded-xl shadow-sw-md py-1 min-w-[160px]">
+                <button
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary transition-colors"
+                  onClick={() => void handleExport('json')}
+                >
+                  <FileJson className="h-4 w-4 text-ink-soft" />
+                  JSON
+                </button>
+                <button
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary transition-colors"
+                  onClick={() => void handleExport('pdf')}
+                >
+                  <FileText className="h-4 w-4 text-ink-soft" />
+                  PDF
+                </button>
+                <button
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary transition-colors"
+                  onClick={() => void handleExport('docx')}
+                >
+                  <File className="h-4 w-4 text-ink-soft" />
+                  DOCX
+                </button>
+              </div>
+            )}
+          </div>
+
           <span className="text-xs text-ink-soft">{t('profile.form.seedHint')}</span>
         </div>
         {profileNotice && <p className="mt-3 text-xs text-green-700">{profileNotice}</p>}
@@ -205,6 +398,55 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
         <div className="mb-4 text-xs font-bold uppercase tracking-wide text-primary">
           {t('profile.form.personalInfo')}
         </div>
+
+        {/* Avatar upload */}
+        <div className="mb-5 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-[#c9c5bc] bg-paper-tint transition-colors hover:border-primary/50 disabled:opacity-50"
+            title={t('profile.avatar.upload')}
+          >
+            {form.avatar ? (
+              <img src={form.avatar} alt="" className="h-full w-full object-cover" />
+            ) : uploadingAvatar ? (
+              <Loader2 className="h-6 w-6 animate-spin text-steel-grey" />
+            ) : (
+              <UserRound className="h-8 w-8 text-steel-grey" />
+            )}
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="h-5 w-5 text-white" />
+            </span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarUpload}
+          />
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-ink">{t('profile.avatar.upload')}</span>
+            <span className="text-xs text-ink-soft">{t('profile.avatar.hint')}</span>
+            {form.avatar && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 w-fit gap-1.5 text-destructive"
+                onClick={async () => {
+                  setForm((f) => ({ ...f, avatar: '' }));
+                  const updated = await updateProfile({ avatar: null });
+                  onProfileSaved(updated);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {t('profile.avatar.remove')}
+              </Button>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {(
             [
@@ -236,6 +478,15 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
             rows={3}
             value={form.summary}
             onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+          />
+        </div>
+
+        <div className="mt-4">
+          <EmailSignatureField
+            id="profile-email-signature"
+            value={form.email_signature}
+            onChange={(value) => setForm((f) => ({ ...f, email_signature: value }))}
+            profile={bundle.profile}
           />
         </div>
 
@@ -321,6 +572,16 @@ export function ProfileTab({ bundle, onProfileSaved }: ProfileTabProps) {
           </Button>
         </div>
       </section>
+
+      {/* Import preview dialog */}
+      {importPreview && (
+        <ImportPreviewDialog
+          open={importPreviewOpen}
+          onOpenChange={setImportPreviewOpen}
+          preview={importPreview}
+          onImported={handleImported}
+        />
+      )}
     </div>
   );
 }

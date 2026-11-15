@@ -479,180 +479,182 @@ export default function JobScraperPage() {
 
         <div
           className={`grid gap-6 items-start ${
-            showDrafts || emptyState ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,3fr),minmax(0,1fr)]'
+            showDrafts || emptyState
+              ? 'lg:grid-cols-1'
+              : 'lg:grid-cols-[minmax(0,3fr),minmax(0,1fr)]'
           }`}
         >
           {/* RIGHT column — MCP status + search filters (sticky, hidden while drafts are open) */}
           {!showDrafts && (
-          <div
-            className={`space-y-6 ${
-              emptyState
-                ? 'max-w-3xl'
-                : 'lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-6'
-            }`}
-          >
-            {/* MCP Status */}
-            <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`h-2.5 w-2.5 rounded-full ${
-                      mcpCount > 0 ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                  />
-                  <span className="text-xs font-bold uppercase tracking-wide text-ink">
-                    {mcpCount} of {Object.keys(mcpStatus).length || '?'} MCPs active
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRestartMCPs}
-                  disabled={restarting}
-                  className="rounded-full text-xs text-primary hover:text-primary"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${restarting ? 'animate-spin' : ''}`} />
-                  {restarting ? 'Restarting...' : 'Restart MCPs'}
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(mcpStatus).map(([name, status]) => (
-                  <span
-                    key={name}
-                    className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                      status.available && status.enabled
-                        ? 'border-green-200 bg-green-50 text-green-600'
-                        : 'border-[#e7e5df] bg-paper-tint text-steel-grey'
-                    }`}
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Search Form */}
-            <div className="space-y-5 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-primary" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
-                  Search Filters
-                </h2>
-              </div>
-
-              {/* Keywords */}
-              <div>
-                <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-                  Keywords
-                </label>
-                <input
-                  type="text"
-                  value={keywords}
-                  onChange={(e) => setKeywords(e.target.value)}
-                  placeholder="e.g. software engineer, python, react..."
-                  className="w-full rounded-xl border border-[#c9c5bc] bg-white px-3 py-2 text-sm text-ink placeholder:text-steel-grey focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              {/* Locations */}
-              <div>
-                <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-                  <MapPin className="h-3 w-3 inline mr-1" />
-                  Locations
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {LOCATION_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => toggleLocation(opt.value)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
-                        selectedLocations.includes(opt.value)
-                          ? 'border-primary bg-primary text-white shadow-sw-xs'
-                          : 'border-[#e7e6df] bg-white text-ink hover:border-primary hover:text-primary'
+            <div
+              className={`space-y-6 ${
+                emptyState
+                  ? 'max-w-3xl'
+                  : 'lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-6'
+              }`}
+            >
+              {/* MCP Status */}
+              <div className="rounded-2xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`h-2.5 w-2.5 rounded-full ${
+                        mcpCount > 0 ? 'bg-green-500' : 'bg-red-500'
                       }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Job Types */}
-              <div>
-                <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-                  <Briefcase className="h-3 w-3 inline mr-1" />
-                  Job Type
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {JOB_TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => toggleJobType(opt.value)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
-                        selectedJobTypes.includes(opt.value)
-                          ? 'border-primary bg-primary text-white shadow-sw-xs'
-                          : 'border-[#e7e6df] bg-white text-ink hover:border-primary hover:text-primary'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Date Posted + Easy Apply */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-                    <Clock className="h-3 w-3 inline mr-1" />
-                    Date Posted
-                  </label>
-                  <select
-                    value={datePosted}
-                    onChange={(e) => setDatePosted(e.target.value)}
-                    className="w-full rounded-xl border border-[#c9c5bc] bg-white px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    {DATE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-end">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#e7e6df] bg-white px-4 py-2.5">
-                    <input
-                      type="checkbox"
-                      checked={easyApply}
-                      onChange={(e) => setEasyApply(e.target.checked)}
-                      className="h-4 w-4 rounded-md border-ink accent-primary"
                     />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-ink">
-                      Easy Apply only
+                    <span className="text-xs font-bold uppercase tracking-wide text-ink">
+                      {mcpCount} of {Object.keys(mcpStatus).length || '?'} MCPs active
                     </span>
-                  </label>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRestartMCPs}
+                    disabled={restarting}
+                    className="rounded-full text-xs text-primary hover:text-primary"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${restarting ? 'animate-spin' : ''}`} />
+                    {restarting ? 'Restarting...' : 'Restart MCPs'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(mcpStatus).map(([name, status]) => (
+                    <span
+                      key={name}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                        status.available && status.enabled
+                          ? 'border-green-200 bg-green-50 text-green-600'
+                          : 'border-[#e7e5df] bg-paper-tint text-steel-grey'
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              {/* Search Button */}
-              <Button onClick={handleSearch} disabled={loading} className="w-full rounded-xl">
-                {loading ? (
-                  <>
-                    <Loader className="w-4 h-4 mr-2 animate-spin" />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    Search Jobs
-                  </>
+              {/* Search Form */}
+              <div className="space-y-5 rounded-2xl border border-[#e6e3dc] bg-white p-6 shadow-sw-xs">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-primary" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
+                    Search Filters
+                  </h2>
+                </div>
+
+                {/* Keywords */}
+                <div>
+                  <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                    Keywords
+                  </label>
+                  <input
+                    type="text"
+                    value={keywords}
+                    onChange={(e) => setKeywords(e.target.value)}
+                    placeholder="e.g. software engineer, python, react..."
+                    className="w-full rounded-xl border border-[#c9c5bc] bg-white px-3 py-2 text-sm text-ink placeholder:text-steel-grey focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                {/* Locations */}
+                <div>
+                  <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                    <MapPin className="h-3 w-3 inline mr-1" />
+                    Locations
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {LOCATION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => toggleLocation(opt.value)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
+                          selectedLocations.includes(opt.value)
+                            ? 'border-primary bg-primary text-white shadow-sw-xs'
+                            : 'border-[#e7e6df] bg-white text-ink hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Job Types */}
+                <div>
+                  <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                    <Briefcase className="h-3 w-3 inline mr-1" />
+                    Job Type
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {JOB_TYPE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => toggleJobType(opt.value)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
+                          selectedJobTypes.includes(opt.value)
+                            ? 'border-primary bg-primary text-white shadow-sw-xs'
+                            : 'border-[#e7e6df] bg-white text-ink hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date Posted + Easy Apply */}
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className=" mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                      <Clock className="h-3 w-3 inline mr-1" />
+                      Date Posted
+                    </label>
+                    <select
+                      value={datePosted}
+                      onChange={(e) => setDatePosted(e.target.value)}
+                      className="w-full rounded-xl border border-[#c9c5bc] bg-white px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {DATE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#e7e6df] bg-white px-4 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={easyApply}
+                        onChange={(e) => setEasyApply(e.target.checked)}
+                        className="h-4 w-4 rounded-md border-ink accent-primary"
+                      />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-ink">
+                        Easy Apply only
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Search Button */}
+                <Button onClick={handleSearch} disabled={loading} className="w-full rounded-xl">
+                  {loading ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Search Jobs
+                    </>
+                  )}
+                </Button>
+                {saving && (
+                  <p className=" text-center text-xs text-ink-soft">Saving results to drafts...</p>
                 )}
-              </Button>
-              {saving && (
-                <p className=" text-center text-xs text-ink-soft">Saving results to drafts...</p>
-              )}
+              </div>
             </div>
-          </div>
           )}
 
           {/* LEFT column — phone jobs, results + drafts (drafts above mobile jobs) */}
@@ -1182,5 +1184,3 @@ function DraftCard({
     </div>
   );
 }
-
-

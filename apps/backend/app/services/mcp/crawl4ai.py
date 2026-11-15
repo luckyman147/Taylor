@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -43,12 +44,18 @@ class Crawl4AIAdapter(BaseMCPAdapter):
 
             strategy = AsyncHTTPCrawlerStrategy()
             async with AsyncWebCrawler(crawler_strategy=strategy) as crawler:
-                result = await crawler.arun(url=url)
+                result = await asyncio.wait_for(
+                    crawler.arun(url=url), timeout=self.timeout
+                )
                 if result.success and result.markdown:
                     md = result.markdown
                     if isinstance(md, dict):
                         md = md.get("fit_markdown") or md.get("raw_markdown") or ""
                     return str(md)[:_MAX_PAGE_CHARS]
+        except TimeoutError:
+            logger.warning(
+                "crawl4ai fetch timed out after %.0fs for %s", self.timeout, url
+            )
         except Exception as exc:
             logger.warning("crawl4ai failed for %s: %s", url, exc)
         return ""
@@ -64,7 +71,9 @@ class Crawl4AIAdapter(BaseMCPAdapter):
             strategy = AsyncHTTPCrawlerStrategy()
             results: dict[str, str] = {}
             async with AsyncWebCrawler(crawler_strategy=strategy) as crawler:
-                crawl_results = await crawler.arun_many(urls)
+                crawl_results = await asyncio.wait_for(
+                    crawler.arun_many(urls), timeout=self.timeout * 2
+                )
                 for r in crawl_results:
                     if r.success and r.markdown:
                         md = r.markdown
@@ -72,6 +81,12 @@ class Crawl4AIAdapter(BaseMCPAdapter):
                             md = md.get("fit_markdown") or md.get("raw_markdown") or ""
                         results[r.url] = str(md)[:_MAX_PAGE_CHARS]
             return results
+        except TimeoutError:
+            logger.warning(
+                "crawl4ai batch fetch timed out after %.0fs (%d urls)",
+                self.timeout * 2,
+                len(urls),
+            )
         except Exception as exc:
             logger.warning("crawl4ai arun_many failed: %s", exc)
-            return {}
+        return {}

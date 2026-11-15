@@ -11,6 +11,9 @@ from app.llm import complete_json, get_llm_config
 from app.prompts import get_language_name
 from app.prompts.templates import JOB_DNA_PROMPT, SHOULD_APPLY_PROMPT
 from app.services.career_profile import _parse_salary
+
+logger = logging.getLogger(__name__)
+
 _VALID_COMPANY_TAGS = ("remote", "startup", "fast_growth", "international", "enterprise", "established")
 
 # Content-hash → extracted job DNA (process-local; covers scraped drafts that

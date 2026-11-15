@@ -165,12 +165,15 @@
   .resume-print,
   .resume-print *,
   .cover-letter-print,
-  .cover-letter-print * {
+  .cover-letter-print *,
+  .profile-print,
+  .profile-print * {
     visibility: visible !important;
   }
 
   .resume-print,
-  .cover-letter-print {
+  .cover-letter-print,
+  .profile-print {
     width: 100% !important;
     max-width: 210mm !important;
     min-height: 0 !important;
@@ -275,5 +278,24 @@
   .resume-body .resume-section-title-sm + .resume-item {
     break-before: avoid !important;
     page-break-before: avoid !important;
+  }
+
+  /* Profile print layout */
+  .profile-print {
+    width: 100% !important;
+    max-width: 210mm !important;
+    min-height: 0 !important;
+    position: static !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .profile-print section {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }

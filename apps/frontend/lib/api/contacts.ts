@@ -9,11 +9,7 @@ export type ContactGoal =
   | 'research_career';
 
 export type ContactStatus =
-  | 'to_contact'
-  | 'contacted'
-  | 'follow_up'
-  | 'meeting_scheduled'
-  | 'thank_you_sent';
+  'to_contact' | 'contacted' | 'follow_up' | 'meeting_scheduled' | 'thank_you_sent';
 
 export type ContactRelationship =
   | 'self'

@@ -265,11 +265,17 @@ _PROVIDER_MODELS: dict[str, list[str]] = {
         "qwen/qwen-2.5-72b-instruct",
     ],
     "gemini": [
-        "gemini-2.0-flash-lite",
-        "gemini-2.0-flash",
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-3-flash-preview",
         "gemini-2.5-flash",
         "gemini-2.5-pro",
-        "gemini-3-flash-preview",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-1.5-pro",
         "gemini-1.5-flash",
     ],
@@ -817,7 +823,9 @@ async def reset_database_endpoint(request: ResetDatabaseRequest) -> dict:
 # ============================================
 
 
-def _email_config_response(stored: dict) -> EmailConfigResponse:
+def _email_config_response(
+    stored: dict, email_signature: str = ""
+) -> EmailConfigResponse:
     """Build the EmailConfigResponse from config + encrypted key store."""
     keys = get_api_keys_from_config()
     return EmailConfigResponse(
@@ -827,13 +835,39 @@ def _email_config_response(stored: dict) -> EmailConfigResponse:
         sender_name=str(stored.get("sender_name", "") or ""),
         use_tls=bool(stored.get("use_tls", True)),
         has_password=bool(keys.get("smtp")),
+        email_signature=email_signature,
     )
+
+
+async def _load_profile_signature() -> str:
+    """Read the HTML signature from the career profile (source of truth)."""
+    from app.database import db
+    from app.services.html_signature import has_signature, sanitize_signature_html
+
+    try:
+        profile = await db.get_career_profile()
+    except Exception:  # noqa: BLE001 — signature is optional decoration
+        return ""
+    raw = (profile or {}).get("email_signature") or ""
+    if not has_signature(raw):
+        return ""
+    return sanitize_signature_html(raw)
+
+
+async def _save_profile_signature(value: str) -> None:
+    """Persist the HTML signature onto the career profile."""
+    from app.database import db
+    from app.services.html_signature import sanitize_signature_html
+
+    cleaned = sanitize_signature_html(value)
+    await db.update_career_profile({"email_signature": cleaned or None})
 
 
 @router.get("/email", response_model=EmailConfigResponse)
 async def get_email_config() -> EmailConfigResponse:
     """Get the current SMTP email sender settings (password is masked)."""
-    return _email_config_response(_load_config())
+    signature = await _load_profile_signature()
+    return _email_config_response(_load_config(), signature)
 
 
 @router.put("/email", response_model=EmailConfigResponse)
@@ -842,6 +876,9 @@ async def update_email_config(request: EmailConfigRequest) -> EmailConfigRespons
 
     The app password is stored encrypted in the api_keys store under the
     ``smtp`` provider. ``None`` = unchanged, empty string = clear, value = set.
+
+    ``email_signature`` mirrors the career profile (source of truth). ``None``
+    = leave signature unchanged; empty string = clear; value = sanitize+save.
     """
     stored = _load_config()
 
@@ -865,5 +902,9 @@ async def update_email_config(request: EmailConfigRequest) -> EmailConfigRespons
             del keys["smtp"]
         save_api_keys_to_config(keys)
 
+    if request.email_signature is not None:
+        await _save_profile_signature(request.email_signature)
+
     _save_config(stored)
-    return _email_config_response(stored)
+    signature = await _load_profile_signature()
+    return _email_config_response(stored, signature)

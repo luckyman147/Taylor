@@ -57,7 +57,127 @@
     "chat": "AI 聊天",
     "evalDashboard": "评估面板",
     "createResume": "创建简历",
-    "interviewPractice": "面试练习"
+    "interviewPractice": "面试练习",
+    "emailAnalytics": "邮件分析",
+    "leads": "潜在客户抓取"
+  },
+  "leads": {
+    "title": "潜在客户抓取",
+    "subtitle": "查找人员、公司和中介机构 — 跨来源自动去重。",
+    "criteria": {
+      "recommend": "推荐条件",
+      "recommending": "正在咨询 AI…",
+      "recommendHint": "AI 会根据您的资料和目标优化当前参数 — 查看前后对比后再应用。",
+      "suggestTitle": "建议的更改 — 审阅后应用",
+      "trackedNote": "已在追踪（已从建议中排除）",
+      "apply": "应用建议",
+      "dismiss": "忽略"
+    },
+    "drafts": {
+      "save": "保存草稿",
+      "load": "草稿",
+      "namePlaceholder": "草稿名称…",
+      "empty": "暂无保存的草稿。",
+      "delete": "删除草稿",
+      "saved": "草稿已保存",
+      "loaded": "草稿已加载",
+      "saveFailed": "无法保存草稿",
+      "deleteFailed": "无法删除草稿",
+      "nameRequired": "输入草稿名称（或关键词/目标）以保存"
+    },
+    "form": {
+      "title": "搜索",
+      "keywords": "关键词",
+      "keywordsPlaceholder": "例如：CTO、招聘机构、金融科技",
+      "locations": "地区",
+      "locationsPlaceholder": "逗号分隔，例如：突尼斯、巴黎",
+      "target": "精确目标",
+      "targetPlaceholder": "例如：10-50 人金融科技初创公司的 CTO",
+      "purpose": "搜索原因",
+      "purposePlaceholder": "例如：向工程负责人推销 ATS",
+      "leadTypes": "客户类型",
+      "sources": "来源",
+      "enrich": "查找邮箱/电话（尽力而为）",
+      "search": "确认并搜索",
+      "searching": "搜索并去重中…",
+      "phase": {
+        "search": "正在搜索 LinkedIn 和网页…",
+        "profiles": "正在读取 LinkedIn 个人资料…",
+        "companies": "正在读取 LinkedIn 公司页面…",
+        "filtering": "正在按地点筛选…",
+        "categorize": "正在分类潜在客户…",
+        "dedupe": "正在去重…",
+        "persisted": "正在保存到数据库…",
+        "enrich": "正在查找邮箱和电话…",
+        "finalize": "正在分类并保存结果…",
+        "hint": "个人资料读取在浏览器中进行 — 首次搜索可能需要 1–3 分钟。"
+      }
+    },
+    "stats": {
+      "raw": "发现",
+      "merged": "已合并",
+      "alreadyInDb": "已知",
+      "inserted": "新增客户"
+    },
+    "type": {
+      "person": "人员",
+      "company": "公司",
+      "agency": "中介机构"
+    },
+    "table": {
+      "name": "姓名",
+      "company": "公司",
+      "email": "邮箱",
+      "location": "地区",
+      "sources": "来源",
+      "category": "保存为",
+      "status": "状态",
+      "actions": "操作"
+    },
+    "category": {
+      "contact": "联系人",
+      "company": "公司",
+      "agency": "中介机构",
+      "unsure": "待定",
+      "pickOne": "保存前请为此客户选择一个类别。",
+      "source": {
+        "heuristic": "自动",
+        "ai": "AI",
+        "user": "您",
+        "unsure": "未设置"
+      }
+    },
+    "status": {
+      "new": "新客户",
+      "saved": "已保存",
+      "contacted": "已联系",
+      "dismissed": "已忽略"
+    },
+    "actions": {
+      "selected": "已选 {count} 项",
+      "saveAsContact": "添加为联系人",
+      "saveAsCompany": "添加为公司",
+      "bulkSaveContact": "批量添加为联系人",
+      "bulkSaveCompany": "批量添加为公司",
+      "dismiss": "忽略",
+      "delete": "删除",
+      "exportCsv": "导出 CSV",
+      "selectAll": "全选",
+      "savedOne": "已保存 {name}。"
+    },
+    "empty": {
+      "title": "还没有客户",
+      "description": "推荐条件并确认后搜索 — 结果在 LinkedIn 与网页间去重。"
+    },
+    "errors": {
+      "updateFailed": "无法更新客户。",
+      "saveFailed": "无法保存客户。",
+      "deleteFailed": "无法删除客户。"
+    },
+    "toasts": {
+      "searchFailed": "搜索失败",
+      "criteriaFailed": "无法获取 AI 推荐"
+    }
   },
   "dashboard": {
     "title": "仪表板",
@@ -124,6 +244,7 @@
     "createAndPreview": "创建与预览",
     "unsavedDraft": "未保存草稿",
     "personalInfo": "个人信息",
+    "chooseFromProfile": "从档案选择",
     "summary": "个人简介",
     "experience": "工作经历",
     "education": "教育背景",
@@ -501,6 +622,7 @@
       "options": "选项",
       "compactMode": "紧凑模式",
       "contactIcons": "联系方式图标",
+      "contactSeparators": "联系方式分隔符",
       "effectiveOutput": "生效预览",
       "effectiveMargins": "页边距（mm）：上{top} 下{bottom} 左{left} 右{right}",
       "effectiveSectionGap": "板块间距",
@@ -715,6 +837,7 @@
       "dragToReorder": "Drag to reorder"
     },
     "actions": {
+      "undo": "撤销",
       "saveAsMaster": "另存为主简历",
       "alreadyMaster": "此简历已是主简历",
       "saveMoreOptions": "更多保存选项",
@@ -930,13 +1053,19 @@
     },
     "projectsPicker": {
       "title": "为定制简历选择项目",
-      "subtitle": "这些项目与职位描述匹配。最多选择 4 个 — 定制简历的项目板块将被您的选择替换。",
+      "subtitle": "保留当前项目板块，或选择与职位匹配的项目进行替换。",
+      "modeKeep": "保留当前项目",
+      "modeKeepHint": "项目板块将保持原样。",
+      "modeChoose": "选择替换项目",
+      "modeChooseHint": "用最多 4 个与职位匹配的项目替换项目板块。",
+      "keepNote": "不会添加或替换任何项目。项目板块将保持原样。",
       "matchScore": "匹配度",
       "inResume": "已在简历中",
       "noDescription": "无法为此项目撰写描述（LLM 不可用）。",
       "selectHint": "最多选择 {count} 个项目",
-      "skip": "跳过 — 自动使用最佳匹配",
-      "tailorWithSelection": "使用所选项目定制"
+      "skip": "自动使用最佳匹配",
+      "tailorWithSelection": "使用所选项目定制",
+      "tailorWithCurrent": "定制但保留当前项目"
     },
     "jobIntel": {
       "shouldApply": {
@@ -1101,7 +1230,8 @@
         "health_check_failed": "健康检查失败。",
         "duplicate_v1_path": "健康检查失败。Base URL 可能包含重复的 /v1 路径。",
         "not_found_404": "健康检查失败。404 未找到，请检查 Base URL 是否与提供方匹配。",
-        "html_response": "健康检查失败。Base URL 返回了 HTML，可能是控制台地址或网关不支持该路径。"
+        "html_response": "健康检查失败。Base URL 返回了 HTML，可能是控制台地址或网关不支持该路径。",
+        "llm_timeout": "健康检查超时。提供方未在规定时间内响应，请检查网络后重试。"
       },
       "healthWarnings": {
         "empty_content": "健康检查返回了空内容。"
@@ -1577,6 +1707,7 @@
     "status": {
       "watching": "Watching",
       "contacted": "Contacted",
+      "second_contact": "2nd Contact",
       "applied": "Applied",
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
@@ -1768,7 +1899,22 @@
       "websiteContent": "网站",
       "linkedinContent": "LinkedIn",
       "hiringSignals": "招聘信号",
-      "back": "返回"
+      "back": "返回",
+      "modeLabel": "邮件模式",
+      "modePersonalized": "个性化",
+      "modeShared": "共享",
+      "modePersonalizedHint": "为每位收件人生成单独的 AI 邮件。",
+      "modeSharedHint": "生成一封通用邮件并逐一分发给每位收件人。收件人之间不会看到彼此的地址。",
+      "personalizeGreeting": "在问候语中加入每位收件人的姓名",
+      "sharedGenerating": "正在生成共享邮件...",
+      "sharedPreviewHint": "此邮件将逐一分发给 {count} 位收件人。",
+      "greetingHint": "问候语占位符将被替换为每位收件人的姓名（例如 {example}）。",
+      "sharedGenerateFailed": "生成共享邮件失败，请重试。",
+      "sharedRegenFailed": "重新生成失败 — 保留当前草稿。",
+      "generateShared": "生成邮件",
+      "retry": "重试",
+      "error": "失败",
+      "cancel": "取消"
     },
     "approval": {
       "title": "将公司添加到数据库？",
@@ -1991,6 +2137,14 @@
   "profile": {
     "title": "My Profile",
     "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "avatar": {
+      "upload": "上传头像",
+      "alt": "个人头像",
+      "hint": "JPG、PNG 或 WebP。最大 5 MB。",
+      "remove": "移除",
+      "tooLarge": "图片必须小于 5 MB。",
+      "invalidType": "请选择图片文件。"
+    },
     "header": {
       "sourceFrom": "来自简历"
     },
@@ -2034,6 +2188,7 @@
       "noDescription": "无描述",
       "showReadme": "显示 README",
       "hideReadme": "隐藏 README",
+      "readme": "README",
       "connectTitle": "连接 GitHub"
     },
     "tabs": {
@@ -2439,6 +2594,117 @@
       "coach": "职业教练",
       "recruiter": "招聘人员",
       "resumeAnalyst": "简历分析师"
+    }
+  },
+  "emailAnalytics": {
+    "title": "邮件分析",
+    "subtitle": "跟踪外联邮件的回复情况，了解需要改进的地方。",
+    "refresh": "刷新",
+    "loading": "加载中…",
+    "loadFailed": "加载邮件分析失败，请重试。",
+    "stats": {
+      "totalSent": "已发送",
+      "responded": "已回复",
+      "responseRate": "回复率",
+      "pending": "待回复",
+      "bounced": "退回"
+    },
+    "chart": {
+      "title": "发送与回复趋势",
+      "sent": "已发送",
+      "responded": "已回复",
+      "empty": "暂无数据 — 发送一些邮件即可查看趋势。"
+    },
+    "segments": {
+      "title": "分组表现",
+      "byRecipientType": "按收件人",
+      "byMode": "按发送方式",
+      "byPurpose": "按目的",
+      "segment": "分组",
+      "sent": "已发送",
+      "replied": "已回复",
+      "rate": "回复率",
+      "company": "公司",
+      "contact": "联系人",
+      "personalized": "个性化",
+      "shared": "共享",
+      "general": "通用",
+      "internship": "实习",
+      "job": "职位",
+      "cold": "冷邮件",
+      "custom": "自定义"
+    },
+    "topSubjects": {
+      "title": "获得回复的主题",
+      "subject": "主题",
+      "empty": "尚无回复记录。"
+    },
+    "timeline": {
+      "title": "已发送邮件",
+      "empty": "尚未发送邮件。",
+      "recipient": "收件人",
+      "sentAt": "发送时间",
+      "outcome": "结果",
+      "prev": "上一页",
+      "next": "下一页",
+      "showing": "显示第 {from}–{to} 项，共 {total} 项",
+      "selectAll": "全选",
+      "clearSelection": "清除选择",
+      "selectedCount": "已选择 {count} 封",
+      "bulkAction": "设置结果",
+      "bulkApply": "应用",
+      "bulkSuccess": "已更新 {count} 封邮件。",
+      "bulkFailed": "更新结果失败。",
+      "outcomeUpdated": "结果已更新。",
+      "updateFailed": "更新结果失败。",
+      "outcomeAbbrev": {
+        "pending": "…",
+        "responded": "回",
+        "not_interested": "拒",
+        "bounced": "退"
+      }
+    },
+    "outcomes": {
+      "pending": "待回复",
+      "responded": "已回复",
+      "not_interested": "无兴趣",
+      "bounced": "已退回"
+    },
+    "checkReplies": {
+      "title": "检查回复",
+      "description": "通过 IMAP 扫描收件箱中对待回复邮件的回复。匹配结果仅为建议 — 请逐条确认。",
+      "button": "检查回复",
+      "checking": "检查中…",
+      "result": "已扫描 {count} 封待回复邮件。",
+      "none": "未找到匹配的回复。",
+      "confirm": "标记为已回复",
+      "confirmed": "已标记为已回复。",
+      "confirmFailed": "标记为已回复失败。",
+      "failed": "检查回复失败，请重试。",
+      "sentSubject": "你发送的",
+      "matchedSubject": "对方的回复",
+      "from": "来自"
+    },
+    "analyze": {
+      "title": "AI 分析",
+      "description": "分析你的外联记录，了解哪些有效、哪些需要调整。",
+      "button": "分析我的外联",
+      "analyzing": "分析中…",
+      "emailsAnalyzed": "已分析 {count} 封邮件。",
+      "empty": "数据不足 — 请至少发送 3 封邮件。",
+      "failed": "分析失败，请重试。",
+      "savedAt": "保存于 {date}",
+      "whatWorks": "有效的做法",
+      "whatFails": "需要改进",
+      "subjectTips": "主题建议",
+      "bodyTips": "正文建议",
+      "ctaTips": "行动号召建议",
+      "example": "改写示例",
+      "exampleSubject": "示例主题"
+    },
+    "empty": {
+      "title": "暂无外联记录",
+      "description": "先在公司或联系人页面发送邮件，然后回到这里跟踪回复。"
     }
   }
 }

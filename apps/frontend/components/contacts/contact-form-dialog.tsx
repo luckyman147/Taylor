@@ -82,7 +82,13 @@ export function ContactFormDialog({
     ] as ContactGoal[]
   ).map((g) => ({ id: g, label: t(`contacts.goal.${g}`) }));
   const statusOptions = (
-    ['to_contact', 'contacted', 'follow_up', 'meeting_scheduled', 'thank_you_sent'] as ContactStatus[]
+    [
+      'to_contact',
+      'contacted',
+      'follow_up',
+      'meeting_scheduled',
+      'thank_you_sent',
+    ] as ContactStatus[]
   ).map((s) => ({ id: s, label: t(`contacts.status.${s}`) }));
   const relationshipOptions = (
     [
@@ -104,10 +110,7 @@ export function ContactFormDialog({
       setError(t('contacts.form.validation'));
       return;
     }
-    if (
-      followUpDate.trim() !== '' &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(followUpDate.trim())
-    ) {
+    if (followUpDate.trim() !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(followUpDate.trim())) {
       setError(t('contacts.form.invalidDate'));
       return;
     }

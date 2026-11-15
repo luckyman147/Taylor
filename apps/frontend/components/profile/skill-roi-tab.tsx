@@ -18,7 +18,11 @@ import { useTranslations } from '@/lib/i18n';
 import {
   getSkillResources,
   getSkillRoi,
+  getProjectIdeas,
+  createProject,
+  getProfile,
   type CareerRoiResponse,
+  type ProjectIdea,
   type SkillResource,
   type SkillRoiRow,
 } from '@/lib/api/profile';
@@ -292,6 +296,13 @@ export function SkillRoiTab() {
   const [adviceLoading, setAdviceLoading] = useState(false);
   const [adviceError, setAdviceError] = useState<string | null>(null);
   const [advice, setAdvice] = useState<string | null>(null);
+  const [projectIdeasOpen, setProjectIdeasOpen] = useState(false);
+  const [projectIdeasLoading, setProjectIdeasLoading] = useState(false);
+  const [projectIdeasError, setProjectIdeasError] = useState<string | null>(null);
+  const [projectIdeas, setProjectIdeas] = useState<ProjectIdea[]>([]);
+  const [projectIdeasNote, setProjectIdeasNote] = useState<string | null>(null);
+  const [projectIdeasContext, setProjectIdeasContext] = useState('');
+  const [savedIdeas, setSavedIdeas] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -325,6 +336,23 @@ export function SkillRoiTab() {
   const openAdviceDialog = () => {
     setAdviceDialogOpen(true);
     void fetchAdvice();
+  };
+
+  const openProjectIdeasDialog = async () => {
+    setProjectIdeasOpen(true);
+    setProjectIdeasLoading(true);
+    setProjectIdeasError(null);
+    setProjectIdeasNote(null);
+    setProjectIdeas([]);
+    try {
+      const res = await getProjectIdeas(projectIdeasContext);
+      setProjectIdeas(res.ideas);
+      setProjectIdeasNote(res.note);
+    } catch (e) {
+      setProjectIdeasError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setProjectIdeasLoading(false);
+    }
   };
 
   const loadResources = useCallback(
@@ -372,6 +400,10 @@ export function SkillRoiTab() {
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             {t('profile.roi.refresh')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void openProjectIdeasDialog()} disabled={projectIdeasLoading}>
+            <Sparkles className="h-4 w-4" />
+            {t('profile.roi.suggestProjects')}
           </Button>
           <Button size="sm" onClick={openAdviceDialog}>
             <Sparkles className="h-4 w-4" />
@@ -553,6 +585,128 @@ export function SkillRoiTab() {
               </Button>
             )}
             <Button onClick={() => setAdviceDialogOpen(false)}>{t('common.close')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={projectIdeasOpen} onOpenChange={setProjectIdeasOpen}>
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b border-[#e6e3dc] bg-white p-6">
+            <DialogTitle>
+              <span className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                {t('profile.roi.projectIdeas')}
+              </span>
+            </DialogTitle>
+            <DialogDescription>{t('profile.roi.projectIdeasDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto p-6">
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-medium text-ink-soft">
+                {t('profile.roi.projectIdeasContextLabel')}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={projectIdeasContext}
+                  onChange={(e) => setProjectIdeasContext(e.target.value)}
+                  placeholder={t('profile.roi.projectIdeasContextPlaceholder')}
+                  className="flex-1 rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void openProjectIdeasDialog();
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => void openProjectIdeasDialog()}
+                  disabled={projectIdeasLoading}
+                >
+                  {projectIdeasLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            {projectIdeasLoading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-ink-soft">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('profile.roi.projectIdeasLoading')}
+              </div>
+            ) : projectIdeasError ? (
+              <p className="text-sm text-red-700">{projectIdeasError}</p>
+            ) : projectIdeasNote && projectIdeas.length === 0 ? (
+              <p className="text-sm text-ink-soft">{projectIdeasNote}</p>
+            ) : (
+              <div className="space-y-4">
+                {projectIdeas.map((idea) => (
+                  <div key={idea.name} className="rounded-xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <h4 className="text-sm font-bold text-ink">{idea.name}</h4>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        idea.difficulty === 'beginner' ? 'bg-green-100 text-green-800'
+                        : idea.difficulty === 'advanced' ? 'bg-red-100 text-red-800'
+                        : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {idea.difficulty}
+                      </span>
+                    </div>
+                    <p className="mb-2 text-xs text-ink-soft">{idea.description}</p>
+                    {(idea.problem || idea.solution) && (
+                      <div className="mb-2 space-y-1.5 rounded-lg bg-secondary/50 p-3">
+                        {idea.problem && (
+                          <p className="text-xs"><span className="font-semibold text-ink">Problem:</span>{' '}<span className="text-ink-soft">{idea.problem}</span></p>
+                        )}
+                        {idea.solution && (
+                          <p className="text-xs"><span className="font-semibold text-ink">Solution:</span>{' '}<span className="text-ink-soft">{idea.solution}</span></p>
+                        )}
+                      </div>
+                    )}
+                    {idea.reason && (
+                      <p className="mb-2 text-xs italic text-ink-muted">{idea.reason}</p>
+                    )}
+                    {idea.technologies.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {idea.technologies.map((tech) => (
+                          <span key={tech} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={savedIdeas.has(idea.name)}
+                        onClick={async () => {
+                          await createProject({
+                            name: idea.name,
+                            description: idea.description ? [idea.description] : [],
+                            languages: idea.technologies,
+                            status: 'future',
+                          });
+                          setSavedIdeas((prev) => new Set(prev).add(idea.name));
+                        }}
+                        className="gap-1.5 text-[10px]"
+                      >
+                        {savedIdeas.has(idea.name) ? t('profile.roi.saved') : t('profile.roi.saveAsFuture')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex-row justify-end gap-3 border-t border-[#e6e3dc] bg-secondary p-4">
+            {projectIdeasError && (
+              <Button variant="outline" onClick={() => void openProjectIdeasDialog()} disabled={projectIdeasLoading}>
+                <RefreshCw className="h-4 w-4" />
+                {t('common.retry')}
+              </Button>
+            )}
+            <Button onClick={() => setProjectIdeasOpen(false)}>{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

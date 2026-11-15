@@ -55,7 +55,10 @@
   --margin-bottom: 10mm;
   --margin-left: 10mm;
   --margin-right: 10mm;
-  --content-padding: 4mm;
+  --content-padding-top: 4mm;
+  --content-padding-right: 4mm;
+  --content-padding-bottom: 4mm;
+  --content-padding-left: 4mm;
 
   /* Apply base styles */
   font-family: var(--body-font);
@@ -65,10 +68,10 @@
   line-height: var(--line-height);
   color: var(--resume-text-body);
   /* Use CSS variables for padding - these can be customized via inline styles */
-  padding: calc(var(--margin-top) + var(--content-padding))
-    calc(var(--margin-right) + var(--content-padding))
-    calc(var(--margin-bottom) + var(--content-padding))
-    calc(var(--margin-left) + var(--content-padding));
+  padding: calc(var(--margin-top) + var(--content-padding-top))
+    calc(var(--margin-right) + var(--content-padding-right))
+    calc(var(--margin-bottom) + var(--content-padding-bottom))
+    calc(var(--margin-left) + var(--content-padding-left));
 }
 
 .resume-header {
@@ -77,6 +80,38 @@
   text-align: var(--section-header-align, center);
   border-top: var(--border-above-header-w) solid var(--resume-border-secondary);
   border-bottom: var(--border-below-header-w) solid var(--resume-border-secondary);
+}
+
+.resume-header-with-avatar {
+  display: flex;
+  align-items: center;
+  gap: var(--avatar-gap, 16px);
+  justify-content: var(--avatar-position, flex-start);
+  text-align: left;
+}
+
+.resume-header-with-avatar .resume-avatar-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.resume-header-with-avatar .resume-name,
+.resume-header-with-avatar .resume-title,
+.resume-header-with-avatar .resume-contact-line {
+  text-align: left;
+}
+
+.resume-avatar {
+  width: var(--avatar-size, 72px);
+  height: var(--avatar-size, 72px);
+  border-radius: var(--avatar-shape, 50%);
+  border-width: var(--avatar-border, 0px);
+  border-style: solid;
+  border-color: var(--resume-border-primary);
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .resume-name {

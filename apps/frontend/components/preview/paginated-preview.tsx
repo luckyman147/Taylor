@@ -122,9 +122,7 @@ export function PaginatedPreview({ resumeData, settings }: PaginatedPreviewProps
           >
             <ZoomOut className="w-4 h-4" />
           </Button>
-          <span className=" text-xs w-12 text-center text-ink-soft">
-            {Math.round(zoom * 100)}%
-          </span>
+          <span className=" text-xs w-12 text-center text-ink-soft">{Math.round(zoom * 100)}%</span>
           <Button
             variant="ghost"
             size="icon"

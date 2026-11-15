@@ -132,7 +132,7 @@ describe('useResumeAutosave', () => {
     });
 
     expect(save).toHaveBeenCalledTimes(1);
-    expect(onPersisted).toHaveBeenCalledWith({ canonical: true });
+    expect(onPersisted).toHaveBeenCalledWith({ canonical: true }, { a: 1 });
     expect(result.current.status).toBe('saved');
   });
 
@@ -175,7 +175,8 @@ describe('useResumeAutosave', () => {
     // The queued snapshot is sent after the first completes.
     expect(save).toHaveBeenCalledTimes(2);
     expect(save.mock.calls[1][0]).toEqual({ v: 2 });
-    expect(onPersisted).toHaveBeenLastCalledWith({ done: true });
+    expect(onPersisted).toHaveBeenNthCalledWith(1, { first: true }, { v: 1 });
+    expect(onPersisted).toHaveBeenLastCalledWith({ done: true }, { v: 2 });
   });
 
   it('marks status as error when a save fails and surfaces the error to the caller', async () => {

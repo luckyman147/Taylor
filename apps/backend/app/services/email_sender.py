@@ -40,6 +40,10 @@ class OutgoingEmail:
     body: str
     to_name: str | None = None
     attachments: list[EmailAttachment] = field(default_factory=list)
+    # Optional HTML signature injected into the HTML alternative only.
+    # Callers must pass already-sanitized HTML (see html_signature).
+    html_signature: str | None = None
+    text_signature: str | None = None
 
 
 def _markdown_to_html(md_text: str) -> str:
@@ -80,9 +84,20 @@ def _build_message(cfg: EmailDeliveryConfig, email: OutgoingEmail) -> EmailMessa
         formataddr((email.to_name, email.to_email)) if email.to_name else email.to_email
     )
 
-    # Set both plain text (fallback) and HTML (for clickable links)
-    msg.set_content(email.body)
+    # Plain-text part: body + optional plain-text signature fallback.
+    text_body = email.body
+    if email.text_signature:
+        text_body = f"{email.body.rstrip()}\n\n{email.text_signature}"
+    msg.set_content(text_body)
+
+    # HTML part: markdown body + optional HTML signature block.
     html_body = _markdown_to_html(email.body)
+    if email.html_signature:
+        from app.services.html_signature import build_html_signature_block
+
+        block = build_html_signature_block(email.html_signature)
+        if block:
+            html_body = f"{html_body}\n{block}"
     msg.add_alternative(html_body, subtype="html")
 
     for attachment in email.attachments:

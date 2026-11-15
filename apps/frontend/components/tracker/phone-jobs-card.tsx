@@ -121,7 +121,9 @@ export function PhoneJobsCard() {
                         {job.title ?? 'Untitled'}
                       </span>
                     </td>
-                    <td className="py-2.5 pr-3 text-ink-soft line-clamp-1">{job.company ?? '---'}</td>
+                    <td className="py-2.5 pr-3 text-ink-soft line-clamp-1">
+                      {job.company ?? '---'}
+                    </td>
                     <td className="py-2.5 pr-3 text-ink-soft line-clamp-1 hidden md:table-cell">
                       {job.location ?? '---'}
                     </td>

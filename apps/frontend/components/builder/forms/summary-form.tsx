@@ -23,10 +23,7 @@ export const SummaryForm: React.FC<SummaryFormProps> = ({ value, onChange }) => 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label
-          htmlFor="summary"
-          className=" text-xs uppercase tracking-wider text-steel-grey"
-        >
+        <Label htmlFor="summary" className=" text-xs uppercase tracking-wider text-steel-grey">
           {t('resume.sections.summary')}
         </Label>
         <Textarea

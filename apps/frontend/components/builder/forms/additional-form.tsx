@@ -67,10 +67,7 @@ export const AdditionalForm: React.FC<AdditionalFormProps> = ({ data, onChange }
           />
         </div>
         <div className="space-y-2">
-          <Label
-            htmlFor="languages"
-            className=" text-xs uppercase tracking-wider text-steel-grey"
-          >
+          <Label htmlFor="languages" className=" text-xs uppercase tracking-wider text-steel-grey">
             {t('resume.sections.languages')}
           </Label>
           <Textarea

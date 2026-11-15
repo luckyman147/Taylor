@@ -17,8 +17,8 @@ interface UseResumeAutosaveArgs<T> {
   delayMs?: number;
   /** Persists a snapshot; must return the canonicalized data to store as lastSaved. */
   save: (data: T) => Promise<T>;
-  /** Called with the canonicalized data after a successful save. */
-  onPersisted: (next: T) => void;
+  /** Called with the canonicalized data and the snapshot that was saved. */
+  onPersisted: (next: T, savedSnapshot: T) => void;
 }
 
 /**
@@ -55,7 +55,7 @@ export function useResumeAutosave<T>({
           pendingRef.current = null;
           try {
             const next = await save(snapshot);
-            onPersisted(next);
+            onPersisted(next, snapshot);
             setStatus('saved');
           } catch (error) {
             setStatus('error');

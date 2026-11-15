@@ -98,7 +98,7 @@ async def search_jobs(request: JobSearchRequest) -> JobSearchResponse:
         return cached
 
     # Search all MCPs
-    all_jobs, mcp_status = await manager.search_all(keywords, filters)
+    all_jobs, mcp_status = await manager.search_all(keywords, filters, sources=request.sources or None)
 
     # Deduplicate
     deduped = _deduplicate(all_jobs)

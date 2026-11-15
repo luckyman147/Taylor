@@ -120,7 +120,9 @@ async def generate_interview_prep(
             f"(follow them precisely):\n{instruction.strip()}"
         )
     config = get_llm_config()
-    max_tokens = get_safe_max_tokens(get_model_name(config), requested=8192)
+    # 4096 is ample for the interview-prep schema and halves the adaptive
+    # timeout scaling (timeout ∝ max_tokens) vs the old 8192.
+    max_tokens = get_safe_max_tokens(get_model_name(config), requested=4096)
 
     result = await complete_json(
         prompt=prompt,

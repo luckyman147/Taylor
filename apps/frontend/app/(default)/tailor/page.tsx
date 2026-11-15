@@ -271,13 +271,14 @@ export default function TailorPage() {
     return null;
   };
 
-  const runPreview = async (jobId: string, selectedProjects?: string[]) => {
+  const runPreview = async (jobId: string, selectedProjects?: string[], keepProjects?: boolean) => {
     try {
       const result = await previewImproveResume(
         masterResumeId ?? '',
         jobId,
         selectedPromptId,
-        selectedProjects
+        selectedProjects,
+        keepProjects
       );
 
       if (!result?.data?.diff_summary || !result?.data?.detailed_changes) {
@@ -353,23 +354,28 @@ export default function TailorPage() {
         return;
       }
 
-      // 3. No suggestions (or fetch failed): preview directly
+      // 3. No suggestions (or fetch failed): preview directly, keeping the
+      // user's current projects.
       setShowProjectsPicker(false);
       setPickerSuggestions([]);
       pendingJobIdRef.current = null;
-      await runPreview(jobId);
+      await runPreview(jobId, undefined, true);
     } catch (err) {
       console.error(err);
       setError(t('tailor.errors.failedToGenerate'));
     }
   };
 
-  const runPreviewWithLoading = async (jobId: string, selectedProjects?: string[]) => {
+  const runPreviewWithLoading = async (
+    jobId: string,
+    selectedProjects?: string[],
+    keepProjects?: boolean
+  ) => {
     setIsLoading(true);
     setError(null);
     startTimer();
     try {
-      await runPreview(jobId, selectedProjects);
+      await runPreview(jobId, selectedProjects, keepProjects);
     } finally {
       setIsLoading(false);
       stopTimer();
@@ -383,7 +389,7 @@ export default function TailorPage() {
     setPickerError(null);
     try {
       setShowProjectsPicker(false);
-      await runPreviewWithLoading(jobId, selectedNames);
+      await runPreviewWithLoading(jobId, selectedNames, false);
     } catch (err) {
       console.error(err);
       setPickerError(t('tailor.errors.failedToPreview'));
@@ -393,13 +399,20 @@ export default function TailorPage() {
     }
   };
 
-  const handleSkipProjects = () => {
+  const handleKeepCurrentProjects = async () => {
     const jobId = pendingJobIdRef.current;
-    setShowProjectsPicker(false);
-    setPickerSuggestions([]);
-    pendingJobIdRef.current = null;
-    if (jobId) {
-      void runPreviewWithLoading(jobId);
+    if (!jobId || pickerTailoring) return;
+    setPickerTailoring(true);
+    setPickerError(null);
+    try {
+      setShowProjectsPicker(false);
+      await runPreviewWithLoading(jobId, undefined, true);
+    } catch (err) {
+      console.error(err);
+      setPickerError(t('tailor.errors.failedToPreview'));
+    } finally {
+      setPickerTailoring(false);
+      pendingJobIdRef.current = null;
     }
   };
 
@@ -720,7 +733,7 @@ export default function TailorPage() {
         jobId={selectedJobId}
         onClose={handleCloseProjectsPicker}
         onTailor={handleTailorWithSelection}
-        onSkip={handleSkipProjects}
+        onKeepCurrent={handleKeepCurrentProjects}
       />
 
       <ConfirmDialog

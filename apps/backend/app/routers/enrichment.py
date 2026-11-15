@@ -9,9 +9,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 
+from app import llm_cache
 from app.config_cache import get_content_language
 from app.database import db
-from app.llm import complete_json
+from app.llm import complete_json, is_transient_llm_error
 from app.prompts.enrichment import (
     ANALYZE_RESUME_PROMPT,
     ENHANCE_DESCRIPTION_PROMPT,
@@ -21,7 +22,7 @@ from app.prompts.enrichment import (
     REGENERATE_SKILLS_PROMPT,
     REGENERATE_SUMMARY_PROMPT,
 )
-from app.prompts.templates import get_language_name
+from app.prompts.templates import detect_language, get_language_name
 from app.services.cover_letter import _resolve_feature_prompt
 from app.schemas.enrichment import (
     AnalysisResponse,
@@ -48,6 +49,27 @@ from app.schemas.enrichment import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/enrichment", tags=["Enrichment"])
+
+
+def _llm_http_error(exc: Exception, action: str) -> HTTPException:
+    """Map an LLM failure onto a client-safe HTTP error.
+
+    Transient provider failures (429/5xx/timeouts — after the Router's own
+    retries are exhausted) become a 503 with a Retry-After hint so clients
+    can prompt the user to try again; everything else becomes a generic 500.
+    Details stay in server logs only (CLAUDE.md rule 2).
+    """
+    logger.error("%s failed: %s", action, exc)
+    if is_transient_llm_error(exc):
+        return HTTPException(
+            status_code=503,
+            detail="The AI service is busy right now. Please try again in a moment.",
+            headers={"Retry-After": "10"},
+        )
+    return HTTPException(
+        status_code=500,
+        detail=f"Failed to {action}. Please try again.",
+    )
 
 
 def _extract_item_from_resume(processed_data: dict, item_id: str) -> dict:
@@ -124,9 +146,14 @@ async def analyze_resume(resume_id: str) -> AnalysisResponse:
     )
 
     try:
-        # Call LLM with increased max_tokens for non-English languages
+        # Call LLM with increased max_tokens for non-English languages.
+        # Memoized on the exact prompt so re-opening the enrichment panel for
+        # an unchanged resume doesn't burn an 8192-token analysis each time.
         result = await asyncio.wait_for(
-            complete_json(prompt, max_tokens=8192, schema_type="enrichment"),
+            llm_cache.get_or_compute(
+                llm_cache.make_key("enrichment_analyze", prompt),
+                lambda: complete_json(prompt, max_tokens=6144, schema_type="enrichment"),
+            ),
             timeout=180.0,  # 3-minute hard limit
         )
 
@@ -1121,7 +1148,12 @@ async def generate_project_bullets(
         user_instruction=user_instruction,
     )
 
-    result = await complete_json(prompt, max_tokens=4096, schema_type="diff")
+    try:
+        result = await complete_json(prompt, max_tokens=4096, schema_type="diff")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _llm_http_error(e, "generate project bullets") from e
 
     return GenerateProjectBulletsResponse(bullets=_clean_project_bullets(result.get("bullets")))
 
@@ -1130,45 +1162,19 @@ async def generate_project_bullets(
 # Company Research Endpoint
 # ============================================
 
-RESEARCH_SYNTHESIS_PROMPT = """You are a business research analyst. Synthesize the following raw data about a company into a concise, structured summary useful for writing a personalized outreach email.
 
-COMPANY: {company_name}
-
-WEBSITE CONTENT:
-{website_content}
-
-LINKEDIN PAGE CONTENT:
-{linkedin_content}
-
-HIRING SIGNALS (from LinkedIn job postings):
-{hiring_signals}
-
-TASK: Produce a JSON object with these fields:
-- "summary": 2-3 sentence company overview (what they do, mission, key products)
-- "recent_news": Notable recent developments, funding, launches (or "No recent news found" if none)
-- "tech_stack": Known technologies, tools, platforms (or "Not identified" if unknown)
-- "culture": Company culture signals — values, work style, team size hints (or "Not identified" if unknown)
-
-RULES:
-- Base everything ONLY on the provided data. Do NOT invent facts.
-- Be concise — each field should be 1-3 sentences max.
-- If a section has no useful data, write a brief note saying so.
-- Output JSON only, no other text."""
-
-RESEARCH_SOURCES_PROMPT = """You are a business research analyst. Based on the company name and any available metadata, suggest up to 3 URLs that would contain useful information about this company for writing a personalized outreach email.
-
-COMPANY: {company_name}
-INDUSTRY: {industry}
-WEBSITE: {website}
-LINKEDIN: {linkedin_url}
-
-TASK: Return a JSON object with a single field "urls" containing a list of URLs to crawl. Prioritize:
-1. The company website (if provided and valid)
-2. LinkedIn company page (if provided)
-3. Any other relevant public page (About page, blog, press page)
-
-OUTPUT FORMAT (JSON only):
-{{"urls": ["https://...", "https://..."]}}"""
+def _build_research_summary(
+    website_content: str, linkedin_content: str, hiring_signals: str
+) -> str:
+    """Assemble research_summary from raw crawled material — no LLM call."""
+    parts: list[str] = []
+    if website_content:
+        parts.append(f"Website content:\n{website_content[:2000]}")
+    if linkedin_content:
+        parts.append(f"LinkedIn content:\n{linkedin_content[:2000]}")
+    if hiring_signals:
+        parts.append(hiring_signals)
+    return "\n\n".join(parts)
 
 
 @router.post("/research-company", response_model=ResearchCompanyResponse)
@@ -1178,8 +1184,17 @@ async def research_company(
     """Research a company by crawling its website, LinkedIn page, and checking hiring signals.
 
     Uses crawl4ai for web fetching and LinkedIn MCP for job postings.
-    Returns structured research data to personalize outreach emails.
+    Runs without any LLM calls — research_summary is assembled directly
+    from the crawled content. Returns structured research data to
+    personalize outreach emails.
     """
+    # Crawling + LinkedIn MCP are slow and change slowly — replay the whole
+    # result for identical requests for 30 min.
+    _research_cache_key = llm_cache.make_key("research_company", request.model_dump())
+    _cached_research = llm_cache.get(_research_cache_key)
+    if _cached_research is not None:
+        return _cached_research
+
     from app.services.mcp.crawl4ai import Crawl4AIAdapter
 
     website_content = ""
@@ -1187,32 +1202,12 @@ async def research_company(
     hiring_signals = ""
     sources: list[str] = []
 
-    # --- Step 1: Determine which URLs to crawl ---
+    # --- Step 1: Crawl the URLs the caller provided ---
     urls_to_crawl: list[str] = []
     if request.website:
         urls_to_crawl.append(request.website)
     if request.linkedin_url:
         urls_to_crawl.append(request.linkedin_url)
-
-    # If we have few URLs, also ask the LLM to suggest additional sources
-    if len(urls_to_crawl) < 3:
-        try:
-            sources_prompt = RESEARCH_SOURCES_PROMPT.format(
-                company_name=request.company_name,
-                industry=request.industry or "not specified",
-                website=request.website or "not provided",
-                linkedin_url=request.linkedin_url or "not provided",
-            )
-            suggested = await complete_json(sources_prompt, max_tokens=512, schema_type="diff")
-            suggested_urls = suggested.get("urls", [])
-            if isinstance(suggested_urls, list):
-                for u in suggested_urls:
-                    if isinstance(u, str) and u.startswith("http") and u not in urls_to_crawl:
-                        urls_to_crawl.append(u)
-                        if len(urls_to_crawl) >= 5:
-                            break
-        except Exception:
-            pass  # Best-effort — proceed with what we have
 
     # --- Step 2: Crawl URLs with crawl4ai ---
     crawler = Crawl4AIAdapter()
@@ -1257,11 +1252,9 @@ async def research_company(
         from app.services.job_scraper import get_mcp_manager
 
         manager = get_mcp_manager()
-        linkedin_adapter = None
-        for adapter in manager._adapters:
-            if adapter.name == "linkedin" and adapter.enabled:
-                linkedin_adapter = adapter
-                break
+        linkedin_adapter = manager.adapters.get("linkedin")
+        if linkedin_adapter is not None and not linkedin_adapter.enabled:
+            linkedin_adapter = None
 
         if linkedin_adapter and await linkedin_adapter.is_available():
             from app.schemas.job_scraper import JobSearchFilters
@@ -1287,36 +1280,12 @@ async def research_company(
     except Exception as exc:
         logger.debug("LinkedIn MCP search failed (non-critical): %s", exc)
 
-    # --- Step 4: AI synthesis ---
-    research_summary = ""
-    if website_content or linkedin_content or hiring_signals:
-        try:
-            synthesis_prompt = RESEARCH_SYNTHESIS_PROMPT.format(
-                company_name=request.company_name,
-                website_content=website_content or "(No website content available)",
-                linkedin_content=linkedin_content or "(No LinkedIn content available)",
-                hiring_signals=hiring_signals or "(No hiring signals available)",
-            )
-            result = await complete_json(synthesis_prompt, max_tokens=1024, schema_type="diff")
-            parts = []
-            if result.get("summary"):
-                parts.append(f"Overview: {result['summary']}")
-            if result.get("recent_news") and "no recent" not in result["recent_news"].lower():
-                parts.append(f"Recent news: {result['recent_news']}")
-            if result.get("tech_stack") and "not identified" not in result["tech_stack"].lower():
-                parts.append(f"Tech stack: {result['tech_stack']}")
-            if result.get("culture") and "not identified" not in result["culture"].lower():
-                parts.append(f"Culture: {result['culture']}")
-            research_summary = "\n".join(parts)
-        except Exception as exc:
-            logger.warning("Research synthesis failed: %s", exc)
-            # Fallback: use raw content as summary
-            if website_content:
-                research_summary = f"Website content:\n{website_content[:2000]}"
-            if hiring_signals:
-                research_summary += f"\n\n{hiring_signals}"
+    # --- Step 4: Build research summary (deterministic — no LLM call) ---
+    research_summary = _build_research_summary(
+        website_content, linkedin_content, hiring_signals
+    )
 
-    return ResearchCompanyResponse(
+    response = ResearchCompanyResponse(
         company_name=request.company_name,
         website_content=website_content[:3000],
         linkedin_content=linkedin_content[:3000],
@@ -1324,6 +1293,8 @@ async def research_company(
         research_summary=research_summary,
         sources=sources,
     )
+    llm_cache.set(_research_cache_key, response, ttl=1800.0)
+    return response
 
 
 # ============================================
@@ -1436,6 +1407,236 @@ def _build_contact_footer(processed: dict | None) -> str:
     return " | ".join(parts)
 
 
+_BAD_GREETINGS = (
+    "dear not provided",
+    "dear unknown",
+    "hi not provided",
+    "hello not provided",
+    "dear (recipient",
+    "hi [",
+    "dear [",
+    "hello [",
+)
+
+
+def _recipient_greeting_name(recipient_name: str | None, company_name: str) -> str:
+    """Pick a safe greeting target: real name, else company/team — never 'not provided'."""
+    name = (recipient_name or "").strip()
+    if name and name.lower() not in {"not provided", "not provided.", "unknown", "n/a", "none"}:
+        return name.split()[0] if " " in name and not name.endswith(",") else name
+    company = (company_name or "").strip()
+    if company and company not in {"(Company)", "(unknown)"}:
+        return f"{company} team"
+    return "Hiring Team"
+
+
+def _normalize_email_body(body: str) -> str:
+    """Normalize an AI-generated outreach body into a real multi-line email.
+
+    Guarantees:
+    - Windows newlines → \\n, trailing whitespace stripped
+    - a blank line after the greeting line when missing
+    - blank lines between paragraphs that were collapsed onto one line
+      (splits on sentence boundaries only when the whole body has no blank lines)
+    - no double blank lines
+    - contact footer (if provided by caller via append_contact_footer) is left alone
+    """
+    text = (body or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return ""
+
+    # Drop markdown fences the model sometimes wraps JSON-ish or code around.
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+        if not text:
+            return ""
+
+    lines = [ln.rstrip() for ln in text.split("\n")]
+
+    # Fix literal "not provided" style greetings (mutate in place).
+    for i, ln in enumerate(lines):
+        low = ln.lower().strip()
+        if any(bad in low for bad in _BAD_GREETINGS):
+            lines[i] = "Hi Hiring Team,"
+
+    # If the body is one wall of text (no blank-line breaks), split paragraphs
+    # on sentence boundaries BEFORE inserting the post-greeting blank line.
+    has_blank = any(not ln.strip() for ln in lines)
+    non_empty = [ln for ln in lines if ln.strip()]
+    if not has_blank and len(non_empty) == 1:
+        import re as _re
+
+        single = non_empty[0].strip()
+        sentences = [s.strip() for s in _re.split(r"(?<=[.!?])\s+", single) if s.strip()]
+        paragraphs: list[str] = []
+        buf: list[str] = []
+        for sent in sentences:
+            buf.append(sent)
+            if len(buf) >= 3:
+                paragraphs.append(" ".join(buf))
+                buf = []
+        if buf:
+            paragraphs.append(" ".join(buf))
+        rebuilt: list[str] = []
+        for idx, para in enumerate(paragraphs):
+            if idx:
+                rebuilt.append("")
+            rebuilt.append(para)
+        lines = rebuilt
+
+    # Ensure exactly one blank line after the first non-empty greeting line.
+    first_idx = next((i for i, ln in enumerate(lines) if ln.strip()), None)
+    if first_idx is not None:
+        greeting = lines[first_idx]
+        rest = lines[first_idx + 1 :]
+        while rest and not rest[0].strip():
+            rest.pop(0)
+        lines = lines[:first_idx] + [greeting, ""] + rest
+
+    # Collapse 3+ newlines into a blank line (max one blank line between blocks).
+    out: list[str] = []
+    blank_pending = False
+    for ln in lines:
+        if not ln.strip():
+            blank_pending = True
+            continue
+        if blank_pending and out:
+            out.append("")
+        out.append(ln)
+        blank_pending = False
+
+    return "\n".join(out).strip()
+
+
+def _append_contact_footer(body: str, contact_footer: str) -> str:
+    """Append the contact footer after a blank line if the model did not include it."""
+    if not contact_footer:
+        return body
+    footer_key = contact_footer.split("|")[0].strip().strip("*").strip()
+    if footer_key and footer_key in body:
+        return body
+    body = body.rstrip()
+    if not body:
+        return contact_footer
+    return f"{body}\n\n{contact_footer}"
+
+
+# Incomplete / template leftovers the model sometimes ships when it copies examples.
+_INCOMPLETE_MARKERS = (
+    "...",
+    "…",
+    "X that did Y",
+    "shipping X",
+    "that did ...",
+    "reach out because...",
+    "reach out because…",
+    "I've been working on...",
+    "I've been working on…",
+    "Your Name",
+    "<recipient",
+    "<greeting",
+    "<2-4",
+    "<1 short",
+    "[Role]",
+    "[Company]",
+    "TODO",
+)
+
+
+def _mask_urls(text: str) -> str:
+    """Replace URL targets so ellipsis checks never trip on link paths."""
+    # Markdown links: keep label, drop destination.
+    masked = re.sub(r"\]\([^)]*\)", "]", text)
+    # Bare URLs (http/https/www).
+    masked = re.sub(r"https?://\S+|www\.\S+", " ", masked)
+    return masked
+
+
+def _looks_incomplete(body: str) -> bool:
+    """True when the body still has ellipsis stems or template placeholders."""
+    if not body:
+        return False
+    text = _mask_urls(body)
+    for marker in _INCOMPLETE_MARKERS:
+        if marker in text:
+            return True
+    # Trailing ellipsis on a content line (URLs already masked).
+    for raw in text.split("\n"):
+        line = raw.strip()
+        if not line:
+            continue
+        if line.endswith("...") or line.endswith("…"):
+            return True
+    return False
+
+
+def _strip_template_scaffolding(body: str) -> str:
+    """Best-effort cleanup of leftover example scaffolding (does not invent facts)."""
+    lines = body.split("\n")
+    cleaned: list[str] = []
+    for ln in lines:
+        low = ln.lower().strip()
+        if low in {"your name", "<candidate name from candidate profile>", "todo"}:
+            continue
+        if low.startswith("<greeting") or low.startswith("<2-4") or low.startswith("<1 short"):
+            continue
+        cleaned.append(ln.rstrip())
+    out_lines: list[str] = []
+    for ln in cleaned:
+        stripped = ln.strip()
+        if not stripped:
+            out_lines.append("")
+            continue
+        # Drop whole lines that are pure unfinished stems.
+        if stripped.rstrip(".!?") in {
+            "I thought I'd reach out because",
+            "I came across your work on",
+            "I've been building",
+            "I've been working on",
+            "most recently shipping X that did Y",
+        }:
+            continue
+        # Drop template-token fragments inside a line (e.g. "shipping X that did Y").
+        if "X that did Y" in stripped or "shipping X that did" in stripped:
+            stripped = stripped.replace("most recently shipping X that did Y", "")
+            stripped = stripped.replace("shipping X that did Y", "")
+            stripped = stripped.replace("X that did Y", "")
+            stripped = stripped.replace("shipping X that did", "")
+            stripped = " ".join(stripped.split())
+            stripped = stripped.strip(" ,;:-")
+            if not stripped:
+                continue
+            if stripped and not stripped.endswith((".", "!", "?")):
+                stripped = stripped + "."
+            ln = stripped
+        # Line ends with unfinished ellipsis: keep only a complete head sentence.
+        if "..." in ln or "…" in ln:
+            masked = _mask_urls(ln)
+            if masked.rstrip().endswith("...") or masked.rstrip().endswith("…"):
+                head = ln.split("...", 1)[0].split("…", 1)[0].rstrip(" ,;:")
+                if head and not head.endswith((".", "!", "?")):
+                    continue
+                if head:
+                    ln = head + "."
+        out_lines.append(ln)
+    result: list[str] = []
+    blank = False
+    for ln in out_lines:
+        if not ln.strip():
+            blank = True
+            continue
+        if blank and result:
+            result.append("")
+        result.append(ln)
+        blank = False
+    return "\n".join(result).strip()
+
+
 @router.post("/generate-outreach-email", response_model=GenerateOutreachEmailResponse)
 async def generate_outreach_email(
     request: GenerateOutreachEmailRequest,
@@ -1450,6 +1651,29 @@ async def generate_outreach_email(
     """
     output_language = get_language_name(request.output_language)
 
+    # The email must follow the language of the user's own text: when the
+    # instruction (or a custom purpose) is clearly written in a supported
+    # non-English language, that language overrides the configured content
+    # language — pasting a French template must produce a French email.
+    # English detections are deliberately ignored: short English directives
+    # ("keep it under 100 words") are meta-instructions and must not flip a
+    # user who explicitly configured a non-English content language.
+    detect_source = request.instruction.strip() if request.instruction else ""
+    detected_language = detect_language(detect_source) if detect_source else None
+    if detected_language is None and request.purpose == "custom" and request.custom_purpose:
+        detected_language = detect_language(request.custom_purpose)
+    language_override_line = ""
+    if (
+        detected_language
+        and detected_language != "en"
+        and detected_language != (request.output_language or "en")
+    ):
+        output_language = get_language_name(detected_language)
+        language_override_line = (
+            f"The user's text above is written in {output_language} — write the "
+            f"entire email (subject and body) in {output_language}."
+        )
+
     if request.purpose == "custom":
         purpose_text = request.custom_purpose.strip() if request.custom_purpose else "General outreach"
     else:
@@ -1462,6 +1686,17 @@ async def generate_outreach_email(
         resume = await db.get_master_resume()
     sender_info = _build_sender_info(resume.get("processed_data") if resume else None)
     contact_footer = _build_contact_footer(resume.get("processed_data") if resume else None)
+    greeting_name = _recipient_greeting_name(request.recipient_name, request.company_name or "")
+
+    # When the user has a custom HTML signature, it replaces the markdown
+    # contact footer (injected at send time into the HTML part only).
+    try:
+        from app.services.html_signature import has_signature
+
+        profile = await db.get_career_profile()
+        use_html_signature = has_signature((profile or {}).get("email_signature"))
+    except Exception:  # noqa: BLE001
+        use_html_signature = False
 
     template, is_custom = _resolve_feature_prompt(
         "outreach_email_prompt", GENERATE_OUTREACH_EMAIL_PROMPT
@@ -1476,7 +1711,7 @@ async def generate_outreach_email(
             company_type=request.company_type or "not specified",
             website=request.website or "not specified",
             linkedin_url=request.linkedin_url or "not specified",
-            recipient_name=request.recipient_name or "not provided",
+            recipient_name=greeting_name,
             purpose=purpose_text,
             sender_info=sender_info,
         )
@@ -1496,18 +1731,22 @@ async def generate_outreach_email(
             company_type=request.company_type or "not specified",
             website=request.website or "not specified",
             linkedin_url=request.linkedin_url or "not specified",
-            recipient_name=request.recipient_name or "not provided",
+            recipient_name=greeting_name,
             purpose=purpose_text,
             sender_info=sender_info,
         )
 
     # Insert user instructions prominently after Purpose, before Main Goal
     if request.instruction and request.instruction.strip():
+        override_rule = f"{language_override_line} " if language_override_line else ""
         instruction_block = (
             f"\n\n**User's additional instructions (HIGHEST PRIORITY — follow these precisely):**\n"
             f"{request.instruction.strip()}\n"
             f"\nIMPORTANT: The instructions above override ALL other guidelines in this prompt. "
-            f"If they conflict with project matching, word count, or selection rules, follow the user's instructions.\n"
+            f"If they conflict with project matching, word count, or selection rules, follow the user's instructions. "
+            f"{override_rule}"
+            f"If the instructions above specify a different output language, use that language for the entire email. "
+            f"Email structure (greeting, blank lines, sign-off) MUST still be followed.\n"
         )
         prompt = prompt.replace(
             "\n---\n\n### Main Goal",
@@ -1522,17 +1761,80 @@ async def generate_outreach_email(
             f"{request.company_research.strip()}"
         )
 
-    if contact_footer:
-        prompt = (
-            f"{prompt}\n\n"
-            f"CONTACT FOOTER (append this exactly at the end of the email body, "
-            f"separated by a blank line):\n{contact_footer}"
+    # Footer is NOT sent to the model as an instruction block anymore —
+    # it is appended deterministically after generation so line format stays intact.
+
+    async def _generate_draft() -> tuple[str, str]:
+        """Run the draft call plus at most one repair pass.
+
+        Wrapped in llm_cache.coalesce below so a double-click / retried
+        request shares the in-flight generation instead of double-billing
+        the LLM — while a deliberate later "Regenerate" still recomputes
+        (coalesce never caches).
+        """
+        result = await complete_json(
+            prompt,
+            max_tokens=4096,
+            schema_type="diff",
+            temperature=request.temperature,
+            metadata={"trace_name": "outreach_email", "tags": ["email"]},
         )
 
-    result = await complete_json(
-        prompt, max_tokens=4096, schema_type="diff", temperature=request.temperature,
-    )
+        gen_subject = str(result.get("subject") or "").strip()
+        gen_body = _normalize_email_body(str(result.get("body") or ""))
+        # Detect incomplete drafts BEFORE stripping — strip can hide ellipsis stems
+        # from the marker check and skip a needed repair.
+        needs_repair = _looks_incomplete(gen_body)
+        gen_body = _strip_template_scaffolding(gen_body)
 
-    subject = str(result.get("subject") or "").strip()
-    body = str(result.get("body") or "").strip()
-    return GenerateOutreachEmailResponse(subject=subject[:200], body=body[:10000])
+        # One repair pass if the model still emitted incomplete/ellipsis/template text.
+        if needs_repair:
+            repair_prompt = (
+                f"{prompt}\n\n"
+                "REPAIR TASK: The previous draft still contained unfinished stems or "
+                "placeholders (ellipsis \"...\", \"X that did Y\", template tokens). "
+                "Return a FULLY rewritten body where every sentence is complete and "
+                "specific. Keep the required multi-line email structure "
+                "(greeting, blank lines, sign-off, name). Output ONLY the JSON.\n"
+            )
+            try:
+                repaired = await complete_json(
+                    repair_prompt,
+                    max_tokens=4096,
+                    schema_type="diff",
+                    temperature=request.temperature,
+                    metadata={"trace_name": "outreach_email_repair", "tags": ["email"]},
+                )
+                repaired_body = _normalize_email_body(str(repaired.get("body") or ""))
+                if repaired_body and not _looks_incomplete(repaired_body):
+                    gen_body = _strip_template_scaffolding(repaired_body)
+                    if not gen_subject and str(repaired.get("subject") or "").strip():
+                        gen_subject = str(repaired.get("subject") or "").strip()
+                elif repaired_body:
+                    # Keep the cleaner of the two drafts; still strip scaffolding.
+                    candidate = _strip_template_scaffolding(repaired_body)
+                    if len(candidate) > len(gen_body):
+                        gen_body = candidate
+                    if not gen_subject and str(repaired.get("subject") or "").strip():
+                        gen_subject = str(repaired.get("subject") or "").strip()
+            except Exception as repair_err:  # noqa: BLE001 — keep first draft on repair failure
+                logger.warning("Outreach email repair pass failed: %s", repair_err)
+        return gen_subject, gen_body
+
+    try:
+        subject, body = await llm_cache.coalesce(
+            llm_cache.make_key("outreach_email_draft", prompt, request.temperature),
+            _generate_draft,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _llm_http_error(e, "generate outreach email") from e
+
+    if body and not use_html_signature:
+        body = _append_contact_footer(body, contact_footer)
+    return GenerateOutreachEmailResponse(
+        subject=subject[:200],
+        body=body[:10000],
+        uses_html_signature=use_html_signature,
+    )

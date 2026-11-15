@@ -8,11 +8,7 @@ describe('groupThreadsByDate', () => {
   const lastWeek = new Date(now.getTime() - 7 * 86400000).toISOString();
 
   it('groups threads into Today/Yesterday/Older', () => {
-    const threads = [
-      { updated_at: today },
-      { updated_at: yesterday },
-      { updated_at: lastWeek },
-    ];
+    const threads = [{ updated_at: today }, { updated_at: yesterday }, { updated_at: lastWeek }];
     const groups = groupThreadsByDate(threads);
     expect(groups).toHaveLength(3);
     expect(groups[0].label).toBe('Today');

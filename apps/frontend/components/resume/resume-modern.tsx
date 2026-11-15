@@ -9,11 +9,13 @@ import type {
 import { getSortedSections } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
 import {
+  type AvatarSettings,
   type EducationSettings,
   type ListSeparator,
   type SkillsLayoutMode,
   type WorkExperienceSettings,
 } from '@/lib/types/template-settings';
+import { AvatarImage } from './avatar-image';
 import { arrangeEducationEntry, arrangeWorkEntry, workEntryMeta } from './entry-arrange';
 import { DescriptionList } from './description-list';
 import { ResumeSkillsContent, type SkillGroup } from './resume-skills';
@@ -28,6 +30,7 @@ interface ResumeModernProps {
   listSeparator?: ListSeparator;
   workExperienceSettings?: WorkExperienceSettings;
   educationSettings?: EducationSettings;
+  avatarSettings?: AvatarSettings;
 }
 
 /**
@@ -47,6 +50,7 @@ export const ResumeModern: React.FC<ResumeModernProps> = ({
   listSeparator = ',',
   workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
   educationSettings = { showBy: 'institution', layout: 'stacked' },
+  avatarSettings = { show: false, shape: 'circle', size: 'medium', border: 0, position: 'left', infoGap: 3 },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -386,7 +390,10 @@ export const ResumeModern: React.FC<ResumeModernProps> = ({
     <div className={styles.container}>
       {/* Header Section - Centered Layout (always first) */}
       {personalInfo && (
-        <header className={baseStyles['resume-header']}>
+        <header className={`${baseStyles['resume-header']} ${avatarSettings?.show && data.personalInfo?.avatar ? baseStyles['resume-header-with-avatar'] : ''}`}>
+          {/* Avatar */}
+          <AvatarImage src={data.personalInfo?.avatar || ''} alt={data.personalInfo?.name} settings={avatarSettings} />
+          <div className={baseStyles['resume-avatar-info']}>
           {/* Name - Centered */}
           {personalInfo.name && (
             <h1 className={`${baseStyles['resume-name']} tracking-tight uppercase mb-1`}>
@@ -441,6 +448,7 @@ export const ResumeModern: React.FC<ResumeModernProps> = ({
                 {renderContactDetail('GitHub', personalInfo.github)}
               </>
             )}
+          </div>
           </div>
         </header>
       )}

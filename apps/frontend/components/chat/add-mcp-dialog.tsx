@@ -39,14 +39,62 @@ const BUILTIN_MCPS: {
   color: string;
   bg: string;
 }[] = [
-  { key: 'linkedin', label: 'LinkedIn', description: 'Job scraping & profile data', color: 'text-[#0A66C2]', bg: 'bg-blue-50' },
-  { key: 'exa', label: 'Exa', description: 'AI-powered web search', color: 'text-violet-600', bg: 'bg-violet-50' },
-  { key: 'github', label: 'GitHub', description: 'Repos, issues & code', color: 'text-[#24292F]', bg: 'bg-gray-100' },
-  { key: 'rss', label: 'RSS Feeds', description: 'WeWorkRemotely, Dice', color: 'text-[#EE802F]', bg: 'bg-orange-50' },
-  { key: 'web', label: 'Web Reader', description: 'Jina page extraction', color: 'text-[#059669]', bg: 'bg-emerald-50' },
-  { key: 'tunisian', label: 'Tunisian', description: 'freelances.tn listings', color: 'text-[#E70013]', bg: 'bg-red-50' },
-  { key: 'remote_freelance', label: 'Remote', description: 'RemoteOK, Himalayas', color: 'text-[#0891B2]', bg: 'bg-cyan-50' },
-  { key: 'keejob', label: 'Keejob', description: 'Tunisia job board', color: 'text-[#D97706]', bg: 'bg-amber-50' },
+  {
+    key: 'linkedin',
+    label: 'LinkedIn',
+    description: 'Job scraping & profile data',
+    color: 'text-[#0A66C2]',
+    bg: 'bg-blue-50',
+  },
+  {
+    key: 'exa',
+    label: 'Exa',
+    description: 'AI-powered web search',
+    color: 'text-violet-600',
+    bg: 'bg-violet-50',
+  },
+  {
+    key: 'github',
+    label: 'GitHub',
+    description: 'Repos, issues & code',
+    color: 'text-[#24292F]',
+    bg: 'bg-gray-100',
+  },
+  {
+    key: 'rss',
+    label: 'RSS Feeds',
+    description: 'WeWorkRemotely, Dice',
+    color: 'text-[#EE802F]',
+    bg: 'bg-orange-50',
+  },
+  {
+    key: 'web',
+    label: 'Web Reader',
+    description: 'Jina page extraction',
+    color: 'text-[#059669]',
+    bg: 'bg-emerald-50',
+  },
+  {
+    key: 'tunisian',
+    label: 'Tunisian',
+    description: 'freelances.tn listings',
+    color: 'text-[#E70013]',
+    bg: 'bg-red-50',
+  },
+  {
+    key: 'remote_freelance',
+    label: 'Remote',
+    description: 'RemoteOK, Himalayas',
+    color: 'text-[#0891B2]',
+    bg: 'bg-cyan-50',
+  },
+  {
+    key: 'keejob',
+    label: 'Keejob',
+    description: 'Tunisia job board',
+    color: 'text-[#D97706]',
+    bg: 'bg-amber-50',
+  },
 ];
 
 type View = 'list' | 'add';
@@ -151,7 +199,11 @@ export function AddMCPDialog({ open, onClose, onAdded }: AddMCPDialogProps) {
           {view === 'add' ? (
             <div className="flex items-center gap-3">
               <button
-                onClick={() => { setView('list'); setError(null); setStep('form'); }}
+                onClick={() => {
+                  setView('list');
+                  setError(null);
+                  setStep('form');
+                }}
                 className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-[#f0efe9] transition-colors"
               >
                 <ArrowLeft className="h-4 w-4 text-ink" />
@@ -211,7 +263,9 @@ export function AddMCPDialog({ open, onClose, onAdded }: AddMCPDialogProps) {
                   >
                     <div className="p-3">
                       <div className="flex items-start justify-between mb-2">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${mcp.bg} ${mcp.color}`}>
+                        <div
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg ${mcp.bg} ${mcp.color}`}
+                        >
                           <Icon className="h-4 w-4" />
                         </div>
                         {isToggling ? (
@@ -287,11 +341,7 @@ export function AddMCPDialog({ open, onClose, onAdded }: AddMCPDialogProps) {
                   </div>
                 </div>
 
-                <Button
-                  className="w-full"
-                  onClick={handleSubmit}
-                  disabled={!name.trim()}
-                >
+                <Button className="w-full" onClick={handleSubmit} disabled={!name.trim()}>
                   <Plug className="mr-1.5 h-4 w-4" />
                   Add Server & Discover Tools
                 </Button>

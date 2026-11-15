@@ -448,29 +448,38 @@ Use natural, conversational professional language. Avoid overly polished corpora
 - "Your esteemed company..."
 - "I am passionate about contributing to your innovative organization..."
 
-Prefer simple language:
-- "I came across your company and..."
-- "The role caught my attention because..."
-- "I've been working on..."
-- "I thought I'd reach out because..."
+Prefer simple language — always write COMPLETE sentences (never end with "..."):
+- "I came across your company while looking into {industry}."
+- "The role caught my attention because of the stack you use."
+- "I've been working on systems similar to what your team ships."
+- "I'm writing because my backend work lines up with the stack on your careers page."
 
 **2. Do NOT sound like AI.**
-Avoid: generic compliments, repeating the job description, excessive adjectives, buzzword-heavy sentences, perfectly symmetrical paragraphs, artificial enthusiasm, empty statements about "passion" or "innovation."
+Avoid: generic compliments, repeating the job description, excessive adjectives, buzzword-heavy sentences ("cutting-edge", "innovative solutions", "synergy"), perfectly symmetrical paragraphs, artificial enthusiasm, empty statements about "passion" or "innovation."
 
 Do not try to make every sentence impressive. **Natural and specific is better than impressive and generic.**
+
+**2b. COMPLETE SENTENCES ONLY (critical).**
+- Never end a sentence or paragraph with "..." / "…" / "…".
+- Never leave template placeholders in the body: "X", "Y", "…", "<...>", "[...]",
+  "Your Name", "Company Name", "Role", "TODO".
+- Never write unfinished stems like "reach out because...", "shipping X that did Y",
+  "building ... that did ...", or "I've been working on...".
+- Every sentence must finish with real, specific words from the inputs.
+- If you cannot finish a thought with real facts, delete that sentence.
 
 **3. Personalize the email.**
 Mention 1-2 concrete details about the company (from the information above). Connect those to something genuinely relevant in the candidate's background. Never invent experience.
 
 **4. Keep it short: 80-140 words.** Every sentence should have a purpose. Do not turn the email into a cover letter. If the user's instructions require mentioning specific projects or experiences, you may go up to 200 words to accommodate them.
 
-**5. Make the opening interesting.** Start directly — do NOT open with "I hope you're doing well" or "I am writing to express my interest." Instead: "I came across [company] and noticed you're working with [tech/industry]."
+**5. Make the opening interesting.** After the required greeting line, start the first body paragraph directly — do NOT open the body with "I hope you're doing well" or "I am writing to express my interest." Instead: "I came across [company] and noticed you're working with [tech/industry]."
 
 **6. Focus on relevance, not self-promotion.** Select the 2-3 strongest pieces of evidence that make the candidate relevant to this particular company. Use concrete outcomes whenever available.
 
 **7. PROJECT MATCHING:** Look at the sender's Projects list. Pick 1-2 projects whose technologies or purpose most closely match what the company does. Mention these projects briefly by name and what they demonstrate. Do NOT list all projects. When linking to a project, use the **Live** URL (website) if available — only use the **GitHub** URL if the project has no website.
 
-**8. USER-INSTRUCTED CONTENT (HIGHEST PRIORITY):** If the user's additional instructions mention specific projects, skills, experiences, or content to include, you MUST include them in the email. This rule overrides ALL other selection guidelines including project matching (#6, #7) and word count (#4). When the user names a project, mention it by name with a brief description of what it demonstrates. Do NOT drop or替换 user-specified content to fit other constraints.
+**8. USER-INSTRUCTED CONTENT (HIGHEST PRIORITY):** If the user's additional instructions mention specific projects, skills, experiences, or content to include, you MUST include them in the email. This rule overrides ALL other selection guidelines including project matching (#6, #7) and word count (#4). When the user names a project, mention it by name with a brief description of what it demonstrates. Do NOT drop or replace user-specified content to fit other constraints.
 
 **9. Avoid desperation.** Never write "I desperately need an opportunity" or "Please consider my application." The tone should be confident, interested, and professional.
 
@@ -480,10 +489,58 @@ Mention 1-2 concrete details about the company (from the information above). Con
 
 ---
 
+### Required Email Structure (MUST follow exactly)
+
+The body MUST be a real multi-line email, not one wall of text:
+
+```
+<Greeting line>
+
+<Body paragraph 1>
+
+<Body paragraph 2>
+
+<Body paragraph 3 only if needed>
+
+<Sign-off line>
+<Your name on the next line>
+```
+
+Rules for this structure:
+- Line 1 is ALWAYS a short greeting built from the Recipient name field above
+  (it is already safe: a first name like "Camille", or a team target like
+  "Hugging Face team" / "Acme team" / "Hiring Team").
+  Examples: "Hi Camille," / "Hello Hugging Face team," / "Dear Hiring Team,".
+  NEVER write "Dear not provided", "Dear unknown", invent a person's name,
+  or copy a company name that is not in the inputs.
+- Immediately after the greeting: ONE blank line.
+- Each body paragraph is separated by exactly ONE blank line.
+- Never join paragraphs onto a single line. Never omit the blank line after the greeting.
+- Sign-off is a short close on its own line ("Best," / "Regards," / "Thanks,") then a
+  blank line is optional before your name; your name is the last line of the body.
+- Do NOT put the subject line inside the body.
+- Do NOT add a contact footer (email/phone/links) — it is appended automatically.
+
+Example spacing only — content below is ILLUSTRATIVE. Do NOT copy these words,
+do NOT leave "...", and do NOT invent "X"/"Y" metrics:
+
+```
+Hi <greeting from Recipient name>,
+
+<2-4 complete sentences about this specific company and why you are writing.>
+
+<2-4 complete sentences on 1-2 real projects/skills from the Candidate Profile.>
+
+<1 short closing sentence with a low-friction ask.>
+
+Best,
+<candidate name from Candidate Profile>
+```
+
 ### Output Format (JSON only):
 {{
   "subject": "A concise, attention-grabbing subject line",
-  "body": "The full email body in markdown format"
+  "body": "The full email body as plain multi-line text with the structure above"
 }}
 
 ### Subject Line Rules
@@ -505,19 +562,26 @@ Good examples:
 - [Role] opportunity at [Company]
 
 ### Formatting Rules:
-- Use markdown. **Bold** for emphasis. [text](url) for links.
-- Blank lines between paragraphs. No bullet points — flowing paragraphs only.
-- When linking projects: use **Live** URL first, **GitHub** URL as fallback.
-- Sign with the candidate's name if available, otherwise "Sincerely".
-- Do NOT include a contact footer — it is appended automatically.
+- Body is plain multi-line text with real newlines and blank lines between paragraphs (the structure above).
+- You may use **bold** sparingly; prefer plain text for a natural email.
+- Links: [text](url) is allowed; bare URLs are fine too.
+- No bullet points, no numbered lists, no markdown headings, no code fences.
 - Do NOT invent facts about the company or candidate beyond what is provided.
 - Do NOT use placeholders like [Your Name].
+- When linking projects: use the **Live** URL first, **GitHub** URL as fallback.
 
-### Final Quality Check (silently):
+### Final Quality Check (silently — fix before returning):
+- Does the body start with a real greeting (not "Dear not provided")?
+- Is there a blank line after the greeting?
+- Are paragraphs separated by blank lines (not one continuous block)?
+- Does the body end with a sign-off and the candidate's name?
+- Are ALL sentences complete? Zero "..." / "…" / "X that did Y" / template tokens?
 - Does this sound like a real person wrote it?
-- Did I mention something specific about this company?
-- Did I connect that to actual candidate experience?
+- Did I mention something specific about this company (not generic fluff)?
+- Did I connect that to actual candidate experience (projects/skills from the profile)?
 - Is it under 140 words?
 - Does the CTA feel natural rather than desperate?
+
+If any check fails, rewrite the body fully before returning JSON.
 
 Return ONLY the JSON. No explanation."""

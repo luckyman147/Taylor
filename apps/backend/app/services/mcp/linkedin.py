@@ -4,13 +4,73 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import shutil
 import uuid
+from typing import Any
 
 from app.schemas.job_scraper import JobListing, JobSearchFilters
 from app.services.mcp.base import BaseMCPAdapter
 
 logger = logging.getLogger(__name__)
+
+_MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^\)]+)\)")
+_PROFILE_PATH_RE = re.compile(r"^(?:https?://(?:www\.)?linkedin\.com)?(/(?:in|company)/[A-Za-z0-9\-_%]+)", re.I)
+_EMAIL_RE = re.compile(
+    r"(?<![\w.+-])([A-Za-z0-9][A-Za-z0-9._%+-]{0,63}@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)"
+)
+_PHONE_RE = re.compile(r"(?<!\w)(\+?\d[\d\s().-]{7,17}\d)(?!\w)")
+_FOLLOWERS_RE = re.compile(r"([\d,]+)\s+followers?", re.I)
+_EMPLOYEES_RE = re.compile(r"(\d[\d,\-–\s]*\+?\s*employees?)", re.I)
+# Markers of LinkedIn's 404 / auth-wall pages — never parse these as profile data.
+_ERROR_PAGE_RE = re.compile(
+    r"this page doesn['\u2019]?t exist|page not found|join linkedin|log in to linkedin|"
+    r"sign up to view|authwall|redirecting you to the login",
+    re.I,
+)
+
+
+def _is_error_page(text: str) -> bool:
+    """True when the page content is a LinkedIn 404 / auth-wall shell."""
+    return bool(text and _ERROR_PAGE_RE.search(text[:2000]))
+
+
+# Page chrome that leaks into scraped ref text (follow buttons etc.).
+_CHROME_RE = re.compile(r"follow this page|connections? follow|other connection|^page by\b", re.I)
+
+
+def _profile_slug(value: str) -> str:
+    """Extract the ``/in/`` username slug from a full URL or bare username.
+
+    The MCP tool builds ``https://www.linkedin.com/in/{arg}`` itself, so
+    passing a full URL produces a doubled path and a LinkedIn 404.
+    """
+    if "linkedin.com/in/" in value:
+        slug = value.split("?")[0].rstrip("/")
+        return slug.split("/in/")[-1].strip("/")
+    return value.strip().strip("/")
+
+
+# Degree badges / connection counters that sit between name and headline.
+_BADGE_LINE_RE = re.compile(
+    r"^[·•|]?\s*\d+(?:st|nd|rd|th)\s*$"
+    r"|^\d[\d,]*\+?\s+connections?$"
+    r"|^[·•|]\s*$",
+    re.I,
+)
+# Section headers that may prefix the experience list.
+_SECTION_HEADER_RE = re.compile(
+    r"^(?:experience|education|activity|about|contact info|people also viewed|"
+    r"skills|recommendations|licenses & certifications|courses|publications|"
+    r"awards & honors|volunteering experience|organizations|featured|"
+    r"interests|key signals|people who can introduce you|"
+    r"profile enhanced with premium|sales insights)$",
+    re.I,
+)
+_DATE_LINE_RE = re.compile(
+    r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b|\bpresent\b|^\d{4}\s*[-–]",
+    re.I,
+)
 
 
 class LinkedInAdapter(BaseMCPAdapter):
@@ -304,3 +364,313 @@ class LinkedInAdapter(BaseMCPAdapter):
                     )
                 )
         return jobs
+
+    # -- Lead research tools (search_people / companies / profiles) --------
+
+    async def _call_tool(self, tool: str, arguments: dict[str, Any]) -> list[dict[str, Any]]:
+        """Call one MCP tool and return every parsed JSON payload.
+
+        Each content item that carries JSON text becomes one dict. Errors are
+        swallowed into an empty list so one flaky tool never kills a search.
+        """
+        try:
+            from mcp import ClientSession
+            from mcp.client.streamable_http import streamablehttp_client
+
+            payloads: list[dict[str, Any]] = []
+            async with streamablehttp_client(
+                f"http://localhost:{self.MCP_PORT}/mcp"
+            ) as (read_stream, write_stream, _):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    result = await session.call_tool(tool, arguments=arguments)
+                    for item in result.content:
+                        text = getattr(item, "text", None)
+                        if not text:
+                            continue
+                        try:
+                            payloads.append(json.loads(text))
+                        except json.JSONDecodeError:
+                            logger.debug(
+                                "LinkedIn MCP %s content is not JSON (first 200 chars): %s",
+                                tool,
+                                text[:200],
+                            )
+            return payloads
+        except Exception as exc:
+            logger.error("LinkedIn MCP %s failed: %s", tool, exc)
+            return []
+
+    @staticmethod
+    def _parse_search_refs(payload: dict[str, Any], kind: str) -> list[dict[str, Any]]:
+        """Parse ``references.search_results`` (+ markdown fallback) into leads.
+
+        ``kind`` is "person" or "company" — used to tag the shape of each hit.
+        """
+        hits: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        refs = payload.get("references", {}).get("search_results", []) or []
+        for ref in refs:
+            path = str(ref.get("url") or "")
+            match = _PROFILE_PATH_RE.match(path)
+            if not match:
+                continue
+            slug_path = match.group(1)
+            url = f"https://www.linkedin.com{slug_path}".lower()
+            if url in seen:
+                continue
+            seen.add(url)
+            text = str(ref.get("text") or "").strip()
+            name = ""
+            if text:
+                first_line = text.splitlines()[0].strip()
+                # Page text can carry follow-button chrome or huge headlines;
+                # the slug ("the-software-engineer-coach") is the real name.
+                if len(first_line) <= 120 and not _CHROME_RE.search(first_line):
+                    name = first_line
+            if not name:
+                name = slug_path.rsplit("/", 1)[-1].replace("-", " ").strip()
+            hits.append({"name": name, "url": url, "kind": kind})
+        if hits:
+            return hits
+        # Fallback: scrape markdown links out of the raw search_results text.
+        sections = payload.get("sections", {}) or {}
+        raw = str(sections.get("search_results") or "")
+        for label, link in _MARKDOWN_LINK_RE.findall(raw):
+            match = _PROFILE_PATH_RE.match(link)
+            if not match:
+                continue
+            slug_path = match.group(1)
+            url = f"https://www.linkedin.com{slug_path}".lower()
+            if url in seen:
+                continue
+            seen.add(url)
+            hits.append({"name": label.strip(), "url": url, "kind": kind})
+        return hits
+
+    async def search_people(
+        self, keywords: str, location: str | None = None, max_results: int = 25
+    ) -> list[dict[str, Any]]:
+        """Search LinkedIn people; returns [{name, url, kind: person}]."""
+        args: dict[str, Any] = {"keywords": keywords}
+        if location:
+            args["location"] = location
+        payloads = await self._call_tool("search_people", args)
+        hits: list[dict[str, Any]] = []
+        for payload in payloads:
+            hits.extend(self._parse_search_refs(payload, kind="person"))
+        return hits[:max_results]
+
+    @staticmethod
+    def _parse_contact_info(text: str) -> tuple[str | None, str | None]:
+        """Pull email/phone out of a LinkedIn contact_info section."""
+        email = next(
+            (e for e in _EMAIL_RE.findall(text or "") if not e.endswith((".png", ".jpg", ".svg"))),
+            None,
+        )
+        phone = None
+        for match in _PHONE_RE.findall(text or ""):
+            if "\n" in match or "\r" in match:
+                continue
+            digits = re.sub(r"\D", "", match)
+            # Require an international prefix or a full 10+ digit number so
+            # page counters ("359 441 457") never become phone numbers.
+            if match.strip().startswith("+"):
+                if 8 <= len(digits) <= 15:
+                    phone = match.strip()
+                    break
+            elif 10 <= len(digits) <= 15:
+                phone = match.strip()
+                break
+        return email, phone
+
+    async def get_person_profile(
+        self, username_or_url: str, sections: str = "experience,contact_info"
+    ) -> dict[str, Any] | None:
+        """Read one person profile.
+
+        Returns {url, name, headline, location, email, phone, current_title,
+        current_company, experience_text, about}. Email/phone come from the
+        ``contact_info`` section when LinkedIn exposes them; location is the
+        header line under the headline. ``username_or_url`` may be a full
+        profile URL or a bare slug — only the slug is sent to the tool.
+        """
+        slug = _profile_slug(username_or_url)
+        payloads = await self._call_tool(
+            "get_person_profile",
+            {"linkedin_username": slug, "sections": sections},
+        )
+        if not payloads:
+            return None
+        payload = payloads[0]
+        sec = payload.get("sections", {}) or {}
+        # The main page text is the first section value; name/headline/location
+        # are the first three non-empty lines ("Jane Doe / Title / City, Country").
+        main_text = ""
+        for key, value in sec.items():
+            if key in ("experience", "contact_info", "about"):
+                continue
+            if isinstance(value, str) and value.strip():
+                main_text = value
+                break
+        if _is_error_page(main_text) or _is_error_page(str(sec.get("experience") or "")):
+            # 404 / auth-wall shell — nothing usable on this profile.
+            return None
+        lines = [ln.strip() for ln in main_text.splitlines() if ln.strip()]
+        name = lines[0] if lines else ""
+        # Degree badges ("· 3rd", "500+ connections") sit between name and
+        # headline; everything after the "Contact info" marker is page chrome.
+        rest = [ln for ln in lines[1:] if not _BADGE_LINE_RE.match(ln)]
+        for i, ln in enumerate(rest):
+            if ln.lower().strip(" ·•") == "contact info":
+                rest = rest[:i]
+                break
+        headline = rest[0] if rest else ""
+        location = rest[1] if len(rest) > 1 else None
+        # Header line 3 is a location when short; long lines are about-text noise.
+        if location and (
+            len(location) > 80
+            or "http" in location.lower()
+            or location[0].isdigit()
+            or _FOLLOWERS_RE.search(location)
+        ):
+            location = None
+        email, phone = self._parse_contact_info(str(sec.get("contact_info") or ""))
+        experience_text = str(sec.get("experience") or "")
+        current_title, current_company = None, None
+        if experience_text:
+            exp_lines = [ln.strip() for ln in experience_text.splitlines() if ln.strip()]
+            meaningful = [
+                ln for ln in exp_lines if not _SECTION_HEADER_RE.match(ln.strip(" ·•\t"))
+            ]
+            if meaningful:
+                first = meaningful[0]
+                segs = [s.strip() for s in re.split(r"[·|•]", first) if s.strip()]
+                if segs and not _DATE_LINE_RE.match(segs[0]):
+                    current_title = segs[0][:120]
+                if len(segs) > 1 and not _DATE_LINE_RE.match(segs[1]):
+                    current_company = segs[1][:120]
+                else:
+                    # Fallback: next non-date line holds the company name.
+                    for line in meaningful[1:4]:
+                        if _DATE_LINE_RE.match(line) or len(line) > 120:
+                            continue
+                        company_part = re.split(r"[·|•]", line)[0].strip()
+                        if company_part:
+                            current_company = company_part[:120]
+                            break
+        about = str(sec.get("about") or "")
+        url = str(payload.get("url") or f"https://www.linkedin.com/in/{slug}")
+        return {
+            "url": url,
+            "name": name,
+            "headline": headline,
+            "location": location,
+            "email": email,
+            "phone": phone,
+            "current_title": current_title or headline or None,
+            "current_company": current_company,
+            "experience_text": experience_text[:2000],
+            "about": about[:2000],
+        }
+
+    async def search_companies(self, keywords: str, max_results: int = 15) -> list[dict[str, Any]]:
+        """Search LinkedIn companies; returns [{name, url, kind: company}]."""
+        payloads = await self._call_tool("search_companies", {"keywords": keywords})
+        hits: list[dict[str, Any]] = []
+        for payload in payloads:
+            hits.extend(self._parse_search_refs(payload, kind="company"))
+        return hits[:max_results]
+
+    async def get_company_profile(self, company_name: str) -> dict[str, Any] | None:
+        """Read a company about page.
+
+        Returns {url, name, about, slug, industry, location, company_size}.
+        LinkedIn company pages open with a header line like
+        "Software · Tunis, Tunisia · 11-50 employees · 1,234 followers" —
+        the parts before the employee/followers counts are industry/location.
+        """
+        payloads = await self._call_tool(
+            "get_company_profile", {"company_name": company_name}
+        )
+        if not payloads:
+            return None
+        payload = payloads[0]
+        sec = payload.get("sections", {}) or {}
+        about = ""
+        for value in sec.values():
+            if isinstance(value, str) and value.strip():
+                about = value
+                break
+        if _is_error_page(about):
+            return None
+        lines = [ln.strip() for ln in about.splitlines() if ln.strip()]
+        name = lines[0].lstrip("#").strip() if lines else company_name
+        url = str(payload.get("url") or "")
+
+        industry: str | None = None
+        location: str | None = None
+        company_size: str | None = None
+        # The header line sits right under the name (line 1) on most pages;
+        # fall back to scanning the first few lines for the ·-separated shape.
+        header = lines[1] if len(lines) > 1 else ""
+        if "·" not in header:
+            header = next(
+                (ln for ln in lines[1:5] if ln.count("·") >= 1 and len(ln) < 200),
+                "",
+            )
+        if header:
+            parts = [p.strip() for p in re.split(r"[·|•]", header) if p.strip()]
+            size_idx = next(
+                (i for i, p in enumerate(parts) if _EMPLOYEES_RE.search(p)), None
+            )
+            followers_idx = next(
+                (i for i, p in enumerate(parts) if _FOLLOWERS_RE.search(p)), None
+            )
+            # Keep only the meaningful head: industry, location, size.
+            end = size_idx if size_idx is not None else (followers_idx or len(parts))
+            head = parts[:end]
+            if size_idx is not None:
+                company_size = _EMPLOYEES_RE.search(parts[size_idx]).group(1).strip()
+            if head:
+                industry = head[0] or None
+            if len(head) > 1:
+                location = head[1] or None
+
+        return {
+            "url": url,
+            "name": name,
+            "about": about[:2000],
+            "slug": url.rstrip("/").rsplit("/", 1)[-1] if url else company_name,
+            "industry": industry,
+            "location": location,
+            "company_size": company_size,
+        }
+
+    async def get_company_employees(
+        self, company_name: str, keywords: str | None = None, max_results: int = 20
+    ) -> list[dict[str, Any]]:
+        """List company employees; returns [{name, url, kind: person}]."""
+        args: dict[str, Any] = {"company_name": company_name}
+        if keywords:
+            args["keywords"] = keywords
+        payloads = await self._call_tool("get_company_employees", args)
+        hits: list[dict[str, Any]] = []
+        for payload in payloads:
+            refs = payload.get("references", {}) or {}
+            employees = refs.get("employees") or refs.get("search_results") or []
+            for ref in employees:
+                path = str(ref.get("url") or "")
+                match = _PROFILE_PATH_RE.match(path)
+                if not match:
+                    continue
+                slug_path = match.group(1)
+                url = f"https://www.linkedin.com{slug_path}".lower()
+                hits.append(
+                    {
+                        "name": str(ref.get("text") or slug_path.rsplit("/", 1)[-1]),
+                        "url": url,
+                        "kind": "person",
+                    }
+                )
+        return hits[:max_results]

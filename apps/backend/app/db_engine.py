@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from app.import_utils import split_address_into_city_country
 from app.models import Base
 
 __all__ = ["Base", "make_async_engine", "make_sync_engine", "init_models_sync"]
@@ -99,6 +100,28 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN address TEXT")
             if "status" not in company_col_names:
                 conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN status TEXT")
+            if "description" not in company_col_names:
+                conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN description TEXT")
+            if "city" not in company_col_names:
+                conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN city TEXT")
+            if "country" not in company_col_names:
+                conn.exec_driver_sql("ALTER TABLE companies ADD COLUMN country TEXT")
+            # One-time backfill: guess city/country from legacy free-text
+            # addresses when the columns were just added (fresh databases get
+            # them from the model and have no rows to backfill).
+            if "city" not in company_col_names or "country" not in company_col_names:
+                stale = conn.exec_driver_sql(
+                    "SELECT company_id, address FROM companies "
+                    "WHERE address IS NOT NULL AND address != '' "
+                    "AND city IS NULL AND country IS NULL"
+                ).mappings().all()
+                for row in stale:
+                    city, country = split_address_into_city_country(row["address"])
+                    if city or country:
+                        conn.exec_driver_sql(
+                            "UPDATE companies SET city = ?, country = ? WHERE company_id = ?",
+                            (city, country, row["company_id"]),
+                        )
 
         # Add email column to contacts table
         contact_columns = conn.exec_driver_sql("PRAGMA table_info(contacts)").mappings().all()
@@ -112,6 +135,59 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE contacts ADD COLUMN linkedin_url TEXT")
             if "website_url" not in contact_col_names:
                 conn.exec_driver_sql("ALTER TABLE contacts ADD COLUMN website_url TEXT")
+
+        # Outreach-analytics columns on sent_emails (contact linkage, purpose,
+        # mode, outcome). Additive + idempotent like every other block here.
+        sent_email_columns = conn.exec_driver_sql("PRAGMA table_info(sent_emails)").mappings().all()
+        if sent_email_columns:
+            sent_col_names = {column["name"] for column in sent_email_columns}
+            if "contact_id" not in sent_col_names:
+                conn.exec_driver_sql("ALTER TABLE sent_emails ADD COLUMN contact_id TEXT")
+            if "purpose" not in sent_col_names:
+                conn.exec_driver_sql("ALTER TABLE sent_emails ADD COLUMN purpose TEXT")
+            if "email_mode" not in sent_col_names:
+                conn.exec_driver_sql("ALTER TABLE sent_emails ADD COLUMN email_mode TEXT")
+            if "outcome" not in sent_col_names:
+                conn.exec_driver_sql(
+                    "ALTER TABLE sent_emails ADD COLUMN outcome TEXT DEFAULT 'pending'"
+                )
+            if "outcome_note" not in sent_col_names:
+                conn.exec_driver_sql("ALTER TABLE sent_emails ADD COLUMN outcome_note TEXT")
+            if "outcome_at" not in sent_col_names:
+                conn.exec_driver_sql("ALTER TABLE sent_emails ADD COLUMN outcome_at TEXT")
+            # Indexes for the analytics filters (create_all only covers new DBs).
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_sent_emails_contact_id ON sent_emails (contact_id)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_sent_emails_outcome ON sent_emails (outcome)"
+            )
+            # One-time backfill: contact sends historically stored no contact
+            # link and only company_name — match them by recipient email.
+            if "contact_id" in sent_col_names:
+                conn.exec_driver_sql(
+                    "UPDATE sent_emails SET contact_id = ("
+                    "  SELECT c.contact_id FROM contacts c"
+                    "  WHERE lower(c.email) = lower(sent_emails.recipient_email)"
+                    "  LIMIT 1"
+                    ") WHERE contact_id IS NULL AND (company_id IS NULL OR company_id = '')"
+                )
+            # Normalize legacy rows to the default outcome.
+            conn.exec_driver_sql(
+                "UPDATE sent_emails SET outcome = 'pending' WHERE outcome IS NULL"
+            )
+
+        # Singleton table holding the latest AI outreach analysis (id is
+        # always 1; each successful analysis upserts the row).
+        conn.exec_driver_sql(
+            "CREATE TABLE IF NOT EXISTS outreach_analysis ("
+            "id INTEGER PRIMARY KEY,"
+            "created_at TEXT NOT NULL,"
+            "report_json TEXT NOT NULL,"
+            "emails_analyzed INTEGER NOT NULL DEFAULT 0,"
+            "fingerprint TEXT NOT NULL DEFAULT ''"
+            ")"
+        )
 
         # Rejection-learning columns on applications (career insights).
         application_columns = conn.exec_driver_sql("PRAGMA table_info(applications)").mappings().all()
@@ -136,6 +212,8 @@ def init_models_sync(engine: Engine) -> None:
                 conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN languages TEXT")
             if "awards" not in profile_col_names:
                 conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN awards TEXT")
+            if "email_signature" not in profile_col_names:
+                conn.exec_driver_sql("ALTER TABLE career_profiles ADD COLUMN email_signature TEXT")
             # Pre-existing rows have NULL in the new JSON columns after ALTER;
             # normalize so the API never sees a None where a list is expected.
             for column in ("work_experience", "languages", "awards"):

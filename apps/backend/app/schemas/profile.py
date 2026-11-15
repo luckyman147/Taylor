@@ -43,6 +43,8 @@ class ProfileResponse(BaseModel):
     awards: list[str] = Field(default_factory=list)
     source_resume_id: str | None = None
     source_resume_title: str | None = None
+    avatar: str | None = None
+    email_signature: str | None = None
     created_at: str
     updated_at: str
 
@@ -67,6 +69,16 @@ class ProfileUpdate(BaseModel):
     work_experience: list[WorkExperienceItem] | None = Field(default=None, max_length=100)
     languages: list[str] | None = Field(default=None, max_length=100)
     awards: list[str] | None = Field(default=None, max_length=100)
+    avatar: str | None = Field(default=None)
+    email_signature: str | None = Field(default=None, max_length=20000)
+
+    @field_validator("email_signature")
+    @classmethod
+    def _validate_email_signature(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        # Keep "" so callers can clear the signature (exclude_none must not drop it).
+        return value.strip()
 
     @field_validator("career_goals", "target_roles", "target_locations", "languages", "awards")
     @classmethod
@@ -248,6 +260,14 @@ class EducationUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
 
 
+class ProjectAttachment(BaseModel):
+    """A file attachment on a career project."""
+
+    name: str
+    url: str
+    type: str  # "image", "document"
+
+
 class ProjectResponse(BaseModel):
     """A personal project node on the career graph."""
 
@@ -260,6 +280,8 @@ class ProjectResponse(BaseModel):
     description: list[str] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
     readme: str | None = None
+    status: str = "completed"
+    attachments: list[ProjectAttachment] = Field(default_factory=list)
     created_at: str
     updated_at: str
 
@@ -275,12 +297,13 @@ class ProjectCreate(BaseModel):
     description: list[str] = Field(default_factory=list, max_length=100)
     languages: list[str] = Field(default_factory=list, max_length=50)
     readme: str | None = Field(default=None, max_length=10000)
+    status: str = Field(default="completed", max_length=20)
+    attachments: list[ProjectAttachment] = Field(default_factory=list)
 
     @field_validator("description", "languages")
     @classmethod
     def _validate_list(cls, value: list[str]) -> list[str]:
         cleaned = [item.strip() for item in value if item.strip()]
-        # De-duplicate case-insensitively, keeping first occurrence order.
         seen: set[str] = set()
         result: list[str] = []
         for item in cleaned:
@@ -302,6 +325,8 @@ class ProjectUpdate(BaseModel):
     description: list[str] | None = Field(default=None, max_length=100)
     languages: list[str] | None = Field(default=None, max_length=50)
     readme: str | None = Field(default=None, max_length=10000)
+    status: str | None = Field(default=None, max_length=20)
+    attachments: list[ProjectAttachment] | None = None
 
     @field_validator("description", "languages")
     @classmethod
@@ -575,4 +600,23 @@ class MarketPositionResponse(BaseModel):
 class ProfileSuggestionsResponse(BaseModel):
     """Tag suggestions for the profile form (roles / locations / goals)."""
 
-    suggestions: list[str]
+    suggestions: list[str] = Field(default_factory=list)
+
+
+class ProjectIdea(BaseModel):
+    """One AI-suggested project idea."""
+
+    name: str
+    description: str = ""
+    problem: str = ""
+    solution: str = ""
+    technologies: list[str] = Field(default_factory=list)
+    difficulty: Literal["beginner", "intermediate", "advanced"] = "intermediate"
+    reason: str = ""
+
+
+class ProjectIdeasResponse(BaseModel):
+    """AI project ideas (LLM-optional; note when unavailable)."""
+
+    ideas: list[ProjectIdea] = Field(default_factory=list)
+    note: str | None = None

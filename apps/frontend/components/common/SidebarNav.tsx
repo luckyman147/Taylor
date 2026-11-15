@@ -11,6 +11,8 @@ import {
   Plus,
   GraduationCap,
   BarChart3,
+  Mail,
+  Target,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Image from 'next/image';
@@ -49,7 +51,9 @@ interface SidebarNavProps {
     | 'profile'
     | 'interview-practice'
     | 'chat'
-    | 'eval-dashboard';
+    | 'eval-dashboard'
+    | 'leads'
+    | 'email-analytics';
   onNavigate?: (page: string) => void;
 }
 
@@ -66,8 +70,15 @@ const DEFAULT_NAV_LINKS: NavItem[] = [
   { key: 'tracker', label: 'jobTracking', icon: FolderKanban, route: '/tracker' },
   { key: 'companies', label: 'companies', icon: Building2, route: '/companies' },
   { key: 'contacts', label: 'contacts', icon: Users, route: '/contacts' },
+  { key: 'leads', label: 'leads', icon: Target, route: '/leads' },
+  { key: 'email-analytics', label: 'emailAnalytics', icon: Mail, route: '/email-analytics' },
   { key: 'profile', label: 'profile', icon: UserRound, route: '/profile' },
-  { key: 'interview-practice', label: 'interviewPractice', icon: GraduationCap, route: '/interview-practice' },
+  {
+    key: 'interview-practice',
+    label: 'interviewPractice',
+    icon: GraduationCap,
+    route: '/interview-practice',
+  },
   { key: 'chat', label: 'chat', icon: Sparkles, route: '/chat' },
   { key: 'eval-dashboard', label: 'evalDashboard', icon: BarChart3, route: '/eval-dashboard' },
   { key: 'settings', label: 'settings', icon: Settings, route: '/settings' },
@@ -123,14 +134,10 @@ function SortableNavButton({
   router: ReturnType<typeof useRouter>;
 }) {
   const { t } = useTranslations();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.key });
+  const [tooltipTop, setTooltipTop] = React.useState<number | null>(null);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.key,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -153,22 +160,27 @@ function SortableNavButton({
           onNavigate?.(item.route);
           router.push(item.route);
         }}
+        onMouseEnter={(e) => setTooltipTop(e.currentTarget.getBoundingClientRect().top)}
+        onMouseLeave={() => setTooltipTop(null)}
         className={cn(
-          'w-full rounded-full border border-[#e6e3dc] bg-white p-2 flex flex-col items-center gap-1.5 hover:bg-paper-tint transition-colors cursor-grab active:cursor-grabbing touch-none',
+          'w-full rounded-full border border-[#e6e3dc] bg-white p-1.5 flex flex-col items-center gap-1 hover:bg-paper-tint transition-colors cursor-grab active:cursor-grabbing touch-none',
           isActive && 'bg-primary text-white'
         )}
         aria-label={labelText}
         {...attributes}
         {...listeners}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className="h-4 w-4" />
       </button>
-      <span
-        className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink opacity-0 shadow-sw-md transition-opacity group-hover:opacity-100"
-        role="tooltip"
-      >
-        {labelText}
-      </span>
+      {tooltipTop !== null && (
+        <span
+          className="pointer-events-none fixed left-16 z-50 -translate-y-1/2 whitespace-nowrap rounded-md border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink shadow-sw-md"
+          style={{ top: tooltipTop + 18 }}
+          role="tooltip"
+        >
+          {labelText}
+        </span>
+      )}
     </div>
   );
 }
@@ -210,26 +222,33 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ currentPage, onNavigate }) => {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-16 bg-white border-r border-border min-h-screen p-4 flex flex-col items-center space-y-6">
+    <aside className="fixed left-0 top-0 bottom-0 w-16 bg-white border-r border-border h-[100dvh] p-3 flex flex-col items-center space-y-3">
       {/* Logo */}
-      <Link href="/" className="flex flex-col items-center mb-4" aria-label="Taylor">
-        <Image src="/logo.png" alt="Taylor" width={40} height={40} unoptimized className="h-10 w-10" />
+      <Link href="/" className="flex flex-col items-center mb-1 shrink-0" aria-label="Taylor">
+        <Image
+          src="/logo.png"
+          alt="Taylor"
+          width={32}
+          height={32}
+          unoptimized
+          className="h-8 w-8"
+        />
       </Link>
 
       {/* Create Resume — primary action */}
-      <div className="group relative w-full flex flex-col items-center">
+      <div className="group relative w-full flex flex-col items-center shrink-0">
         <button
           onClick={() => {
             onNavigate?.('/tailor');
             router.push('/tailor');
           }}
           className={cn(
-            'w-full rounded-full bg-primary text-white p-2 flex flex-col items-center gap-1.5 hover:bg-[#17304f] transition-colors',
+            'w-full rounded-full bg-primary text-white p-1.5 flex flex-col items-center gap-1 hover:bg-[#17304f] transition-colors',
             currentPage === 'tailor' && 'ring-2 ring-primary ring-offset-2'
           )}
           aria-label={t('nav.createResume')}
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4" />
         </button>
         <span
           className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink opacity-0 shadow-sw-md transition-opacity group-hover:opacity-100"
@@ -242,7 +261,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ currentPage, onNavigate }) => {
       {/* Nav Buttons — draggable */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={navLinks.map((i) => i.key)} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col items-center space-y-4 w-full">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col items-center space-y-1.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {navLinks.map((item) => (
               <SortableNavButton
                 key={item.key}

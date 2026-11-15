@@ -280,6 +280,26 @@ class Settings(BaseSettings):
     # parameter for providers that don't support it (via drop_params=True).
     reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = None
 
+    # Client-side requests-per-minute cap for LLM calls, enforced by the
+    # LiteLLM Router as a pre-call check (deployment ``rpm``). 0 = disabled
+    # (default) so nothing changes unless configured — set LLM_RPM to your
+    # tier's per-minute request limit (e.g. 15 for Gemini's free tier).
+    # Calls over the cap fail locally with a rate-limit error and are
+    # backed off by the Router instead of earning an upstream 429.
+    llm_rpm: int = 0
+
+    @field_validator("llm_rpm", mode="before")
+    @classmethod
+    def clamp_llm_rpm(cls, v: Any) -> int:
+        """Clamp to [0, 100000]; treat blank/invalid env input as 0 (off)."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return 0
+        try:
+            rpm = int(float(str(v).strip()))
+        except (TypeError, ValueError, OverflowError):
+            return 0
+        return max(0, min(rpm, 100000))
+
     # GitHub OAuth
     github_client_id: str = ""
     github_client_secret: str = ""

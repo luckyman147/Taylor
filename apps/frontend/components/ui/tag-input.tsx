@@ -1,6 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
+import { GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  DragEndEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface TagInputProps {
   id?: string;
@@ -9,6 +27,8 @@ interface TagInputProps {
   placeholder?: string;
   /** Optional suggestions shown while typing; filtered client-side. */
   suggestions?: string[];
+  sortable?: boolean;
+  dragLabel?: string;
 }
 
 function splitInput(value: string): string[] {
@@ -18,13 +38,126 @@ function splitInput(value: string): string[] {
     .filter(Boolean);
 }
 
+function SortableTag({
+  id,
+  tag,
+  dragLabel,
+  onRemove,
+}: {
+  id: number;
+  tag: string;
+  dragLabel: string;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <span
+      ref={setNodeRef}
+      style={style}
+      className="inline-flex items-center gap-1 rounded-full border border-[#e6e3dc] bg-secondary px-2 py-0.5 text-xs font-medium text-ink"
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={dragLabel}
+        title={dragLabel}
+        className="touch-none cursor-grab text-ink-soft transition-colors hover:text-primary active:cursor-grabbing"
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
+      {tag}
+      <button
+        type="button"
+        aria-label={`Remove ${tag}`}
+        onClick={onRemove}
+        className="text-ink-soft transition-colors hover:text-destructive"
+      >
+        ✕
+      </button>
+    </span>
+  );
+}
+
+function SortableTags({
+  value,
+  dragLabel,
+  onChange,
+}: {
+  value: string[];
+  dragLabel: string;
+  onChange: (tags: string[]) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+
+    if (
+      !Number.isInteger(oldIndex) ||
+      !Number.isInteger(newIndex) ||
+      oldIndex < 0 ||
+      newIndex < 0 ||
+      oldIndex >= value.length ||
+      newIndex >= value.length
+    ) {
+      return;
+    }
+
+    onChange(arrayMove(value, oldIndex, newIndex));
+  };
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={value.map((_, index) => index)} strategy={rectSortingStrategy}>
+        {value.map((tag, index) => (
+          <SortableTag
+            key={`${tag}-${index}`}
+            id={index}
+            tag={tag}
+            dragLabel={dragLabel}
+            onRemove={() => onChange(value.filter((_, i) => i !== index))}
+          />
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 /**
  * Chip-style multi-select input. Enter / comma / paste-with-commas adds tags,
  * Backspace on an empty input removes the last chip, ✕ removes a chip.
  * When `suggestions` are provided, a dropdown appears while typing: ArrowUp /
  * ArrowDown move the highlight, Enter accepts the highlighted suggestion.
  */
-export function TagInput({ id, value, onChange, placeholder, suggestions = [] }: TagInputProps) {
+export function TagInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+  suggestions = [],
+  sortable = false,
+  dragLabel = 'Drag to reorder',
+}: TagInputProps) {
   const [draft, setDraft] = useState('');
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
@@ -65,22 +198,26 @@ export function TagInput({ id, value, onChange, placeholder, suggestions = [] }:
 
   return (
     <div className="relative flex h-auto min-h-10 w-full flex-wrap items-center gap-1.5 rounded-lg border border-[#c9c5bc] bg-white px-3 py-1.5 focus-within:ring-1 focus-within:ring-primary">
-      {value.map((tag, index) => (
-        <span
-          key={`${tag}-${index}`}
-          className="inline-flex items-center gap-1 rounded-full border border-[#e6e3dc] bg-secondary px-2 py-0.5 text-xs font-medium text-ink"
-        >
-          {tag}
-          <button
-            type="button"
-            aria-label={`Remove ${tag}`}
-            onClick={() => removeTag(index)}
-            className="text-ink-soft transition-colors hover:text-destructive"
+      {sortable ? (
+        <SortableTags value={value} dragLabel={dragLabel} onChange={onChange} />
+      ) : (
+        value.map((tag, index) => (
+          <span
+            key={`${tag}-${index}`}
+            className="inline-flex items-center gap-1 rounded-full border border-[#e6e3dc] bg-secondary px-2 py-0.5 text-xs font-medium text-ink"
           >
-            ✕
-          </button>
-        </span>
-      ))}
+            {tag}
+            <button
+              type="button"
+              aria-label={`Remove ${tag}`}
+              onClick={() => removeTag(index)}
+              className="text-ink-soft transition-colors hover:text-destructive"
+            >
+              ✕
+            </button>
+          </span>
+        ))
+      )}
       <input
         id={id}
         type="text"

@@ -299,6 +299,9 @@ export function ContactEmailDialog({
       form.append('company_id', '');
       form.append('subject', subject.trim());
       form.append('body', body);
+      form.append('contact_id', contact.contact_id);
+      form.append('purpose', purpose);
+      form.append('email_mode', 'personalized');
       if (attachment) {
         form.append('attachments', attachment, attachment.name);
       }

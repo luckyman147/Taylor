@@ -133,6 +133,8 @@ class Company(Base):
     email: Mapped[str | None] = mapped_column(String, nullable=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     address: Mapped[str | None] = mapped_column(String, nullable=True)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
+    country: Mapped[str | None] = mapped_column(String, nullable=True)
     website: Mapped[str | None] = mapped_column(String, nullable=True)
     company_size: Mapped[str | None] = mapped_column(String, nullable=True)
     company_type: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -140,28 +142,53 @@ class Company(Base):
     industry: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str | None] = mapped_column(String, nullable=True)
     year_founded: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
 
 class SentEmail(Base):
-    """A historical record of an outreach email sent to a company.
+    """A historical record of an outreach email sent to a company or contact.
 
     Stores the message snapshot (subject/body/recipient/attachments metadata)
     so the user can review what was sent. Attachments are not stored as
-    binaries — only name/type/size metadata.
+    binaries — only name/type/size metadata. ``outcome`` tracks the manual /
+    IMAP-assisted response status for outreach analytics.
     """
 
     __tablename__ = "sent_emails"
 
     log_id: Mapped[str] = mapped_column(String, primary_key=True)
     company_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
+    contact_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
     company_name: Mapped[str] = mapped_column(String, default="")
     recipient_email: Mapped[str] = mapped_column(String)
     subject: Mapped[str] = mapped_column(String)
     body: Mapped[str] = mapped_column(Text)
     attachments_json: Mapped[str] = mapped_column(Text, default="[]")
+    purpose: Mapped[str | None] = mapped_column(String, nullable=True)
+    email_mode: Mapped[str | None] = mapped_column(String, nullable=True)
+    outcome: Mapped[str] = mapped_column(String, default="pending", index=True)
+    outcome_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome_at: Mapped[str | None] = mapped_column(String, nullable=True)
     sent_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class OutreachAnalysisRecord(Base):
+    """Singleton record holding the latest AI outreach analysis report.
+
+    Always stored with ``id = 1`` — each successful analysis upserts the row —
+    so the Email Analytics page can show the last saved report without
+    re-running the LLM.
+    """
+
+    __tablename__ = "outreach_analysis"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    report_json: Mapped[str] = mapped_column(Text)
+    emails_analyzed: Mapped[int] = mapped_column(Integer, default=0)
+    fingerprint: Mapped[str] = mapped_column(String, default="")
 
 
 class ChatThread(Base):
@@ -317,6 +344,7 @@ class CareerProfile(Base):
     source_resume_id: Mapped[str | None] = mapped_column(String, nullable=True)
     source_resume_title: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar: Mapped[str | None] = mapped_column(String, nullable=True)
+    email_signature: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
 
@@ -618,3 +646,89 @@ class PendingAction(Base):
     status: Mapped[str] = mapped_column(String, default="pending")
     created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
     expires_at: Mapped[str] = mapped_column(String)
+
+
+class DiscoveredCompany(Base):
+    """A company discovered during profile-driven discovery.
+
+    Stored per-search so the user can review, save, apply, or dismiss.
+    """
+
+    __tablename__ = "discovered_companies"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    search_id: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    website: Mapped[str | None] = mapped_column(String, nullable=True)
+    industry: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    match_score: Mapped[float] = mapped_column(default=0.0)
+    match_reasons: Mapped[str] = mapped_column(Text, default="[]")
+    source: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="new", index=True)
+    company_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class Lead(Base):
+    """A scraped lead (person, company, or agency) awaiting triage.
+
+    ``lead_type`` is the scraped identity shape (``person`` / ``company`` /
+    ``agency``); ``suggested_type`` is where the user should save it
+    (``contact`` / ``company`` / ``agency`` / ``unsure``). ``category_source``
+    records who decided: heuristic, ai, or user override. ``email`` and
+    ``linkedin_url`` are unique when set (SQLite treats NULLs as distinct) so
+    the same lead can never be stored twice across searches — the facade
+    normalizes empty strings to None and recovers from IntegrityError by
+    returning the existing row.
+    """
+
+    __tablename__ = "leads"
+
+    lead_id: Mapped[str] = mapped_column(String, primary_key=True)
+    search_id: Mapped[str] = mapped_column(String, index=True)
+    lead_type: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    title: Mapped[str | None] = mapped_column(String, nullable=True)
+    company: Mapped[str | None] = mapped_column(String, nullable=True)
+    email: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    website: Mapped[str | None] = mapped_column(String, nullable=True)
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    industry: Mapped[str | None] = mapped_column(String, nullable=True)
+    company_size: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String)
+    sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    suggested_type: Mapped[str] = mapped_column(String, default="unsure")
+    category_source: Mapped[str] = mapped_column(String, default="heuristic")
+    category_confidence: Mapped[float] = mapped_column(default=0.0)
+    status: Mapped[str] = mapped_column(String, default="new", index=True)
+    contact_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    company_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+
+
+class LeadSearchDraft(Base):
+    """A saved set of lead-search form params the user can reload later.
+
+    ``name`` is unique (case-insensitive upsert in the facade) so saving the
+    same draft twice updates it in place instead of duplicating.
+    """
+
+    __tablename__ = "lead_search_drafts"
+
+    draft_id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    keywords: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target: Mapped[str | None] = mapped_column(Text, nullable=True)
+    purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
+    locations_json: Mapped[str] = mapped_column(Text, default="[]")
+    lead_types_json: Mapped[str] = mapped_column(Text, default="[]")
+    sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    enrich_contacts: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String, default=_utcnow_iso)

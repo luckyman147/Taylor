@@ -102,9 +102,7 @@ export default function OAuthCallbackPage() {
           <>
             <XCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
             <p className="text-sm text-ink">{message}</p>
-            <p className="mt-2 text-xs text-ink-muted">
-              You can close this window and try again.
-            </p>
+            <p className="mt-2 text-xs text-ink-muted">You can close this window and try again.</p>
           </>
         )}
       </div>

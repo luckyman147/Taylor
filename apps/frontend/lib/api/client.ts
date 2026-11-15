@@ -5,7 +5,7 @@
  */
 
 const DEFAULT_PUBLIC_API_URL = '/';
-const INTERNAL_API_ORIGIN = process.env.INTERNAL_API_ORIGIN ?? 'http://127.0.0.1:8000';
+export const INTERNAL_API_ORIGIN = process.env.INTERNAL_API_ORIGIN ?? 'http://127.0.0.1:8000';
 
 function normalizeApiUrl(value: string): string {
   const trimmed = value.trim();
@@ -31,7 +31,10 @@ function resolveRuntimeApiBase(apiBase: string): string {
 
 export const API_URL = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_PUBLIC_API_URL);
 export const API_BASE = resolveRuntimeApiBase(toApiBase(API_URL));
-export const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://127.0.0.1:8100').replace(/\/+$/, '');
+export const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://127.0.0.1:8100').replace(
+  /\/+$/,
+  ''
+);
 
 // Default request timeout (ms). MUST match the backend's REQUEST_TIMEOUT_SECONDS
 // and the Next.js proxyTimeout (next.config.ts) — the shortest layer aborts

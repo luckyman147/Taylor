@@ -67,15 +67,22 @@ class MCPManager:
             self.circuits[name].reset()
 
     async def search_all(
-        self, keywords: str, filters: JobSearchFilters
+        self, keywords: str, filters: JobSearchFilters, sources: list[str] | None = None
     ) -> tuple[list[JobListing], dict[str, dict[str, Any]]]:
         """Search all enabled MCPs in parallel.
+
+        Args:
+            keywords: Search keywords.
+            filters: Structured search filters.
+            sources: Optional list of adapter names to search. If None or empty, search all enabled.
 
         Returns a tuple of (merged_job_listings, per_mcp_status).
         """
         tasks: list[tuple[str, asyncio.Task]] = []
         for name, adapter in self.adapters.items():
             if not adapter.enabled or not self._user_preferences.get(name, True):
+                continue
+            if sources and name not in sources:
                 continue
             circuit = self.circuits[name]
             task = asyncio.create_task(

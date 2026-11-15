@@ -21,7 +21,7 @@ interface ProjectsPickerModalProps {
   jobId?: string | null;
   onClose: () => void;
   onTailor: (selectedNames: string[]) => void;
-  onSkip: () => void;
+  onKeepCurrent: () => void;
 }
 
 export function ProjectsPickerModal({
@@ -33,15 +33,18 @@ export function ProjectsPickerModal({
   jobId,
   onClose,
   onTailor,
-  onSkip,
+  onKeepCurrent,
 }: ProjectsPickerModalProps) {
   const { t } = useTranslations();
-  // Default: the top matches, capped like the backend's auto-selection.
+  // Default to keeping the current Projects section. Replacing it is an
+  // explicit opt-in: the user must switch to "choose" and select projects.
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useState<'keep' | 'choose'>('keep');
 
   useEffect(() => {
-    if (isOpen && suggestions.length > 0) {
-      setSelected(new Set(suggestions.slice(0, 2).map((s) => s.name)));
+    if (isOpen) {
+      setMode('keep');
+      setSelected(new Set());
     }
   }, [isOpen, suggestions]);
 
@@ -75,11 +78,60 @@ export function ProjectsPickerModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div
+            role="radiogroup"
+            aria-label={t('tailor.projectsPicker.title')}
+            className="mb-4 grid gap-2 sm:grid-cols-2"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={mode === 'keep'}
+              disabled={isFetching || isTailoring}
+              onClick={() => setMode('keep')}
+              className={`rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                mode === 'keep'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-[#e6e3dc] hover:border-primary/60'
+              }`}
+            >
+              <span className="block text-sm font-bold text-ink">
+                {t('tailor.projectsPicker.modeKeep')}
+              </span>
+              <span className="mt-0.5 block text-xs text-ink-soft">
+                {t('tailor.projectsPicker.modeKeepHint')}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={mode === 'choose'}
+              disabled={isFetching || isTailoring}
+              onClick={() => setMode('choose')}
+              className={`rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                mode === 'choose'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-[#e6e3dc] hover:border-primary/60'
+              }`}
+            >
+              <span className="block text-sm font-bold text-ink">
+                {t('tailor.projectsPicker.modeChoose')}
+              </span>
+              <span className="mt-0.5 block text-xs text-ink-soft">
+                {t('tailor.projectsPicker.modeChooseHint')}
+              </span>
+            </button>
+          </div>
+
           <HiringProbabilityPanel jobId={isOpen ? jobId : null} />
           <JobDnaPanel jobId={isOpen ? jobId : null} />
           <RedFlagsPanel jobId={isOpen ? jobId : null} />
 
-          {isFetching ? (
+          {mode === 'keep' ? (
+            <div className="rounded-xl border border-[#e6e3dc] bg-[#faf9f7] p-4 text-xs text-ink-soft">
+              {t('tailor.projectsPicker.keepNote')}
+            </div>
+          ) : isFetching ? (
             <div className="flex items-center justify-center gap-2 py-12 text-xs text-ink-soft">
               <Loader2 className="h-4 w-4 animate-spin" />
               {t('common.processing')}
@@ -180,24 +232,31 @@ export function ProjectsPickerModal({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3 border-t border-[#e6e3dc] px-6 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-[#e6e3dc] px-6 py-4">
           <Button
             variant="ghost"
-            onClick={onSkip}
+            onClick={onClose}
             disabled={isFetching || isTailoring}
             className="text-xs"
           >
-            {t('tailor.projectsPicker.skip')}
+            {t('common.cancel')}
           </Button>
-          <div className="flex items-center gap-2">
+          {mode === 'keep' ? (
             <Button
-              variant="ghost"
-              onClick={onClose}
+              onClick={onKeepCurrent}
               disabled={isFetching || isTailoring}
               className="text-xs"
             >
-              {t('common.cancel')}
+              {isTailoring ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  {t('common.processing')}
+                </>
+              ) : (
+                t('tailor.projectsPicker.tailorWithCurrent')
+              )}
             </Button>
+          ) : (
             <Button
               onClick={() => onTailor(Array.from(selected))}
               disabled={isFetching || isTailoring || selected.size === 0}
@@ -212,7 +271,7 @@ export function ProjectsPickerModal({
                 t('tailor.projectsPicker.tailorWithSelection')
               )}
             </Button>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

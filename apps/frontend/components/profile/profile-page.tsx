@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import UserRound from 'lucide-react/dist/esm/icons/user-round';
+import Camera from 'lucide-react/dist/esm/icons/camera';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { Button } from '@/components/ui/button';
 import { RetroTabs, type Tab } from '@/components/ui/retro-tabs';
@@ -10,6 +11,8 @@ import { useTranslations } from '@/lib/i18n';
 import {
   getProfile,
   importEducationFromMaster,
+  updateProfile,
+  uploadAvatar,
   type CareerProfile,
   type ProfileBundle,
 } from '@/lib/api/profile';
@@ -23,6 +26,8 @@ export function ProfilePage() {
   const [bundle, setBundle] = useState<ProfileBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -69,13 +74,67 @@ export function ProfilePage() {
     setBundle((prev) => (prev ? { ...prev, profile } : prev));
   }, []);
 
+  const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !bundle) return;
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError(t('profile.avatar.tooLarge'));
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setError(t('profile.avatar.invalidType'));
+      return;
+    }
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      const { url } = await uploadAvatar(file);
+      const updated = await updateProfile({ avatar: url });
+      setBundle((prev) => (prev ? { ...prev, profile: updated } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }, [bundle, t]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col p-6">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-            <UserRound className="h-5 w-5" />
-          </div>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="group relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            title={t('profile.avatar.upload')}
+          >
+            {bundle?.profile.avatar ? (
+              <img
+                src={bundle.profile.avatar}
+                alt={t('profile.avatar.alt')}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <UserRound className="h-5 w-5" />
+            )}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              {uploadingAvatar ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+            </span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarUpload}
+          />
           <div>
             <h1 className="text-xl font-bold text-ink">{t('profile.title')}</h1>
             <p className="text-xs text-ink-soft">{t('profile.subtitle')}</p>

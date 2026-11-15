@@ -57,7 +57,127 @@
     "chat": "Chat de IA",
     "evalDashboard": "Painel de Avaliação",
     "createResume": "Criar Currículo",
-    "interviewPractice": "Prática de Entrevistas"
+    "interviewPractice": "Prática de Entrevistas",
+    "emailAnalytics": "Análise de e-mails",
+    "leads": "Prospecção de Leads"
+  },
+  "leads": {
+    "title": "Prospecção de Leads",
+    "subtitle": "Encontre pessoas, empresas e agências — deduplicados entre fontes.",
+    "criteria": {
+      "recommend": "Recomendar critérios",
+      "recommending": "Perguntando à IA…",
+      "recommendHint": "A IA otimiza seus parâmetros atuais a partir do seu perfil e objetivo — revise o diff antes/depois e aplique.",
+      "suggestTitle": "Alterações sugeridas — revise e aplique",
+      "trackedNote": "Já acompanhados (excluídos das sugestões)",
+      "apply": "Aplicar sugestões",
+      "dismiss": "Descartar"
+    },
+    "drafts": {
+      "save": "Salvar rascunho",
+      "load": "Rascunhos",
+      "namePlaceholder": "Nome do rascunho…",
+      "empty": "Nenhum rascunho salvo ainda.",
+      "delete": "Excluir rascunho",
+      "saved": "Rascunho salvo",
+      "loaded": "Rascunho carregado",
+      "saveFailed": "Não foi possível salvar o rascunho",
+      "deleteFailed": "Não foi possível excluir o rascunho",
+      "nameRequired": "Digite um nome (ou palavras-chave/alvo) para salvar"
+    },
+    "form": {
+      "title": "Busca",
+      "keywords": "Palavras-chave",
+      "keywordsPlaceholder": "ex. CTO, agência de recrutamento, fintech",
+      "locations": "Localizações",
+      "locationsPlaceholder": "Separadas por vírgula, ex. Tunis, Paris",
+      "target": "Alvo exato",
+      "targetPlaceholder": "ex.: CTOs de startups de fintech com 10-50 pessoas",
+      "purpose": "Motivo da busca",
+      "purposePlaceholder": "ex.: vender um ATS para líderes de engenharia",
+      "leadTypes": "Tipos de lead",
+      "sources": "Fontes",
+      "enrich": "Encontrar e-mails/telefones (best effort)",
+      "search": "Confirmar e pesquisar",
+      "searching": "Pesquisando e deduplicando…",
+      "phase": {
+        "search": "Buscando no LinkedIn e na web…",
+        "profiles": "Lendo perfis do LinkedIn…",
+        "companies": "Lendo páginas de empresas no LinkedIn…",
+        "filtering": "Filtrando por localização…",
+        "categorize": "Categorizando leads…",
+        "dedupe": "Removendo duplicatas…",
+        "persisted": "Salvando no banco de dados…",
+        "enrich": "Encontrando e-mails e telefones…",
+        "finalize": "Categorizando e salvando…",
+        "hint": "A leitura de perfis acontece em um navegador — a primeira busca pode levar 1-3 minutos."
+      }
+    },
+    "stats": {
+      "raw": "Encontrados",
+      "merged": "Mesclados",
+      "alreadyInDb": "Já conhecidos",
+      "inserted": "Novos leads"
+    },
+    "type": {
+      "person": "Pessoa",
+      "company": "Empresa",
+      "agency": "Agência"
+    },
+    "table": {
+      "name": "Nome",
+      "company": "Empresa",
+      "email": "E-mail",
+      "location": "Localização",
+      "sources": "Fontes",
+      "category": "Salvar como",
+      "status": "Status",
+      "actions": "Ações"
+    },
+    "category": {
+      "contact": "Contato",
+      "company": "Empresa",
+      "agency": "Agência",
+      "unsure": "Indefinido",
+      "pickOne": "Escolha uma categoria para este lead antes de salvá-lo.",
+      "source": {
+        "heuristic": "auto",
+        "ai": "IA",
+        "user": "você",
+        "unsure": "não definido"
+      }
+    },
+    "status": {
+      "new": "Novo",
+      "saved": "Salvo",
+      "contacted": "Contatado",
+      "dismissed": "Descartado"
+    },
+    "actions": {
+      "selected": "{count} selecionados",
+      "saveAsContact": "Adicionar como contato",
+      "saveAsCompany": "Adicionar como empresa",
+      "bulkSaveContact": "Adicionar como contatos",
+      "bulkSaveCompany": "Adicionar como empresas",
+      "dismiss": "Descartar",
+      "delete": "Excluir",
+      "exportCsv": "Exportar CSV",
+      "selectAll": "Selecionar tudo",
+      "savedOne": "{name} salvo."
+    },
+    "empty": {
+      "title": "Nenhum lead ainda",
+      "description": "Recomende critérios, confirme e pesquise — os resultados são deduplicados entre LinkedIn e a web."
+    },
+    "errors": {
+      "updateFailed": "Não foi possível atualizar o lead.",
+      "saveFailed": "Não foi possível salvar o lead.",
+      "deleteFailed": "Não foi possível excluir o lead."
+    },
+    "toasts": {
+      "searchFailed": "A busca falhou",
+      "criteriaFailed": "Não foi possível obter as recomendações da IA"
+    }
   },
   "dashboard": {
     "title": "Painel",
@@ -124,6 +244,7 @@
     "createAndPreview": "Criar e Visualizar",
     "unsavedDraft": "Rascunho Não Salvo",
     "personalInfo": "Informações Pessoais",
+    "chooseFromProfile": "Escolher do Perfil",
     "summary": "Resumo",
     "experience": "Experiência",
     "education": "Formação",
@@ -501,6 +622,7 @@
       "options": "Opções",
       "compactMode": "Modo Compacto",
       "contactIcons": "Ícones de Contato",
+      "contactSeparators": "Separadores de Contato",
       "effectiveOutput": "Saída Efetiva",
       "effectiveMargins": "Margens (mm): S{top} I{bottom} E{left} D{right}",
       "effectiveSectionGap": "Espaço de Seção",
@@ -715,6 +837,7 @@
       "dragToReorder": "Drag to reorder"
     },
     "actions": {
+      "undo": "Desfazer",
       "saveAsMaster": "Salvar como currículo principal",
       "alreadyMaster": "Este currículo já é um principal",
       "saveMoreOptions": "Mais opções de salvamento",
@@ -930,13 +1053,19 @@
     },
     "projectsPicker": {
       "title": "Escolha os projetos do seu currículo personalizado",
-      "subtitle": "Estes projetos correspondem à descrição da vaga. Escolha até 4 — a seção de Projetos do seu currículo personalizado será substituída pela sua seleção.",
+      "subtitle": "Mantenha sua seção de Projetos atual ou escolha projetos que correspondam à vaga para substituí-la.",
+      "modeKeep": "Manter meus projetos atuais",
+      "modeKeepHint": "Sua seção de Projetos permanece exatamente como está.",
+      "modeChoose": "Escolher projetos substitutos",
+      "modeChooseHint": "Substitua sua seção de Projetos por até 4 projetos que correspondam à vaga.",
+      "keepNote": "Nenhum projeto será adicionado ou substituído. Sua seção de Projetos permanece exatamente como está.",
       "matchScore": "Correspondência",
       "inResume": "Já está no currículo",
       "noDescription": "Não foi possível redigir uma descrição para este projeto (LLM indisponível).",
       "selectHint": "Selecione até {count} projetos",
-      "skip": "Pular — usar as melhores correspondências automaticamente",
-      "tailorWithSelection": "Personalizar com a seleção"
+      "skip": "Usar as melhores correspondências automaticamente",
+      "tailorWithSelection": "Personalizar com a seleção",
+      "tailorWithCurrent": "Personalizar sem alterar os projetos"
     },
     "jobIntel": {
       "shouldApply": {
@@ -1101,7 +1230,8 @@
         "health_check_failed": "Falha na verificação de integridade.",
         "duplicate_v1_path": "Falha na verificação de integridade. A URL base pode conter um caminho /v1 duplicado.",
         "not_found_404": "Falha na verificação de integridade. 404 Não encontrado - verifique se a URL base corresponde ao provedor.",
-        "html_response": "Falha na verificação de integridade. A URL base retornou HTML; pode ser uma URL de console ou um caminho de gateway não suportado."
+        "html_response": "Falha na verificação de integridade. A URL base retornou HTML; pode ser uma URL de console ou um caminho de gateway não suportado.",
+        "llm_timeout": "A verificação de integridade esgotou o tempo limite. O provedor não respondeu a tempo - verifique sua rede e tente novamente."
       },
       "healthWarnings": {
         "empty_content": "O LLM retornou conteúdo vazio na verificação de integridade."
@@ -1577,6 +1707,7 @@
     "status": {
       "watching": "Watching",
       "contacted": "Contacted",
+      "second_contact": "2nd Contact",
       "applied": "Applied",
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
@@ -1768,7 +1899,22 @@
       "websiteContent": "Site",
       "linkedinContent": "LinkedIn",
       "hiringSignals": "Sinais de contratação",
-      "back": "Voltar"
+      "back": "Voltar",
+      "modeLabel": "Modo de e-mail",
+      "modePersonalized": "Personalizado",
+      "modeShared": "Compartilhado",
+      "modePersonalizedHint": "Gerar um e-mail IA separado para cada destinatário.",
+      "modeSharedHint": "Gerar um único e-mail geral e enviá-lo individualmente para cada destinatário. Os destinatários nunca veem os endereços uns dos outros.",
+      "personalizeGreeting": "Personalizar a saudação com o nome de cada destinatário",
+      "sharedGenerating": "Gerando um e-mail compartilhado...",
+      "sharedPreviewHint": "Este e-mail será enviado individualmente para {count} destinatários.",
+      "greetingHint": "O espaço reservado da saudação será substituído pelo nome de cada destinatário (ex.: {example}).",
+      "sharedGenerateFailed": "Falha ao gerar o e-mail compartilhado. Tente novamente.",
+      "sharedRegenFailed": "Falha ao regerar — mantendo o rascunho atual.",
+      "generateShared": "Gerar e-mail",
+      "retry": "Tentar novamente",
+      "error": "Falha",
+      "cancel": "Cancelar"
     },
     "approval": {
       "title": "Adicionar empresa ao banco de dados?",
@@ -1991,6 +2137,14 @@
   "profile": {
     "title": "My Profile",
     "subtitle": "Your personal career memory, skill ROI and AI career advisor.",
+    "avatar": {
+      "upload": "Enviar avatar",
+      "alt": "Avatar do perfil",
+      "hint": "JPG, PNG ou WebP. Máx. 5 MB.",
+      "remove": "Remover",
+      "tooLarge": "A imagem deve ter menos de 5 MB.",
+      "invalidType": "Selecione um arquivo de imagem."
+    },
     "header": {
       "sourceFrom": "Do currículo"
     },
@@ -2034,6 +2188,7 @@
       "noDescription": "Sem descrição",
       "showReadme": "Ver README",
       "hideReadme": "Ocultar README",
+      "readme": "README",
       "connectTitle": "Conectar GitHub"
     },
     "tabs": {
@@ -2439,6 +2594,117 @@
       "coach": "Coach de Carreira",
       "recruiter": "Recrutador",
       "resumeAnalyst": "Analista de CV"
+    }
+  },
+  "emailAnalytics": {
+    "title": "Análise de e-mails",
+    "subtitle": "Acompanhe as respostas aos seus contatos e descubra o que melhorar.",
+    "refresh": "Atualizar",
+    "loading": "Carregando…",
+    "loadFailed": "Falha ao carregar a análise. Tente novamente.",
+    "stats": {
+      "totalSent": "Total enviados",
+      "responded": "Respostas",
+      "responseRate": "Taxa de resposta",
+      "pending": "Pendentes",
+      "bounced": "Rejeitados"
+    },
+    "chart": {
+      "title": "Envios e respostas ao longo do tempo",
+      "sent": "Enviados",
+      "responded": "Respostas",
+      "empty": "Ainda não há dados — envie e-mails para ver a tendência."
+    },
+    "segments": {
+      "title": "Desempenho por segmento",
+      "byRecipientType": "Por destinatário",
+      "byMode": "Por modo de envio",
+      "byPurpose": "Por propósito",
+      "segment": "Segmento",
+      "sent": "Enviados",
+      "replied": "Respostas",
+      "rate": "Taxa de resposta",
+      "company": "Empresa",
+      "contact": "Contato",
+      "personalized": "Personalizado",
+      "shared": "Compartilhado",
+      "general": "Geral",
+      "internship": "Estágio",
+      "job": "Emprego",
+      "cold": "Fri",
+      "custom": "Personalizado"
+    },
+    "topSubjects": {
+      "title": "Assuntos que receberam respostas",
+      "subject": "Assunto",
+      "empty": "Nenhuma resposta registrada ainda."
+    },
+    "timeline": {
+      "title": "E-mails enviados",
+      "empty": "Nenhum e-mail enviado ainda.",
+      "recipient": "Destinatário",
+      "sentAt": "Enviado",
+      "outcome": "Resultado",
+      "prev": "Anterior",
+      "next": "Próximo",
+      "showing": "Mostrando {from}–{to} de {total}",
+      "selectAll": "Selecionar todos",
+      "clearSelection": "Limpar seleção",
+      "selectedCount": "{count} selecionados",
+      "bulkAction": "Definir resultado",
+      "bulkApply": "Aplicar",
+      "bulkSuccess": "{count} e-mails atualizados.",
+      "bulkFailed": "Falha ao atualizar os resultados.",
+      "outcomeUpdated": "Resultado atualizado.",
+      "updateFailed": "Falha ao atualizar o resultado.",
+      "outcomeAbbrev": {
+        "pending": "…",
+        "responded": "R",
+        "not_interested": "N",
+        "bounced": "B"
+      }
+    },
+    "outcomes": {
+      "pending": "Pendente",
+      "responded": "Respondeu",
+      "not_interested": "Sem interesse",
+      "bounced": "Rejeitado"
+    },
+    "checkReplies": {
+      "title": "Verificar respostas",
+      "description": "Verifique sua caixa de entrada via IMAP por respostas a e-mails pendentes. As correspondências são sugestões — confirme cada uma.",
+      "button": "Verificar respostas",
+      "checking": "Verificando…",
+      "result": "{count} e-mails pendentes verificados.",
+      "none": "Nenhuma resposta correspondente encontrada.",
+      "confirm": "Marcar como respondido",
+      "confirmed": "Marcado como respondido.",
+      "confirmFailed": "Falha ao marcar como respondido.",
+      "failed": "Falha na verificação de respostas. Tente novamente.",
+      "sentSubject": "Você enviou",
+      "matchedSubject": "A resposta",
+      "from": "De"
+    },
+    "analyze": {
+      "title": "Análise de IA",
+      "description": "Analise seu histórico de contatos para saber o que funciona e o que mudar.",
+      "button": "Analisar meus contatos",
+      "analyzing": "Analisando…",
+      "emailsAnalyzed": "{count} e-mails analisados.",
+      "empty": "Dados insuficientes ainda — envie pelo menos 3 e-mails.",
+      "failed": "A análise falhou. Tente novamente.",
+      "savedAt": "Salvo em {date}",
+      "whatWorks": "O que funciona",
+      "whatFails": "O que corrigir",
+      "subjectTips": "Dicas de assunto",
+      "bodyTips": "Dicas de conteúdo",
+      "ctaTips": "Dicas de chamada para ação",
+      "example": "Exemplo reescrito",
+      "exampleSubject": "Assunto de exemplo"
+    },
+    "empty": {
+      "title": "Ainda não há contatos",
+      "description": "Envie e-mails pelas páginas de Empresas ou Contatos e volte aqui para acompanhar as respostas."
     }
   }
 }

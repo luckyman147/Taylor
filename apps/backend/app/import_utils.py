@@ -9,6 +9,7 @@ import csv
 import io
 import json
 import logging
+import re
 from typing import Any
 
 from fastapi import HTTPException, UploadFile
@@ -24,6 +25,31 @@ def normalize_header(value: str) -> str:
     return (
         value.strip().lower().replace(" ", "").replace("_", "").replace("-", "").replace("'", "")
     )
+
+
+def split_address_into_city_country(address: str) -> tuple[str | None, str | None]:
+    """Best-effort split of a free-text address into ``(city, country)``.
+
+    Used to backfill the structured ``city``/``country`` columns from legacy
+    free-text ``address`` values:
+
+    - 3+ comma/semicolon segments → ``..., city, country``
+    - 2 segments ``City, Country`` when the first segment looks like a place
+      name (no digits, at most two words) → city + country
+    - otherwise ``Street, City`` → city only
+    - a single/empty segment → ``(None, None)``
+    """
+    parts = [part.strip() for part in re.split(r"[;,]", address) if part.strip()]
+    if not parts:
+        return None, None
+    if len(parts) >= 3:
+        return parts[-2], parts[-1]
+    if len(parts) == 2:
+        first, second = parts
+        if not any(char.isdigit() for char in first) and len(first.split()) <= 2:
+            return first, second
+        return second, None
+    return None, None
 
 
 def detect_delimiter(sample: str) -> str:

@@ -190,6 +190,7 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
             "name": {"type": "str", "required": True, "max_len": 200},
             "website": {"type": "str", "required": False, "max_len": 500},
             "industry": {"type": "str", "required": False, "max_len": 200},
+            "description": {"type": "str", "required": False, "max_len": 4000},
         },
         write=True,
         summary_template="Add company: {name}",
@@ -740,6 +741,8 @@ async def _get_companies() -> dict[str, Any]:
                 "name": c.get("name"),
                 "industry": c.get("industry"),
                 "status": c.get("status"),
+                # Truncated — full descriptions live on the company record.
+                "description": (c.get("description") or "")[:200] or None,
             }
             for c in companies[:50]
         ],
@@ -1028,11 +1031,33 @@ Extract:
 Return JSON only:"""
 
     try:
-        result = await complete_json(prompt, schema_type="keywords")
+        # Memoized on the exact body+subject: re-running a Gmail tool within
+        # the TTL replays extraction instead of one 4096-token call per email.
+        from app import llm_cache
+
+        result = await llm_cache.get_or_compute(
+            llm_cache.make_key("email_entities", prompt),
+            lambda: complete_json(prompt, schema_type="keywords", max_tokens=800),
+        )
         return result if isinstance(result, dict) else {"is_job_alert": False}
     except Exception as e:
         logger.warning("Entity extraction failed: %s", e)
         return {"is_job_alert": False}
+
+
+async def _extract_entities_for(emails: list[Any]) -> list[dict[str, Any]]:
+    """Extract entities for a batch concurrently.
+
+    Each extraction is memoized, so repeated tool calls only pay for emails
+    not seen within the TTL; gather keeps the batch off the critical path.
+    """
+    import asyncio
+
+    return list(
+        await asyncio.gather(
+            *(_extract_entities_from_email(e.body, e.subject) for e in emails)
+        )
+    )
 
 
 async def _fetch_emails_with_entities(max_results: int = 10) -> dict[str, Any]:
@@ -1052,8 +1077,8 @@ async def _fetch_emails_with_entities(max_results: int = 10) -> dict[str, Any]:
         return {"emails": [], "total": 0, "hint": "No unread emails."}
 
     results = []
-    for e in emails:
-        entities = await _extract_entities_from_email(e.body, e.subject)
+    entities_list = await _extract_entities_for(emails)
+    for e, entities in zip(emails, entities_list):
         results.append({
             "uid": e.uid,
             "subject": e.subject,
@@ -1084,8 +1109,8 @@ async def _search_emails_with_entities(query: str, max_results: int = 10) -> dic
         return {"emails": [], "total": 0, "hint": f"No emails matched '{query}'."}
 
     results = []
-    for e in emails:
-        entities = await _extract_entities_from_email(e.body, e.subject)
+    entities_list = await _extract_entities_for(emails)
+    for e, entities in zip(emails, entities_list):
         results.append({
             "uid": e.uid,
             "subject": e.subject,
@@ -1116,8 +1141,8 @@ async def _search_sent_emails(query: str = "ALL", max_results: int = 10) -> dict
         return {"emails": [], "total": 0, "hint": f"No sent emails matched '{query}'."}
 
     results = []
-    for e in emails:
-        entities = await _extract_entities_from_email(e.body, e.subject)
+    entities_list = await _extract_entities_for(emails)
+    for e, entities in zip(emails, entities_list):
         results.append({
             "uid": e.uid,
             "subject": e.subject,
@@ -1153,7 +1178,7 @@ async def _search_entity_emails(entity_name: str, max_results: int = 10) -> dict
 
     # Deduplicate by subject + date
     seen: set[tuple[str, str]] = set()
-    all_emails: list[dict[str, Any]] = []
+    deduped: list[tuple[str, Any]] = []
 
     for folder, emails_list in [("inbox", inbox_emails), ("sent", sent_emails)]:
         for e in emails_list:
@@ -1161,17 +1186,21 @@ async def _search_entity_emails(entity_name: str, max_results: int = 10) -> dict
             if key in seen:
                 continue
             seen.add(key)
-            entities = await _extract_entities_from_email(e.body, e.subject)
-            all_emails.append({
-                "uid": e.uid,
-                "subject": e.subject,
-                "sender": e.sender,
-                "date": e.date,
-                "snippet": e.snippet,
-                "body": e.body,
-                "folder": folder,
-                "entities": entities,
-            })
+            deduped.append((folder, e))
+
+    entities_list = await _extract_entities_for([e for _, e in deduped])
+    all_emails: list[dict[str, Any]] = []
+    for (folder, e), entities in zip(deduped, entities_list):
+        all_emails.append({
+            "uid": e.uid,
+            "subject": e.subject,
+            "sender": e.sender,
+            "date": e.date,
+            "snippet": e.snippet,
+            "body": e.body,
+            "folder": folder,
+            "entities": entities,
+        })
 
     # Sort by date (most recent first)
     all_emails.sort(key=lambda x: x.get("date", ""), reverse=True)
@@ -1269,12 +1298,14 @@ async def _create_company(args: dict[str, Any]) -> dict[str, Any]:
     name = args.get("name", "")
     website = args.get("website")
     industry = args.get("industry")
+    description = args.get("description")
     if not name:
         return {"error": "name is required"}
     result = await db.create_company(
         name=name,
         website=website,
         industry=industry,
+        description=description,
     )
     return {"company": result, "message": f"Company added: {name}"}
 

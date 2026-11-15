@@ -1,0 +1,407 @@
+{
+  "mode": "autonomous",
+  "dataset": "eval/datasets/benchmark.jsonl",
+  "samples_total": 5,
+  "traces_collected": 5,
+  "elapsed_seconds": 65.91,
+  "config": {
+    "seed": 42,
+    "temperature": 0.0,
+    "model": null,
+    "model_version": "v1.0",
+    "prompt_version": "v1.0",
+    "tool_registry_version": "v1.0",
+    "dataset_version": "v1.0",
+    "evaluation_version": "v1.0",
+    "eval_mode": "autonomous",
+    "max_iterations": 3,
+    "max_tool_calls": 10,
+    "max_execution_time_ms": 30000,
+    "max_cost_usd": 0.05
+  },
+  "metrics": [
+    {
+      "metric": "cost_per_task",
+      "value": 0.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "groundedness_rate",
+      "value": 0.5,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "p95_latency_ms",
+      "value": 14312.011740000162,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "faithfulness",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "answer_relevance",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "recovery_success_rate",
+      "value": 1.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "recovery_policy_accuracy",
+      "value": 1.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "task_success_rate",
+      "value": 0.6,
+      "pass_rate": 0.2,
+      "samples": 5
+    },
+    {
+      "metric": "tool_recall_at_5",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_recall_at_10",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "mrr",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "ndcg_at_5",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_selection_accuracy",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    }
+  ],
+  "traces": [
+    {
+      "run_id": "bb1d006fdd48",
+      "sample_id": "bench_001",
+      "mode": "autonomous",
+      "query": "Analyze my resume for ATS compliance",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 31.70740000132355,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_evidence",
+        "compare_resumes",
+        "get_career_summary",
+        "get_skill_roi",
+        "get_market_position",
+        "get_skill_suggestions",
+        "create_skill"
+      ],
+      "ranked_tools": [
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_evidence",
+        "compare_resumes",
+        "get_skill_suggestions",
+        "get_career_summary",
+        "get_skill_roi",
+        "get_market_position"
+      ],
+      "final_answer": "## Resume Overview & Master Profile\nIt appears you have a comprehensive career history spanning multiple software development and engineering roles, anchored by a master resume file (`iyed-t-.docx`). Your experience covers a wide range of positions, from internships and junior developer roles to senior engineering, full-stack development, and architecture positions at notable companies like Spotify, Tevora, and various fast-growing tech firms. \n\n## Experience & ATS Readability Highlights\nTo ensure your resume passes Applicant Tracking Systems (ATS) effectively, your diverse experiences should be structured cleanly with standard headings and keyword-rich descriptions. Your profile demonstrates strong technical breadth across several key areas:\n- **Software Engineering & Architecture**: Ranging from early career roles like \"Software Developer I\" and \"Intern @ Kapuvada\" to advanced titles like \"Software Architect / Full-Stack Developer @ hausverwalter.ai\".\n- **Specialized Industry Experience**: Documented roles at high-growth environments, including \"Software Developer @ INC. Magazine's 5000 Fastest Growing Private Companies\", \"Developer @ Tevora\", and \"Software Engineer @ Spotify\".\n- **Core Technology Focus**: Specialized positions such as \"Senior .NET Developer @ Opus Technology\" and targeted variations like \"Fullstack or Backend-Developer @ hausverwalter.ai\".\n\n## ATS Compliance Recommendations\nWhen analyzing your master resume (`iyed-t-.docx`) alongside your tailored variants for ATS optimization, keep the following best practices in mind:\n- **Standard Section Headings**: Ensure traditional headings like \"Work Experience,\" \"Skills,\" and \"Education\" are used so ATS parsers can easily categorize your roles at companies like Opus Technology and Spotify without misinterpreting custom titles.\n- **Keyword Optimization**: Match the technical keywords from your specific target roles (e.g., specific .NET frameworks, full-stack tools, or architecture methodologies) directly into your master resume's skills section.\n- **Clean Formatting**: Avoid complex tables, multi-column layouts, or graphics in your master document to guarantee that automated parsers accurately capture your progression from early internships to senior and architectural positions.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 11489.165399998456,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "8a0f8ed5ea33",
+      "sample_id": "bench_002",
+      "mode": "autonomous",
+      "query": "Find backend jobs in Germany",
+      "iterations": [
+        {
+          "iteration": 0
+        }
+      ],
+      "tool_calls": [],
+      "selected_tools": [],
+      "ranked_tools": [],
+      "final_answer": "I wasn't able to gather the information needed to answer your question.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 3.0934999995224643,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "747a29e360a9",
+      "sample_id": "bench_003",
+      "mode": "autonomous",
+      "query": "Compare my resume against this job description and find gaps",
+      "iterations": [
+        {
+          "iteration": 0
+        }
+      ],
+      "tool_calls": [],
+      "selected_tools": [
+        "get_evidence",
+        "get_career_summary",
+        "get_market_position",
+        "compare_resumes",
+        "get_skill_suggestions",
+        "create_skill",
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_job_verdict",
+        "update_application_status",
+        "get_applications",
+        "create_application"
+      ],
+      "ranked_tools": [
+        "compare_resumes",
+        "get_ats_audit",
+        "get_career_summary",
+        "get_market_position",
+        "get_skill_suggestions",
+        "get_evidence",
+        "get_resume_for_audit",
+        "create_skill"
+      ],
+      "final_answer": "I encountered an error while processing your request. Please try again.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 22737.36640000061,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "a09655025efd",
+      "sample_id": "bench_004",
+      "mode": "autonomous",
+      "query": "What skills should I learn to improve my resume?",
+      "iterations": [
+        {
+          "iteration": 0
+        }
+      ],
+      "tool_calls": [],
+      "selected_tools": [
+        "get_resume_for_audit",
+        "get_career_summary",
+        "get_evidence",
+        "get_ats_audit",
+        "get_skill_roi",
+        "get_skill_suggestions",
+        "compare_resumes",
+        "get_market_position",
+        "create_skill"
+      ],
+      "ranked_tools": [
+        "get_ats_audit",
+        "get_skill_suggestions",
+        "compare_resumes",
+        "get_career_summary",
+        "get_skill_roi",
+        "get_resume_for_audit",
+        "get_market_position",
+        "create_skill"
+      ],
+      "final_answer": "I encountered an error while processing your request. Please try again.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 14593.06700000161,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "1ed773e81185",
+      "sample_id": "bench_005",
+      "mode": "autonomous",
+      "query": "Show me my career stats and market position",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 340.65750000081607,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_career_summary",
+        "create_skill",
+        "compare_resumes",
+        "get_contacts",
+        "create_contact",
+        "get_market_position"
+      ],
+      "ranked_tools": [
+        "get_career_summary",
+        "compare_resumes",
+        "create_skill",
+        "get_contacts",
+        "create_contact",
+        "get_market_position"
+      ],
+      "final_answer": "Here is a breakdown of your career stats, skill proficiencies, and current market position as a Full-Stack Software Engineer.\n\n## Career Overview & Target Role\nYou are **Mohamed Iyed Touati**, operating professionally as a Full-Stack Software Engineer with a target role of **Senior Full-Stack Software Engineer**. Your technical background spans modern web technologies, cloud platforms, and cutting-edge paradigms like agentic AI workflows and advanced frontend optimization. However, market benchmarking categorizes your current baseline specialization around frontend and core languages like TypeScript and Python.\n\n## Skill Proficiencies & Market Percentiles\nYour market positioning shows exceptional strength in core programming languages, placing you in the upper tier of tested developers:\n- **Python & TypeScript**: You rank at the 95th and 93rd percentiles respectively, cementing your status as an expert in these languages.\n- **Web Fundamentals & Tools**: You hold strong advanced standings in HTML (88th percentile), JavaScript (83rd percentile), Git/GitHub (72nd\u201376th percentiles), and containerization tools like Docker (72nd percentile).\n- **Core Stack**: Beyond languages, your skill set includes robust enterprise tech such as .NET / ASP.NET Core, C#, AWS, Azure, and modern frontend performance optimization.\n\n## Market Position & Recommendations\nAccording to your domain evaluations, you sit at a mid-level readiness across several key areas (Frontend, Backend, Cloud & DevOps, and Data & ML) with specific role alignment metrics:\n- **Current Standing**: While you target Senior Full-Stack roles and build complex systems\u2014such as AI-powered platforms (`privora`) and computer vision parking apps (`SmartParkTN`)\u2014market data notes that system design readiness is an area for growth to fully clear senior-level distributed system requirements.\n- **Recommended Roles**: Your profile best aligns right now with roles such as **Frontend Developer**, **TypeScript Developer**, and **React Developer**, where your high percentiles in TypeScript and HTML yield the strongest match scores.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 17085.946799998055,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    }
+  ]
+}

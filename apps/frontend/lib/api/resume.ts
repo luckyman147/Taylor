@@ -204,13 +204,15 @@ export async function improveResume(
   resumeId: string,
   jobId: string,
   promptId?: string,
-  selectedProjects?: string[]
+  selectedProjects?: string[],
+  keepProjects?: boolean
 ): Promise<ImprovedResult> {
   return postImprove('/resumes/improve', {
     resume_id: resumeId,
     job_id: jobId,
     prompt_id: promptId ?? null,
     selected_projects: selectedProjects ?? null,
+    keep_projects: keepProjects ?? true,
   });
 }
 
@@ -219,13 +221,15 @@ export async function previewImproveResume(
   resumeId: string,
   jobId: string,
   promptId?: string,
-  selectedProjects?: string[]
+  selectedProjects?: string[],
+  keepProjects?: boolean
 ): Promise<ImprovedResult> {
   return postImprove('/resumes/improve/preview', {
     resume_id: resumeId,
     job_id: jobId,
     prompt_id: promptId ?? null,
     selected_projects: selectedProjects ?? null,
+    keep_projects: keepProjects ?? true,
   });
 }
 
@@ -329,6 +333,7 @@ export function getResumePdfUrl(
     params.set('bodyFont', settings.fontSize.bodyFont);
     params.set('compactMode', String(settings.compactMode));
     params.set('showContactIcons', String(settings.showContactIcons));
+    params.set('showContactSeparators', String(settings.showContactSeparators));
     params.set('accentColor', settings.accentColor);
     if (settings.customAccentColor) {
       params.set('customAccentColor', settings.customAccentColor);
@@ -371,6 +376,12 @@ export function getResumePdfUrl(
     params.set('borderAboveHeader', borderWidth(settings.advanced.borders.aboveHeader));
     params.set('borderBelowHeader', borderWidth(settings.advanced.borders.belowHeader));
     params.set('borderSectionTitles', borderWidth(settings.advanced.borders.sectionTitles));
+    params.set('avatarShow', String(settings.avatar.show));
+    params.set('avatarShape', settings.avatar.shape);
+    params.set('avatarSize', settings.avatar.size);
+    params.set('avatarBorder', String(settings.avatar.border));
+    params.set('avatarPosition', settings.avatar.position);
+    params.set('avatarInfoGap', String(settings.avatar.infoGap));
   } else {
     params.set('template', 'swiss-single');
     params.set('pageSize', 'A4');
@@ -530,9 +541,14 @@ export async function retryProcessing(resumeId: string): Promise<ResumeUploadRes
 }
 
 /** Fetches the job description used to tailor a resume */
-export async function fetchJobDescription(
-  resumeId: string
-): Promise<{ job_id: string; content: string; company: string; role: string; website: string; industry: string }> {
+export async function fetchJobDescription(resumeId: string): Promise<{
+  job_id: string;
+  content: string;
+  company: string;
+  role: string;
+  website: string;
+  industry: string;
+}> {
   const res = await apiFetch(`/resumes/${encodeURIComponent(resumeId)}/job-description`);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -628,6 +644,44 @@ export async function applyRecommendation(
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to apply recommendation (status ${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Batch upload & bulk export
+// ---------------------------------------------------------------------------
+
+export interface BatchUploadResultItem {
+  filename: string;
+  resume_id: string | null;
+  processing_status: 'ready' | 'failed';
+  error: string | null;
+}
+
+/** Export ready resumes as a ZIP of PDFs. */
+export async function exportAllResumesPdf(
+  filter: 'all' | 'masters' | 'tailored' = 'all'
+): Promise<Blob> {
+  const res = await apiFetch(`/resumes/export/all-pdf?filter=${filter}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to export resumes (status ${res.status}): ${text}`);
+  }
+  return res.blob();
+}
+
+/** Upload multiple resume files at once. */
+export async function uploadResumesBatch(files: File[]): Promise<BatchUploadResultItem[]> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append('files', f));
+  const res = await apiFetch('/resumes/upload/batch', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to upload resumes (status ${res.status}): ${text}`);
   }
   return res.json();
 }

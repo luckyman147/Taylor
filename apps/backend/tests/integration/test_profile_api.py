@@ -79,9 +79,33 @@ class TestProfileCrud:
         assert body["name"] == "Jane Doe"
         assert body["target_roles"] == ["ML Engineer", "Data Engineer"]
 
+    async def test_email_signature_roundtrip_and_sanitize(self, isolated_db):
         async with _client() as client:
-            resp = await client.get("/api/v1/profile")
-        assert resp.json()["profile"]["name"] == "Jane Doe"
+            resp = await client.put(
+                "/api/v1/profile",
+                json={
+                    "email_signature": (
+                        '<p style="color:#111"><strong>Jane</strong>'
+                        '<script>alert(1)</script><br>Engineer</p>'
+                    )
+                },
+            )
+            assert resp.status_code == 200
+            sig = resp.json()["email_signature"]
+            assert sig is not None
+            assert "Jane" in sig
+            assert "script" not in sig.lower()
+            assert "alert" not in sig
+
+            got = await client.get("/api/v1/profile")
+            assert got.json()["profile"]["email_signature"] == sig
+
+            # Clear
+            cleared = await client.put(
+                "/api/v1/profile", json={"email_signature": ""}
+            )
+            assert cleared.status_code == 200
+            assert cleared.json()["email_signature"] in (None, "")
 
     async def test_put_ignores_unknown_fields(self, isolated_db):
         async with _client() as client:

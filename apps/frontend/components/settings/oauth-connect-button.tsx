@@ -84,12 +84,7 @@ export function OAuthConnectButton({
   };
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => void handleConnect()}
-      disabled={loading}
-    >
+    <Button variant="outline" size="sm" onClick={() => void handleConnect()} disabled={loading}>
       {loading ? (
         <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
       ) : (

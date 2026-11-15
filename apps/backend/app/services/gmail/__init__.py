@@ -6,6 +6,7 @@ from app.services.gmail.client import (
     get_unread_emails,
     is_available,
     search_emails,
+    search_sent_emails,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "get_unread_emails",
     "is_available",
     "search_emails",
+    "search_sent_emails",
 ]

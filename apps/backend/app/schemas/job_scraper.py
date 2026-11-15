@@ -82,6 +82,7 @@ class JobSearchRequest(BaseModel):
 
     resume_id: str = Field(description="Master resume ID to extract keywords from")
     filters: JobSearchFilters = Field(default_factory=JobSearchFilters)
+    sources: list[str] = Field(default_factory=list, description="Optional list of MCP sources to search. Empty = all enabled.")
 
 
 class JobListing(BaseModel):

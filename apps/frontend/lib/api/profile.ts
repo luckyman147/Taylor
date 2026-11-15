@@ -33,6 +33,8 @@ export interface CareerProfile {
   awards: string[];
   source_resume_id: string | null;
   source_resume_title: string | null;
+  avatar: string | null;
+  email_signature: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +70,12 @@ export interface CareerEducation {
   updated_at: string;
 }
 
+export interface ProjectAttachment {
+  name: string;
+  url: string;
+  type: 'image' | 'document';
+}
+
 export interface CareerProject {
   project_id: string;
   name: string;
@@ -78,6 +86,8 @@ export interface CareerProject {
   description: string[];
   languages: string[];
   readme: string | null;
+  status: 'completed' | 'in_progress' | 'future';
+  attachments: ProjectAttachment[];
   created_at: string;
   updated_at: string;
 }
@@ -118,6 +128,8 @@ export interface ProfileUpdate {
   work_experience?: WorkExperienceItem[];
   languages?: string[];
   awards?: string[];
+  avatar?: string | null;
+  email_signature?: string | null;
 }
 
 export interface SkillCreate {
@@ -454,6 +466,8 @@ export interface ProjectCreate {
   description?: string[];
   languages?: string[];
   readme?: string | null;
+  status?: 'completed' | 'in_progress' | 'future';
+  attachments?: ProjectAttachment[];
 }
 
 export interface ProjectUpdate {
@@ -465,6 +479,8 @@ export interface ProjectUpdate {
   description?: string[];
   languages?: string[];
   readme?: string | null;
+  status?: 'completed' | 'in_progress' | 'future';
+  attachments?: ProjectAttachment[];
 }
 
 export interface GitHubImportResult {
@@ -489,6 +505,27 @@ export async function updateProject(
 export async function deleteProject(projectId: string): Promise<void> {
   const res = await apiDelete(`/profile/projects/${projectId}`);
   await asJson<CareerActionResponse>(res, 'Failed to delete project');
+}
+
+export async function uploadProjectAttachment(
+  projectId: string,
+  file: File
+): Promise<CareerProject> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await apiFetch(`/profile/projects/${projectId}/attachments`, {
+    method: 'POST',
+    body: formData,
+  });
+  return asJson<CareerProject>(res, 'Failed to upload attachment');
+}
+
+export async function deleteProjectAttachment(
+  projectId: string,
+  filename: string
+): Promise<void> {
+  const res = await apiDelete(`/profile/projects/${projectId}/attachments/${filename}`);
+  await asJson<CareerActionResponse>(res, 'Failed to delete attachment');
 }
 
 export async function importProjectsFromGithub(
@@ -580,6 +617,26 @@ export async function getSkillSuggestions(): Promise<SkillSuggestionsResponse> {
   return asJson<SkillSuggestionsResponse>(res, 'Failed to load skill suggestions');
 }
 
+export interface ProjectIdea {
+  name: string;
+  description: string;
+  problem: string;
+  solution: string;
+  technologies: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  reason: string;
+}
+
+export interface ProjectIdeasResponse {
+  ideas: ProjectIdea[];
+  note: string | null;
+}
+
+export async function getProjectIdeas(context?: string): Promise<ProjectIdeasResponse> {
+  const res = await apiPost('/profile/project-ideas', { context: context || '' }, 300_000);
+  return asJson<ProjectIdeasResponse>(res, 'Failed to load project ideas');
+}
+
 export type ProfileSuggestionField = 'career_goals' | 'target_roles' | 'target_locations';
 
 export async function getProfileSuggestions(
@@ -587,4 +644,67 @@ export async function getProfileSuggestions(
 ): Promise<{ suggestions: string[] }> {
   const res = await apiFetch(`/profile/suggestions?field=${field}`, { credentials: 'include' });
   return asJson<{ suggestions: string[] }>(res, 'Failed to load suggestions');
+}
+
+// ---------------------------------------------------------------------------
+// Avatar
+// ---------------------------------------------------------------------------
+
+export async function uploadAvatar(file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await apiFetch('/avatar', {
+    method: 'POST',
+    body: formData,
+  });
+  return asJson<{ url: string }>(res, 'Failed to upload avatar');
+}
+
+// ---------------------------------------------------------------------------
+// Export / Import
+// ---------------------------------------------------------------------------
+
+export function exportProfileAsJson(bundle: ProfileBundle): void {
+  const data = JSON.stringify(bundle, null, 2);
+  const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const name = bundle.profile.name?.trim().replace(/\s+/g, '_') || 'profile';
+  link.download = `${name}_profile.json`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    link.remove();
+  }, 1000);
+}
+
+export async function downloadProfilePdf(): Promise<Blob> {
+  const res = await apiFetch('/profile/pdf');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(extractDetail(data) || `Failed to export PDF (status ${res.status}).`);
+  }
+  return res.blob();
+}
+
+export async function downloadProfileDocx(): Promise<Blob> {
+  const res = await apiFetch('/profile/docx');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(extractDetail(data) || `Failed to export DOCX (status ${res.status}).`);
+  }
+  return res.blob();
+}
+
+export async function importProfilePreview(file: File): Promise<ProfileBundle> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await apiFetch('/profile/import-preview', {
+    method: 'POST',
+    body: formData,
+  });
+  return asJson<ProfileBundle>(res, 'Failed to parse resume');
 }

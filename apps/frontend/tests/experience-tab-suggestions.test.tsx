@@ -46,6 +46,8 @@ const bundle: ProfileBundle = {
     awards: [],
     source_resume_id: null,
     source_resume_title: null,
+    avatar: null,
+    email_signature: null,
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z',
   },
@@ -79,9 +81,7 @@ describe('ExperienceTab AI skill suggestions', () => {
 
   it('opens the dialog and lists suggestions with reasons', async () => {
     getSkillSuggestions.mockResolvedValue({
-      skills: [
-        { name: 'Docker', reason: 'Your projects run in containers.', kind: 'remembered' },
-      ],
+      skills: [{ name: 'Docker', reason: 'Your projects run in containers.', kind: 'remembered' }],
       note: null,
     });
     render(<ExperienceTab bundle={bundle} onChanged={vi.fn()} />);
@@ -106,7 +106,9 @@ describe('ExperienceTab AI skill suggestions', () => {
 
     await openDialog();
 
-    expect(await screen.findByText('profile.skills.suggestionsGroupRemembered')).toBeInTheDocument();
+    expect(
+      await screen.findByText('profile.skills.suggestionsGroupRemembered')
+    ).toBeInTheDocument();
     expect(screen.getByText('profile.skills.suggestionsGroupLearnNext')).toBeInTheDocument();
     expect(screen.getByText('Docker')).toBeInTheDocument();
     expect(screen.getByText('RAG')).toBeInTheDocument();

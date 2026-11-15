@@ -58,6 +58,13 @@ export function MyComponent() {
 - **UI Language:** Controlled by `next-intl`, affects interface text
 - **Content Language:** Controlled by `LanguageProvider`, affects LLM-generated content (cover letters, tailored resumes)
 
+**Correspondence fallback:** cover letters, outreach messages, and interview
+prep call `resolve_correspondence_language(job_description)`. An explicitly
+configured `content_language` (or legacy `language`) always wins. When it is
+unset/null, the job description's language is detected (`fr`, `es`, `pt`,
+`zh`, `ja`, `ko`) and English is the final fallback — so a French JD produces
+French correspondence without changing the UI locale.
+
 ## Backend i18n (Future)
 
 Currently prompts are English-only. To support multiple languages:

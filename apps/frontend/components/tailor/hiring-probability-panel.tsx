@@ -55,9 +55,7 @@ export function HiringProbabilityPanel({ jobId }: HiringProbabilityPanelProps) {
   if (error && !data) {
     return (
       <div className="mb-3 border border-red-200 bg-red-50 p-4">
-        <p className="text-xs font-bold text-red-700">
-          {t('tailor.hiringProbability.loadFailed')}
-        </p>
+        <p className="text-xs font-bold text-red-700">{t('tailor.hiringProbability.loadFailed')}</p>
         <button
           type="button"
           onClick={() => fetchData(jobId)}
@@ -84,7 +82,12 @@ export function HiringProbabilityPanel({ jobId }: HiringProbabilityPanelProps) {
 
   if (!data) return null;
 
-  const factors: { key: 'skills' | 'experience' | 'seniority'; label: string; score: number; detail: string }[] = [
+  const factors: {
+    key: 'skills' | 'experience' | 'seniority';
+    label: string;
+    score: number;
+    detail: string;
+  }[] = [
     {
       key: 'skills',
       label: t('tailor.hiringProbability.skills'),
@@ -116,7 +119,10 @@ export function HiringProbabilityPanel({ jobId }: HiringProbabilityPanelProps) {
         {factors.map((factor) => {
           const style = FACTOR_STYLES[factor.key];
           return (
-            <div key={factor.key} className="rounded-lg border border-[#e6e3dc] bg-paper-tint/50 p-2.5">
+            <div
+              key={factor.key}
+              className="rounded-lg border border-[#e6e3dc] bg-paper-tint/50 p-2.5"
+            >
               <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
                 {factor.label}
               </p>

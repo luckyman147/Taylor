@@ -64,11 +64,13 @@ GET /api/v1/health
 
 ```
 GET /api/v1/status                    # each check isolated → 200 (partial/degraded), never 500
-├── try: get_llm_config()
-│   ├── llm_configured = api_key set OR provider ∈ {ollama, openai_compatible}
-│   └── check_llm_health() → llm_healthy   # failure here degrades only this field
-├── try: db.get_stats()                     # failure → empty stats, still 200
-└── Return {status, llm_configured, llm_healthy, has_master_resume, database_stats}
+├─ try: get_llm_config()
+│  └─ llm_configured = api_key set OR provider ∈ {ollama, openai_compatible}
+│     └─ check_llm_health() → llm_healthy   # failure here degrades only this field
+│        # probe memoized 10 min (llm_cache, keyed on provider/model/key)
+├─ try: db.get_stats()                     # failure → empty stats, still 200
+├─ llm_usage = {totals: {calls, prompt_tokens, completion_tokens}, by_tag: {...}}
+└─ Return {status, llm_configured, llm_healthy, has_master_resume, database_stats, llm_usage}
 ```
 
 ## Configuration Update
@@ -151,15 +153,19 @@ GET /api/v1/companies
 └── Return {companies}        # ordered by name (case-insensitive)
 
 POST /api/v1/companies        # create — only name required
+├── db.get_company_by_name()  # existing name → return it (no refetch)
+├── fetch_company_description() # only when description empty && website set:
+│                               #   crawl4ai → Jina, condensed to ≤2000 chars;
+│                               #   fetch failure → store null (create still 201)
 ├── db.create_company()       # dedupes on name (case-insensitive): returns existing row
 └── Return Company
 
 POST /api/v1/companies/import # CSV or Excel (.xlsx) upload
 ├── db.get_company_by_name()  # skip rows whose name already exists
-├── db.create_company()       # per valid row
+├── db.create_company()       # per valid row (description column imported as-is, no fetch)
 └── Return {created, skipped, errors: [{row, name, error}]}
     # headers matched flexibly (name/email/phone/address/website/size/type/
-    # linkedin/industry/founded aliases)
+    # linkedin/industry/founded/description aliases)
     # optional `mapping` form field (JSON {field: exact header}) pins columns:
     # only mapped fields are imported (no alias fallback)
     # size accepts friendly forms ("51-200 employees"); bad rows are
@@ -170,6 +176,8 @@ POST /api/v1/companies/import/headers # read columns of a CSV/Excel file
 
 GET /api/v1/companies/{id}    # db.get_company()
 PATCH /api/v1/companies/{id}  # db.update_company() — partial; 409 on duplicate rename
+                               # backfill: description empty && website in payload
+                               # → fetch once; no website in payload → no fetch
 DELETE /api/v1/companies/{id} # db.delete_company()
 ```
 
@@ -178,6 +186,7 @@ DELETE /api/v1/companies/{id} # db.delete_company()
 | `company_size` | string enum | `1-10 \| 11-50 \| 51-200 \| 201-1000 \| 1000+` |
 | `company_type` | string enum | `startup \| agency \| enterprise \| nonprofit \| education \| government \| other` |
 | `year_founded` | int | validated 1600–2100 |
+| `description` | text ≤4000 | auto-fetched once from `website` when empty (create/backfill); reused by bulk-email research instead of re-crawling |
 | `email`/`website`/`linkedin_url` | string | stored plain; linked client-side |
 
 ## Career Profile (`/profile`)

@@ -3,7 +3,7 @@
  */
 
 export function groupThreadsByDate<T extends { updated_at: string }>(
-  threads: T[],
+  threads: T[]
 ): { label: string; threads: T[] }[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

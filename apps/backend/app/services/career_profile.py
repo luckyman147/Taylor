@@ -28,6 +28,7 @@ from app.prompts.templates import (
     CAREER_ADVISOR_SYSTEM_PROMPT,
     CAREER_GAP_ANALYSIS_PROMPT,
     CAREER_ROI_ADVICE_PROMPT,
+    PROJECT_IDEAS_PROMPT,
     SKILL_RESOURCES_PROMPT,
     SKILL_SUGGESTIONS_PROMPT,
 )
@@ -904,11 +905,314 @@ async def generate_skill_suggestions() -> list[dict[str, str]] | None:
         "projects": projects[:10],
         "certifications": certifications[:10],
     }
+    if not any(context.values()):
+        logger.info("Skill suggestions: profile is empty, skipping LLM call")
+        return []
+    logger.info(
+        "Skill suggestions: profile context has %d skills, %d roles, %d projects, %d certs",
+        len(context["skills"]),
+        len(context["work_roles"]),
+        len(context["projects"]),
+        len(context["certifications"]),
+    )
     prompt = SKILL_SUGGESTIONS_PROMPT.format(
         profile=json.dumps(context, ensure_ascii=False),
         output_language=_output_language(),
         current_year=str(datetime.now(timezone.utc).year),
     )
-    raw = await complete_json(prompt, max_tokens=1024)
+    raw = await complete_json(prompt, max_tokens=1024, schema_type="keywords")
+    logger.info("Skill suggestions: LLM returned %s", json.dumps(raw, ensure_ascii=False)[:500] if isinstance(raw, dict) else type(raw).__name__)
     existing = {s["name"].lower() for s in skills if s.get("name")}
-    return _normalize_skill_suggestions(raw, existing)
+    result = _normalize_skill_suggestions(raw, existing)
+    logger.info("Skill suggestions: %d suggestions after normalization", len(result))
+    if not result:
+        result = _fallback_skill_suggestions(existing, work_roles)
+        logger.info("Skill suggestions: %d fallback suggestions", len(result))
+    return result
+
+
+# --- Fallback skill suggestions (rule-based, no LLM) ---
+
+# Map of existing skill keywords -> complementary skills worth learning
+_SKILL_CHAINS: dict[str, list[dict[str, str]]] = {
+    # Frontend
+    "react": [
+        {"name": "Next.js", "reason": "Server-side rendering and full-stack React apps", "kind": "learn_next"},
+        {"name": "TypeScript", "reason": "Type-safe React development", "kind": "learn_next"},
+    ],
+    "vue": [
+        {"name": "Nuxt.js", "reason": "Server-side rendering and full-stack Vue apps", "kind": "learn_next"},
+        {"name": "TypeScript", "reason": "Type-safe Vue development", "kind": "learn_next"},
+    ],
+    "javascript": [
+        {"name": "TypeScript", "reason": "Adds static typing to JavaScript projects", "kind": "learn_next"},
+        {"name": "Node.js", "reason": "Server-side JavaScript for full-stack development", "kind": "learn_next"},
+    ],
+    "typescript": [
+        {"name": "tRPC", "reason": "End-to-end type-safe APIs", "kind": "learn_next"},
+    ],
+    "html": [],
+    "css": [
+        {"name": "Tailwind CSS", "reason": "Utility-first CSS for rapid UI development", "kind": "learn_next"},
+    ],
+    # Backend
+    "python": [
+        {"name": "FastAPI", "reason": "High-performance async Python APIs", "kind": "learn_next"},
+        {"name": "Docker", "reason": "Containerize Python applications", "kind": "learn_next"},
+    ],
+    "java": [
+        {"name": "Spring Boot", "reason": "Production-ready Java microservices", "kind": "learn_next"},
+        {"name": "Docker", "reason": "Containerize Java applications", "kind": "learn_next"},
+    ],
+    "node": [
+        {"name": "Docker", "reason": "Containerize Node.js services", "kind": "learn_next"},
+        {"name": "PostgreSQL", "reason": "Relational database for Node.js backends", "kind": "learn_next"},
+    ],
+    "go": [
+        {"name": "Docker", "reason": "Go excels at containerized microservices", "kind": "learn_next"},
+        {"name": "Kubernetes", "reason": "Orchestrate Go services at scale", "kind": "learn_next"},
+    ],
+    "rust": [
+        {"name": "WebAssembly", "reason": "Run Rust in the browser via WASM", "kind": "learn_next"},
+    ],
+    "php": [
+        {"name": "Laravel", "reason": "Modern PHP framework for rapid development", "kind": "learn_next"},
+    ],
+    "ruby": [
+        {"name": "Rails", "reason": "Full-stack Ruby web framework", "kind": "learn_next"},
+    ],
+    # DevOps / Cloud
+    "docker": [
+        {"name": "Kubernetes", "reason": "Container orchestration for production deployments", "kind": "learn_next"},
+        {"name": "GitHub Actions", "reason": "CI/CD pipelines for containerized apps", "kind": "learn_next"},
+    ],
+    "aws": [
+        {"name": "Terraform", "reason": "Infrastructure as Code for cloud resources", "kind": "learn_next"},
+        {"name": "Docker", "reason": "Containerize workloads for AWS deployment", "kind": "learn_next"},
+    ],
+    "azure": [
+        {"name": "Terraform", "reason": "Infrastructure as Code for Azure resources", "kind": "learn_next"},
+    ],
+    "gcp": [
+        {"name": "Terraform", "reason": "Infrastructure as Code for GCP resources", "kind": "learn_next"},
+    ],
+    # Data
+    "sql": [
+        {"name": "dbt", "reason": "Data transformation with SQL", "kind": "learn_next"},
+        {"name": "PostgreSQL", "reason": "Advanced SQL with a modern RDBMS", "kind": "learn_next"},
+    ],
+    "postgresql": [
+        {"name": "Prisma", "reason": "Type-safe database ORM for Node.js", "kind": "learn_next"},
+    ],
+    "mongodb": [
+        {"name": "Redis", "reason": "In-memory caching alongside document storage", "kind": "learn_next"},
+    ],
+    "pandas": [
+        {"name": "dbt", "reason": "Transform data with SQL instead of Python scripts", "kind": "learn_next"},
+    ],
+    # AI / ML
+    "machine learning": [
+        {"name": "RAG", "reason": "Retrieval-Augmented Generation for LLM applications", "kind": "learn_next"},
+    ],
+    "tensorflow": [
+        {"name": "RAG", "reason": "Combine deep learning with retrieval-based AI", "kind": "learn_next"},
+    ],
+    "pytorch": [
+        {"name": "RAG", "reason": "Combine deep learning with retrieval-based AI", "kind": "learn_next"},
+    ],
+}
+
+# In-demand 2026 skills to suggest when no stack match is found
+_GENERIC_2026_SKILLS: list[dict[str, str]] = [
+    {"name": "Docker", "reason": "Industry-standard containerization for any developer", "kind": "learn_next"},
+    {"name": "Git", "reason": "Version control is essential for collaboration", "kind": "remembered"},
+    {"name": "CI/CD", "reason": "Automate testing and deployment pipelines", "kind": "learn_next"},
+    {"name": "PostgreSQL", "reason": "Most popular open-source relational database", "kind": "learn_next"},
+    {"name": "TypeScript", "reason": "Type safety across frontend and backend JavaScript", "kind": "learn_next"},
+    {"name": "REST APIs", "reason": "Standard pattern for web service integration", "kind": "remembered"},
+    {"name": "Linux", "reason": "Server management and command-line proficiency", "kind": "remembered"},
+    {"name": "SQL", "reason": "Essential for data querying and analysis", "kind": "remembered"},
+    {"name": "Agentic AI workflows", "reason": "Build autonomous AI agents that use tools and reason", "kind": "learn_next"},
+    {"name": "Prompt Engineering", "reason": "Effectively interact with LLMs for productivity", "kind": "learn_next"},
+]
+
+
+def _fallback_skill_suggestions(
+    existing_names: set[str],
+    work_roles: list[str],
+) -> list[dict[str, str]]:
+    """Rule-based skill suggestions when the LLM returns nothing useful.
+
+    Matches the user's existing skills against ``_SKILL_CHAINS`` to find
+    complementary skills worth learning.  Falls back to ``_GENERIC_2026_SKILLS``
+    when no stack-specific matches are found.
+    """
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    # 1. Try stack-specific chains
+    for skill_name in existing_names:
+        chain = _SKILL_CHAINS.get(skill_name)
+        if not chain:
+            continue
+        for suggestion in chain:
+            name_lower = suggestion["name"].lower()
+            if name_lower in existing_names or name_lower in seen:
+                continue
+            seen.add(name_lower)
+            result.append(dict(suggestion))
+            if len(result) >= _MAX_SKILL_SUGGESTIONS:
+                return result
+
+    # 2. Role-based hints
+    role_text = " ".join(work_roles).lower()
+    role_hints: list[dict[str, str]] = []
+    if any(w in role_text for w in ("front", "ui", "ux", "web")):
+        role_hints.extend([
+            {"name": "Tailwind CSS", "reason": "Rapid UI styling for frontend developers", "kind": "learn_next"},
+            {"name": "Figma", "reason": "Design-to-code workflow for frontend teams", "kind": "remembered"},
+        ])
+    if any(w in role_text for w in ("back", "api", "server", "infra")):
+        role_hints.extend([
+            {"name": "Docker", "reason": "Standard containerization for backend services", "kind": "learn_next"},
+            {"name": "Kubernetes", "reason": "Orchestrate production workloads", "kind": "learn_next"},
+        ])
+    if any(w in role_text for w in ("full", "stack")):
+        role_hints.extend([
+            {"name": "Docker", "reason": "Package full-stack apps for any environment", "kind": "learn_next"},
+            {"name": "PostgreSQL", "reason": "Relational database for full-stack apps", "kind": "learn_next"},
+        ])
+    for suggestion in role_hints:
+        name_lower = suggestion["name"].lower()
+        if name_lower in existing_names or name_lower in seen:
+            continue
+        seen.add(name_lower)
+        result.append(dict(suggestion))
+        if len(result) >= _MAX_SKILL_SUGGESTIONS:
+            return result
+
+    # 3. Generic 2026 skills as last resort
+    for suggestion in _GENERIC_2026_SKILLS:
+        name_lower = suggestion["name"].lower()
+        if name_lower in existing_names or name_lower in seen:
+            continue
+        seen.add(name_lower)
+        result.append(dict(suggestion))
+        if len(result) >= _MAX_SKILL_SUGGESTIONS:
+            return result
+
+    return result
+
+
+async def generate_project_ideas(user_context: str = "") -> list[dict[str, Any]] | None:
+    """LLM project idea suggestions over the local career data.
+
+    Returns None when the LLM is not configured; the router surfaces a note.
+    """
+    if not _llm_configured():
+        return None
+    profile = await db.get_career_profile()
+    skills = [
+        {"name": skill.get("name"), "category": skill.get("category")}
+        for skill in await db.list_career_skills()
+    ]
+    work_roles = [
+        str(entry.get("role") or "").strip()
+        for entry in (profile or {}).get("work_experience") or []
+        if entry.get("role")
+    ]
+    projects = [
+        {"name": project.get("name"), "languages": project.get("languages")}
+        for project in await db.list_career_projects()
+    ]
+    certifications = [
+        cert.get("name")
+        for cert in await db.list_career_certifications()
+        if cert.get("name")
+    ]
+    context = {
+        "skills": skills[:40],
+        "work_roles": work_roles[:10],
+        "projects": projects[:10],
+        "certifications": certifications[:10],
+    }
+    if not any(context.values()):
+        logger.info("Project ideas: profile is empty, skipping LLM call")
+        return []
+    prompt = PROJECT_IDEAS_PROMPT.format(
+        profile=json.dumps(context, ensure_ascii=False),
+        output_language=_output_language(),
+        user_context=f"\n\nThe user specifically wants: {user_context}" if user_context else "",
+    )
+    raw = await complete_json(prompt, max_tokens=1024, schema_type="keywords")
+    logger.info("Project ideas: LLM returned %s", json.dumps(raw, ensure_ascii=False)[:500] if isinstance(raw, dict) else type(raw).__name__)
+    ideas = raw.get("ideas") if isinstance(raw, dict) else None
+    if not isinstance(ideas, list):
+        return []
+    existing_projects = {
+        str(p.get("name", "")).lower()
+        for p in await db.list_career_projects()
+    }
+    seen: set[str] = set()
+    result: list[dict[str, Any]] = []
+    for entry in ideas:
+        if len(result) >= 6:
+            break
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if len(name) < 2 or name.lower() in existing_projects or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        difficulty = str(entry.get("difficulty") or "intermediate").strip().lower()
+        if difficulty not in ("beginner", "intermediate", "advanced"):
+            difficulty = "intermediate"
+        result.append({
+            "name": name[:100],
+            "description": str(entry.get("description") or "").strip()[:300],
+            "problem": str(entry.get("problem") or "").strip()[:300],
+            "solution": str(entry.get("solution") or "").strip()[:300],
+            "technologies": [str(t) for t in (entry.get("technologies") or [])[:6]],
+            "difficulty": difficulty,
+            "reason": str(entry.get("reason") or "").strip()[:200],
+        })
+    return result
+
+    # 2. Role-based hints
+    role_text = " ".join(work_roles).lower()
+    role_hints: list[dict[str, str]] = []
+    if any(w in role_text for w in ("front", "ui", "ux", "web")):
+        role_hints.extend([
+            {"name": "Tailwind CSS", "reason": "Rapid UI styling for frontend developers", "kind": "learn_next"},
+            {"name": "Figma", "reason": "Design-to-code workflow for frontend teams", "kind": "remembered"},
+        ])
+    if any(w in role_text for w in ("back", "api", "server", "infra")):
+        role_hints.extend([
+            {"name": "Docker", "reason": "Standard containerization for backend services", "kind": "learn_next"},
+            {"name": "Kubernetes", "reason": "Orchestrate production workloads", "kind": "learn_next"},
+        ])
+    if any(w in role_text for w in ("full", "stack")):
+        role_hints.extend([
+            {"name": "Docker", "reason": "Package full-stack apps for any environment", "kind": "learn_next"},
+            {"name": "PostgreSQL", "reason": "Relational database for full-stack apps", "kind": "learn_next"},
+        ])
+    for suggestion in role_hints:
+        name_lower = suggestion["name"].lower()
+        if name_lower in existing_names or name_lower in seen:
+            continue
+        seen.add(name_lower)
+        result.append(dict(suggestion))
+        if len(result) >= _MAX_SKILL_SUGGESTIONS:
+            return result
+
+    # 3. Generic 2026 skills as last resort
+    for suggestion in _GENERIC_2026_SKILLS:
+        name_lower = suggestion["name"].lower()
+        if name_lower in existing_names or name_lower in seen:
+            continue
+        seen.add(name_lower)
+        result.append(dict(suggestion))
+        if len(result) >= _MAX_SKILL_SUGGESTIONS:
+            return result
+
+    return result

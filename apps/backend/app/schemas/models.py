@@ -717,9 +717,18 @@ class ImproveResumeRequest(BaseModel):
     selected_projects: list[str] | None = Field(
         default=None,
         description=(
-            "Career project names the user picked from the suggestions step. "
-            "When provided, the Projects section is replaced with exactly "
-            "these projects instead of the auto-selected top matches."
+            "Career project names the user explicitly picked from the "
+            "suggestions step. When non-empty, the Projects section is replaced "
+            "with exactly these projects, even if keep_projects is true."
+        ),
+    )
+    keep_projects: bool = Field(
+        default=True,
+        description=(
+            "Keep the resume's current Projects section exactly as-is. "
+            "Defaults to true so tailoring never replaces projects by accident. "
+            "Set to false (with no selected_projects) to explicitly opt into "
+            "the auto-selected top matches."
         ),
     )
 
@@ -1090,6 +1099,9 @@ class EmailConfigRequest(BaseModel):
     sender_name: str | None = None
     use_tls: bool | None = None
     password: str | None = None
+    # Mirrors career_profiles.email_signature (profile is source of truth).
+    # None = don't change; empty string = clear; value = set (sanitized).
+    email_signature: str | None = Field(default=None, max_length=20000)
 
 
 class EmailConfigResponse(BaseModel):
@@ -1101,6 +1113,7 @@ class EmailConfigResponse(BaseModel):
     sender_name: str = ""
     use_tls: bool = True
     has_password: bool = False
+    email_signature: str = ""
 
 
 class SendEmailResponse(BaseModel):
@@ -1119,16 +1132,141 @@ class SentEmailAttachment(BaseModel):
 
 
 class SentEmailResponse(BaseModel):
-    """One historical sent-email entry for a company."""
+    """One historical sent-email entry for a company or contact."""
 
     log_id: str
     company_id: str | None = None
+    contact_id: str | None = None
     company_name: str = ""
     recipient_email: str
     subject: str
     body: str
     attachments: list[SentEmailAttachment] = []
+    purpose: str | None = None
+    email_mode: str | None = None
+    outcome: str = "pending"
+    outcome_note: str | None = None
+    outcome_at: str | None = None
     sent_at: str
+
+
+# -- Outreach outcome tracking + analytics ---------------------------------
+
+SENT_EMAIL_OUTCOMES = ("pending", "responded", "not_interested", "bounced")
+
+
+class SentEmailOutcomeRequest(BaseModel):
+    """Manual/confirmed response outcome for one sent email."""
+
+    outcome: str = Field(..., description="pending|responded|not_interested|bounced")
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class SentEmailOutcomeResponse(BaseModel):
+    """Result of updating one sent email's outcome."""
+
+    updated: bool
+    email: SentEmailResponse | None = None
+
+
+class BulkSentEmailOutcomeRequest(BaseModel):
+    """Apply one outcome to many sent emails at once."""
+
+    log_ids: list[str] = Field(..., min_length=1, max_length=500)
+    outcome: str = Field(..., description="pending|responded|not_interested|bounced")
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class BulkSentEmailOutcomeResponse(BaseModel):
+    """Result of a bulk outcome update."""
+
+    updated: int
+
+
+class ReplyCandidateMatch(BaseModel):
+    """An inbox message that appears to be a reply from a recipient."""
+
+    uid: str = ""
+    subject: str = ""
+    sender: str = ""
+    date: str = ""
+    snippet: str = ""
+
+
+class ReplyCandidate(BaseModel):
+    """A pending sent email with a possible inbox reply matched to it."""
+
+    log_id: str
+    recipient_email: str
+    company_name: str = ""
+    sent_subject: str = ""
+    sent_at: str = ""
+    matched: ReplyCandidateMatch
+
+
+class CheckRepliesResponse(BaseModel):
+    """Result of the IMAP reply check for pending sent emails."""
+
+    checked: int = 0
+    candidates: list[ReplyCandidate] = []
+    unavailable_reason: str | None = None
+
+
+class SegmentStat(BaseModel):
+    """Sent/responded breakdown for one segment bucket."""
+
+    key: str = ""
+    sent: int = 0
+    responded: int = 0
+    response_rate: float = 0.0
+
+
+class EmailTimelinePoint(BaseModel):
+    """One day of send/response activity."""
+
+    date: str
+    sent: int = 0
+    responded: int = 0
+
+
+class EmailStatsResponse(BaseModel):
+    """Deterministic outreach performance statistics."""
+
+    total_sent: int = 0
+    pending: int = 0
+    responded: int = 0
+    not_interested: int = 0
+    bounced: int = 0
+    response_rate: float = 0.0
+    avg_body_length_responded: float | None = None
+    avg_body_length_not_responded: float | None = None
+    by_recipient_type: list[SegmentStat] = []
+    by_mode: list[SegmentStat] = []
+    by_purpose: list[SegmentStat] = []
+    top_subjects: list[dict] = []
+    timeline: list[EmailTimelinePoint] = []
+
+
+class OutreachAnalysisReport(BaseModel):
+    """LLM analysis of outreach performance: what works, what to change."""
+
+    summary: str = ""
+    what_works: list[str] = []
+    what_fails: list[str] = []
+    subject_tips: list[str] = []
+    body_tips: list[str] = []
+    cta_tips: list[str] = []
+    example_subject: str = ""
+    example_body: str = ""
+
+
+class OutreachAnalysisResponse(BaseModel):
+    """Response for POST /email/analyze and GET /email/analysis/latest."""
+
+    report: OutreachAnalysisReport
+    emails_analyzed: int = 0
+    message: str = ""
+    created_at: str | None = None
 
 
 # Update Cover Letter/Outreach Models
@@ -1205,6 +1343,10 @@ class StatusResponse(BaseModel):
     has_master_resume: bool
     master_resume_count: int = 0
     database_stats: dict[str, Any]
+    # In-process LLM token usage since startup (rate-limit observability):
+    # {"totals": {"calls", "prompt_tokens", "completion_tokens"},
+    #  "by_tag": {<trace/schema>: {...}}}. None only if usage tracking failed.
+    llm_usage: dict[str, Any] | None = None
 
 
 # Diff-Based Improvement Models

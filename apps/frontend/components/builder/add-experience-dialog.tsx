@@ -66,9 +66,7 @@ export const AddExperienceDialog: React.FC<AddExperienceDialogProps> = ({
   }, [open, reset, loadExperiences]);
 
   const existing = new Set(existingTitles.map((t) => t.trim().toLowerCase()).filter(Boolean));
-  const available = experiences.filter(
-    (e) => !existing.has(e.role.trim().toLowerCase())
-  );
+  const available = experiences.filter((e) => !existing.has(e.role.trim().toLowerCase()));
 
   const filtered = query.trim()
     ? available.filter(

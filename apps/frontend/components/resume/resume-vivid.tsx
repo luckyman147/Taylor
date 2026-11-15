@@ -11,10 +11,12 @@ import type {
 import { getSortedSections, getSectionMeta } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
 import {
+  type AvatarSettings,
   type EducationSettings,
   type SkillsLayoutMode,
   type WorkExperienceSettings,
 } from '@/lib/types/template-settings';
+import { AvatarImage } from './avatar-image';
 import { arrangeEducationEntry, arrangeWorkEntry, workEntryInlineMeta } from './entry-arrange';
 import { DescriptionList } from './description-list';
 import baseStyles from './styles/_base.module.css';
@@ -28,6 +30,7 @@ interface ResumeVividProps {
   skillsLayout?: SkillsLayoutMode;
   workExperienceSettings?: WorkExperienceSettings;
   educationSettings?: EducationSettings;
+  avatarSettings?: AvatarSettings;
 }
 
 /**
@@ -49,6 +52,7 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
   skillsLayout = 'comma',
   workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
   educationSettings = { showBy: 'institution', layout: 'stacked' },
+  avatarSettings = { show: false, shape: 'circle', size: 'medium', border: 0, position: 'left', infoGap: 3 },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -172,7 +176,10 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
   return (
     <>
       {/* Header */}
-      <div className={baseStyles['resume-header']}>
+      <div className={`${baseStyles['resume-header']} ${avatarSettings?.show && data.personalInfo?.avatar ? baseStyles['resume-header-with-avatar'] : ''}`}>
+        {/* Avatar */}
+        <AvatarImage src={data.personalInfo?.avatar || ''} alt={data.personalInfo?.name} settings={avatarSettings} />
+        <div className={baseStyles['resume-avatar-info']}>
         <h1 className={baseStyles['resume-name']}>
           <span className={styles.nameFirst}>{nameFirst}</span>
           {nameRest && <span className={styles.nameRest}> {nameRest}</span>}
@@ -190,6 +197,7 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
             {renderContactDetail('Location', personalInfo.location)}
           </div>
         )}
+        </div>
       </div>
 
       {/* Two-Column Grid */}
@@ -333,7 +341,7 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
               {renderArrowBullets(certificationsTraining)}
             </div>
           )}
-          {(isSectionVisible('skills')) &&
+          {isSectionVisible('skills') &&
             !isSectionVisible('certifications') &&
             certificationsTraining.length > 0 && (
               <div className={baseStyles['resume-section']}>
@@ -388,13 +396,12 @@ export const ResumeVivid: React.FC<ResumeVividProps> = ({
               </div>
             )}
 
-          {(isSectionVisible('languages')) &&
-            languages.length > 0 && (
-              <div className={baseStyles['resume-section']}>
-                <h3 className={styles.sectionTitleSm}>{headingFallbacks.languages}</h3>
-                <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
-              </div>
-            )}
+          {isSectionVisible('languages') && languages.length > 0 && (
+            <div className={baseStyles['resume-section']}>
+              <h3 className={styles.sectionTitleSm}>{headingFallbacks.languages}</h3>
+              <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
+            </div>
+          )}
 
           {isSectionVisible('education') && education && education.length > 0 && (
             <div className={baseStyles['resume-section']}>

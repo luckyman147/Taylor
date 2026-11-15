@@ -139,7 +139,14 @@ export default function Hero() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#e6e3dc] bg-white/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/logo.png" alt="Taylor logo" width={24} height={24} unoptimized className="w-6 h-6" />
+            <Image
+              src="/logo.png"
+              alt="Taylor logo"
+              width={24}
+              height={24}
+              unoptimized
+              className="w-6 h-6"
+            />
             <span className="text-sm font-bold tracking-wide text-ink">Taylor</span>
           </Link>
           <div className="flex items-center gap-2">
@@ -378,7 +385,14 @@ export default function Hero() {
       <footer className="border-t border-[#e6e3dc] bg-white">
         <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Taylor logo" width={20} height={20} unoptimized className="w-5 h-5" />
+            <Image
+              src="/logo.png"
+              alt="Taylor logo"
+              width={20}
+              height={20}
+              unoptimized
+              className="w-5 h-5"
+            />
             <span className="text-xs font-bold uppercase tracking-wider text-ink">Taylor</span>
           </div>
           <div className="flex items-center gap-6 text-xs font-medium text-steel-grey">

@@ -27,7 +27,8 @@ function wrapSelection(
   const prefix = text.slice(start - before.length, start);
   const suffix = text.slice(end, end + after.length);
   if (prefix === before && suffix === after) {
-    const newText = text.slice(0, start - before.length) + selected + text.slice(end + after.length);
+    const newText =
+      text.slice(0, start - before.length) + selected + text.slice(end + after.length);
     return {
       value: newText,
       selectionStart: start - before.length,

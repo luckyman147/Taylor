@@ -567,15 +567,24 @@ def _extract_mentions(text: str) -> list[str]:
 # History formatting
 # ---------------------------------------------------------------------------
 
+# Cap on the history string handed to the planner (~1.5k tokens). Without a
+# budget this pass grew by 2k chars per message — the only unbudgeted context
+# in the turn — while thinking/answer are capped at ~5k tokens elsewhere.
+_HISTORY_CHAR_BUDGET = 6000
+
+
 def _format_history(messages: list[dict[str, Any]], limit: int = 20) -> str:
     """Format recent messages into a compact history string.
 
     Includes envelope card summaries so the planner can see what tools
-    were previously called and what results were returned.
+    were previously called and what results were returned. Newest messages
+    are kept first-come within the character budget, so truncation drops the
+    oldest turns rather than the most recent context.
     """
     recent = messages[-limit:]
     parts: list[str] = []
-    for m in recent:
+    used = 0
+    for m in reversed(recent):
         role = m.get("role", "user")
         content = (m.get("content") or "")[:2000]
         # Append card summaries from envelope so planner sees tool activity
@@ -600,7 +609,12 @@ def _format_history(messages: list[dict[str, Any]], limit: int = 20) -> str:
                     card_summaries.append("clarification: asked")
             if card_summaries:
                 content += f" [tools: {', '.join(card_summaries)}]"
-        parts.append(f"{role.upper()}: {content}")
+        part = f"{role.upper()}: {content}"
+        if used + len(part) > _HISTORY_CHAR_BUDGET:
+            break
+        used += len(part)
+        parts.append(part)
+    parts.reverse()
     return "\n".join(parts)
 
 
@@ -918,6 +932,7 @@ async def _run_turn_core(
             prompt=planner_prompt,
             system_prompt=system_prompt,
             schema_type="chat_plan",
+            max_tokens=1500,  # plan JSON is small; default 4096 was headroom waste
             metadata={
                 "trace_name": "chat_planner",
                 "session_id": thread_id,
@@ -1066,9 +1081,14 @@ async def _run_turn_core(
 
     rag_context = ""
     try:
+        from app.config import settings as _rag_settings
         from app.services.rag import rag_index
         from app.services.rag import build_context_block
-        rag_results = await rag_index.query(user_message, top_k=3, rerank=True)
+        # rerank is the expensive part (up to ~20 LLM scoring calls/turn);
+        # RAG_ENABLED=false keeps free retrieval (BM25 + vectors) and drops it.
+        rag_results = await rag_index.query(
+            user_message, top_k=3, rerank=_rag_settings.rag_enabled
+        )
         rag_input = {}
         for source_type, items in rag_results.items():
             rag_input[source_type] = items
@@ -1116,14 +1136,19 @@ async def _run_turn_core(
         logger.warning("Thinking pass failed: %s", e)
         thinking = ""
 
+    # Shared block for both passes — the answer prompt re-sends the same
+    # context, so build it once and keep the two prompts byte-identical here.
+    tool_stats = json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context
+    memories_text = _format_memories(memories)
+
     answer_prompt = CHAT_ANSWER_PROMPT.format(
         user_message=user_message,
         conversation_context=conversation_ctx,
         conversation_history=conversation_history,
         career_data=career_data,
-        tool_stats=json.dumps(tool_results, ensure_ascii=False, default=str) + resume_context,
+        tool_stats=tool_stats,
         rag_context=rag_context,
-        active_memories=_format_memories(memories),
+        active_memories=memories_text,
         mode=mode,
         output_language=output_language,
     )

@@ -9,11 +9,13 @@ import type {
 import { getSortedSections } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
 import {
+  type AvatarSettings,
   type EducationSettings,
   type ListSeparator,
   type SkillsLayoutMode,
   type WorkExperienceSettings,
 } from '@/lib/types/template-settings';
+import { AvatarImage } from './avatar-image';
 import { arrangeEducationEntry, arrangeWorkEntry, workEntryMeta } from './entry-arrange';
 import { DynamicResumeSection } from './dynamic-resume-section';
 import { DescriptionList } from './description-list';
@@ -29,6 +31,7 @@ interface ResumeSingleColumnProps {
   listSeparator?: ListSeparator;
   workExperienceSettings?: WorkExperienceSettings;
   educationSettings?: EducationSettings;
+  avatarSettings?: AvatarSettings;
 }
 
 /**
@@ -47,6 +50,7 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
   listSeparator = ',',
   workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
   educationSettings = { showBy: 'institution', layout: 'stacked' },
+  avatarSettings = { show: false, shape: 'circle', size: 'medium', border: 0, position: 'left', infoGap: 3 },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -385,9 +389,12 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
       {/* Header Section - Centered Layout (always first) */}
       {personalInfo && (
         <header
-          className={`${baseStyles['resume-header']} border-b`}
+          className={`${baseStyles['resume-header']} ${avatarSettings?.show && data.personalInfo?.avatar ? baseStyles['resume-header-with-avatar'] : ''} border-b`}
           style={{ borderColor: 'var(--resume-border-primary)' }}
         >
+          {/* Avatar */}
+          <AvatarImage src={data.personalInfo?.avatar || ''} alt={data.personalInfo?.name} settings={avatarSettings} />
+          <div className={baseStyles['resume-avatar-info']}>
           {/* Name - Centered */}
           {personalInfo.name && (
             <h1 className={`${baseStyles['resume-name']} tracking-tight uppercase mb-1`}>
@@ -439,6 +446,7 @@ export const ResumeSingleColumn: React.FC<ResumeSingleColumnProps> = ({
                 {renderContactDetail('GitHub', personalInfo.github)}
               </>
             )}
+          </div>
           </div>
         </header>
       )}

@@ -257,7 +257,7 @@ export function KanbanBoard() {
 
       {showOverview && (
         <div className="shrink-0 border-b border-[#e6e3dc] bg-paper-tint/40 px-6 pt-5 md:px-8">
-          <div className="max-h-[55vh] overflow-y-auto pr-2">
+          <div className="max-h-[75vh] overflow-y-auto pr-2">
             <OverviewSection />
           </div>
         </div>

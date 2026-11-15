@@ -6,8 +6,10 @@ import pytest
 
 from app.llm import (
     LLMConfig,
+    TruncatedJSONError,
     _appears_truncated,
     _azure_foundry_api_version,
+    _extract_json,
     _get_retry_temperature,
     _normalize_api_base,
     _supports_temperature,
@@ -339,6 +341,129 @@ class TestAppearsTruncated:
         """Unknown schema types have no truncation heuristics."""
         data = {"anything": []}
         assert _appears_truncated(data, schema_type="custom") is False
+
+
+# ---------------------------------------------------------------------------
+# Truncated JSON handling
+# ---------------------------------------------------------------------------
+
+
+class TestExtractJsonTruncation:
+    def test_truncated_object_raises_specific_error(self):
+        with pytest.raises(TruncatedJSONError):
+            _extract_json(
+                '{"changes": [{"path": "summary", "action": "replace", '
+                '"original": "Final-year engineering student and junior'
+            )
+
+    def test_truncated_fenced_json_raises_specific_error(self):
+        with pytest.raises(TruncatedJSONError):
+            _extract_json('```json\n{"changes": [{"path": "summary"}\n')
+
+    def test_balanced_object_is_not_treated_as_truncated(self):
+        assert _extract_json('{"changes": []}') == '{"changes": []}'
+
+
+class TestCompleteJsonTruncationRetry:
+    @pytest.mark.asyncio
+    @patch("app.llm.get_router")
+    @patch("app.llm.get_model_name")
+    @patch("app.llm._supports_json_mode")
+    async def test_gemini_truncation_retry_grows_budget_and_lowers_effort(
+        self, mock_supports_json, mock_get_name, mock_get_router
+    ):
+        """A truncated diff must retry with more output room, not repeat itself.
+
+        Gemini counts thinking tokens against maxOutputTokens; high effort plus
+        a 4096 budget truncated the JSON. The retry doubles the budget and drops
+        effort to minimal so the JSON fits.
+        """
+        mock_supports_json.return_value = False
+        mock_get_name.return_value = "gemini/gemini-3-flash-preview"
+
+        truncated_choice = MagicMock()
+        truncated_choice.message.content = (
+            '{"changes": [{"path": "summary", "action": "replace", '
+            '"original": "Final-year engineering student and junior'
+        )
+        truncated_choice.finish_reason = "length"
+        truncated_response = MagicMock()
+        truncated_response.choices = [truncated_choice]
+
+        good_choice = MagicMock()
+        good_choice.message.content = '{"changes": [], "strategy_notes": "ok"}'
+        good_choice.finish_reason = "stop"
+        good_response = MagicMock()
+        good_response.choices = [good_choice]
+
+        router = MagicMock()
+        router.acompletion = AsyncMock(
+            side_effect=[truncated_response, good_response]
+        )
+        config = MagicMock()
+        config.provider = "gemini"
+        config.reasoning_effort = "high"
+        mock_get_router.return_value = (router, config)
+
+        from app.llm import complete_json
+
+        result = await complete_json(
+            prompt="Generate resume diffs",
+            schema_type="diff",
+            max_tokens=4096,
+            retries=2,
+        )
+
+        assert result == {"changes": [], "strategy_notes": "ok"}
+        calls = router.acompletion.call_args_list
+        assert calls[0].kwargs["max_tokens"] == 4096
+        assert calls[0].kwargs["reasoning_effort"] == "high"
+        assert calls[1].kwargs["max_tokens"] == 8192
+        assert calls[1].kwargs["reasoning_effort"] == "minimal"
+
+    @pytest.mark.asyncio
+    @patch("app.llm.get_router")
+    @patch("app.llm.get_model_name")
+    @patch("app.llm._supports_json_mode")
+    async def test_truncation_retry_keeps_effort_for_non_gemini(
+        self, mock_supports_json, mock_get_name, mock_get_router
+    ):
+        """Only Gemini's thinking shares the output budget; other providers keep effort."""
+        mock_supports_json.return_value = False
+        mock_get_name.return_value = "openai/gpt-4o"
+
+        truncated_choice = MagicMock()
+        truncated_choice.message.content = '{"changes": [{"path": "summary"'
+        truncated_choice.finish_reason = "length"
+        truncated_response = MagicMock()
+        truncated_response.choices = [truncated_choice]
+
+        good_choice = MagicMock()
+        good_choice.message.content = '{"changes": []}'
+        good_choice.finish_reason = "stop"
+        good_response = MagicMock()
+        good_response.choices = [good_choice]
+
+        router = MagicMock()
+        router.acompletion = AsyncMock(
+            side_effect=[truncated_response, good_response]
+        )
+        config = MagicMock()
+        config.provider = "openai"
+        config.reasoning_effort = "high"
+        mock_get_router.return_value = (router, config)
+
+        from app.llm import complete_json
+
+        result = await complete_json(
+            prompt="Generate resume diffs",
+            schema_type="diff",
+            max_tokens=4096,
+            retries=2,
+        )
+
+        assert result == {"changes": []}
+        assert router.acompletion.call_args_list[1].kwargs["reasoning_effort"] == "high"
 
 
 # ---------------------------------------------------------------------------

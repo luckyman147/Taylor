@@ -120,11 +120,17 @@ getSkillRoi({ skills?, include_advice? }) → CareerRoiResponse // deterministic
 ## Company Tracker (`lib/api/companies.ts`)
 
 ```typescript
-// Standalone company CRM (name/email/phone/address/website/size/type/linkedin/industry/founded)
+// Standalone company CRM (name/email/phone/address/website/size/type/linkedin/industry/founded/description)
 listCompanies() → CompanyListResponse                  // { companies: Company[] } ordered by name
 createCompany(payload: CompanyCreate) → Company        // dedupes (case-insensitive) on name server-side
+// when payload.description is empty and payload.website is set, the server
+// fetches the website ONCE and stores a condensed description (<=2000 chars);
+// a failed fetch never fails the create (description stays null)
 getCompany(id: string) → Company
 updateCompany(id: string, payload: CompanyUpdate) → Company   // partial; 409 on duplicate rename
+// backfill: when the resulting description is empty and a non-empty `website`
+// is part of the update, the server fetches it once; patches that don't touch
+// `website` never fetch
 deleteCompany(id: string) → void
 
 // Bulk CSV / Excel (.xlsx) upload with optional column mapping

@@ -51,10 +51,16 @@ export function MCPSettings() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [discovering, setDiscovering] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ serverId: string; success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    serverId: string;
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [serverTools, setServerTools] = useState<Record<string, MCPToolDef[]>>({});
   const [loadingTools, setLoadingTools] = useState<string | null>(null);
-  const [credentialMeta, setCredentialMeta] = useState<Record<string, { credential_id: string; auth_type: string } | null>>({});
+  const [credentialMeta, setCredentialMeta] = useState<
+    Record<string, { credential_id: string; auth_type: string } | null>
+  >({});
 
   const loadServers = useCallback(async () => {
     try {
@@ -215,9 +221,7 @@ export function MCPSettings() {
       await updateServerTool(serverId, toolId, { enabled });
       setServerTools((prev) => ({
         ...prev,
-        [serverId]: (prev[serverId] || []).map((t) =>
-          t.id === toolId ? { ...t, enabled } : t
-        ),
+        [serverId]: (prev[serverId] || []).map((t) => (t.id === toolId ? { ...t, enabled } : t)),
       }));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to update tool');
@@ -506,7 +510,9 @@ export function MCPSettings() {
                               )}
                             </div>
                             <button
-                              onClick={() => void handleToggleTool(server.server_id, tool.id, !tool.enabled)}
+                              onClick={() =>
+                                void handleToggleTool(server.server_id, tool.id, !tool.enabled)
+                              }
                               className={`ml-2 h-5 w-9 rounded-full transition-colors ${
                                 tool.enabled ? 'bg-emerald-500' : 'bg-gray-300'
                               }`}
@@ -587,7 +593,9 @@ export function MCPSettings() {
                 <Label className="text-sm">Auth Type</Label>
                 <select
                   value={newCredential.auth_type}
-                  onChange={(e) => setNewCredential({ ...newCredential, auth_type: e.target.value as AuthType })}
+                  onChange={(e) =>
+                    setNewCredential({ ...newCredential, auth_type: e.target.value as AuthType })
+                  }
                   className="mt-1 w-full rounded-lg border border-[#e6e3dc] bg-white px-3 py-2 text-sm"
                 >
                   <option value="none">None</option>
@@ -606,9 +614,7 @@ export function MCPSettings() {
               {testResult && testResult.serverId === showCredentialDialog && (
                 <div
                   className={`rounded-lg px-3 py-2 text-xs ${
-                    testResult.success
-                      ? 'bg-emerald-50 text-emerald-600'
-                      : 'bg-red-50 text-red-600'
+                    testResult.success ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                   }`}
                 >
                   {testResult.message}

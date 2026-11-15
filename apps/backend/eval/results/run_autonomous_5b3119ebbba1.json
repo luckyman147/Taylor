@@ -1,0 +1,497 @@
+{
+  "mode": "autonomous",
+  "dataset": "eval/datasets/benchmark.jsonl",
+  "samples_total": 5,
+  "traces_collected": 5,
+  "elapsed_seconds": 54.25,
+  "config": {
+    "seed": 42,
+    "temperature": 0.0,
+    "model": null,
+    "model_version": "v1.0",
+    "prompt_version": "v1.0",
+    "tool_registry_version": "v1.0",
+    "dataset_version": "v1.0",
+    "evaluation_version": "v1.0",
+    "eval_mode": "autonomous",
+    "max_iterations": 3,
+    "max_tool_calls": 10,
+    "max_execution_time_ms": 30000,
+    "max_cost_usd": 0.05
+  },
+  "metrics": [
+    {
+      "metric": "cost_per_task",
+      "value": 0.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "groundedness_rate",
+      "value": 0.5,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "p95_latency_ms",
+      "value": 11623.357439995743,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "faithfulness",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "answer_relevance",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "recovery_success_rate",
+      "value": 1.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "recovery_policy_accuracy",
+      "value": 1.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "task_success_rate",
+      "value": 0.5,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_recall_at_5",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_recall_at_10",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "mrr",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "ndcg_at_5",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_selection_accuracy",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    }
+  ],
+  "traces": [
+    {
+      "run_id": "fa47966270d3",
+      "sample_id": "bench_001",
+      "mode": "autonomous",
+      "query": "Analyze my resume for ATS compliance",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 73.53799999691546,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_evidence",
+        "get_career_summary",
+        "compare_resumes",
+        "get_skill_roi",
+        "get_market_position",
+        "get_skill_suggestions",
+        "create_skill"
+      ],
+      "ranked_tools": [
+        "get_ats_audit",
+        "get_resume_for_audit",
+        "get_evidence",
+        "get_career_summary",
+        "compare_resumes",
+        "get_skill_roi",
+        "get_market_position",
+        "get_skill_suggestions"
+      ],
+      "final_answer": "I found some data but couldn't extract useful information from it.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 9355.658099986613,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "a8b0d2ceb41a",
+      "sample_id": "bench_002",
+      "mode": "autonomous",
+      "query": "Find backend jobs in Germany",
+      "iterations": [
+        {
+          "iteration": 0
+        }
+      ],
+      "tool_calls": [],
+      "selected_tools": [],
+      "ranked_tools": [],
+      "final_answer": "I wasn't able to gather the information needed to answer your question.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 4.421199992066249,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "3b652f3a904e",
+      "sample_id": "bench_003",
+      "mode": "autonomous",
+      "query": "Compare my resume against this job description and find gaps",
+      "iterations": [
+        {
+          "iteration": 2
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 32.70989999873564,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_3",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 1986.2510999955703,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 110.99960000137798,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_3",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_evidence",
+        "compare_resumes",
+        "get_career_summary",
+        "get_market_position",
+        "get_skill_suggestions",
+        "create_skill",
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_job_verdict",
+        "update_application_status",
+        "get_applications",
+        "create_application"
+      ],
+      "ranked_tools": [
+        "compare_resumes",
+        "get_ats_audit",
+        "get_evidence",
+        "get_career_summary",
+        "get_market_position",
+        "get_resume_for_audit",
+        "get_skill_suggestions",
+        "create_skill"
+      ],
+      "final_answer": "I found some data but couldn't extract useful information from it.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 19297.006300010253,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "288acaf0c281",
+      "sample_id": "bench_004",
+      "mode": "autonomous",
+      "query": "What skills should I learn to improve my resume?",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 1674.4387999933679,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_resume_for_audit",
+        "get_career_summary",
+        "get_evidence",
+        "get_ats_audit",
+        "get_skill_roi",
+        "get_skill_suggestions",
+        "compare_resumes",
+        "get_market_position",
+        "create_skill"
+      ],
+      "ranked_tools": [
+        "get_ats_audit",
+        "get_skill_suggestions",
+        "get_resume_for_audit",
+        "get_skill_roi",
+        "compare_resumes",
+        "get_market_position",
+        "create_skill",
+        "get_career_summary"
+      ],
+      "final_answer": "I found some data but couldn't extract useful information from it.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 10162.695299979532,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "1c4a0f0b8e0e",
+      "sample_id": "bench_005",
+      "mode": "autonomous",
+      "query": "Show me my career stats and market position",
+      "iterations": [
+        {
+          "iteration": 2
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 1087.1050000132527,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 540.5115000030492,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_career_summary",
+        "create_skill",
+        "get_contacts",
+        "create_contact",
+        "get_market_position"
+      ],
+      "ranked_tools": [
+        "get_career_summary",
+        "create_skill",
+        "get_contacts",
+        "create_contact",
+        "get_market_position"
+      ],
+      "final_answer": "I found some data but couldn't extract useful information from it.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 15427.56450001616,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    }
+  ]
+}

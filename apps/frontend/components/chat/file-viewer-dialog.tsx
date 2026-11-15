@@ -39,10 +39,7 @@ export function FileViewerDialog({ isOpen, onClose, filename, content }: FileVie
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
 
       {/* Side dialog */}
       <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col border-l border-[#e6e3dc] bg-white shadow-2xl">

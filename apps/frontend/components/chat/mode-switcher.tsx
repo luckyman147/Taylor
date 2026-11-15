@@ -55,7 +55,7 @@ export function ModeSkillSelector({
               currentMode === mode.id
                 ? 'border-primary/25 bg-primary/10 text-primary'
                 : 'border-transparent text-ink-muted hover:bg-[#f0ece4] hover:text-ink-soft',
-              disabled && 'opacity-50',
+              disabled && 'opacity-50'
             )}
             title={t(mode.labelKey)}
           >
@@ -79,7 +79,7 @@ export function ModeSkillSelector({
                 currentSkills.includes(skill.id)
                   ? 'border-primary/25 bg-primary/10 text-primary'
                   : 'border-transparent text-ink-muted hover:bg-[#f0ece4] hover:text-ink-soft',
-                disabled && 'opacity-50',
+                disabled && 'opacity-50'
               )}
               title={t(skill.labelKey)}
             >

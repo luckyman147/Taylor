@@ -10,10 +10,12 @@ import type {
 import { getSortedSections, getSectionMeta } from '@/lib/utils/section-helpers';
 import { formatDateRange } from '@/lib/utils';
 import {
+  type AvatarSettings,
   type EducationSettings,
   type SkillsLayoutMode,
   type WorkExperienceSettings,
 } from '@/lib/types/template-settings';
+import { AvatarImage } from './avatar-image';
 import { arrangeEducationEntry, arrangeWorkEntry, workEntryMeta } from './entry-arrange';
 import { DynamicResumeSection } from './dynamic-resume-section';
 import { DescriptionList } from './description-list';
@@ -28,6 +30,7 @@ interface ResumeModernTwoColumnProps {
   skillsLayout?: SkillsLayoutMode;
   workExperienceSettings?: WorkExperienceSettings;
   educationSettings?: EducationSettings;
+  avatarSettings?: AvatarSettings;
 }
 
 /**
@@ -49,6 +52,7 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
   skillsLayout = 'comma',
   workExperienceSettings = { showBy: 'position', datesBy: 'position', locationBy: 'company' },
   educationSettings = { showBy: 'institution', layout: 'stacked' },
+  avatarSettings = { show: false, shape: 'circle', size: 'medium', border: 0, position: 'left', infoGap: 3 },
 }) => {
   const { personalInfo, summary, workExperience, education, personalProjects, additional } = data;
 
@@ -183,7 +187,10 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
   return (
     <>
       {/* Header */}
-      <div className={baseStyles['resume-header']}>
+      <div className={`${baseStyles['resume-header']} ${avatarSettings?.show && data.personalInfo?.avatar ? baseStyles['resume-header-with-avatar'] : ''}`}>
+        {/* Avatar */}
+        <AvatarImage src={data.personalInfo?.avatar || ''} alt={data.personalInfo?.name} settings={avatarSettings} />
+        <div className={baseStyles['resume-avatar-info']}>
         <h1 className={`${baseStyles['resume-name']} ${styles.nameAccent}`}>
           {personalInfo?.name || nameFallback}
         </h1>
@@ -202,6 +209,7 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
             {renderContactDetail('GitHub', personalInfo.github)}
           </div>
         )}
+        </div>
       </div>
 
       {/* Two-Column Grid */}
@@ -357,7 +365,7 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
               </ul>
             </div>
           )}
-          {(isSectionVisible('skills')) &&
+          {isSectionVisible('skills') &&
             !isSectionVisible('certifications') &&
             certificationsTraining.length > 0 && (
               <div className={baseStyles['resume-section']}>
@@ -430,45 +438,43 @@ export const ResumeModernTwoColumn: React.FC<ResumeModernTwoColumnProps> = ({
           )}
 
           {/* Skills Section */}
-          {(isSectionVisible('skills')) &&
-            technicalSkills.length > 0 && (
-              <div className={baseStyles['resume-section']}>
-                <h3
-                  className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
-                >
-                  {headingFallbacks.skills}
-                </h3>
-                <div className={skillsContainerClass}>
-                  {skillGroups.length > 0
-                    ? skillGroups.map((group) => (
-                        <div key={group.name} className="w-full">
-                          <strong>{group.name}:</strong>{' '}
-                          <span className={baseStyles['resume-text-xs']}>
-                            {group.skills.join(' • ')}
-                          </span>
-                        </div>
-                      ))
-                    : technicalSkills.map((skill, index) => (
-                        <span key={index} className={baseStyles['resume-skill-pill']}>
-                          {skill}
+          {isSectionVisible('skills') && technicalSkills.length > 0 && (
+            <div className={baseStyles['resume-section']}>
+              <h3
+                className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
+              >
+                {headingFallbacks.skills}
+              </h3>
+              <div className={skillsContainerClass}>
+                {skillGroups.length > 0
+                  ? skillGroups.map((group) => (
+                      <div key={group.name} className="w-full">
+                        <strong>{group.name}:</strong>{' '}
+                        <span className={baseStyles['resume-text-xs']}>
+                          {group.skills.join(' • ')}
                         </span>
-                      ))}
-                </div>
+                      </div>
+                    ))
+                  : technicalSkills.map((skill, index) => (
+                      <span key={index} className={baseStyles['resume-skill-pill']}>
+                        {skill}
+                      </span>
+                    ))}
               </div>
-            )}
+            </div>
+          )}
 
           {/* Languages Section */}
-          {(isSectionVisible('languages')) &&
-            languages.length > 0 && (
-              <div className={baseStyles['resume-section']}>
-                <h3
-                  className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
-                >
-                  {headingFallbacks.languages}
-                </h3>
-                <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
-              </div>
-            )}
+          {isSectionVisible('languages') && languages.length > 0 && (
+            <div className={baseStyles['resume-section']}>
+              <h3
+                className={`${baseStyles['resume-section-title-sm']} text-[var(--resume-accent-primary)]`}
+              >
+                {headingFallbacks.languages}
+              </h3>
+              <p className={baseStyles['resume-text-xs']}>{languages.join(' • ')}</p>
+            </div>
+          )}
 
           {/* Awards Section */}
           {isSectionVisible('awards') && awards.length > 0 && (

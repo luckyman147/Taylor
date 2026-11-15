@@ -29,6 +29,11 @@ interface DropdownProps {
    * match a surrounding row's control height (e.g. `h-10 rounded-lg px-3 py-0`).
    */
   triggerClassName?: string;
+  /**
+   * Which side the popup opens on. Defaults to `'down'`; use `'up'` for
+   * controls sitting near the bottom of the viewport (e.g. floating bars).
+   */
+  direction?: 'down' | 'up';
 }
 
 export function Dropdown({
@@ -41,6 +46,7 @@ export function Dropdown({
   className = '',
   ariaLabel,
   triggerClassName,
+  direction = 'down',
 }: DropdownProps) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
@@ -118,7 +124,13 @@ export function Dropdown({
           </div>
           <ChevronDown
             className={`ml-2 h-4 w-4 shrink-0 text-ink-soft transition-transform duration-200 ${
-              isOpen ? 'rotate-180' : ''
+              direction === 'up'
+                ? isOpen
+                  ? '-rotate-180'
+                  : 'rotate-180'
+                : isOpen
+                  ? 'rotate-180'
+                  : ''
             }`}
           />
         </button>
@@ -135,7 +147,9 @@ export function Dropdown({
             id={menuId}
             role="menu"
             aria-label={label}
-            className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-[#e6e3dc] bg-white p-1.5 shadow-sw-lg"
+            className={`absolute left-0 right-0 z-50 rounded-xl border border-[#e6e3dc] bg-white p-1.5 shadow-sw-lg ${
+              direction === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+            }`}
           >
             <div className="max-h-64 overflow-y-auto">
               {options.map((option) => {

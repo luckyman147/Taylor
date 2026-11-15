@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Dropdown } from '@/components/ui/dropdown';
 import { useTranslations } from '@/lib/i18n';
 import {
@@ -45,6 +46,8 @@ export function CompanyFormDialog({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
   const [website, setWebsite] = useState('');
   const [size, setSize] = useState<CompanySize | ''>('');
   const [type, setType] = useState<CompanyType | ''>('');
@@ -52,6 +55,7 @@ export function CompanyFormDialog({
   const [linkedin, setLinkedin] = useState('');
   const [industry, setIndustry] = useState('');
   const [yearFounded, setYearFounded] = useState('');
+  const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +66,8 @@ export function CompanyFormDialog({
     setEmail(company?.email ?? '');
     setPhone(company?.phone ?? '');
     setAddress(company?.address ?? '');
+    setCity(company?.city ?? '');
+    setCountry(company?.country ?? '');
     setWebsite(company?.website ?? '');
     setSize(company?.company_size ?? '');
     setType(company?.company_type ?? '');
@@ -69,6 +75,7 @@ export function CompanyFormDialog({
     setLinkedin(company?.linkedin_url ?? '');
     setIndustry(company?.industry ?? '');
     setYearFounded(company?.year_founded != null ? String(company.year_founded) : '');
+    setDescription(company?.description ?? '');
     setError(null);
   }, [open, company]);
 
@@ -90,11 +97,13 @@ export function CompanyFormDialog({
     [
       'watching',
       'contacted',
+      'second_contact',
       'applied',
       'interviewing',
       'negotiating',
       'won',
       'lost',
+      'trash',
     ] as CompanyStatus[]
   ).map((s) => ({ id: s, label: t(`companies.status.${s}`) }));
   const noneOption = { id: '', label: t('companies.form.none') };
@@ -104,6 +113,10 @@ export function CompanyFormDialog({
   const handleSubmit = async () => {
     if (!name.trim()) {
       setError(t('companies.form.validation'));
+      return;
+    }
+    if (!editing && !description.trim() && !website.trim()) {
+      setError(t('companies.form.descriptionOrWebsite'));
       return;
     }
     if (
@@ -121,6 +134,8 @@ export function CompanyFormDialog({
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         address: address.trim() || undefined,
+        city: city.trim() || undefined,
+        country: country.trim() || undefined,
         website: website.trim() || undefined,
         company_size: (size as CompanySize | '') || undefined,
         company_type: (type as CompanyType | '') || undefined,
@@ -128,6 +143,9 @@ export function CompanyFormDialog({
         linkedin_url: linkedin.trim() || undefined,
         industry: industry.trim() || undefined,
         year_founded: yearValue ?? undefined,
+        // Always sent so clearing the field clears it server-side (an empty
+        // description + a website triggers a one-time refetch on the backend).
+        description: description.trim(),
       };
       if (editing && company) {
         await updateCompany(company.company_id, payload);
@@ -191,6 +209,24 @@ export function CompanyFormDialog({
                 id="company-address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                placeholder={t('companies.form.optional')}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="company-city">{t('companies.form.city')}</Label>
+              <Input
+                id="company-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={t('companies.form.optional')}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="company-country">{t('companies.form.country')}</Label>
+              <Input
+                id="company-country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
                 placeholder={t('companies.form.optional')}
               />
             </div>
@@ -259,6 +295,23 @@ export function CompanyFormDialog({
                 placeholder={t('companies.form.optional')}
               />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="company-description">
+              {t('companies.form.companyDescription')}
+            </Label>
+            <Textarea
+              id="company-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              maxLength={4000}
+              placeholder={t('companies.form.companyDescriptionPlaceholder')}
+            />
+            <p className="text-xs text-steel-grey">
+              {t('companies.form.autoFetchHint')}
+            </p>
           </div>
 
           {error && <p className=" text-xs text-destructive">{error}</p>}

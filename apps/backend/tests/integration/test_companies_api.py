@@ -3,6 +3,7 @@
 import io
 import json
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
@@ -10,6 +11,20 @@ from app.main import app
 
 def _client():
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+@pytest.fixture(autouse=True)
+def _stub_company_description_fetch(monkeypatch):
+    """Keep the create/PATCH auto-fetch off the network by default.
+
+    Tests that care about fetching replace this with a counting fake (their
+    own ``monkeypatch.setattr`` runs after this fixture and wins).
+    """
+
+    async def _no_fetch(url: str) -> str:
+        return ""
+
+    monkeypatch.setattr("app.routers.companies.fetch_company_description", _no_fetch)
 
 
 PAYLOAD = {
@@ -78,6 +93,34 @@ class TestCreate:
         assert second.status_code == 201
         assert first.json()["company_id"] == second.json()["company_id"]
 
+    async def test_create_with_trash_status(self, isolated_db):
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies", json={"name": "Trash Co", "status": "trash"}
+            )
+        assert resp.status_code == 201
+        assert resp.json()["status"] == "trash"
+
+    async def test_create_with_second_contact_status(self, isolated_db):
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies",
+                json={"name": "Follow Up Co", "status": "second_contact"},
+            )
+        assert resp.status_code == 201
+        assert resp.json()["status"] == "second_contact"
+
+    async def test_create_with_city_and_country(self, isolated_db):
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies",
+                json={"name": "Geo Co", "city": "Tunis", "country": "Tunisia"},
+            )
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["city"] == "Tunis"
+        assert body["country"] == "Tunisia"
+
 
 class TestDetail:
     async def test_get_company(self, isolated_db):
@@ -138,6 +181,28 @@ class TestUpdate:
             )
         assert resp.status_code == 422
 
+    async def test_patch_status_to_trash(self, isolated_db):
+        created = await isolated_db.create_company(name="Acme Corp", status="watching")
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"status": "trash"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "trash"
+
+    async def test_patch_city_and_country(self, isolated_db):
+        created = await isolated_db.create_company(name="Acme Corp")
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"city": "Paris", "country": "France"},
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["city"] == "Paris"
+        assert body["country"] == "France"
+
 
 class TestDelete:
     async def test_delete_company(self, isolated_db):
@@ -181,6 +246,20 @@ class TestImport:
         assert acme["email"] == "jobs@acme.test"
         assert acme["company_size"] == "51-200"
         assert acme["year_founded"] == 1999
+
+    async def test_import_city_and_country_columns(self, isolated_db):
+        csv_content = (
+            "name,address,city,country\n"
+            "Geo Co,14 Rue de la Source,Tunis,Tunisia\n"
+        ).encode("utf-8")
+        async with _client() as client:
+            resp = await self._upload(client, "companies.csv", csv_content)
+        assert resp.status_code == 200
+        assert resp.json()["created"] == 1
+        geo = await isolated_db.get_company_by_name("Geo Co")
+        assert geo["address"] == "14 Rue de la Source"
+        assert geo["city"] == "Tunis"
+        assert geo["country"] == "Tunisia"
 
     async def test_import_skips_existing_names_case_insensitive(self, isolated_db):
         await isolated_db.create_company(name="Acme Corp")
@@ -381,3 +460,176 @@ class TestImport:
         acme = await isolated_db.get_company_by_name("Acme SARL")
         assert acme["phone"] == "+216 71 234 567"
         assert acme["address"] == "14 Rue de la Source, Tunis"
+
+    async def test_import_description_column_without_fetching(self, isolated_db, monkeypatch):
+        calls: list[str] = []
+
+        async def _fetch(url: str) -> str:
+            calls.append(url)
+            return "Auto text."
+
+        monkeypatch.setattr("app.routers.companies.fetch_company_description", _fetch)
+        csv_content = (
+            "name,website,description\n"
+            "Typed Co,https://typed.test,Hand-typed summary.\n"
+        ).encode("utf-8")
+        async with _client() as client:
+            resp = await self._upload(client, "companies.csv", csv_content)
+        assert resp.status_code == 200
+        assert resp.json()["created"] == 1
+        typed = await isolated_db.get_company_by_name("Typed Co")
+        assert typed["description"] == "Hand-typed summary."
+        # Imports never crawl — description comes from the file as-is.
+        assert calls == []
+
+
+class TestDescriptionFetch:
+    """Auto-fetch-once behavior for the company description."""
+
+    @staticmethod
+    def _counting_fetch(monkeypatch, result: str = "Fetched summary.", raise_error: bool = False):
+        calls: list[str] = []
+
+        async def _fetch(url: str) -> str:
+            calls.append(url)
+            if raise_error:
+                raise RuntimeError("boom")
+            return result
+
+        monkeypatch.setattr("app.routers.companies.fetch_company_description", _fetch)
+        return calls
+
+    async def test_create_with_website_fetches_description(self, isolated_db, monkeypatch):
+        calls = self._counting_fetch(monkeypatch, result="We build robots.")
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies",
+                json={"name": "Fetch Co", "website": "https://fetch.test"},
+            )
+        assert resp.status_code == 201
+        assert resp.json()["description"] == "We build robots."
+        assert calls == ["https://fetch.test"]
+
+    async def test_create_with_explicit_description_skips_fetch(self, isolated_db, monkeypatch):
+        calls = self._counting_fetch(monkeypatch)
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies",
+                json={
+                    "name": "Typed Co",
+                    "website": "https://typed.test",
+                    "description": "Hand-typed summary.",
+                },
+            )
+        assert resp.status_code == 201
+        assert resp.json()["description"] == "Hand-typed summary."
+        assert calls == []
+
+    async def test_create_fetch_failure_still_succeeds(self, isolated_db, monkeypatch):
+        self._counting_fetch(monkeypatch, raise_error=True)
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies",
+                json={"name": "Boom Co", "website": "https://boom.test"},
+            )
+        assert resp.status_code == 201
+        assert resp.json()["description"] is None
+
+    async def test_create_without_website_does_not_fetch(self, isolated_db, monkeypatch):
+        calls = self._counting_fetch(monkeypatch)
+        async with _client() as client:
+            resp = await client.post("/api/v1/companies", json={"name": "No Site Co"})
+        assert resp.status_code == 201
+        assert resp.json()["description"] is None
+        assert calls == []
+
+    async def test_create_duplicate_does_not_refetch(self, isolated_db, monkeypatch):
+        calls = self._counting_fetch(monkeypatch)
+        first_payload = {"name": "Dup Co", "website": "https://dup.test"}
+        async with _client() as client:
+            first = await client.post("/api/v1/companies", json=first_payload)
+            second = await client.post("/api/v1/companies", json=first_payload)
+        assert first.status_code == 201
+        assert second.status_code == 201
+        # Fetched exactly once � the double-submit returns the stored row.
+        assert calls == ["https://dup.test"]
+        assert second.json()["description"] == "Fetched summary."
+
+    async def test_create_duplicate_of_existing_row_never_fetches(
+        self, isolated_db, monkeypatch
+    ):
+        await isolated_db.create_company(name="Preexisting Co")
+        calls = self._counting_fetch(monkeypatch)
+        async with _client() as client:
+            resp = await client.post(
+                "/api/v1/companies",
+                json={"name": "preexisting co", "website": "https://pre.test"},
+            )
+        assert resp.status_code == 201
+        assert resp.json()["description"] is None
+        assert calls == []
+
+    async def test_patch_website_backfills_empty_description(self, isolated_db, monkeypatch):
+        created = await isolated_db.create_company(name="Backfill Co")
+        calls = self._counting_fetch(monkeypatch, result="Backfilled text.")
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"website": "https://backfill.test"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["description"] == "Backfilled text."
+        assert calls == ["https://backfill.test"]
+
+    async def test_patch_status_only_never_fetches(self, isolated_db, monkeypatch):
+        # Company has a website but no description � a status patch must not crawl.
+        created = await isolated_db.create_company(name="Status Co", website="https://status.test")
+        calls = self._counting_fetch(monkeypatch)
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"status": "contacted"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["description"] is None
+        assert calls == []
+
+    async def test_patch_with_existing_description_does_not_fetch(self, isolated_db, monkeypatch):
+        created = await isolated_db.create_company(
+            name="Has Desc Co", website="https://has.test", description="Stored summary."
+        )
+        calls = self._counting_fetch(monkeypatch, result="Should not win.")
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"website": "https://has.test", "industry": "SaaS"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["description"] == "Stored summary."
+        assert calls == []
+
+    async def test_patch_explicit_description_not_overridden_by_fetch(
+        self, isolated_db, monkeypatch
+    ):
+        created = await isolated_db.create_company(name="Manual Co")
+        calls = self._counting_fetch(monkeypatch, result="Auto text.")
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"description": "Manual text.", "website": "https://manual.test"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["description"] == "Manual text."
+        assert calls == []
+
+    async def test_patch_fetch_failure_keeps_update(self, isolated_db, monkeypatch):
+        created = await isolated_db.create_company(name="Fail Co")
+        self._counting_fetch(monkeypatch, raise_error=True)
+        async with _client() as client:
+            resp = await client.patch(
+                f"/api/v1/companies/{created['company_id']}",
+                json={"website": "https://fail.test"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["description"] is None
+        assert resp.json()["website"] == "https://fail.test"

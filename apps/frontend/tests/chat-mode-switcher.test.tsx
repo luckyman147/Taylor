@@ -16,7 +16,7 @@ describe('ModeSkillSelector', () => {
         currentSkills={[]}
         onModeChange={vi.fn()}
         onSkillsChange={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText('chat.mode.ask')).toBeInTheDocument();
     expect(screen.getByText('chat.mode.agent')).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe('ModeSkillSelector', () => {
         currentSkills={[]}
         onModeChange={onModeChange}
         onSkillsChange={vi.fn()}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('chat.mode.agent'));
     expect(onModeChange).toHaveBeenCalledWith('agent');
@@ -44,7 +44,7 @@ describe('ModeSkillSelector', () => {
         currentSkills={[]}
         onModeChange={vi.fn()}
         onSkillsChange={vi.fn()}
-      />,
+      />
     );
     const agentBtn = screen.getByText('chat.mode.agent').closest('button');
     expect(agentBtn?.className).toContain('bg-primary');
@@ -57,7 +57,7 @@ describe('ModeSkillSelector', () => {
         currentSkills={[]}
         onModeChange={vi.fn()}
         onSkillsChange={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByText('Skills:')).not.toBeInTheDocument();
 
@@ -67,7 +67,7 @@ describe('ModeSkillSelector', () => {
         currentSkills={[]}
         onModeChange={vi.fn()}
         onSkillsChange={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText('Skills:')).toBeInTheDocument();
   });
@@ -80,7 +80,7 @@ describe('ModeSkillSelector', () => {
         currentSkills={[]}
         onModeChange={vi.fn()}
         onSkillsChange={onSkillsChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('chat.skill.coach'));
     expect(onSkillsChange).toHaveBeenCalledWith(['coach']);

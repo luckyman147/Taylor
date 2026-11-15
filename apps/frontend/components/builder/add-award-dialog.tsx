@@ -161,7 +161,9 @@ export const AddAwardDialog: React.FC<AddAwardDialogProps> = ({
                           <Trophy className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-ink truncate">{award.title}</div>
+                          <div className="text-sm font-semibold text-ink truncate">
+                            {award.title}
+                          </div>
                           {(award.description || award.date) && (
                             <div className="text-xs text-steel-grey truncate">
                               {[award.description, award.date].filter(Boolean).join(' · ')}

@@ -32,7 +32,17 @@ interface CardDetailModalProps {
   onUpdated: () => void;
 }
 
-function MetricBar({ label, value, percent, color }: { label: string; value: string; percent: number; color: string }) {
+function MetricBar({
+  label,
+  value,
+  percent,
+  color,
+}: {
+  label: string;
+  value: string;
+  percent: number;
+  color: string;
+}) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
@@ -107,7 +117,9 @@ export function CardDetailModal({
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, applicationId]);
 
   const handleNotesKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -151,9 +163,27 @@ export function CardDetailModal({
   const resumeAvailable = Boolean(detail?.resume);
 
   const verdictConfig = {
-    yes: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Apply' },
-    conditional: { icon: CircleDashed, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', label: 'Maybe' },
-    no: { icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Skip' },
+    yes: {
+      icon: CheckCircle2,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+      border: 'border-green-200',
+      label: 'Apply',
+    },
+    conditional: {
+      icon: CircleDashed,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-50',
+      border: 'border-yellow-200',
+      label: 'Maybe',
+    },
+    no: {
+      icon: ShieldAlert,
+      color: 'text-red-600',
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      label: 'Skip',
+    },
   } as const;
 
   return (
@@ -163,8 +193,12 @@ export function CardDetailModal({
         <DialogHeader className="border-b border-[#e6e3dc] bg-white px-8 py-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <DialogTitle className="truncate">{detail?.company || t('tracker.card.companyUnknown')}</DialogTitle>
-              <DialogDescription className="mt-0.5 truncate">{detail?.role || t('tracker.card.roleUnknown')}</DialogDescription>
+              <DialogTitle className="truncate">
+                {detail?.company || t('tracker.card.companyUnknown')}
+              </DialogTitle>
+              <DialogDescription className="mt-0.5 truncate">
+                {detail?.role || t('tracker.card.roleUnknown')}
+              </DialogDescription>
             </div>
             {detail && (
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs font-semibold text-ink shadow-sw-xs">
@@ -213,7 +247,9 @@ export function CardDetailModal({
                 {/* Rejection + Interview rounds */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="card-rejection-reason">{t('tracker.modal.rejectionReason')}</Label>
+                    <Label htmlFor="card-rejection-reason">
+                      {t('tracker.modal.rejectionReason')}
+                    </Label>
                     <Textarea
                       id="card-rejection-reason"
                       value={rejectionReason}
@@ -224,7 +260,9 @@ export function CardDetailModal({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="card-interview-rounds">{t('tracker.modal.interviewRounds')}</Label>
+                    <Label htmlFor="card-interview-rounds">
+                      {t('tracker.modal.interviewRounds')}
+                    </Label>
                     <Input
                       id="card-interview-rounds"
                       type="number"
@@ -255,7 +293,11 @@ export function CardDetailModal({
                       onClick={handleSaveNotes}
                       disabled={savingNotes}
                     >
-                      {savingNotes ? <Loader2 className="h-4 w-4 animate-spin" /> : t('tracker.modal.saveNotes')}
+                      {savingNotes ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        t('tracker.modal.saveNotes')
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -276,7 +318,9 @@ export function CardDetailModal({
                   <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
                     <AlertTriangle className="h-8 w-8 text-destructive" />
                     <p className="text-sm text-ink-soft">{analyzeError}</p>
-                    <Button variant="outline" size="sm" onClick={handleAnalyze}>Retry</Button>
+                    <Button variant="outline" size="sm" onClick={handleAnalyze}>
+                      Retry
+                    </Button>
                   </div>
                 ) : jobAnalysis ? (
                   <div className="space-y-6">
@@ -285,11 +329,15 @@ export function CardDetailModal({
                       const vc = verdictConfig[jobAnalysis.verdict];
                       const Icon = vc.icon;
                       return (
-                        <div className={`flex items-center gap-4 rounded-xl border ${vc.border} ${vc.bg} p-5`}>
+                        <div
+                          className={`flex items-center gap-4 rounded-xl border ${vc.border} ${vc.bg} p-5`}
+                        >
                           <Icon className={`h-8 w-8 shrink-0 ${vc.color}`} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className={`text-sm font-bold uppercase ${vc.color}`}>{vc.label}</span>
+                              <span className={`text-sm font-bold uppercase ${vc.color}`}>
+                                {vc.label}
+                              </span>
                               <span className="text-sm text-ink-muted">&mdash;</span>
                               <span className="text-sm text-ink">{jobAnalysis.verdict_reason}</span>
                             </div>
@@ -305,29 +353,95 @@ export function CardDetailModal({
 
                     {/* Progress bars */}
                     <div className="space-y-4 rounded-xl border border-[#e6e3dc] bg-white p-5 shadow-sw-xs">
-                      <MetricBar label="Keyword Match" value={`${jobAnalysis.match_percent}%`} percent={jobAnalysis.match_percent} color={jobAnalysis.match_percent >= 60 ? 'text-green-600' : jobAnalysis.match_percent >= 40 ? 'text-yellow-600' : 'text-red-600'} />
-                      <MetricBar label="Career Relevance" value={`${jobAnalysis.career_relevance}%`} percent={jobAnalysis.career_relevance} color={jobAnalysis.career_relevance >= 60 ? 'text-green-600' : jobAnalysis.career_relevance >= 40 ? 'text-yellow-600' : 'text-red-600'} />
-                      <MetricBar label="Ghost Risk" value={`${jobAnalysis.ghost_risk_percent}%`} percent={jobAnalysis.ghost_risk_percent} color={jobAnalysis.ghost_risk_percent <= 30 ? 'text-green-600' : jobAnalysis.ghost_risk_percent <= 50 ? 'text-yellow-600' : 'text-red-600'} />
+                      <MetricBar
+                        label="Keyword Match"
+                        value={`${jobAnalysis.match_percent}%`}
+                        percent={jobAnalysis.match_percent}
+                        color={
+                          jobAnalysis.match_percent >= 60
+                            ? 'text-green-600'
+                            : jobAnalysis.match_percent >= 40
+                              ? 'text-yellow-600'
+                              : 'text-red-600'
+                        }
+                      />
+                      <MetricBar
+                        label="Career Relevance"
+                        value={`${jobAnalysis.career_relevance}%`}
+                        percent={jobAnalysis.career_relevance}
+                        color={
+                          jobAnalysis.career_relevance >= 60
+                            ? 'text-green-600'
+                            : jobAnalysis.career_relevance >= 40
+                              ? 'text-yellow-600'
+                              : 'text-red-600'
+                        }
+                      />
+                      <MetricBar
+                        label="Ghost Risk"
+                        value={`${jobAnalysis.ghost_risk_percent}%`}
+                        percent={jobAnalysis.ghost_risk_percent}
+                        color={
+                          jobAnalysis.ghost_risk_percent <= 30
+                            ? 'text-green-600'
+                            : jobAnalysis.ghost_risk_percent <= 50
+                              ? 'text-yellow-600'
+                              : 'text-red-600'
+                        }
+                      />
                     </div>
 
                     {/* Stats row */}
                     <div className="grid grid-cols-3 gap-4">
-                      <StatCard label="Competition" value={jobAnalysis.competition} color={jobAnalysis.competition === 'Low' ? 'text-green-600' : jobAnalysis.competition === 'Medium' ? 'text-yellow-600' : 'text-red-600'} />
-                      <StatCard label="Salary" value={jobAnalysis.salary_potential ? `$${Math.round(jobAnalysis.salary_potential / 1000)}k` : 'N/A'} color="text-ink" />
-                      <StatCard label="Relevance" value={`${Math.round(jobAnalysis.career_relevance)}%`} color={jobAnalysis.career_relevance >= 60 ? 'text-green-600' : 'text-yellow-600'} />
+                      <StatCard
+                        label="Competition"
+                        value={jobAnalysis.competition}
+                        color={
+                          jobAnalysis.competition === 'Low'
+                            ? 'text-green-600'
+                            : jobAnalysis.competition === 'Medium'
+                              ? 'text-yellow-600'
+                              : 'text-red-600'
+                        }
+                      />
+                      <StatCard
+                        label="Salary"
+                        value={
+                          jobAnalysis.salary_potential
+                            ? `$${Math.round(jobAnalysis.salary_potential / 1000)}k`
+                            : 'N/A'
+                        }
+                        color="text-ink"
+                      />
+                      <StatCard
+                        label="Relevance"
+                        value={`${Math.round(jobAnalysis.career_relevance)}%`}
+                        color={
+                          jobAnalysis.career_relevance >= 60 ? 'text-green-600' : 'text-yellow-600'
+                        }
+                      />
                     </div>
 
                     {/* Missing skills */}
                     {jobAnalysis.comparison?.technical?.missing?.length > 0 && (
                       <div className="rounded-xl border border-orange-200 bg-orange-50/50 p-5">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-orange-700">Missing Skills</p>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-orange-700">
+                          Missing Skills
+                        </p>
                         <div className="flex flex-wrap gap-1.5">
-                          {jobAnalysis.comparison.technical.missing.map((s: { skill: string; weight: number }) => (
-                            <span key={s.skill} className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-700">
-                              {s.skill}
-                              <span className="text-[10px] text-orange-400">&times;{s.weight}</span>
-                            </span>
-                          ))}
+                          {jobAnalysis.comparison.technical.missing.map(
+                            (s: { skill: string; weight: number }) => (
+                              <span
+                                key={s.skill}
+                                className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-700"
+                              >
+                                {s.skill}
+                                <span className="text-[10px] text-orange-400">
+                                  &times;{s.weight}
+                                </span>
+                              </span>
+                            )
+                          )}
                         </div>
                       </div>
                     )}
@@ -335,13 +449,23 @@ export function CardDetailModal({
                     {/* Red flags */}
                     {jobAnalysis.red_flags.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Red Flags</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                          Red Flags
+                        </p>
                         {jobAnalysis.red_flags.map((rf, i) => (
-                          <div key={i} className="flex items-start gap-3 rounded-xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs">
-                            <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${
-                              rf.severity === 'danger' ? 'text-red-500' :
-                              rf.severity === 'warning' ? 'text-yellow-500' : 'text-blue-500'
-                            }`} />
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 rounded-xl border border-[#e6e3dc] bg-white p-4 shadow-sw-xs"
+                          >
+                            <AlertTriangle
+                              className={`mt-0.5 h-4 w-4 shrink-0 ${
+                                rf.severity === 'danger'
+                                  ? 'text-red-500'
+                                  : rf.severity === 'warning'
+                                    ? 'text-yellow-500'
+                                    : 'text-blue-500'
+                              }`}
+                            />
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-ink">{rf.flag}</p>
                               <p className="mt-0.5 text-xs text-ink-muted">{rf.concern}</p>
@@ -354,31 +478,35 @@ export function CardDetailModal({
                     {/* Recommendation */}
                     {jobAnalysis.recommendation && jobAnalysis.recommendation !== 'N/A' && (
                       <div className="rounded-xl border border-[#e6e3dc] bg-secondary p-5">
-                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-soft">Recommendation</p>
-                        <p className="text-sm leading-relaxed text-ink">{jobAnalysis.recommendation}</p>
+                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                          Recommendation
+                        </p>
+                        <p className="text-sm leading-relaxed text-ink">
+                          {jobAnalysis.recommendation}
+                        </p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                    <p className="text-sm text-ink-soft">Click &ldquo;Analyze&rdquo; to get detailed insights about this job.</p>
+                    <p className="text-sm text-ink-soft">
+                      Click &ldquo;Analyze&rdquo; to get detailed insights about this job.
+                    </p>
                   </div>
                 )}
               </div>
             )}
           </div>
         ) : (
-          <p className="px-6 py-16 text-center text-sm text-steel-grey">{t('tracker.modal.loadFailed')}</p>
+          <p className="px-6 py-16 text-center text-sm text-steel-grey">
+            {t('tracker.modal.loadFailed')}
+          </p>
         )}
 
         {/* Footer */}
         <div className="flex shrink-0 flex-row items-center justify-end gap-3 border-t border-[#e6e3dc] bg-secondary px-8 py-5">
           <div className="flex-1" />
-          <Button
-            variant="outline"
-            onClick={handleAnalyze}
-            disabled={!detail?.job_id || analyzing}
-          >
+          <Button variant="outline" onClick={handleAnalyze} disabled={!detail?.job_id || analyzing}>
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {analyzing ? t('common.processing') : t('tailor.jobIntel.shouldApply.analyze')}
           </Button>

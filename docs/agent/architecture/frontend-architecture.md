@@ -40,6 +40,7 @@ apps/frontend/
 - Right: WYSIWYG PaginatedPreview
 - Tabs: Resume | Cover Letter | Outreach
 - Auto-saves to localStorage
+- Multi-step undo for resume content and design edits (header Undo button; in-memory history)
 
 ### Tailor (`/tailor`)
 - Job description textarea

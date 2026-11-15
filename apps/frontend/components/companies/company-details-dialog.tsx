@@ -90,6 +90,14 @@ export function CompanyDetailsDialog({
       full: true,
     },
     {
+      label: t('companies.form.city'),
+      value: company.city ?? '—',
+    },
+    {
+      label: t('companies.form.country'),
+      value: company.country ?? '—',
+    },
+    {
       label: t('companies.form.website'),
       value: website ?? '—',
       href: website ?? undefined,
@@ -118,6 +126,11 @@ export function CompanyDetailsDialog({
     {
       label: t('companies.form.yearFounded'),
       value: company.year_founded != null ? String(company.year_founded) : '—',
+    },
+    {
+      label: t('companies.form.companyDescription'),
+      value: company.description ?? '—',
+      full: true,
     },
     {
       label: t('companies.details.created'),

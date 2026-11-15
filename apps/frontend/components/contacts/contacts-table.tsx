@@ -207,11 +207,14 @@ export function ContactsTable() {
 
   // Load saved column prefs after hydration (a lazy useState initializer would
   // read localStorage during hydration and mismatch the SSR'd defaults).
+  const didLoadPrefs = useRef(false);
   useEffect(() => {
     setVisibleColumns(loadColumnPrefs());
+    didLoadPrefs.current = true;
   }, []);
 
   useEffect(() => {
+    if (!didLoadPrefs.current) return;
     try {
       window.localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
     } catch {
@@ -644,7 +647,8 @@ export function ContactsTable() {
             )}
             {relationshipFilter && (
               <span className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary">
-                {t('contacts.toolbar.relationship')}: {relationshipLabel(relationshipFilter as ContactRelationship)}
+                {t('contacts.toolbar.relationship')}:{' '}
+                {relationshipLabel(relationshipFilter as ContactRelationship)}
                 <button
                   type="button"
                   onClick={() => setRelationshipFilter('')}
@@ -657,7 +661,8 @@ export function ContactsTable() {
             )}
             {dateFilter && (
               <span className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary">
-                {t('contacts.toolbar.date')}: {dateFilterOptions.find((o) => o.id === dateFilter)?.label}
+                {t('contacts.toolbar.date')}:{' '}
+                {dateFilterOptions.find((o) => o.id === dateFilter)?.label}
                 <button
                   type="button"
                   onClick={() => setDateFilter('')}

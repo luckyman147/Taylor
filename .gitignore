@@ -11,7 +11,7 @@ docs/
 scripts/
 .plan.md
 architecture.rag.md
-PLAN.md
+PLAN.mdt 
 # Python Bytecode and Caches
 __pycache__/
 *.py[cod]

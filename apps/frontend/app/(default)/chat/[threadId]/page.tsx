@@ -2,11 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Send, Loader2, Sparkles, Plus, FileText, Paperclip, Plug, MessageCircle, Target, Briefcase, CheckCircle2, Pause } from 'lucide-react';
+import {
+  Send,
+  Loader2,
+  Sparkles,
+  Plus,
+  FileText,
+  Paperclip,
+  Plug,
+  CheckCircle2,
+  Pause,
+} from 'lucide-react';
 import SidebarNav from '@/components/common/SidebarNav';
 import { ThreadSidebar } from '@/components/chat/thread-sidebar';
 import { MessageList, type ChatMessage } from '@/components/chat/message-list';
-import { ModeSkillSelector } from '@/components/chat/mode-switcher';
 import { ModelBadge } from '@/components/chat/model-badge';
 import { EvalPanel, type EvalMetrics } from '@/components/chat/eval-panel';
 import { AddMCPDialog } from '@/components/chat/add-mcp-dialog';
@@ -17,6 +26,8 @@ import { CompanyDialog } from '@/components/chat/company-dialog';
 import { SaveJobDialog } from '@/components/chat/save-job-dialog';
 import { TailorDialog } from '@/components/chat/tailor-dialog';
 import { StatusTimeline } from '@/components/chat/status-timeline';
+import { MentionPopover } from '@/components/chat/mention-popover';
+import { SlashCommandPopover } from '@/components/chat/slash-command-popover';
 import { useTranslations } from '@/lib/i18n';
 import {
   createThread,
@@ -25,7 +36,6 @@ import {
   confirmAction,
   cancelAction,
   dismissMemory,
-  updateThread,
   getThreadMessages,
   supersedeMessage,
   revertLastTurn,
@@ -42,18 +52,6 @@ const SUGGESTED_QUESTIONS = [
   'chat.suggestions.q4',
 ];
 
-const MODES = [
-  { id: 'ask', icon: MessageCircle, label: 'Ask' },
-  { id: 'agent', icon: Target, label: 'Agent' },
-  { id: 'search', icon: Briefcase, label: 'Search' },
-];
-
-const SKILLS = [
-  { id: 'coach', label: 'Career Coach', icon: '🎯' },
-  { id: 'recruiter', label: 'Recruiter', icon: '👔' },
-  { id: 'resume_analyst', label: 'Resume Analyst', icon: '📊' },
-];
-
 export default function ChatThreadRoute() {
   const router = useRouter();
   const params = useParams();
@@ -66,7 +64,9 @@ export default function ChatThreadRoute() {
   const [input, setInput] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ filename: string; resumeId: string } | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<{ filename: string; resumeId: string } | null>(
+    null
+  );
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -81,6 +81,19 @@ export default function ChatThreadRoute() {
   const evalPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startEvalPollingRef = useRef<(tid: string) => void>(() => {});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // @mention state
+  const [mention, setMention] = useState<{ active: boolean; query: string; startIndex: number }>({
+    active: false,
+    query: '',
+    startIndex: -1,
+  });
+  // /slash command state
+  const [slashCommand, setSlashCommand] = useState<{
+    active: boolean;
+    query: string;
+    startIndex: number;
+  }>({ active: false, query: '', startIndex: -1 });
   const inFlight = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
@@ -129,11 +142,13 @@ export default function ChatThreadRoute() {
   // Load threads and find active one
   useEffect(() => {
     import('@/lib/api/chat').then(({ listThreads }) =>
-      listThreads().then((data) => {
-        setThreads(data);
-        const found = data.find((t) => t.thread_id === threadId);
-        if (found) setActiveThread(found);
-      }).catch(() => {}),
+      listThreads()
+        .then((data) => {
+          setThreads(data);
+          const found = data.find((t) => t.thread_id === threadId);
+          if (found) setActiveThread(found);
+        })
+        .catch(() => {})
     );
   }, [refreshKey, threadId]);
 
@@ -163,14 +178,14 @@ export default function ChatThreadRoute() {
       setRefreshKey((k) => k + 1);
       router.push(`/chat/${newId}`);
     },
-    [router],
+    [router]
   );
 
   const handleSelectThread = useCallback(
     (id: string) => {
       router.push(`/chat/${id}`);
     },
-    [router],
+    [router]
   );
 
   const handleDeleteThread = useCallback(
@@ -181,29 +196,7 @@ export default function ChatThreadRoute() {
       }
       setRefreshKey((k) => k + 1);
     },
-    [threadId, router],
-  );
-
-  const handleModeChange = useCallback(
-    async (mode: string) => {
-      if (!activeThread) return;
-      try {
-        await updateThread(activeThread.thread_id, { mode });
-        setActiveThread((prev) => (prev ? { ...prev, mode } : null));
-      } catch {}
-    },
-    [activeThread],
-  );
-
-  const handleSkillsChange = useCallback(
-    async (skills: string[]) => {
-      if (!activeThread) return;
-      try {
-        await updateThread(activeThread.thread_id, { skills });
-        setActiveThread((prev) => (prev ? { ...prev, skills } : null));
-      } catch {}
-    },
-    [activeThread],
+    [threadId, router]
   );
 
   const processResponse = useCallback((resp: TurnResponse): ChatMessage => {
@@ -241,6 +234,53 @@ export default function ChatThreadRoute() {
       setUploading(false);
     }
   }, []);
+
+  // Handle @mention selection — replace @query with @SelectedName
+  const handleMentionSelect = useCallback(
+    (name: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const cursorPos = textarea.selectionStart;
+      const textBefore = input.slice(0, mention.startIndex);
+      const textAfter = input.slice(cursorPos);
+      const newText = `${textBefore}@${name} ${textAfter}`;
+
+      setInput(newText);
+      setMention({ active: false, query: '', startIndex: -1 });
+
+      // Restore focus and cursor position after @Name
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const newCursorPos = mention.startIndex + name.length + 2;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      });
+    },
+    [input, mention.startIndex]
+  );
+
+  // Handle /slash command selection — insert /toolName into input
+  const handleSlashSelect = useCallback(
+    (toolName: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const cursorPos = textarea.selectionStart;
+      const textBefore = input.slice(0, slashCommand.startIndex);
+      const textAfter = input.slice(cursorPos);
+      const newText = `${textBefore}/${toolName} ${textAfter}`;
+
+      setInput(newText);
+      setSlashCommand({ active: false, query: '', startIndex: -1 });
+
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const newCursorPos = slashCommand.startIndex + toolName.length + 2;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      });
+    },
+    [input, slashCommand.startIndex]
+  );
 
   const send = useCallback(
     async (text: string) => {
@@ -305,7 +345,7 @@ export default function ChatThreadRoute() {
               setStreamStatus('completed');
             },
           },
-          evalPanelOpen,
+          evalPanelOpen
         );
         abortControllerRef.current = controller;
       } catch (e) {
@@ -318,7 +358,7 @@ export default function ChatThreadRoute() {
         setRefreshKey((k) => k + 1);
       }
     },
-    [threadId, processResponse, router, uploadedFile, uploading, evalPanelOpen],
+    [threadId, processResponse, router, uploadedFile, uploading, evalPanelOpen]
   );
 
   const handlePause = useCallback(() => {
@@ -365,7 +405,10 @@ export default function ChatThreadRoute() {
               {
                 onEvent: (event) => setStreamEvents((prev) => [...prev, event]),
                 onComplete: (resp) => {
-                  const assistantMsg = { ...processResponse(resp), streamEvents: [...streamEvents] };
+                  const assistantMsg = {
+                    ...processResponse(resp),
+                    streamEvents: [...streamEvents],
+                  };
                   setMessages((prev) => [...prev, assistantMsg]);
                   setStreamStatus('completed');
                 },
@@ -373,7 +416,7 @@ export default function ChatThreadRoute() {
                   setError(err.message);
                   setStreamStatus('completed');
                 },
-              },
+              }
             );
           } catch {
             setStreamStatus('completed');
@@ -386,36 +429,31 @@ export default function ChatThreadRoute() {
         setError(e instanceof Error ? e.message : String(e));
         // Clear pendingAction so ConfirmCard doesn't stay spinner-locked
         setMessages((prev) =>
-          prev.map((m) =>
-            m.pendingAction ? { ...m, pendingAction: null } : m,
-          ),
+          prev.map((m) => (m.pendingAction ? { ...m, pendingAction: null } : m))
         );
       }
     },
-    [threadId, processResponse],
+    [threadId, processResponse]
   );
 
-  const handleCancel = useCallback(
-    async (token: string) => {
-      try {
-        await cancelAction(token);
-        setMessages((prev) => {
-          const updated = [...prev];
-          const idx = updated.findLastIndex((m) => m.pendingAction);
-          if (idx >= 0) {
-            updated[idx] = {
-              ...updated[idx],
-              pendingAction: null,
-            };
-          }
-          return updated;
-        });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-    },
-    [],
-  );
+  const handleCancel = useCallback(async (token: string) => {
+    try {
+      await cancelAction(token, threadId);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const idx = updated.findLastIndex((m) => m.pendingAction);
+        if (idx >= 0) {
+          updated[idx] = {
+            ...updated[idx],
+            pendingAction: null,
+          };
+        }
+        return updated;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
 
   const handleDismissMemory = useCallback(async (statement: string) => {
     try {
@@ -424,10 +462,14 @@ export default function ChatThreadRoute() {
   }, []);
 
   const handleFollowup = useCallback(
-    (question: string) => {
-      void send(question);
+    (question: string, sources?: string[]) => {
+      const msg =
+        sources && sources.length > 0
+          ? `${question} [search sources: ${sources.join(',')}]`
+          : question;
+      void send(msg);
     },
-    [send],
+    [send]
   );
 
   const handleClarify = useCallback(
@@ -441,7 +483,7 @@ export default function ChatThreadRoute() {
       };
       void send(intentMessages[intent] || intent);
     },
-    [send],
+    [send]
   );
 
   const handleEdit = useCallback(
@@ -461,7 +503,7 @@ export default function ChatThreadRoute() {
       // Resend the edited message
       void send(newContent);
     },
-    [send],
+    [send]
   );
 
   const handleRetry = useCallback(
@@ -470,7 +512,7 @@ export default function ChatThreadRoute() {
       if (!msg || msg.role !== 'user') return;
       void send(msg.content);
     },
-    [messages, send],
+    [messages, send]
   );
 
   const handleRevert = useCallback(
@@ -493,55 +535,83 @@ export default function ChatThreadRoute() {
         console.error('Revert failed:', e);
       }
     },
-    [threadId, messages, send],
+    [threadId, messages, send]
   );
 
   const handleSelectResume = useCallback(
     (resumeId: string) => {
       void send(`audit resume ${resumeId}`);
     },
-    [send],
+    [send]
   );
 
-  const handleViewFile = useCallback(
-    async (filename: string, resumeId: string) => {
-      try {
-        const { getResumeContent } = await import('@/lib/api/chat');
-        const data = await getResumeContent(resumeId);
-        setFileViewer({ filename: data.filename, content: data.content });
-      } catch {
-        setFileViewer({ filename, content: '(Failed to load file content)' });
-      }
+  const handleCompareResumes = useCallback(
+    (names: string[]) => {
+      void send(`[compare: ${names.join(', ')}]`);
     },
-    [],
+    [send]
   );
+
+  const handleViewFile = useCallback(async (filename: string, resumeId: string) => {
+    try {
+      const { getResumeContent } = await import('@/lib/api/chat');
+      const data = await getResumeContent(resumeId);
+      setFileViewer({ filename: data.filename, content: data.content });
+    } catch {
+      setFileViewer({ filename, content: '(Failed to load file content)' });
+    }
+  }, []);
 
   // Email dialog state
-  const [emailDialog, setEmailDialog] = useState<{ open: boolean; email: any }>({ open: false, email: null });
-  const [contactDialog, setContactDialog] = useState<{ open: boolean; data: { name: string; email?: string; company?: string } }>({ open: false, data: { name: '' } });
-  const [companyDialog, setCompanyDialog] = useState<{ open: boolean; data: { name: string; website?: string } }>({ open: false, data: { name: '' } });
-  const [saveJobDialog, setSaveJobDialog] = useState<{ open: boolean; data: { title: string; company: string; location?: string; url?: string } }>({ open: false, data: { title: '', company: '' } });
-  const [tailorDialog, setTailorDialog] = useState<{ open: boolean; data: { job_description: string; company: string; role: string } }>({ open: false, data: { job_description: '', company: '', role: '' } });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; email: any }>({
+    open: false,
+    email: null,
+  });
+  const [contactDialog, setContactDialog] = useState<{
+    open: boolean;
+    data: { name: string; email?: string; company?: string };
+  }>({ open: false, data: { name: '' } });
+  const [companyDialog, setCompanyDialog] = useState<{
+    open: boolean;
+    data: { name: string; website?: string };
+  }>({ open: false, data: { name: '' } });
+  const [saveJobDialog, setSaveJobDialog] = useState<{
+    open: boolean;
+    data: { title: string; company: string; location?: string; url?: string };
+  }>({ open: false, data: { title: '', company: '' } });
+  const [tailorDialog, setTailorDialog] = useState<{
+    open: boolean;
+    data: { job_description: string; company: string; role: string };
+  }>({ open: false, data: { job_description: '', company: '', role: '' } });
 
   const handleViewEmail = useCallback((email: any) => {
     setEmailDialog({ open: true, email });
   }, []);
 
-  const handleAddContact = useCallback((data: { name: string; email?: string; company?: string }) => {
-    setContactDialog({ open: true, data });
-  }, []);
+  const handleAddContact = useCallback(
+    (data: { name: string; email?: string; company?: string }) => {
+      setContactDialog({ open: true, data });
+    },
+    []
+  );
 
   const handleAddCompany = useCallback((data: { name: string; website?: string }) => {
     setCompanyDialog({ open: true, data });
   }, []);
 
-  const handleSaveJob = useCallback((data: { title: string; company: string; location?: string; url?: string }) => {
-    setSaveJobDialog({ open: true, data });
-  }, []);
+  const handleSaveJob = useCallback(
+    (data: { title: string; company: string; location?: string; url?: string }) => {
+      setSaveJobDialog({ open: true, data });
+    },
+    []
+  );
 
-  const handleTailorResume = useCallback((data: { job_description: string; company: string; role: string }) => {
-    setTailorDialog({ open: true, data });
-  }, []);
+  const handleTailorResume = useCallback(
+    (data: { job_description: string; company: string; role: string }) => {
+      setTailorDialog({ open: true, data });
+    },
+    []
+  );
 
   const isEmpty = messages.length === 0;
 
@@ -595,6 +665,7 @@ export default function ChatThreadRoute() {
                 onDismissMemory={handleDismissMemory}
                 onFollowup={handleFollowup}
                 onSelectResume={handleSelectResume}
+                onCompareResumes={handleCompareResumes}
                 onViewFile={handleViewFile}
                 onJobSearch={handleFollowup}
                 onViewEmail={handleViewEmail}
@@ -612,9 +683,7 @@ export default function ChatThreadRoute() {
             )}
 
             {/* Error */}
-            {error && (
-              <div className="px-5 py-1 text-center text-xs text-destructive">{error}</div>
-            )}
+            {error && <div className="px-5 py-1 text-center text-xs text-destructive">{error}</div>}
 
             {/* Eval Panel */}
             <EvalPanel
@@ -627,13 +696,17 @@ export default function ChatThreadRoute() {
             {/* Composer */}
             <div className="mx-auto w-full max-w-3xl px-5 pb-5">
               {/* Input pill */}
-              <div className="rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
+              <div className="relative rounded-[25px] border border-[#e2e0d8] bg-[#f8f7f5] shadow-sw-xs transition-shadow focus-within:shadow-sw-sm focus-within:border-primary/30">
                 {/* File attachment chip */}
                 {(selectedFile || uploadedFile) && (
                   <div className="flex items-center gap-2 border-b border-[#e6e3dc] px-4 py-2">
-                    <div className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${
-                      uploadedFile ? 'border-emerald-200 bg-emerald-50' : 'border-[#e6e3dc] bg-white'
-                    }`}>
+                    <div
+                      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${
+                        uploadedFile
+                          ? 'border-emerald-200 bg-emerald-50'
+                          : 'border-[#e6e3dc] bg-white'
+                      }`}
+                    >
                       {uploading ? (
                         <Loader2 className="h-4 w-4 text-primary animate-spin" />
                       ) : uploadedFile ? (
@@ -649,7 +722,10 @@ export default function ChatThreadRoute() {
                       )}
                       {!uploading && (
                         <button
-                          onClick={() => { setSelectedFile(null); setUploadedFile(null); }}
+                          onClick={() => {
+                            setSelectedFile(null);
+                            setUploadedFile(null);
+                          }}
                           className="ml-1 text-ink-muted hover:text-ink"
                         >
                           ×
@@ -659,18 +735,8 @@ export default function ChatThreadRoute() {
                   </div>
                 )}
 
-                {/* Top row: mode/skill selector + model badge */}
-                <div className="flex items-center justify-between px-4 pt-2.5 pb-1">
-                  {/* Mode + Skill selector */}
-                  <ModeSkillSelector
-                    currentMode={activeThread?.mode || 'ask'}
-                    currentSkills={activeThread?.skills || []}
-                    onModeChange={handleModeChange}
-                    onSkillsChange={handleSkillsChange}
-                    disabled={!activeThread}
-                  />
-
-                  {/* Model badge */}
+                {/* Top row: model badge */}
+                <div className="flex items-center justify-end px-4 pt-2.5 pb-1">
                   <ModelBadge />
                 </div>
 
@@ -686,7 +752,10 @@ export default function ChatThreadRoute() {
 
                     {showPlusMenu && (
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowPlusMenu(false)} />
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setShowPlusMenu(false)}
+                        />
                         <div className="absolute bottom-full left-0 z-50 mb-2 w-48 rounded-xl border border-[#e6e3dc] bg-white py-1.5 shadow-lg">
                           <button
                             onClick={() => {
@@ -725,17 +794,88 @@ export default function ChatThreadRoute() {
                       e.target.value = '';
                     }}
                   />
+                  {mention.active && (
+                    <MentionPopover
+                      query={mention.query}
+                      onSelect={handleMentionSelect}
+                      onClose={() => setMention({ active: false, query: '', startIndex: -1 })}
+                      textareaRef={textareaRef}
+                    />
+                  )}
+                  {slashCommand.active && (
+                    <SlashCommandPopover
+                      query={slashCommand.query}
+                      onSelect={handleSlashSelect}
+                      onClose={() =>
+                        setSlashCommand({ active: false, query: '', startIndex: -1 })
+                      }
+                      textareaRef={textareaRef}
+                    />
+                  )}
                   <textarea
                     ref={textareaRef}
                     rows={1}
                     value={input}
                     onChange={(e) => {
-                      setInput(e.target.value);
+                      const val = e.target.value;
+                      setInput(val);
                       e.target.style.height = 'auto';
                       e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+
+                      // Detect @mention
+                      const cursorPos = e.target.selectionStart;
+                      const textBeforeCursor = val.slice(0, cursorPos);
+                      const atIndex = textBeforeCursor.lastIndexOf('@');
+
+                      if (atIndex >= 0) {
+                        const isWordBoundary =
+                          atIndex === 0 || /\s/.test(textBeforeCursor[atIndex - 1]);
+                        const afterAt = textBeforeCursor.slice(atIndex + 1);
+                        // Only active if @ is at word boundary and query contains no whitespace
+                        if (isWordBoundary && !/\s/.test(afterAt)) {
+                          setMention({ active: true, query: afterAt, startIndex: atIndex });
+                          setSlashCommand({ active: false, query: '', startIndex: -1 });
+                          return;
+                        }
+                      }
+                      setMention((prev) => (prev.active ? { ...prev, active: false } : prev));
+
+                      // Detect /slash command
+                      const slashIndex = textBeforeCursor.lastIndexOf('/');
+                      if (slashIndex >= 0) {
+                        const isWordBoundary =
+                          slashIndex === 0 || /\s/.test(textBeforeCursor[slashIndex - 1]);
+                        const afterSlash = textBeforeCursor.slice(slashIndex + 1);
+                        if (isWordBoundary && !/\s/.test(afterSlash)) {
+                          setSlashCommand({
+                            active: true,
+                            query: afterSlash,
+                            startIndex: slashIndex,
+                          });
+                          return;
+                        }
+                      }
+                      setSlashCommand((prev) =>
+                        prev.active ? { ...prev, active: false } : prev
+                      );
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (mention.active && e.key === 'Escape') {
+                        e.preventDefault();
+                        setMention({ active: false, query: '', startIndex: -1 });
+                        return;
+                      }
+                      if (slashCommand.active && e.key === 'Escape') {
+                        e.preventDefault();
+                        setSlashCommand({ active: false, query: '', startIndex: -1 });
+                        return;
+                      }
+                      if (
+                        e.key === 'Enter' &&
+                        !e.shiftKey &&
+                        !mention.active &&
+                        !slashCommand.active
+                      ) {
                         e.preventDefault();
                         void send(input);
                       }
@@ -754,11 +894,7 @@ export default function ChatThreadRoute() {
                     disabled={!sending && (uploading || (!input.trim() && !uploadedFile))}
                     className="m-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-[#17304f] disabled:opacity-40"
                   >
-                    {sending ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
+                    {sending ? <Pause className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
@@ -814,7 +950,9 @@ export default function ChatThreadRoute() {
       {/* Tailor resume dialog */}
       <TailorDialog
         isOpen={tailorDialog.open}
-        onClose={() => setTailorDialog({ open: false, data: { job_description: '', company: '', role: '' } })}
+        onClose={() =>
+          setTailorDialog({ open: false, data: { job_description: '', company: '', role: '' } })
+        }
         initialData={tailorDialog.data}
         onTailor={(resumeId, jd, company, role) => {
           void send(`Tailor resume ${resumeId} for ${role} at ${company}`);
@@ -822,10 +960,7 @@ export default function ChatThreadRoute() {
       />
 
       {/* MCP add dialog */}
-      <AddMCPDialog
-        open={showMCPDialog}
-        onClose={() => setShowMCPDialog(false)}
-      />
+      <AddMCPDialog open={showMCPDialog} onClose={() => setShowMCPDialog(false)} />
     </div>
   );
 }

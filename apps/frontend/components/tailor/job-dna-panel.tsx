@@ -108,7 +108,9 @@ export function JobDnaPanel({ jobId }: JobDnaPanelProps) {
               {t('tailor.jobIntel.jobDna.matched')} ({comparison.technical.matched.length})
             </p>
             {comparison.technical.matched.map((s, i) => (
-              <p key={i} className="text-ink-soft">{s.skill}</p>
+              <p key={i} className="text-ink-soft">
+                {s.skill}
+              </p>
             ))}
           </div>
           <div>
@@ -116,7 +118,9 @@ export function JobDnaPanel({ jobId }: JobDnaPanelProps) {
               {t('tailor.jobIntel.jobDna.missing')} ({comparison.technical.missing.length})
             </p>
             {comparison.technical.missing.map((s, i) => (
-              <p key={i} className="text-ink-soft">{s.skill}</p>
+              <p key={i} className="text-ink-soft">
+                {s.skill}
+              </p>
             ))}
           </div>
         </div>
@@ -133,7 +137,9 @@ export function JobDnaPanel({ jobId }: JobDnaPanelProps) {
               {t('tailor.jobIntel.jobDna.matched')} ({comparison.experience.matched.length})
             </p>
             {comparison.experience.matched.map((d, i) => (
-              <p key={i} className="text-ink-soft">{d}</p>
+              <p key={i} className="text-ink-soft">
+                {d}
+              </p>
             ))}
           </div>
           <div>
@@ -141,7 +147,9 @@ export function JobDnaPanel({ jobId }: JobDnaPanelProps) {
               {t('tailor.jobIntel.jobDna.missing')} ({comparison.experience.missing.length})
             </p>
             {comparison.experience.missing.map((d, i) => (
-              <p key={i} className="text-ink-soft">{d}</p>
+              <p key={i} className="text-ink-soft">
+                {d}
+              </p>
             ))}
           </div>
         </div>
@@ -154,12 +162,18 @@ export function JobDnaPanel({ jobId }: JobDnaPanelProps) {
         </p>
         <div className="flex flex-wrap gap-1.5">
           {comparison.company.matched.map((c, i) => (
-            <span key={i} className="text-[10px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded">
+            <span
+              key={i}
+              className="text-[10px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded"
+            >
               {c}
             </span>
           ))}
           {comparison.company.missing.map((c, i) => (
-            <span key={i} className="text-[10px] px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded">
+            <span
+              key={i}
+              className="text-[10px] px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded"
+            >
               {c}
             </span>
           ))}

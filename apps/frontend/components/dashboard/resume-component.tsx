@@ -30,6 +30,7 @@ export interface PersonalInfo {
   website?: string;
   linkedin?: string;
   github?: string;
+  avatar?: string;
   /** Per-field contact display mode: 'label' renders a short hypertext label
    *  (e.g. "Email", "LinkedIn"), 'full' renders the raw value. Absent = default. */
   contactDisplay?: Partial<Record<ContactDisplayField, ContactDisplayMode>>;
@@ -237,6 +238,7 @@ const Resume: React.FC<ResumeProps> = ({
           listSeparator={mergedSettings.advanced.listSeparator}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
       {mergedSettings.template === 'swiss-two-column' && (
@@ -247,6 +249,7 @@ const Resume: React.FC<ResumeProps> = ({
           skillsLayout={mergedSettings.skillsLayout}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
       {mergedSettings.template === 'modern' && (
@@ -258,6 +261,7 @@ const Resume: React.FC<ResumeProps> = ({
           listSeparator={mergedSettings.advanced.listSeparator}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
       {mergedSettings.template === 'modern-two-column' && (
@@ -269,28 +273,33 @@ const Resume: React.FC<ResumeProps> = ({
           skillsLayout={mergedSettings.skillsLayout}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
       {mergedSettings.template === 'latex' && (
         <ResumeLatex
           data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
+          showContactSeparators={mergedSettings.showContactSeparators}
           additionalSectionLabels={additionalSectionLabels}
           skillsLayout={mergedSettings.skillsLayout}
           listSeparator={mergedSettings.advanced.listSeparator}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
       {mergedSettings.template === 'clean' && (
         <ResumeClean
           data={formattedData}
           showContactIcons={mergedSettings.showContactIcons}
+          showContactSeparators={mergedSettings.showContactSeparators}
           additionalSectionLabels={additionalSectionLabels}
           skillsLayout={mergedSettings.skillsLayout}
           listSeparator={mergedSettings.advanced.listSeparator}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
       {mergedSettings.template === 'vivid' && (
@@ -302,6 +311,7 @@ const Resume: React.FC<ResumeProps> = ({
           skillsLayout={mergedSettings.skillsLayout}
           workExperienceSettings={mergedSettings.workExperience}
           educationSettings={mergedSettings.education}
+          avatarSettings={mergedSettings.avatar}
         />
       )}
     </div>

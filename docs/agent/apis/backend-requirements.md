@@ -18,7 +18,7 @@ Currently none (local-first design).
 
 ```
 GET /health           → {healthy, provider, model, error?}
-GET /status           → {status, llm_configured, llm_healthy, database_stats}
+GET /status           → {status, llm_configured, llm_healthy, database_stats, llm_usage}
 ```
 
 ### Configuration

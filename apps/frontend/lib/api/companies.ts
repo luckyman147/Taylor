@@ -7,7 +7,15 @@ export type CompanyType =
   'startup' | 'agency' | 'enterprise' | 'nonprofit' | 'education' | 'government' | 'other';
 
 export type CompanyStatus =
-  'watching' | 'contacted' | 'applied' | 'interviewing' | 'negotiating' | 'won' | 'lost';
+  | 'watching'
+  | 'contacted'
+  | 'second_contact'
+  | 'applied'
+  | 'interviewing'
+  | 'negotiating'
+  | 'won'
+  | 'lost'
+  | 'trash';
 
 export interface Company {
   company_id: string;
@@ -15,6 +23,8 @@ export interface Company {
   email: string | null;
   phone: string | null;
   address: string | null;
+  city: string | null;
+  country: string | null;
   website: string | null;
   company_size: CompanySize | null;
   company_type: CompanyType | null;
@@ -22,6 +32,7 @@ export interface Company {
   linkedin_url: string | null;
   industry: string | null;
   year_founded: number | null;
+  description: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +46,8 @@ export interface CompanyCreate {
   email?: string;
   phone?: string;
   address?: string;
+  city?: string;
+  country?: string;
   website?: string;
   company_size?: CompanySize;
   company_type?: CompanyType;
@@ -42,6 +55,7 @@ export interface CompanyCreate {
   linkedin_url?: string;
   industry?: string;
   year_founded?: number;
+  description?: string;
 }
 
 export interface CompanyUpdate {
@@ -49,6 +63,8 @@ export interface CompanyUpdate {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  city?: string | null;
+  country?: string | null;
   website?: string | null;
   company_size?: CompanySize | null;
   company_type?: CompanyType | null;
@@ -56,6 +72,7 @@ export interface CompanyUpdate {
   linkedin_url?: string | null;
   industry?: string | null;
   year_founded?: number | null;
+  description?: string | null;
 }
 
 export interface CompanyActionResponse {
@@ -87,13 +104,16 @@ export type CompanyField =
   | 'email'
   | 'phone'
   | 'address'
+  | 'city'
+  | 'country'
   | 'website'
   | 'company_size'
   | 'company_type'
   | 'status'
   | 'linkedin_url'
   | 'industry'
-  | 'year_founded';
+  | 'year_founded'
+  | 'description';
 
 function extractDetail(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;

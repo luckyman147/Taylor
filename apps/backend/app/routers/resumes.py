@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 import logging
+import re
 import unicodedata
 from collections.abc import Awaitable
 from pathlib import Path
@@ -72,11 +73,13 @@ from app.services.mcp.github import get_matched_repos_for_job
 from app.services.refiner import (
     refine_resume,
     calculate_keyword_match,
+    _restore_missing_projects,
     _restore_missing_work_experience,
 )
 from app.services.ats import compute_ats_score
 from app.schemas.refinement import RefinementConfig
 from app.services.cover_letter import (
+    build_fallback_resume_title,
     generate_cover_letter,
     generate_outreach_message,
     generate_resume_title,
@@ -90,7 +93,24 @@ from app.services.matched_projects import (
 )
 from app.services.skill_presentation import trim_and_group_skills
 from app.services.career_graph import fulfill_profile_from_resume
-from app.prompts import DEFAULT_IMPROVE_PROMPT_ID, IMPROVE_PROMPT_OPTIONS
+from app.prompts import (
+    DEFAULT_IMPROVE_PROMPT_ID,
+    IMPROVE_PROMPT_OPTIONS,
+    resolve_correspondence_language,
+)
+
+
+def _tailored_filename(parent_filename: str | None) -> str:
+    """Derive a tailored-resume filename from its parent, prefixing once.
+
+    Re-tailoring an already-tailored resume must not compound the prefix
+    (``tailored_tailored_...``); any existing ``tailored_`` prefixes are
+    stripped before exactly one is re-added.
+    """
+    name = (parent_filename or "").strip() or "resume"
+    while name.startswith("tailored_"):
+        name = name[len("tailored_") :]
+    return f"tailored_{name}"
 
 
 async def _auto_create_tracker_application(
@@ -109,7 +129,9 @@ async def _auto_create_tracker_application(
     try:
         job_kw = (job or {}).get("job_keywords") or {}
         company = (job or {}).get("company") or job_kw.get("company") or ""
-        role = title or (job or {}).get("role") or job_kw.get("role") or ""
+        # Prefer the parsed job role: the generated title embeds the candidate
+        # name ("Mohamed - Engineer @ Co") and must not pollute the role field.
+        role = (job or {}).get("role") or job_kw.get("role") or title or ""
         await db.create_application(
             job_id=job_id,
             resume_id=tailored_resume_id,
@@ -329,6 +351,29 @@ def _restore_original_dates(
                 ):
                     result_items[idx]["years"] = orig_years
 
+    return result
+
+
+def _preserve_projects(
+    original_data: dict[str, Any] | None,
+    improved_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Restore the original Projects section exactly.
+
+    Used when the user explicitly asked to keep their current projects: the
+    matched-project merge is skipped and any project edits made by the diff
+    generator, keyword injection, or refinement are reverted. Returns the
+    input unchanged when structured resume data is unavailable.
+    """
+    if not original_data:
+        return improved_data
+
+    original_projects = original_data.get("personalProjects")
+    if not isinstance(original_projects, list):
+        original_projects = []
+
+    result = copy.deepcopy(improved_data)
+    result["personalProjects"] = copy.deepcopy(original_projects)
     return result
 
 
@@ -580,6 +625,23 @@ def _validate_confirm_payload(
         raise ValueError(f"personalInfo fields changed: {', '.join(mismatches)}")
 
 
+def _job_identity(
+    job: dict[str, Any],
+    job_keywords: dict[str, Any] | None = None,
+) -> tuple[str | None, str | None, dict[str, Any] | None]:
+    """Return (company, role, keywords) from a job record for generation prompts."""
+    keywords = job_keywords or job.get("job_keywords") or {}
+    if not isinstance(keywords, dict):
+        keywords = {}
+    company = job.get("company") or keywords.get("company")
+    role = job.get("role") or keywords.get("role")
+    company_name = (
+        company.strip() if isinstance(company, str) and company.strip() else None
+    )
+    job_title = role.strip() if isinstance(role, str) and role.strip() else None
+    return company_name, job_title, keywords or None
+
+
 async def _generate_auxiliary_messages(
     improved_data: dict[str, Any],
     job_content: str,
@@ -587,6 +649,10 @@ async def _generate_auxiliary_messages(
     enable_cover_letter: bool,
     enable_outreach: bool,
     enable_interview_prep: bool,
+    *,
+    company_name: str | None = None,
+    job_title: str | None = None,
+    job_keywords: dict[str, Any] | None = None,
 ) -> tuple[str | None, str | None, str | None, InterviewPrepData | None, list[str]]:
     """Generate cover letter, outreach, interview prep, and resume title.
 
@@ -607,12 +673,26 @@ async def _generate_auxiliary_messages(
 
     if enable_cover_letter:
         generation_tasks.append(
-            generate_cover_letter(improved_data, job_content, language)
+            generate_cover_letter(
+                improved_data,
+                job_content,
+                language,
+                company_name=company_name,
+                job_title=job_title,
+                job_keywords=job_keywords,
+            )
         )
         task_labels.append("cover_letter")
     if enable_outreach:
         generation_tasks.append(
-            generate_outreach_message(improved_data, job_content, language)
+            generate_outreach_message(
+                improved_data,
+                job_content,
+                language,
+                company_name=company_name,
+                job_title=job_title,
+                job_keywords=job_keywords,
+            )
         )
         task_labels.append("outreach")
     if enable_interview_prep:
@@ -641,6 +721,11 @@ async def _generate_auxiliary_messages(
                 outreach_message = result
             elif label == "interview_prep":
                 interview_prep = result
+
+    # Never store an empty/garbage title: fall back to a deterministic
+    # identity-based name built from data we already have (no LLM call).
+    if not title or not title.strip():
+        title = build_fallback_resume_title(candidate_name, job_title, company_name)
 
     return cover_letter, outreach_message, title, interview_prep, warnings
 
@@ -912,7 +997,7 @@ async def improve_resume_preview_endpoint(
     language = get_content_language()
     prompt_id = request.prompt_id or _get_default_prompt_id()
 
-    stage = "load_job_keywords"
+    stage: list[str] = ["load_job_keywords"]
     detail = "Failed to preview resume. Please try again."
     try:
         return await asyncio.wait_for(
@@ -922,6 +1007,7 @@ async def improve_resume_preview_endpoint(
                 job=job,
                 language=language,
                 prompt_id=prompt_id,
+                stage=stage,
             ),
             timeout=settings.request_timeout_seconds,
         )
@@ -942,7 +1028,7 @@ async def improve_resume_preview_endpoint(
             ),
         )
     except Exception as e:
-        _raise_improve_error("preview", stage, e, detail)
+        _raise_improve_error("preview", stage[0], e, detail)
 
 
 @router.post("/improve/projects-suggestions", response_model=ProjectSuggestionsResponse)
@@ -1092,8 +1178,13 @@ async def _improve_preview_flow(
     job: dict[str, Any],
     language: str,
     prompt_id: str,
+    stage: list[str],
 ) -> ImproveResumeResponse:
-    """Inner flow for improve/preview, extracted so it can be wrapped in wait_for."""
+    """Inner flow for improve/preview, extracted so it can be wrapped in wait_for.
+
+    ``stage`` is a single-element list mutated in place so the caller's
+    exception handler can report the phase that actually failed.
+    """
     job_keywords = job.get("job_keywords")
     job_keywords_hash = job.get("job_keywords_hash")
     content_hash = _hash_job_content(job["content"])
@@ -1143,8 +1234,17 @@ async def _improve_preview_flow(
     # Collect warnings throughout the process
     response_warnings: list[str] = []
 
+    # Projects are only replaced when the caller explicitly opts in: either by
+    # selecting career projects or by setting keep_projects=False (auto top
+    # matches). Defaulting to keep prevents tailoring from silently swapping
+    # out the user's own projects.
+    replace_projects = bool(request.selected_projects) or not request.keep_projects
+    projects_baseline: list[dict[str, Any]] = []
+    github_repos = ""
+
     # Diff-based improvement: generate targeted changes, apply with verification
     if original_resume_data:
+        stage[0] = "plan_skill_targets"
         skill_targets: list[dict[str, Any]] = []
         try:
             raw_skill_plan = await generate_skill_target_plan(
@@ -1176,13 +1276,13 @@ async def _improve_preview_flow(
             response_warnings.append("Skill target planning failed")
 
         # Fetch matched GitHub repos for project context
-        github_repos = ""
         try:
             keywords_str = _prepare_keywords_for_prompt(job_keywords)
             github_repos = await get_matched_repos_for_job(keywords_str)
         except Exception as e:
             logger.debug("Failed to fetch GitHub repos for tailoring: %s", e)
 
+        stage[0] = "generate_resume_diffs"
         diff_result = await generate_resume_diffs(
             original_resume=resume["content"],
             job_description=job["content"],
@@ -1194,12 +1294,14 @@ async def _improve_preview_flow(
             github_repos=github_repos,
         )
 
+        stage[0] = "apply_diffs"
         improved_data, applied_changes, rejected_changes = apply_diffs(
             original=original_resume_data,
             changes=diff_result.changes,
             allowed_skill_targets=skill_targets,
         )
 
+        stage[0] = "verify_diff_result"
         diff_warnings = verify_diff_result(
             original=original_resume_data,
             result=improved_data,
@@ -1221,6 +1323,7 @@ async def _improve_preview_flow(
         )
     else:
         # Fallback to full-output mode when no structured data available
+        stage[0] = "improve_resume"
         improved_data = await improve_resume(
             original_resume=resume["content"],
             job_description=job["content"],
@@ -1232,6 +1335,7 @@ async def _improve_preview_flow(
         )
 
     # Safety nets (defense in depth — should rarely activate with diff-based flow)
+    stage[0] = "apply_safety_nets"
     improved_data, preserve_warnings = _preserve_personal_info(
         original_resume_data,
         improved_data,
@@ -1245,26 +1349,36 @@ async def _improve_preview_flow(
     improved_data = _preserve_original_skills(original_resume_data, improved_data)
     improved_data = _protect_custom_sections(original_resume_data, improved_data)
 
-    # JD-matched career projects: replace the Projects section with the
-    # career-graph projects matching the job — the user's pick from the
-    # suggestions step, or the auto top-2 when none was made (Problem ->
-    # Solution -> Result descriptions). No-op when nothing matches or the
-    # LLM is unavailable.
-    try:
-        career_projects = await db.list_career_projects()
-        improved_data, matched_warnings = await merge_matched_projects(
-            original_data=original_resume_data,
-            improved_data=improved_data,
-            career_projects=career_projects,
-            job_keywords=job_keywords,
-            language=language,
-            selected_names=request.selected_projects,
+    # JD-matched career projects: replace the Projects section only when the
+    # caller explicitly opted in — the user's picked projects, or the auto
+    # top-2 when keep_projects=False. The default is to keep the current
+    # section untouched. No-op when nothing matches or the LLM is unavailable.
+    if replace_projects:
+        stage[0] = "merge_matched_projects"
+        try:
+            career_projects = await db.list_career_projects()
+            improved_data, matched_warnings = await merge_matched_projects(
+                original_data=original_resume_data,
+                improved_data=improved_data,
+                career_projects=career_projects,
+                job_keywords=job_keywords,
+                language=language,
+                selected_names=request.selected_projects,
+            )
+            response_warnings.extend(matched_warnings)
+        except Exception as e:
+            logger.warning(
+                "Matched-project merge failed, continuing without it: %s", e
+            )
+        # Refinement runs after the merge and may drop entries; snapshot the
+        # chosen section so we can restore anything it loses.
+        merged_projects = improved_data.get("personalProjects")
+        projects_baseline = (
+            copy.deepcopy(merged_projects) if isinstance(merged_projects, list) else []
         )
-        response_warnings.extend(matched_warnings)
-    except Exception as e:
-        logger.warning("Matched-project merge failed, continuing without it: %s", e)
 
     # Multi-pass refinement: keyword injection, AI phrase removal, alignment validation
+    stage[0] = "refine_resume"
     refinement_stats: RefinementStats | None = None
     refinement_result = None
     refinement_attempted = False
@@ -1323,8 +1437,22 @@ async def _improve_preview_flow(
         if refinement_attempted:
             response_warnings.append(f"Refinement failed: {str(e)}")
 
+    if replace_projects:
+        # Restore any chosen project entries that refinement dropped.
+        improved_data, project_warnings = _restore_missing_projects(
+            {"personalProjects": projects_baseline},
+            improved_data,
+        )
+        response_warnings.extend(project_warnings)
+    else:
+        # Keep the user's current Projects section intact: this reverts any
+        # project edits made by diff generation, keyword injection, or
+        # refinement.
+        improved_data = _preserve_projects(original_resume_data, improved_data)
+
     # Router-level guard: restore work experience if refinement lost entries
     # (defense in depth - also covers full-output fallback path)
+    stage[0] = "finalize_resume"
     if master_data:
         improved_data, restore_warnings = _restore_missing_work_experience(
             master_data, improved_data
@@ -1337,6 +1465,7 @@ async def _improve_preview_flow(
     improved_data, skill_warnings = trim_and_group_skills(improved_data, job_keywords)
     response_warnings.extend(skill_warnings)
 
+    stage[0] = "build_response"
     improved_text = json.dumps(improved_data, indent=2)
     preview_hash = _hash_improved_data(improved_data)
     preview_hashes = job.get("preview_hashes")
@@ -1422,7 +1551,8 @@ async def improve_resume_confirm_endpoint(
     enable_cover_letter = feature_config.get("enable_cover_letter", False)
     enable_outreach = feature_config.get("enable_outreach_message", False)
     enable_interview_prep = feature_config.get("enable_interview_prep", False)
-    language = get_content_language()
+    company_name, job_title, job_keywords = _job_identity(job)
+    language = resolve_correspondence_language(job["content"])
 
     stage = "serialize_improved_data"
     detail = "Failed to confirm resume. Please try again."
@@ -1493,6 +1623,9 @@ async def improve_resume_confirm_endpoint(
             enable_cover_letter,
             enable_outreach,
             enable_interview_prep,
+            company_name=company_name,
+            job_title=job_title,
+            job_keywords=job_keywords,
         )
         response_warnings.extend(aux_warnings)
 
@@ -1501,7 +1634,7 @@ async def improve_resume_confirm_endpoint(
         tailored_resume = await db.create_resume(
             content=improved_text,
             content_type="json",
-            filename=f"tailored_{resume.get('filename', 'resume')}",
+            filename=_tailored_filename(resume.get("filename")),
             is_master=False,
             parent_id=request.resume_id,
             processed_data=improved_data,
@@ -1586,6 +1719,7 @@ async def improve_resume_endpoint(
     enable_outreach = feature_config.get("enable_outreach_message", False)
     enable_interview_prep = feature_config.get("enable_interview_prep", False)
     language = get_content_language()
+    aux_language = resolve_correspondence_language(job["content"])
 
     try:
         # Extract keywords from job description
@@ -1597,6 +1731,12 @@ async def improve_resume_endpoint(
         original_resume_data = _get_original_resume_data(resume)
         # Collect warnings throughout the process
         response_warnings: list[str] = []
+
+        # Explicit opt-in only: picked projects or keep_projects=False.
+        replace_projects = (
+            bool(request.selected_projects) or not request.keep_projects
+        )
+        projects_baseline: list[dict[str, Any]] = []
 
         # Fetch matched GitHub repos for project context
         github_repos = ""
@@ -1668,24 +1808,30 @@ async def improve_resume_endpoint(
         improved_data = _preserve_original_skills(original_resume_data, improved_data)
         improved_data = _protect_custom_sections(original_resume_data, improved_data)
 
-        # JD-matched career projects: replace the Projects section with the
-        # career-graph projects matching the job — the user's pick from the
-        # suggestions step, or the auto top-2 when none was made (Problem ->
-        # Solution -> Result descriptions). No-op when nothing matches or the
-        # LLM is unavailable.
-        try:
-            career_projects = await db.list_career_projects()
-            improved_data, matched_warnings = await merge_matched_projects(
-                original_data=original_resume_data,
-                improved_data=improved_data,
-                career_projects=career_projects,
-                job_keywords=job_keywords,
-                language=language,
-                selected_names=request.selected_projects,
+        # JD-matched career projects: explicit opt-in only (picked projects or
+        # keep_projects=False). Default keeps the current section untouched.
+        if replace_projects:
+            try:
+                career_projects = await db.list_career_projects()
+                improved_data, matched_warnings = await merge_matched_projects(
+                    original_data=original_resume_data,
+                    improved_data=improved_data,
+                    career_projects=career_projects,
+                    job_keywords=job_keywords,
+                    language=language,
+                    selected_names=request.selected_projects,
+                )
+                response_warnings.extend(matched_warnings)
+            except Exception as e:
+                logger.warning(
+                    "Matched-project merge failed, continuing without it: %s", e
+                )
+            merged_projects = improved_data.get("personalProjects")
+            projects_baseline = (
+                copy.deepcopy(merged_projects)
+                if isinstance(merged_projects, list)
+                else []
             )
-            response_warnings.extend(matched_warnings)
-        except Exception as e:
-            logger.warning("Matched-project merge failed, continuing without it: %s", e)
 
         # Multi-pass refinement: keyword injection, AI phrase removal, alignment validation
         refinement_stats: RefinementStats | None = None
@@ -1746,6 +1892,20 @@ async def improve_resume_endpoint(
             if refinement_attempted:
                 response_warnings.append(f"Refinement failed: {str(e)}")
 
+        if replace_projects:
+            improved_data, project_warnings = _restore_missing_projects(
+                {"personalProjects": projects_baseline},
+                improved_data,
+            )
+            response_warnings.extend(project_warnings)
+        else:
+            # Keep the user's current Projects section intact: this reverts
+            # any project edits made by diff generation, keyword injection, or
+            # refinement.
+            improved_data = _preserve_projects(
+                original_resume_data, improved_data
+            )
+
         # Router-level guard: restore work experience if refinement lost entries
         # (defense in depth - also covers full-output fallback path)
         if master_data:
@@ -1777,6 +1937,7 @@ async def improve_resume_endpoint(
         improvements = generate_improvements(job_keywords)
 
         # Generate cover letter, outreach message, and title in parallel if enabled
+        company_name, job_title, _ = _job_identity(job, job_keywords)
         (
             cover_letter,
             outreach_message,
@@ -1786,10 +1947,13 @@ async def improve_resume_endpoint(
         ) = await _generate_auxiliary_messages(
             improved_data,
             job["content"],
-            language,
+            aux_language,
             enable_cover_letter,
             enable_outreach,
             enable_interview_prep,
+            company_name=company_name,
+            job_title=job_title,
+            job_keywords=job_keywords,
         )
         response_warnings.extend(aux_warnings)
 
@@ -1798,7 +1962,7 @@ async def improve_resume_endpoint(
         tailored_resume = await db.create_resume(
             content=improved_text,
             content_type="json",
-            filename=f"tailored_{resume.get('filename', 'resume')}",
+            filename=_tailored_filename(resume.get("filename")),
             is_master=False,
             parent_id=request.resume_id,
             processed_data=improved_data,
@@ -2209,8 +2373,37 @@ async def download_resume_pdf(
     except PDFRenderError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    headers = {"Content-Disposition": f'attachment; filename="resume_{resume_id}.pdf"'}
+    headers = {"Content-Disposition": _pdf_content_disposition(resume, resume_id)}
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
+def _pdf_content_disposition(resume: dict[str, Any], resume_id: str) -> str:
+    """Build a Content-Disposition header for a resume PDF attachment.
+
+    Uses the resume title when available, sanitized like the frontend
+    ``sanitizeFilename`` (invalid filename characters replaced, whitespace
+    collapsed, ≤100 chars), falling back to ``resume_{id}.pdf``. Non-ASCII
+    titles are sent both as an ASCII-folded ``filename`` and an RFC 5987
+    ``filename*`` so browsers keep accents/CJK intact.
+    """
+    title = (resume.get("title") or "").strip()
+    if title:
+        safe = unicodedata.normalize("NFC", title)
+        safe = re.sub(r'[/\\:*?"<>|]', "-", safe)
+        safe = re.sub(r"\s+", " ", safe).strip()[:100].strip()
+    else:
+        safe = ""
+    base = safe or f"resume_{resume_id}"
+    ascii_base = (
+        base.encode("ascii", "replace")
+        .decode("ascii")
+        .replace('"', "-")
+        .replace("?", "-")
+    )
+    return (
+        f'attachment; filename="{ascii_base}.pdf"; '
+        f"filename*=UTF-8''{quote(f'{base}.pdf', safe='')}"
+    )
 
 
 def _page_dimensions_mm(page_size: str) -> tuple[float, float]:
@@ -2371,8 +2564,8 @@ async def generate_cover_letter_endpoint(
             detail="Resume has no processed data. Please re-upload the resume.",
         )
 
-    # Get language setting
-    language = get_content_language()
+    language = resolve_correspondence_language(job["content"])
+    company_name, job_title, job_keywords = _job_identity(job)
 
     # Generate cover letter
     try:
@@ -2381,6 +2574,9 @@ async def generate_cover_letter_endpoint(
             job["content"],
             language,
             instruction=request.instruction if request else None,
+            company_name=company_name,
+            job_title=job_title,
+            job_keywords=job_keywords,
         )
     except Exception as e:
         logger.error(f"Cover letter generation failed: {e}")
@@ -2448,8 +2644,8 @@ async def generate_outreach_endpoint(
             detail="Resume has no processed data. Please re-upload the resume.",
         )
 
-    # Get language setting
-    language = get_content_language()
+    language = resolve_correspondence_language(job["content"])
+    company_name, job_title, job_keywords = _job_identity(job)
 
     # Generate outreach message
     try:
@@ -2458,6 +2654,9 @@ async def generate_outreach_endpoint(
             job["content"],
             language,
             instruction=request.instruction if request else None,
+            company_name=company_name,
+            job_title=job_title,
+            job_keywords=job_keywords,
         )
     except Exception as e:
         logger.error(f"Outreach message generation failed: {e}")
@@ -2517,7 +2716,7 @@ async def generate_interview_prep_endpoint(
             detail="Resume has no processed data. Please re-upload the resume.",
         )
 
-    language = get_content_language()
+    language = resolve_correspondence_language(job["content"])
 
     try:
         interview_prep = await generate_interview_prep(

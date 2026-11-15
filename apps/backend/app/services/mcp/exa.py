@@ -107,3 +107,47 @@ class ExaAdapter(BaseMCPAdapter):
         except Exception as exc:
             logger.error("Exa search failed: %s", exc)
             return []
+
+    async def search_web(
+        self, query: str, num_results: int = 10
+    ) -> list[dict[str, str]]:
+        """Generic web search for lead research.
+
+        Returns [{title, url, text}] — used by the lead scraper for
+        ``site:linkedin.com`` people/company queries and open-web discovery.
+        """
+        try:
+            payload = {
+                "query": query,
+                "type": "neural",
+                "numResults": num_results,
+                "contents": {
+                    "highlights": {"numSentences": 2, "highlightsPerUrl": 1},
+                },
+            }
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.post(
+                    EXA_SEARCH_URL,
+                    json=payload,
+                    headers={
+                        "x-api-key": EXA_API_KEY,
+                        "Content-Type": "application/json",
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            out: list[dict[str, str]] = []
+            for item in data.get("results", []):
+                highlights = item.get("highlights") or []
+                text = " ".join(highlights) if highlights else (item.get("text") or "")
+                out.append(
+                    {
+                        "title": item.get("title") or "",
+                        "url": item.get("url") or "",
+                        "text": text[:1000],
+                    }
+                )
+            return out
+        except Exception as exc:
+            logger.error("Exa web search failed: %s", exc)
+            return []

@@ -1,7 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Mail, Building2, Briefcase, MapPin, User, UserPlus, Bookmark, FileText } from 'lucide-react';
+import {
+  X,
+  Mail,
+  Building2,
+  Briefcase,
+  MapPin,
+  User,
+  UserPlus,
+  Bookmark,
+  FileText,
+} from 'lucide-react';
 
 interface EmailEntities {
   company?: string;
@@ -34,11 +44,20 @@ interface EmailBodyDialogProps {
   onTailorResume?: (data: { job_description: string; company: string; role: string }) => void;
 }
 
-export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCompany, onSaveJob, onTailorResume }: EmailBodyDialogProps) {
+export function EmailBodyDialog({
+  isOpen,
+  onClose,
+  email,
+  onAddContact,
+  onAddCompany,
+  onSaveJob,
+  onTailorResume,
+}: EmailBodyDialogProps) {
   if (!isOpen || !email) return null;
 
   const entities = email.entities;
-  const hasEntities = entities && (entities.company || entities.contacts?.length || entities.job_title);
+  const hasEntities =
+    entities && (entities.company || entities.contacts?.length || entities.job_title);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -56,7 +75,10 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
               <span>{email.date}</span>
             </div>
           </div>
-          <button onClick={onClose} className="ml-3 rounded-md p-1 hover:bg-gray-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="ml-3 rounded-md p-1 hover:bg-gray-100 transition-colors"
+          >
             <X className="h-4 w-4 text-ink-muted" />
           </button>
         </div>
@@ -64,7 +86,9 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
         {/* Entities sidebar */}
         {hasEntities && (
           <div className="border-b border-[#e6e3dc] bg-[#faf9f7] p-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-2">Extracted Data</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-2">
+              Extracted Data
+            </div>
             <div className="space-y-1.5">
               {entities.company && (
                 <div className="flex items-center gap-1.5 text-xs">
@@ -85,12 +109,18 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
                 </div>
               )}
               {entities.match_percentage && (
-                <div className="text-xs font-bold text-green-600">{entities.match_percentage} match</div>
+                <div className="text-xs font-bold text-green-600">
+                  {entities.match_percentage} match
+                </div>
               )}
               {entities.contacts && entities.contacts.length > 0 && (
                 <div className="flex items-center gap-1.5 text-xs">
                   <User className="h-3 w-3 text-blue-500" />
-                  <span>{entities.contacts.map(c => `${c.name}${c.email ? ` (${c.email})` : ''}`).join(', ')}</span>
+                  <span>
+                    {entities.contacts
+                      .map((c) => `${c.name}${c.email ? ` (${c.email})` : ''}`)
+                      .join(', ')}
+                  </span>
                 </div>
               )}
             </div>
@@ -99,7 +129,13 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
             <div className="mt-3 flex flex-wrap gap-1.5">
               {entities.contacts && entities.contacts.length > 0 && onAddContact && (
                 <button
-                  onClick={() => onAddContact({ name: entities.contacts![0].name, email: entities.contacts![0].email, company: entities.company })}
+                  onClick={() =>
+                    onAddContact({
+                      name: entities.contacts![0].name,
+                      email: entities.contacts![0].email,
+                      company: entities.company,
+                    })
+                  }
                   className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
                 >
                   <UserPlus className="h-3 w-3" />
@@ -117,7 +153,13 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
               )}
               {entities.job_title && entities.company && onSaveJob && (
                 <button
-                  onClick={() => onSaveJob({ title: entities.job_title!, company: entities.company!, location: entities.location })}
+                  onClick={() =>
+                    onSaveJob({
+                      title: entities.job_title!,
+                      company: entities.company!,
+                      location: entities.location,
+                    })
+                  }
                   className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
                 >
                   <Bookmark className="h-3 w-3" />
@@ -126,7 +168,13 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
               )}
               {entities.job_description && entities.company && onTailorResume && (
                 <button
-                  onClick={() => onTailorResume({ job_description: entities.job_description!, company: entities.company!, role: entities.job_title || '' })}
+                  onClick={() =>
+                    onTailorResume({
+                      job_description: entities.job_description!,
+                      company: entities.company!,
+                      role: entities.job_title || '',
+                    })
+                  }
                   className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 transition-colors"
                 >
                   <FileText className="h-3 w-3" />
@@ -141,12 +189,18 @@ export function EmailBodyDialog({ isOpen, onClose, email, onAddContact, onAddCom
         <div className="overflow-y-auto p-4" style={{ maxHeight: 'calc(85vh - 200px)' }}>
           {entities?.summary && (
             <div className="mb-4 rounded-lg bg-blue-50 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">Summary</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">
+                Summary
+              </div>
               <div className="text-sm text-ink leading-relaxed">{entities.summary}</div>
             </div>
           )}
-          <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-2">Full Email</div>
-          <pre className="whitespace-pre-wrap text-sm text-ink-soft leading-relaxed font-sans">{email.body || email.snippet || 'No content available.'}</pre>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-2">
+            Full Email
+          </div>
+          <pre className="whitespace-pre-wrap text-sm text-ink-soft leading-relaxed font-sans">
+            {email.body || email.snippet || 'No content available.'}
+          </pre>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { ResumeClean } from '@/components/resume/resume-clean';
 import type { ResumeData } from '@/components/dashboard/resume-component';
 
@@ -51,5 +51,17 @@ describe('ResumeClean', () => {
     );
     expect(screen.getByRole('link', { name: 'Email' })).toHaveAttribute('href', 'mailto:a@b.com');
     expect(screen.queryByRole('link', { name: 'a@b.com' })).not.toBeInTheDocument();
+  });
+
+  it('renders pipe separators between contact items by default', () => {
+    const { container } = render(<ResumeClean data={data} />);
+    const header = container.querySelector('header') as HTMLElement;
+    expect(within(header).getAllByText('|')).toHaveLength(1);
+  });
+
+  it('hides contact separators when showContactSeparators is false', () => {
+    const { container } = render(<ResumeClean data={data} showContactSeparators={false} />);
+    const header = container.querySelector('header') as HTMLElement;
+    expect(within(header).queryByText('|')).not.toBeInTheDocument();
   });
 });

@@ -88,5 +88,3 @@ class ExecutionBudget:
         elapsed = (time.monotonic() - self._start_time) * 1000
         return max(0.0, self.config.max_execution_time_ms - elapsed)
 
-
-budget = ExecutionBudget()

@@ -168,9 +168,7 @@ export function ContactDetailsDialog({
               <dt className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                 {t('contacts.form.description')}
               </dt>
-              <dd className="mt-1 whitespace-pre-wrap text-sm text-ink">
-                {contact.description}
-              </dd>
+              <dd className="mt-1 whitespace-pre-wrap text-sm text-ink">{contact.description}</dd>
             </div>
           )}
         </div>

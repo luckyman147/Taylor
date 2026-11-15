@@ -1,0 +1,481 @@
+{
+  "mode": "autonomous",
+  "dataset": "eval/datasets/benchmark.jsonl",
+  "samples_total": 5,
+  "traces_collected": 5,
+  "elapsed_seconds": 115.52,
+  "config": {
+    "seed": 42,
+    "temperature": 0.0,
+    "model": null,
+    "model_version": "v1.0",
+    "prompt_version": "v1.0",
+    "tool_registry_version": "v1.0",
+    "dataset_version": "v1.0",
+    "evaluation_version": "v1.0",
+    "eval_mode": "autonomous",
+    "max_iterations": 3,
+    "max_tool_calls": 10,
+    "max_execution_time_ms": 30000,
+    "max_cost_usd": 0.05
+  },
+  "metrics": [
+    {
+      "metric": "cost_per_task",
+      "value": 0.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "groundedness_rate",
+      "value": 0.5,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "p95_latency_ms",
+      "value": 52541.60950000151,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "faithfulness",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "answer_relevance",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "recovery_success_rate",
+      "value": 1.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "recovery_policy_accuracy",
+      "value": 1.0,
+      "pass_rate": 1.0,
+      "samples": 5
+    },
+    {
+      "metric": "task_success_rate",
+      "value": 0.7,
+      "pass_rate": 0.4,
+      "samples": 5
+    },
+    {
+      "metric": "tool_recall_at_5",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_recall_at_10",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "mrr",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "ndcg_at_5",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    },
+    {
+      "metric": "tool_selection_accuracy",
+      "value": 0.0,
+      "pass_rate": 0.0,
+      "samples": 5
+    }
+  ],
+  "traces": [
+    {
+      "run_id": "ea3a0c6bee63",
+      "sample_id": "bench_001",
+      "mode": "autonomous",
+      "query": "Analyze my resume for ATS compliance",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_evidence",
+        "compare_resumes",
+        "get_career_summary",
+        "get_skill_roi",
+        "get_market_position",
+        "get_skill_suggestions",
+        "create_skill"
+      ],
+      "ranked_tools": [
+        "get_ats_audit",
+        "get_resume_for_audit",
+        "get_evidence",
+        "compare_resumes",
+        "get_skill_suggestions",
+        "get_career_summary",
+        "get_skill_roi",
+        "get_market_position"
+      ],
+      "final_answer": "## Overview\nIt looks like you have a comprehensive profile with multiple tailored resume versions and experience entries spanning software development, engineering, and architecture roles. To properly analyze your resume for ATS (Applicant Tracking System) compliance, it helps to look at your master resume file as well as your specialized role variations.\n\n## Master Resume & Formatting\n- **Master File (`iyed-t-.docx`)**: Your master resume is stored in a `.docx` format, which is generally the gold standard for ATS parsing. Word documents allow automated systems to read text, headers, and bullet points much more reliably than complex graphic-heavy PDFs. \n- **Structure and Content**: Across your targeted entries\u2014ranging from Software Developer at INC. 5000 companies and Tevora to Software Engineer at Spotify and Senior .NET Developer at Opus Technology\u2014your titles clearly reflect standard industry roles. Using standard job titles is crucial because ATS algorithms heavily weigh them when matching candidate profiles to requisitions.\n\n## Recommendations for ATS Optimization\n- **Keyword Alignment**: Because you have specialized variations (such as \"Software Architect / Full-Stack Developer @ hausverwalter.ai\" and \"Senior .NET Developer @ Opus Technology\"), ensure that the specific hard skills tied to those roles (e.g., .NET, cloud infrastructure, specific frameworks) appear explicitly in the corresponding resume text rather than just being implied by the title.\n- **Avoid Complex Formatting**: Stick to the clean, linear structure supported by your `.docx` master file. Avoid multi-column layouts, text boxes, tables, and non-standard icons or graphics, as these often cause modern ATS parsers to scramble or skip text entirely. \n- **Standard Section Headings**: Make sure your sections use universally recognized headers like \"Work Experience,\" \"Education,\" and \"Skills\" rather than creative alternatives that might confuse automated parsers.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 10554.38520000098,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "8faceb802f5a",
+      "sample_id": "bench_002",
+      "mode": "autonomous",
+      "query": "Find backend jobs in Germany",
+      "iterations": [
+        {
+          "iteration": 0
+        }
+      ],
+      "tool_calls": [],
+      "selected_tools": [],
+      "ranked_tools": [],
+      "final_answer": "I wasn't able to gather the information needed to answer your question.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 3.698900000017602,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "a462daa282d9",
+      "sample_id": "bench_003",
+      "mode": "autonomous",
+      "query": "Compare my resume against this job description and find gaps",
+      "iterations": [
+        {
+          "iteration": 3
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 2,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 3,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 3,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_evidence",
+        "get_career_summary",
+        "get_market_position",
+        "compare_resumes",
+        "get_skill_suggestions",
+        "create_skill",
+        "get_resume_for_audit",
+        "get_ats_audit",
+        "get_job_verdict",
+        "update_application_status",
+        "get_applications",
+        "create_application"
+      ],
+      "ranked_tools": [
+        "get_career_summary",
+        "compare_resumes",
+        "get_skill_suggestions",
+        "get_ats_audit",
+        "get_market_position",
+        "get_evidence",
+        "get_resume_for_audit",
+        "create_skill"
+      ],
+      "final_answer": "## Overview\nBased on an analysis of your profile as a Senior Full-Stack Software Engineer, your resume demonstrates a robust foundation in modern web technologies, cloud platforms, and emerging AI integrations. However, to fully align with competitive senior-level job descriptions, there are a few technical gaps and areas for expansion worth addressing.\n\n## Technical Gaps & Recommended Skills\nWhile your skill set covers core areas like .NET, C#, Angular, and cloud services like AWS and Azure, job descriptions for senior roles frequently look for specific testing and rapid deployment ecosystems. Based on current industry standards and supplemental suggestions:\n- **End-to-End Testing**: Adding modern E2E testing frameworks like **Playwright** or Cypress will strengthen your quality assurance profile.\n- **Deployment & BaaS Platforms**: Familiarity with modern deployment workflows and Backend-as-a-Service tools such as **Vercel** and **Firebase** can help bridge the gap for fast-paced product development environments.\n- **Pipeline Optimization**: While you list CI/CD pipelines, explicitly highlighting hands-on toolsets like GitHub Actions configurations, automated testing gates, and staging environments will make your deployment expertise more prominent.\n\n## Next Steps\nTo make your resume more competitive against targeted job descriptions, consider integrating projects or bullet points that explicitly showcase these testing frameworks and deployment platforms alongside your existing work in Agentic AI workflows and full-stack development.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 72411.1049000021,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "1f96bf77f2bd",
+      "sample_id": "bench_004",
+      "mode": "autonomous",
+      "query": "What skills should I learn to improve my resume?",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 1655.5949000030523,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_resume_for_audit",
+        "get_career_summary",
+        "get_evidence",
+        "get_ats_audit",
+        "get_skill_roi",
+        "get_skill_suggestions",
+        "compare_resumes",
+        "get_market_position",
+        "create_skill"
+      ],
+      "ranked_tools": [
+        "get_ats_audit",
+        "get_skill_suggestions",
+        "get_market_position",
+        "compare_resumes",
+        "get_career_summary",
+        "get_skill_roi",
+        "get_resume_for_audit",
+        "create_skill"
+      ],
+      "final_answer": "To significantly improve your resume and boost your job market appeal, you should focus on closing gaps in high-demand complementary technologies while building out your testing and deployment capabilities. Based on your current profile, strategically expanding your toolset will unlock additional job opportunities and make your existing skills more marketable.\n\n## Recommended Technologies to Learn Next\nTo round out your development stack, consider prioritizing tools that streamline deployment, testing, and backend prototyping. Adding these to your resume demonstrates modern software engineering best practices:\n- **CI/CD**: Essential for demonstrating knowledge in automated testing and deployment pipelines.\n- **Playwright**: A valuable end-to-end testing framework that highlights your commitment to code quality.\n- **Firebase & Vercel**: Great additions for showcasing rapid prototyping and modern frontend deployment capabilities (specifically for Next.js applications).\n\n## High-ROI Skills to Strengthen\nAn analysis of your current skill profile shows that while you have a strong foundation in core languages like JavaScript, Python, and TypeScript, you can maximize your return on investment by solidifying your proficiency in key frameworks and infrastructure tools:\n- **React & Next.js**: Deepening your knowledge here will unlock dozens of matching jobs, as these are heavily sought after in the current market.\n- **Backend & Database Tools**: Strengthening your familiarity with PostgreSQL, Docker, and FastAPI will make you a more versatile full-stack candidate. \n- **DevOps & Caching**: Bumping up your working knowledge of tools like Redis and Git will help complete your profile for standard engineering roles.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 22920.098499998858,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    },
+    {
+      "run_id": "d0c340fb57a4",
+      "sample_id": "bench_005",
+      "mode": "autonomous",
+      "query": "Show me my career stats and market position",
+      "iterations": [
+        {
+          "iteration": 1
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool_name": "step_1",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        },
+        {
+          "tool_name": "step_2",
+          "arguments": {},
+          "success": true,
+          "error": null,
+          "latency_ms": 0.0,
+          "iteration": 1,
+          "recovery_action": null
+        }
+      ],
+      "selected_tools": [
+        "get_career_summary",
+        "create_skill",
+        "compare_resumes",
+        "get_contacts",
+        "create_contact",
+        "get_market_position"
+      ],
+      "ranked_tools": [
+        "get_career_summary",
+        "compare_resumes",
+        "create_skill",
+        "get_market_position",
+        "get_contacts",
+        "create_contact"
+      ],
+      "final_answer": "## Overview\nMohamed Iyed Touati is a Full-Stack Software Engineer with a strong foundation in modern web technologies, cloud platforms, and emerging AI workflows. Your market position reflects a solid mid-level profile with standout expertise in core languages like Python and TypeScript.\n\n## Career Stats & Technical Expertise\n- **Core Languages & Frameworks:** You demonstrate expert-level proficiency in Python (95th percentile) and TypeScript (93rd percentile), alongside strong capabilities in C#/.NET, Angular, and JavaScript.\n- **Specialized Skills:** Your profile bridges traditional full-stack development with cutting-edge domains, featuring advanced frontend performance optimization, authentication and security (OAuth 2.1, zero-trust), and Agentic AI workflows (multi-agent orchestration, YOLOv8, and Vision-Language models).\n- **Project Portfolio:** You have built diverse systems ranging from pharmacy management tools (`pharmatrack`) and AI-powered platforms (`privora`) to intelligent automated license plate recognition systems (`SmartParkTN`).\n\n## Market Position & Outlook\n- **Current Standing:** Market analysis positions you as a Mid-level developer with strong domain readiness in Frontend, Backend, and Cloud & DevOps, alongside a growing portfolio in Data & ML.\n- **Career Trajectory:** While your target roles lean toward Senior Full-Stack Software Engineer, market assessments note that moving fully into senior distributed systems will require further strengthening in system design and scalability patterns. \n- **Best Next Steps:** High-match roles for your current skill set include Frontend Developer, TypeScript Developer, and React Developer, where you can leverage your high-percentile language proficiencies.",
+      "success": true,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached": 0,
+        "total": 0
+      },
+      "cost": 0.0,
+      "latency_ms": 9626.148499999545,
+      "recovery_events": [],
+      "config": {
+        "seed": 42,
+        "temperature": 0.0,
+        "model": null,
+        "model_version": "v1.0",
+        "prompt_version": "v1.0",
+        "tool_registry_version": "v1.0",
+        "dataset_version": "v1.0",
+        "evaluation_version": "v1.0",
+        "eval_mode": "autonomous",
+        "max_iterations": 3,
+        "max_tool_calls": 10,
+        "max_execution_time_ms": 30000,
+        "max_cost_usd": 0.05
+      }
+    }
+  ]
+}

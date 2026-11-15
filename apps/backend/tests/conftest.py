@@ -214,6 +214,7 @@ async def isolated_db(tmp_path, monkeypatch):
         "profile",
         "email",
         "interview_practice",
+        "leads",
     ):
         try:
             module = importlib.import_module(f"app.routers.{router_name}")
@@ -234,6 +235,10 @@ async def isolated_db(tmp_path, monkeypatch):
     import app.services.job_scraper as job_scraper_module
 
     monkeypatch.setattr(job_scraper_module, "db", test_db)
+    # Lead scraper service also binds db at import time.
+    import app.services.lead_scraper as lead_scraper_module
+
+    monkeypatch.setattr(lead_scraper_module, "db", test_db)
     # Chat services import db directly
     import app.services.chat_tools as chat_tools_module
 

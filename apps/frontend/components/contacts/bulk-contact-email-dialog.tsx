@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Mail, Send, Sparkles, UserRound, Users } from 'lucide-react';
+import { Loader2, Mail, RotateCw, Send, Sparkles, UserRound, Users, X } from 'lucide-react';
 import { updateContact, type Contact } from '@/lib/api/contacts';
 import {
   fetchEmailConfig,
@@ -34,6 +34,13 @@ import { useTranslations } from '@/lib/i18n';
 import { useLanguage } from '@/lib/context/language-context';
 import { cn } from '@/lib/utils';
 import { MarkdownToolbar } from '@/components/common/markdown-toolbar';
+import {
+  applyGreeting,
+  composeSharedInstruction,
+  summarizeNames,
+  GREETING_TOKEN,
+  type EmailMode,
+} from '@/lib/email/shared-outreach';
 
 type Step = 'configure' | 'generating' | 'preview' | 'sending' | 'done';
 
@@ -97,6 +104,16 @@ export function BulkContactEmailDialog({
     Record<string, { success: boolean; error?: string }>
   >({});
 
+  // Shared ("one email for all") mode
+  const [mode, setMode] = useState<EmailMode>('personalized');
+  const [personalizeGreeting, setPersonalizeGreeting] = useState(true);
+  const [sharedDraft, setSharedDraft] = useState<{ subject: string; body: string } | null>(null);
+  const [sharedError, setSharedError] = useState<string | null>(null);
+  const [sharedRegenOpen, setSharedRegenOpen] = useState(false);
+  const [sharedRegenerating, setSharedRegenerating] = useState(false);
+  const [regenInstruction, setRegenInstruction] = useState('');
+  const [regenTarget, setRegenTarget] = useState<'both' | 'subject' | 'body'>('both');
+
   // Refs for body textareas (for markdown toolbar)
   const bodyTextareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const abortRef = useRef(false);
@@ -114,6 +131,14 @@ export function BulkContactEmailDialog({
       setSkipIds(new Set());
       setSendProgress({ sent: 0, total: 0 });
       setSendResults({});
+      setMode('personalized');
+      setPersonalizeGreeting(true);
+      setSharedDraft(null);
+      setSharedError(null);
+      setSharedRegenOpen(false);
+      setSharedRegenerating(false);
+      setRegenInstruction('');
+      setRegenTarget('both');
       abortRef.current = false;
     }
   }, [open]);
@@ -156,8 +181,101 @@ export function BulkContactEmailDialog({
       .finally(() => setResumesLoading(false));
   }, [open]);
 
+  // ---- Shared mode: generate one email for all recipients ----
+  const generateSharedDraft = useCallback(
+    async (options?: { extraInstruction?: string; target?: 'both' | 'subject' | 'body' }) => {
+      const target = options?.target ?? 'both';
+      const names = contacts.map((c) => c.company?.trim() || c.name).filter(Boolean);
+      setSharedError(null);
+      if (options?.extraInstruction) {
+        setSharedRegenerating(true);
+      } else {
+        setStep('generating');
+      }
+
+      const userParts = [
+        instruction.trim() || null,
+        options?.extraInstruction?.trim() || null,
+      ].filter((p): p is string => Boolean(p));
+
+      try {
+        const genResult = await generateOutreachEmail({
+          company_name: summarizeNames(names) || 'multiple contacts',
+          company_email: '',
+          industry: null,
+          company_size: null,
+          company_type: null,
+          website: null,
+          linkedin_url: null,
+          purpose,
+          custom_purpose: purpose === 'custom' ? customPurpose.trim() : undefined,
+          output_language: contentLanguage,
+          resume_id: selectedResumeId || null,
+          instruction: composeSharedInstruction({
+            recipientNames: names,
+            userInstruction: userParts.join('\n') || null,
+            personalizeGreeting,
+          }),
+        });
+
+        setSharedDraft((prev) => {
+          const base = prev ?? { subject: '', body: '' };
+          return {
+            subject: target === 'body' ? base.subject : genResult.subject,
+            body: target === 'subject' ? base.body : genResult.body,
+          };
+        });
+        setStep('preview');
+      } catch {
+        setSharedError(
+          options?.extraInstruction
+            ? t('companies.bulkEmail.sharedRegenFailed')
+            : t('companies.bulkEmail.sharedGenerateFailed')
+        );
+        // Still advance so the user sees the error and can retry from preview
+        setStep('preview');
+      } finally {
+        setSharedRegenerating(false);
+        setSharedRegenOpen(false);
+        setRegenInstruction('');
+        setRegenTarget('both');
+      }
+    },
+    [
+      contacts,
+      purpose,
+      customPurpose,
+      instruction,
+      personalizeGreeting,
+      selectedResumeId,
+      contentLanguage,
+      t,
+    ]
+  );
+
+  const handleSharedRegenerate = useCallback(async () => {
+    if (!sharedDraft) return;
+    const targetLabel =
+      regenTarget === 'subject'
+        ? 'SUBJECT LINE'
+        : regenTarget === 'body'
+          ? 'EMAIL BODY'
+          : 'SUBJECT LINE and EMAIL BODY';
+    const baseInstruction = regenInstruction.trim()
+      ? regenInstruction.trim()
+      : `Regenerate the ${targetLabel.toLowerCase()} with a different approach`;
+    await generateSharedDraft({
+      extraInstruction: `Only regenerate the ${targetLabel}. ${baseInstruction}`,
+      target: regenTarget,
+    });
+  }, [sharedDraft, regenInstruction, regenTarget, generateSharedDraft]);
+
   // ---- Step 2: Generate emails ----
   const runGeneration = useCallback(async () => {
+    if (mode === 'shared') {
+      await generateSharedDraft();
+      return;
+    }
     setStep('generating');
     const initial: ContactEmailGenResult[] = contacts.map((c) => ({
       contactId: c.contact_id,
@@ -245,12 +363,24 @@ export function BulkContactEmailDialog({
     setSkipIds(skipSet);
 
     setStep('preview');
-  }, [contacts, purpose, customPurpose, instruction, selectedResumeId, contentLanguage]);
+  }, [
+    contacts,
+    purpose,
+    customPurpose,
+    instruction,
+    selectedResumeId,
+    contentLanguage,
+    mode,
+    generateSharedDraft,
+  ]);
 
   // ---- Step 4: Send all ----
   const runSendAll = useCallback(async () => {
     setStep('sending');
-    const toSend = contacts.filter((c) => !skipIds.has(c.contact_id) && edits[c.contact_id]);
+    const toSend =
+      mode === 'shared'
+        ? contacts.filter((c) => Boolean(c.email) && sharedDraft)
+        : contacts.filter((c) => !skipIds.has(c.contact_id) && edits[c.contact_id]);
     setSendProgress({ sent: 0, total: toSend.length });
 
     let resumePdf: Blob | null = null;
@@ -280,16 +410,28 @@ export function BulkContactEmailDialog({
     for (let i = 0; i < toSend.length; i++) {
       if (abortRef.current) break;
       const contact = toSend[i];
-      const edit = edits[contact.contact_id];
-      if (!edit) continue;
+      const subject =
+        mode === 'shared'
+          ? (sharedDraft?.subject ?? '')
+          : (edits[contact.contact_id]?.subject.trim() ?? '');
+      const rawBody =
+        mode === 'shared' ? (sharedDraft?.body ?? '') : (edits[contact.contact_id]?.body ?? '');
+      if (!subject || !rawBody) continue;
+      const body =
+        mode === 'shared' && personalizeGreeting
+          ? applyGreeting(rawBody, contact.name)
+          : applyGreeting(rawBody, null);
 
       try {
         const form = new FormData();
         form.append('company_email', contact.email ?? '');
         form.append('company_name', contact.company?.trim() || contact.name || '');
         form.append('company_id', '');
-        form.append('subject', edit.subject.trim());
-        form.append('body', edit.body);
+        form.append('subject', subject);
+        form.append('body', body);
+        form.append('contact_id', contact.contact_id);
+        form.append('purpose', purpose);
+        form.append('email_mode', mode);
         if (resumePdf) {
           form.append('attachments', resumePdf, resumePdfName);
         }
@@ -318,6 +460,10 @@ export function BulkContactEmailDialog({
     senderName,
     contentLanguage,
     onSent,
+    mode,
+    purpose,
+    sharedDraft,
+    personalizeGreeting,
   ]);
 
   const editBody = (contactId: string, value: string) => {
@@ -385,6 +531,61 @@ export function BulkContactEmailDialog({
                 </div>
               ) : (
                 <>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-ink-soft">
+                      {t('companies.bulkEmail.modeLabel')}
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          {
+                            id: 'personalized',
+                            labelKey: 'companies.bulkEmail.modePersonalized',
+                            Icon: UserRound,
+                          },
+                          { id: 'shared', labelKey: 'companies.bulkEmail.modeShared', Icon: Users },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setMode(opt.id)}
+                          className={cn(
+                            'flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium transition-colors',
+                            mode === opt.id
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-[#e6e3dc] bg-white text-ink-soft hover:border-primary hover:text-primary'
+                          )}
+                        >
+                          <opt.Icon className="h-3.5 w-3.5" />
+                          {t(opt.labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-steel-grey">
+                      {mode === 'shared'
+                        ? t('companies.bulkEmail.modeSharedHint')
+                        : t('companies.bulkEmail.modePersonalizedHint')}
+                    </p>
+                  </div>
+
+                  {mode === 'shared' && (
+                    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-[#e6e3dc] bg-paper-tint px-3 py-2">
+                      <span className="flex min-w-0 items-center gap-2 text-sm text-ink">
+                        <UserRound className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="truncate">
+                          {t('companies.bulkEmail.personalizeGreeting')}
+                        </span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={personalizeGreeting}
+                        onChange={(e) => setPersonalizeGreeting(e.target.checked)}
+                        className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                      />
+                    </label>
+                  )}
+
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wider text-ink-soft">
                       {t('companies.emailDialog.resume')}
@@ -484,9 +685,11 @@ export function BulkContactEmailDialog({
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-3 py-4 text-sm font-semibold text-ink">
                 <Sparkles className="h-4 w-4 text-primary" />
-                {t('contacts.bulkEmail.generating')}
+                {mode === 'shared'
+                  ? t('companies.bulkEmail.sharedGenerating')
+                  : t('contacts.bulkEmail.generating')}
               </div>
-              <div className="space-y-2">
+              <div className={cn('space-y-2', mode === 'shared' && 'hidden')}>
                 {genState.map((g) => {
                   const contact = contacts.find((c) => c.contact_id === g.contactId);
                   return (
@@ -527,85 +730,273 @@ export function BulkContactEmailDialog({
           {step === 'preview' && (
             <div className="space-y-3">
               <div className="rounded-lg border border-[#e6e3dc] bg-paper-tint px-3 py-2 text-xs text-ink-soft">
-                {t('contacts.bulkEmail.previewHint')}
+                {mode === 'shared'
+                  ? t('companies.bulkEmail.sharedPreviewHint', {
+                      count: String(contacts.filter((c) => Boolean(c.email)).length),
+                    })
+                  : t('contacts.bulkEmail.previewHint')}
               </div>
-              {contacts.map((contact) => {
-                const edit = edits[contact.contact_id];
-                if (!edit) return null;
-                const isSkipped = skipIds.has(contact.contact_id);
-                return (
-                  <div
-                    key={contact.contact_id}
-                    className={cn(
-                      'rounded-xl border border-[#e6e3dc] bg-white',
-                      isSkipped && 'opacity-60'
-                    )}
+
+              {mode === 'shared' && sharedError && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-[#fbf6e9] px-3 py-2">
+                  <p className="text-xs text-amber-800">{sharedError}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => generateSharedDraft()}
+                    className="shrink-0 rounded-full text-xs"
                   >
-                    <div className="flex items-center justify-between gap-2 border-b border-[#e6e3dc] px-4 py-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <UserRound className="h-4 w-4 shrink-0 text-ink-soft" />
-                        <span className="truncate text-sm font-semibold text-ink">
-                          {contact.name}
-                        </span>
-                        <span className="truncate text-xs text-steel-grey">
-                          {contact.email || t('contacts.bulkEmail.noEmail')}
-                        </span>
-                      </div>
-                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-ink-soft">
-                        <input
-                          type="checkbox"
-                          checked={isSkipped}
-                          onChange={() => toggleSkip(contact.contact_id)}
-                          className="h-3.5 w-3.5 cursor-pointer accent-primary"
-                        />
-                        {t('companies.bulkEmail.skip')}
-                      </label>
+                    <RotateCw className="h-3 w-3 mr-1" />
+                    {t('companies.bulkEmail.retry')}
+                  </Button>
+                </div>
+              )}
+
+              {mode === 'shared' && !sharedDraft && !sharedError && (
+                <div className="flex items-center justify-center rounded-lg border border-[#e6e3dc] bg-white py-8">
+                  <Button
+                    size="sm"
+                    onClick={() => generateSharedDraft()}
+                    className="rounded-full bg-primary text-white hover:bg-primary/90"
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {t('companies.bulkEmail.generateShared')}
+                  </Button>
+                </div>
+              )}
+
+              {mode === 'shared' && sharedDraft && (
+                <div className="overflow-hidden rounded-xl border border-[#e6e3dc] bg-white">
+                  <div className="flex items-center justify-between border-b border-[#e6e3dc] px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Users className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="truncate text-sm font-semibold text-ink">
+                        {t('companies.bulkEmail.modeShared')}
+                      </span>
                     </div>
-                    {!isSkipped && (
-                      <div className="space-y-3 px-4 py-3">
-                        <div className="space-y-1">
+                    <button
+                      type="button"
+                      disabled={sharedRegenerating}
+                      onClick={() => {
+                        setSharedRegenOpen((prev) => !prev);
+                        setRegenInstruction('');
+                        setRegenTarget('both');
+                      }}
+                      className="flex shrink-0 items-center gap-1 rounded-full border border-[#e6e3dc] px-2 py-0.5 text-[10px] text-steel-grey hover:border-primary hover:text-primary disabled:opacity-50"
+                    >
+                      {sharedRegenOpen ? (
+                        <X className="h-3 w-3" />
+                      ) : (
+                        <RotateCw className="h-3 w-3" />
+                      )}
+                      {t('companies.bulkEmail.regen')}
+                    </button>
+                  </div>
+
+                  {sharedRegenOpen && (
+                    <div className="space-y-2 border-b border-[#e6e3dc] bg-paper-tint px-4 py-3">
+                      <Label className="text-[10px] uppercase tracking-wider text-ink-soft">
+                        {t('companies.bulkEmail.regenTarget')}
+                      </Label>
+                      <div className="flex gap-1.5">
+                        {(
+                          [
+                            { id: 'both', labelKey: 'companies.bulkEmail.regenBoth' },
+                            { id: 'subject', labelKey: 'companies.bulkEmail.regenSubject' },
+                            { id: 'body', labelKey: 'companies.bulkEmail.regenBody' },
+                          ] as const
+                        ).map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setRegenTarget(opt.id)}
+                            className={cn(
+                              'rounded-full border px-3 py-1 text-[10px] font-medium transition-colors',
+                              regenTarget === opt.id
+                                ? 'border-primary bg-primary text-white'
+                                : 'border-[#e6e3dc] bg-white text-ink-soft hover:border-primary hover:text-primary'
+                            )}
+                          >
+                            {t(opt.labelKey)}
+                          </button>
+                        ))}
+                      </div>
+                      <Label className="text-[10px] uppercase tracking-wider text-ink-soft">
+                        {t('companies.bulkEmail.regenInstruction')}
+                      </Label>
+                      <div className="flex gap-2">
+                        <input
+                          value={regenInstruction}
+                          onChange={(e) => setRegenInstruction(e.target.value)}
+                          placeholder={t('companies.bulkEmail.regenPlaceholder')}
+                          className="flex-1 rounded-lg border border-ink bg-white px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSharedRegenerate();
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleSharedRegenerate}
+                          className="shrink-0 rounded-lg bg-primary text-white hover:bg-primary/90"
+                        >
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          {t('companies.bulkEmail.regen')}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {sharedRegenerating ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-6 text-xs text-steel-grey">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      {t('companies.bulkEmail.regenenerating')}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 px-4 py-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-ink-soft">
+                          {t('companies.emailDialog.subject')}
+                        </Label>
+                        <input
+                          value={sharedDraft.subject}
+                          onChange={(e) =>
+                            setSharedDraft((prev) =>
+                              prev ? { ...prev, subject: e.target.value } : prev
+                            )
+                          }
+                          className="w-full rounded-lg border border-ink bg-white px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
                           <Label className="text-[10px] uppercase tracking-wider text-ink-soft">
-                            {t('companies.emailDialog.subject')}
+                            {t('companies.emailDialog.message')}
                           </Label>
-                          <input
-                            value={edit.subject}
-                            onChange={(e) => editSubject(contact.contact_id, e.target.value)}
-                            className="w-full rounded-lg border border-ink bg-white px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                          <MarkdownToolbar
+                            textareaRef={{
+                              get current() {
+                                return bodyTextareaRefs.current.get('__shared__') ?? null;
+                              },
+                            }}
+                            value={sharedDraft.body}
+                            onChange={(val) =>
+                              setSharedDraft((prev) => (prev ? { ...prev, body: val } : prev))
+                            }
                           />
                         </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
+                        <Textarea
+                          ref={(el) => {
+                            if (el) {
+                              bodyTextareaRefs.current.set('__shared__', el);
+                            } else {
+                              bodyTextareaRefs.current.delete('__shared__');
+                            }
+                          }}
+                          value={sharedDraft.body}
+                          onChange={(e) =>
+                            setSharedDraft((prev) =>
+                              prev ? { ...prev, body: e.target.value } : prev
+                            )
+                          }
+                          className="min-h-[100px] rounded-lg border border-ink bg-white text-sm focus-visible:border-primary"
+                        />
+                      </div>
+                      {personalizeGreeting &&
+                        sharedDraft.body.includes(GREETING_TOKEN) &&
+                        contacts.filter((c) => Boolean(c.email)).length > 0 && (
+                          <p className="text-[10px] text-steel-grey">
+                            {t('companies.bulkEmail.greetingHint', {
+                              example: `Hi ${contacts.find((c) => Boolean(c.email))?.name ?? ''},`,
+                            })}
+                          </p>
+                        )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {mode === 'personalized' &&
+                contacts.map((contact) => {
+                  const edit = edits[contact.contact_id];
+                  if (!edit) return null;
+                  const isSkipped = skipIds.has(contact.contact_id);
+                  return (
+                    <div
+                      key={contact.contact_id}
+                      className={cn(
+                        'rounded-xl border border-[#e6e3dc] bg-white',
+                        isSkipped && 'opacity-60'
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2 border-b border-[#e6e3dc] px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <UserRound className="h-4 w-4 shrink-0 text-ink-soft" />
+                          <span className="truncate text-sm font-semibold text-ink">
+                            {contact.name}
+                          </span>
+                          <span className="truncate text-xs text-steel-grey">
+                            {contact.email || t('contacts.bulkEmail.noEmail')}
+                          </span>
+                        </div>
+                        <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-ink-soft">
+                          <input
+                            type="checkbox"
+                            checked={isSkipped}
+                            onChange={() => toggleSkip(contact.contact_id)}
+                            className="h-3.5 w-3.5 cursor-pointer accent-primary"
+                          />
+                          {t('companies.bulkEmail.skip')}
+                        </label>
+                      </div>
+                      {!isSkipped && (
+                        <div className="space-y-3 px-4 py-3">
+                          <div className="space-y-1">
                             <Label className="text-[10px] uppercase tracking-wider text-ink-soft">
-                              {t('companies.emailDialog.message')}
+                              {t('companies.emailDialog.subject')}
                             </Label>
-                            <MarkdownToolbar
-                              textareaRef={{
-                                get current() {
-                                  return bodyTextareaRefs.current.get(contact.contact_id) ?? null;
-                                },
-                              }}
-                              value={edit.body}
-                              onChange={(val) => editBody(contact.contact_id, val)}
+                            <input
+                              value={edit.subject}
+                              onChange={(e) => editSubject(contact.contact_id, e.target.value)}
+                              className="w-full rounded-lg border border-ink bg-white px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
                             />
                           </div>
-                          <Textarea
-                            ref={(el) => {
-                              if (el) {
-                                bodyTextareaRefs.current.set(contact.contact_id, el);
-                              } else {
-                                bodyTextareaRefs.current.delete(contact.contact_id);
-                              }
-                            }}
-                            value={edit.body}
-                            onChange={(e) => editBody(contact.contact_id, e.target.value)}
-                            className="min-h-[100px] rounded-lg border border-ink bg-white text-sm focus-visible:border-primary"
-                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] uppercase tracking-wider text-ink-soft">
+                                {t('companies.emailDialog.message')}
+                              </Label>
+                              <MarkdownToolbar
+                                textareaRef={{
+                                  get current() {
+                                    return bodyTextareaRefs.current.get(contact.contact_id) ?? null;
+                                  },
+                                }}
+                                value={edit.body}
+                                onChange={(val) => editBody(contact.contact_id, val)}
+                              />
+                            </div>
+                            <Textarea
+                              ref={(el) => {
+                                if (el) {
+                                  bodyTextareaRefs.current.set(contact.contact_id, el);
+                                } else {
+                                  bodyTextareaRefs.current.delete(contact.contact_id);
+                                }
+                              }}
+                              value={edit.body}
+                              onChange={(e) => editBody(contact.contact_id, e.target.value)}
+                              className="min-h-[100px] rounded-lg border border-ink bg-white text-sm focus-visible:border-primary"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
 
@@ -681,7 +1072,9 @@ export function BulkContactEmailDialog({
               className="rounded-full bg-primary text-white hover:bg-primary/90"
             >
               <Sparkles className="h-4 w-4 mr-2" />
-              {t('contacts.bulkEmail.generate')}
+              {mode === 'shared'
+                ? t('companies.bulkEmail.generateShared')
+                : t('contacts.bulkEmail.generate')}
             </Button>
           )}
           {step === 'preview' && (
@@ -695,6 +1088,7 @@ export function BulkContactEmailDialog({
               </Button>
               <Button
                 onClick={runSendAll}
+                disabled={mode === 'shared' && !sharedDraft}
                 className="rounded-full bg-primary text-white hover:bg-primary/90"
               >
                 <Send className="h-4 w-4 mr-2" />

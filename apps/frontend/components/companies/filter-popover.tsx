@@ -15,9 +15,17 @@ interface FilterPopoverProps {
   typeFilter: string;
   typeOptions: DropdownOption[];
   onTypeFilter: (value: string) => void;
-  statusFilter: string;
+  statusFilter: string[];
   statusOptions: DropdownOption[];
-  onStatusFilter: (value: string) => void;
+  onStatusFilter: (value: string[]) => void;
+  addressFilter: string;
+  onAddressFilter: (value: string) => void;
+  cityFilter: string;
+  cityOptions: DropdownOption[];
+  onCityFilter: (value: string) => void;
+  countryFilter: string;
+  countryOptions: DropdownOption[];
+  onCountryFilter: (value: string) => void;
   groupBy: string;
   groupByOptions: DropdownOption[];
   onGroupBy: (value: string) => void;
@@ -40,6 +48,14 @@ export function FilterPopover({
   statusFilter,
   statusOptions,
   onStatusFilter,
+  addressFilter,
+  onAddressFilter,
+  cityFilter,
+  cityOptions,
+  onCityFilter,
+  countryFilter,
+  countryOptions,
+  onCountryFilter,
   groupBy,
   groupByOptions,
   onGroupBy,
@@ -128,11 +144,73 @@ export function FilterPopover({
               <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
                 {t('companies.toolbar.status')}
               </span>
+              <div
+                role="group"
+                aria-label={t('companies.toolbar.status')}
+                className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-[#e6e3dc] p-2"
+              >
+                {statusOptions.map((opt) => {
+                  const checked = statusFilter.includes(opt.id);
+                  return (
+                    <label
+                      key={opt.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-ink hover:bg-paper-tint"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          onStatusFilter(
+                            checked
+                              ? statusFilter.filter((id) => id !== opt.id)
+                              : [...statusFilter, opt.id]
+                          )
+                        }
+                        className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                      />
+                      <span className="truncate">{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+                {t('companies.toolbar.address')}
+              </span>
+              <input
+                type="text"
+                value={addressFilter}
+                onChange={(e) => onAddressFilter(e.target.value)}
+                aria-label={t('companies.toolbar.address')}
+                placeholder={t('companies.toolbar.address')}
+                className="h-9 rounded-lg border border-[#e6e3dc] bg-white px-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+                {t('companies.toolbar.city')}
+              </span>
               <Dropdown
-                options={[allOption, ...statusOptions]}
-                value={statusFilter}
-                onChange={onStatusFilter}
-                ariaLabel={t('companies.toolbar.status')}
+                options={[allOption, ...cityOptions]}
+                value={cityFilter}
+                onChange={onCityFilter}
+                ariaLabel={t('companies.toolbar.city')}
+                triggerClassName="h-9 rounded-lg px-3 py-0 text-sm"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+                {t('companies.toolbar.country')}
+              </span>
+              <Dropdown
+                options={[allOption, ...countryOptions]}
+                value={countryFilter}
+                onChange={onCountryFilter}
+                ariaLabel={t('companies.toolbar.country')}
                 triggerClassName="h-9 rounded-lg px-3 py-0 text-sm"
               />
             </div>

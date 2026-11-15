@@ -3,13 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { MessageCard } from './message-card';
 import { StatusTimeline } from './status-timeline';
-import type {
-  ToolCard,
-  Action,
-  PendingAction,
-  MemoryCandidate,
-  AgentEvent,
-} from '@/lib/api/chat';
+import type { ToolCard, Action, PendingAction, MemoryCandidate, AgentEvent } from '@/lib/api/chat';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -36,8 +30,9 @@ interface MessageListProps {
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
   onSelectResume?: (resumeId: string) => void;
+  onCompareResumes?: (names: string[]) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
-  onJobSearch?: (query: string) => void;
+  onJobSearch?: (query: string, sources?: string[]) => void;
   onViewEmail?: (email: any) => void;
   onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
   onAddCompany?: (data: { name: string; website?: string }) => void;
@@ -60,6 +55,7 @@ export function MessageList({
   onDismissMemory,
   onFollowup,
   onSelectResume,
+  onCompareResumes,
   onViewFile,
   onJobSearch,
   onViewEmail,
@@ -106,6 +102,7 @@ export function MessageList({
               onDismissMemory={onDismissMemory}
               onFollowup={onFollowup}
               onSelectResume={onSelectResume}
+              onCompareResumes={onCompareResumes}
               onViewFile={onViewFile}
               onJobSearch={onJobSearch}
               onViewEmail={onViewEmail}
@@ -116,7 +113,11 @@ export function MessageList({
               onClarify={onClarify}
               onEdit={msg.role === 'user' ? (newContent) => onEdit?.(i, newContent) : undefined}
               onRetry={msg.role === 'user' ? () => onRetry?.(i) : undefined}
-              onRevert={msg.role === 'assistant' && i === messages.length - 1 ? () => onRevert?.(i) : undefined}
+              onRevert={
+                msg.role === 'assistant' && i === messages.length - 1
+                  ? () => onRevert?.(i)
+                  : undefined
+              }
             />
             {/* Persistent reasoning timeline for assistant messages */}
             {msg.role === 'assistant' && msg.streamEvents && msg.streamEvents.length > 0 && (

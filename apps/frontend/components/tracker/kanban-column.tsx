@@ -48,7 +48,7 @@ export function KanbanColumn({
       >
         <div
           ref={setNodeRef}
-          className={`flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-xl p-1 transition-colors ${isOver ? 'bg-primary/5' : ''}`}
+          className={`flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-xl p-1 transition-colors ${isOver ? 'bg-primary/5' : ''}`}
         >
           {applications.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-steel-grey/50 bg-white/50 px-2 py-8 text-center text-xs text-steel-grey">

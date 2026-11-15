@@ -189,6 +189,9 @@ class GenerateOutreachEmailResponse(BaseModel):
 
     subject: str = ""
     body: str = ""
+    # True when a custom HTML signature is configured (replaces markdown footer;
+    # applied on send into the HTML part only).
+    uses_html_signature: bool = False
 
 
 # ============================================

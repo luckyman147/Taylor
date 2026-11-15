@@ -335,37 +335,68 @@ async def rerank_chunks(
 ) -> list[Chunk]:
     """Re-rank chunks using the LLM as a relevance scorer.
 
-    For small candidate sets (<8), skips reranking and returns as-is.
+    All candidates are scored in ONE batched call (the old implementation
+    spent one LLM call per chunk — up to 20 per source, twice per chat turn).
+    For small candidate sets (<= top_k), skips reranking and returns as-is.
     """
     if len(chunks) <= top_k:
         return chunks
 
-    # Score each chunk with the LLM
-    scored: list[tuple[float, Chunk]] = []
-    for chunk in chunks[:20]:  # cap at 20 to limit LLM calls
-        score = await _score_relevance(query, chunk.text)
-        scored.append((score, chunk))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
+    candidates = chunks[:20]  # cap to keep one batched prompt bounded
+    scores = await _score_relevance_batch(query, [c.text for c in candidates])
+    scored = sorted(zip(scores, candidates), key=lambda pair: pair[0], reverse=True)
     return [chunk for _, chunk in scored[:top_k]]
 
 
-async def _score_relevance(query: str, document: str) -> float:
-    """Score relevance of a document to a query (0-10 scale) using the LLM."""
+_RERANK_DOC_CHARS = 400
+
+
+async def _score_relevance_batch(query: str, documents: list[str]) -> list[float]:
+    """Score every document against the query (0-10) in a single LLM call.
+
+    Returns neutral 5.0 scores on any failure, matching the old per-chunk
+    scorer's fallback so a failed rerank degrades to the hybrid order.
+    """
+    if not documents:
+        return []
+    listing = "\n".join(
+        f"{i + 1}. {doc[:_RERANK_DOC_CHARS]}" for i, doc in enumerate(documents)
+    )
+    prompt = (
+        "Score the relevance of each document to the query on a 0-10 scale "
+        "(10 = directly about the query). "
+        "Return ONLY a JSON array of numbers, one per document, in the same order.\n\n"
+        f"Query: {query}\n\nDocuments:\n{listing}\n\nScores:"
+    )
     try:
         from app.llm import complete
-        score_text = await complete(
-            prompt=f"Score the relevance of this document to the query. Return ONLY a number 0-10.\n\nQuery: {query}\nDocument: {document[:400]}\n\nScore:",
-            max_tokens=5,
-            temperature=0.0,
-        )
-        # Extract numeric score
-        match = re.search(r"(\d+(?:\.\d+)?)", score_text.strip())
-        if match:
-            return min(float(match.group(1)), 10.0)
+
+        text = await complete(prompt=prompt, max_tokens=150, temperature=0.0)
+        parsed = _parse_rerank_scores(str(text), len(documents))
+        if parsed is not None:
+            return parsed
     except Exception:
-        pass
-    return 5.0  # neutral score on failure
+        logger.debug("Batched rerank scoring failed; using neutral scores", exc_info=True)
+    return [5.0] * len(documents)
+
+
+def _parse_rerank_scores(text: str, expected: int) -> list[float] | None:
+    """Parse a JSON array of scores (falling back to sequential numbers)."""
+    match = re.search(r"\[[^\]]*\]", text)
+    if match:
+        try:
+            data = json.loads(match.group(0))
+        except ValueError:
+            data = None
+        if isinstance(data, list) and len(data) == expected:
+            try:
+                return [min(float(v), 10.0) for v in data]
+            except (TypeError, ValueError):
+                return None
+    numbers = re.findall(r"\d+(?:\.\d+)?", text)
+    if len(numbers) >= expected:
+        return [min(float(n), 10.0) for n in numbers[:expected]]
+    return None
 
 
 # ---------------------------------------------------------------------------

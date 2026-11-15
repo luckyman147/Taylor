@@ -42,8 +42,12 @@ from app.models import (
     ChatMemory,
     ChatMessage,
     ChatThread,
+    DiscoveredCompany,
     Improvement,
     Job,
+    Lead,
+    LeadSearchDraft,
+    OutreachAnalysisRecord,
     PendingAction,
     PracticeSession,
     Resume,
@@ -217,6 +221,8 @@ class Database:
             "email": row.email,
             "phone": row.phone,
             "address": row.address,
+            "city": row.city,
+            "country": row.country,
             "website": row.website,
             "company_size": row.company_size,
             "company_type": row.company_type,
@@ -224,6 +230,7 @@ class Database:
             "industry": row.industry,
             "status": row.status,
             "year_founded": row.year_founded,
+            "description": row.description,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -256,11 +263,17 @@ class Database:
         return {
             "log_id": row.log_id,
             "company_id": row.company_id,
+            "contact_id": row.contact_id,
             "company_name": row.company_name,
             "recipient_email": row.recipient_email,
             "subject": row.subject,
             "body": row.body,
             "attachments": attachments,
+            "purpose": row.purpose,
+            "email_mode": row.email_mode,
+            "outcome": row.outcome or "pending",
+            "outcome_note": row.outcome_note,
+            "outcome_at": row.outcome_at,
             "sent_at": row.sent_at,
         }
 
@@ -307,6 +320,7 @@ class Database:
             "source_resume_id": row.source_resume_id,
             "source_resume_title": row.source_resume_title,
             "avatar": row.avatar,
+            "email_signature": row.email_signature,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -977,6 +991,8 @@ class Database:
         email: str | None = None,
         phone: str | None = None,
         address: str | None = None,
+        city: str | None = None,
+        country: str | None = None,
         website: str | None = None,
         company_size: str | None = None,
         company_type: str | None = None,
@@ -984,6 +1000,7 @@ class Database:
         industry: str | None = None,
         status: str | None = None,
         year_founded: int | None = None,
+        description: str | None = None,
     ) -> dict[str, Any]:
         """Create a company, deduped on name (case-insensitive).
 
@@ -1006,6 +1023,8 @@ class Database:
                 email=email,
                 phone=phone,
                 address=address,
+                city=city,
+                country=country,
                 website=website,
                 company_size=company_size,
                 company_type=company_type,
@@ -1013,6 +1032,7 @@ class Database:
                 industry=industry,
                 status=status,
                 year_founded=year_founded,
+                description=description,
                 created_at=now,
                 updated_at=now,
             )
@@ -1080,6 +1100,8 @@ class Database:
                 "email",
                 "phone",
                 "address",
+                "city",
+                "country",
                 "website",
                 "company_size",
                 "company_type",
@@ -1087,6 +1109,7 @@ class Database:
                 "industry",
                 "status",
                 "year_founded",
+                "description",
             ):
                 if key in updates:
                     setattr(row, key, updates[key])
@@ -1123,6 +1146,458 @@ class Database:
                 deleted += 1
             await session.commit()
         return deleted
+
+    # -- DiscoveredCompany operations ----------------------------------------
+
+    async def create_discovered_company(
+        self,
+        search_id: str,
+        name: str,
+        website: str | None = None,
+        industry: str | None = None,
+        description: str | None = None,
+        match_score: float = 0.0,
+        match_reasons: list[str] | None = None,
+        source: str = "web",
+    ) -> dict[str, Any]:
+        """Create a discovered company record."""
+        async with self._session() as session:
+            now = _now()
+            row = DiscoveredCompany(
+                id=str(uuid4()),
+                search_id=search_id,
+                name=name,
+                website=website,
+                industry=industry,
+                description=description,
+                match_score=match_score,
+                match_reasons=json.dumps(match_reasons or []),
+                source=source,
+                status="new",
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            await session.commit()
+            return self._discovered_company_to_dict(row)
+
+    async def get_discovered_company(self, company_id: str) -> dict[str, Any] | None:
+        """Get a discovered company by ID."""
+        async with self._session() as session:
+            row = await session.get(DiscoveredCompany, company_id)
+            return self._discovered_company_to_dict(row) if row else None
+
+    async def list_discovered_companies(
+        self, search_id: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        """List discovered companies, optionally filtered by search_id and/or status."""
+        async with self._session() as session:
+            stmt = select(DiscoveredCompany).order_by(DiscoveredCompany.match_score.desc(), DiscoveredCompany.created_at)
+            if search_id:
+                stmt = stmt.where(DiscoveredCompany.search_id == search_id)
+            if status:
+                stmt = stmt.where(DiscoveredCompany.status == status)
+            result = await session.execute(stmt)
+            return [self._discovered_company_to_dict(row) for row in result.scalars().all()]
+
+    async def update_discovered_company(
+        self, company_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a discovered company. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(DiscoveredCompany, company_id)
+            if row is None:
+                return None
+
+            for key in (
+                "name",
+                "website",
+                "industry",
+                "description",
+                "match_score",
+                "match_reasons",
+                "source",
+                "status",
+                "company_id",
+            ):
+                if key in updates:
+                    if key == "match_reasons" and isinstance(updates[key], list):
+                        setattr(row, key, json.dumps(updates[key]))
+                    else:
+                        setattr(row, key, updates[key])
+
+            row.updated_at = _now()
+            await session.commit()
+            return self._discovered_company_to_dict(row)
+
+    async def delete_discovered_company(self, company_id: str) -> bool:
+        """Delete a discovered company. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(DiscoveredCompany, company_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    def _discovered_company_to_dict(self, row: DiscoveredCompany) -> dict[str, Any]:
+        import json as _json
+        return {
+            "id": row.id,
+            "search_id": row.search_id,
+            "name": row.name,
+            "website": row.website,
+            "industry": row.industry,
+            "description": row.description,
+            "match_score": row.match_score,
+            "match_reasons": _json.loads(row.match_reasons) if row.match_reasons else [],
+            "source": row.source,
+            "sources": row.source.split(",") if row.source else [],
+            "status": row.status,
+            "company_id": row.company_id,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    # -- Lead (scraper) operations -------------------------------------------
+
+    @staticmethod
+    def _lead_to_dict(row: Lead) -> dict[str, Any]:
+        try:
+            sources = json.loads(row.sources_json or "[]")
+        except (json.JSONDecodeError, TypeError):
+            sources = []
+        return {
+            "lead_id": row.lead_id,
+            "search_id": row.search_id,
+            "lead_type": row.lead_type,
+            "name": row.name,
+            "title": row.title,
+            "company": row.company,
+            "email": row.email,
+            "phone": row.phone,
+            "linkedin_url": row.linkedin_url,
+            "website": row.website,
+            "location": row.location,
+            "industry": row.industry,
+            "company_size": row.company_size,
+            "description": row.description,
+            "source": row.source,
+            "sources": sources,
+            "suggested_type": row.suggested_type,
+            "category_source": row.category_source,
+            "category_confidence": row.category_confidence,
+            "status": row.status,
+            "contact_id": row.contact_id,
+            "company_id": row.company_id,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    async def create_lead(self, **fields: Any) -> tuple[dict[str, Any], bool]:
+        """Create a lead, deduped on email, LinkedIn URL, then name+type.
+
+        Empty strings normalize to None so the unique indexes stay NULL-safe.
+        Returns ``(lead, created)`` — ``created`` is False when an existing
+        row matched (the existing row is returned, optionally backfilled).
+        """
+        name = (fields.get("name") or "").strip()
+        if not name:
+            raise ValueError("Lead name is required")
+        lead_type = fields.get("lead_type") or "person"
+        email = (fields.get("email") or "").strip().lower() or None
+        linkedin = (fields.get("linkedin_url") or "").strip() or None
+
+        async with self._session() as session:
+            if email:
+                existing = await session.execute(
+                    select(Lead).where(func.lower(Lead.email) == email.lower())
+                )
+                found = existing.scalars().first()
+                if found is not None:
+                    updated = self._backfill_lead(found, fields)
+                    if updated:
+                        found.updated_at = _now()
+                        await session.commit()
+                    return self._lead_to_dict(found), False
+            if linkedin:
+                existing = await session.execute(
+                    select(Lead).where(func.lower(Lead.linkedin_url) == linkedin.lower())
+                )
+                found = existing.scalars().first()
+                if found is not None:
+                    updated = self._backfill_lead(found, fields)
+                    if updated:
+                        found.updated_at = _now()
+                        await session.commit()
+                    return self._lead_to_dict(found), False
+            existing = await session.execute(
+                select(Lead).where(
+                    func.lower(Lead.name) == name.lower(),
+                    Lead.lead_type == lead_type,
+                )
+            )
+            found = existing.scalars().first()
+            if found is not None:
+                updated = self._backfill_lead(found, fields)
+                if updated:
+                    found.updated_at = _now()
+                    await session.commit()
+                return self._lead_to_dict(found), False
+
+            now = _now()
+            sources = fields.get("sources") or ([fields["source"]] if fields.get("source") else [])
+            row = Lead(
+                lead_id=str(uuid4()),
+                search_id=fields.get("search_id") or "",
+                lead_type=lead_type,
+                name=name,
+                title=fields.get("title"),
+                company=fields.get("company"),
+                email=email,
+                phone=fields.get("phone"),
+                linkedin_url=linkedin,
+                website=fields.get("website"),
+                location=fields.get("location"),
+                industry=fields.get("industry"),
+                company_size=fields.get("company_size"),
+                description=fields.get("description"),
+                source=fields.get("source") or "web",
+                sources_json=json.dumps(sources),
+                suggested_type=fields.get("suggested_type") or "unsure",
+                category_source=fields.get("category_source") or "heuristic",
+                category_confidence=float(fields.get("category_confidence") or 0.0),
+                status=fields.get("status") or "new",
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                dup = await session.execute(
+                    select(Lead).where(
+                        func.lower(Lead.name) == name.lower(),
+                        Lead.lead_type == lead_type,
+                    )
+                )
+                found = dup.scalars().first()
+                if found is not None:
+                    logger.debug("Deduped concurrent lead create for name=%s", name)
+                    return self._lead_to_dict(found), False
+                raise
+            return self._lead_to_dict(row), True
+
+    @staticmethod
+    def _backfill_lead(row: Lead, fields: dict[str, Any]) -> bool:
+        """Fill missing columns on an existing lead from ``fields``."""
+        changed = False
+        for key in (
+            "title",
+            "company",
+            "email",
+            "phone",
+            "linkedin_url",
+            "website",
+            "location",
+            "industry",
+            "company_size",
+            "description",
+        ):
+            incoming = fields.get(key)
+            if incoming and not getattr(row, key, None):
+                setattr(row, key, incoming)
+                changed = True
+        incoming_sources = fields.get("sources") or []
+        if incoming_sources:
+            try:
+                current = json.loads(row.sources_json or "[]")
+            except (json.JSONDecodeError, TypeError):
+                current = []
+            merged = list(current)
+            for src in incoming_sources:
+                if src and src not in merged:
+                    merged.append(src)
+            if merged != current:
+                row.sources_json = json.dumps(merged)
+                changed = True
+        return changed
+
+    async def list_leads(
+        self,
+        search_id: str | None = None,
+        status: str | None = None,
+        lead_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List leads, newest first, optionally filtered."""
+        async with self._session() as session:
+            stmt = select(Lead).order_by(Lead.created_at.desc(), Lead.name)
+            if search_id:
+                stmt = stmt.where(Lead.search_id == search_id)
+            if status:
+                stmt = stmt.where(Lead.status == status)
+            if lead_type:
+                stmt = stmt.where(Lead.lead_type == lead_type)
+            result = await session.execute(stmt)
+            return [self._lead_to_dict(row) for row in result.scalars().all()]
+
+    async def get_lead(self, lead_id: str) -> dict[str, Any] | None:
+        """Get a lead by ID."""
+        async with self._session() as session:
+            row = await session.get(Lead, lead_id)
+            return self._lead_to_dict(row) if row else None
+
+    async def update_lead(
+        self, lead_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a lead's editable fields. Returns None when not found."""
+        async with self._session() as session:
+            row = await session.get(Lead, lead_id)
+            if row is None:
+                return None
+            for key in (
+                "title",
+                "company",
+                "email",
+                "phone",
+                "linkedin_url",
+                "website",
+                "location",
+                "industry",
+                "company_size",
+                "description",
+                "suggested_type",
+                "category_source",
+                "category_confidence",
+                "status",
+                "contact_id",
+                "company_id",
+            ):
+                if key in updates:
+                    setattr(row, key, updates[key])
+            if "sources" in updates and isinstance(updates["sources"], list):
+                row.sources_json = json.dumps(updates["sources"])
+            row.updated_at = _now()
+            await session.commit()
+            return self._lead_to_dict(row)
+
+    async def delete_lead(self, lead_id: str) -> bool:
+        """Delete a lead. Returns False when not found."""
+        async with self._session() as session:
+            row = await session.get(Lead, lead_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
+
+    async def delete_leads(self, lead_ids: list[str]) -> int:
+        """Delete many leads; returns how many existed and were removed."""
+        deleted = 0
+        async with self._session() as session:
+            for lead_id in lead_ids:
+                row = await session.get(Lead, lead_id)
+                if row is not None:
+                    await session.delete(row)
+                    deleted += 1
+            await session.commit()
+        return deleted
+
+    # -- Lead search drafts -------------------------------------------------
+
+    @staticmethod
+    def _lead_search_draft_to_dict(row: LeadSearchDraft) -> dict[str, Any]:
+        def _decode(raw: str | None) -> list[str]:
+            try:
+                value = json.loads(raw or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+            return [str(v) for v in value] if isinstance(value, list) else []
+
+        return {
+            "draft_id": row.draft_id,
+            "name": row.name,
+            "keywords": row.keywords,
+            "target": row.target,
+            "purpose": row.purpose,
+            "locations": _decode(row.locations_json),
+            "lead_types": _decode(row.lead_types_json),
+            "sources": _decode(row.sources_json),
+            "enrich_contacts": bool(row.enrich_contacts),
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    async def list_lead_search_drafts(self) -> list[dict[str, Any]]:
+        """All saved search-param drafts, most recently updated first."""
+        async with self._session() as session:
+            result = await session.execute(
+                select(LeadSearchDraft).order_by(LeadSearchDraft.updated_at.desc())
+            )
+            return [self._lead_search_draft_to_dict(row) for row in result.scalars().all()]
+
+    async def upsert_lead_search_draft(
+        self,
+        name: str,
+        *,
+        keywords: str | None = None,
+        target: str | None = None,
+        purpose: str | None = None,
+        locations: list[str] | None = None,
+        lead_types: list[str] | None = None,
+        sources: list[str] | None = None,
+        enrich_contacts: bool = True,
+    ) -> dict[str, Any]:
+        """Create or update a draft by name (same name overwrites in place)."""
+        clean_name = (name or "").strip()
+        if not clean_name:
+            raise ValueError("Draft name is required")
+        now = _now()
+        async with self._session() as session:
+            result = await session.execute(
+                select(LeadSearchDraft).where(
+                    func.lower(LeadSearchDraft.name) == clean_name.lower()
+                )
+            )
+            row = result.scalars().first()
+            if row is None:
+                row = LeadSearchDraft(
+                    draft_id=str(uuid4()),
+                    name=clean_name,
+                    keywords=keywords,
+                    target=target,
+                    purpose=purpose,
+                    locations_json=json.dumps(locations or []),
+                    lead_types_json=json.dumps(lead_types or []),
+                    sources_json=json.dumps(sources or []),
+                    enrich_contacts=enrich_contacts,
+                    created_at=now,
+                    updated_at=now,
+                )
+                session.add(row)
+            else:
+                row.keywords = keywords
+                row.target = target
+                row.purpose = purpose
+                row.locations_json = json.dumps(locations or [])
+                row.lead_types_json = json.dumps(lead_types or [])
+                row.sources_json = json.dumps(sources or [])
+                row.enrich_contacts = enrich_contacts
+                row.updated_at = now
+            await session.commit()
+            await session.refresh(row)
+            return self._lead_search_draft_to_dict(row)
+
+    async def delete_lead_search_draft(self, draft_id: str) -> bool:
+        """Delete one draft; returns False when the id did not exist."""
+        async with self._session() as session:
+            row = await session.get(LeadSearchDraft, draft_id)
+            if row is None:
+                return False
+            await session.delete(row)
+            await session.commit()
+            return True
 
     # -- Contact (tracker) operations --------------------------------------
 
@@ -1289,6 +1764,9 @@ class Database:
         subject: str,
         body: str,
         attachments: list[dict[str, Any]] | None = None,
+        contact_id: str | None = None,
+        purpose: str | None = None,
+        email_mode: str | None = None,
     ) -> dict[str, Any]:
         """Persist a historical record of a sent outreach email."""
         log_id = str(uuid4())
@@ -1298,11 +1776,15 @@ class Database:
                 SentEmail(
                     log_id=log_id,
                     company_id=company_id,
+                    contact_id=contact_id,
                     company_name=company_name,
                     recipient_email=recipient_email,
                     subject=subject,
                     body=body,
                     attachments_json=json.dumps(attachments or [], ensure_ascii=False),
+                    purpose=purpose,
+                    email_mode=email_mode,
+                    outcome="pending",
                     sent_at=now,
                 )
             )
@@ -1310,11 +1792,17 @@ class Database:
         return {
             "log_id": log_id,
             "company_id": company_id,
+            "contact_id": contact_id,
             "company_name": company_name,
             "recipient_email": recipient_email,
             "subject": subject,
             "body": body,
             "attachments": attachments or [],
+            "purpose": purpose,
+            "email_mode": email_mode,
+            "outcome": "pending",
+            "outcome_note": None,
+            "outcome_at": None,
             "sent_at": now,
         }
 
@@ -1328,6 +1816,111 @@ class Database:
                 stmt = stmt.where(SentEmail.company_id == company_id)
             result = await session.execute(stmt)
             return [self._sent_email_to_dict(row) for row in result.scalars().all()]
+
+    async def get_sent_email(self, log_id: str) -> dict[str, Any] | None:
+        """Fetch one sent-email record by id."""
+        async with self._session() as session:
+            row = await session.get(SentEmail, log_id)
+            return self._sent_email_to_dict(row) if row else None
+
+    async def update_sent_email_outcome(
+        self,
+        log_id: str,
+        outcome: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Update the response outcome (and optional note) of one sent email.
+
+        ``note=None`` clears the note; pass ``note`` unchanged via the caller
+        when only the outcome should change.
+        """
+        async with self._session() as session:
+            row = await session.get(SentEmail, log_id)
+            if row is None:
+                return None
+            row.outcome = outcome
+            row.outcome_note = note
+            row.outcome_at = _now()
+            await session.commit()
+            return self._sent_email_to_dict(row)
+
+    async def bulk_update_sent_email_outcomes(
+        self,
+        log_ids: list[str],
+        outcome: str,
+        note: str | None = None,
+    ) -> int:
+        """Update the outcome of many sent emails at once; returns rows updated."""
+        if not log_ids:
+            return 0
+        now = _now()
+        updated = 0
+        async with self._session() as session:
+            result = await session.execute(
+                select(SentEmail).where(SentEmail.log_id.in_(log_ids))
+            )
+            for row in result.scalars().all():
+                row.outcome = outcome
+                row.outcome_note = note
+                row.outcome_at = now
+                updated += 1
+            await session.commit()
+        return updated
+
+    # -- Outreach analysis (singleton latest report) --------------------------
+
+    @staticmethod
+    def _outreach_analysis_to_dict(row: OutreachAnalysisRecord) -> dict[str, Any]:
+        try:
+            report = json.loads(row.report_json)
+        except (ValueError, TypeError):
+            report = {}
+        return {
+            "created_at": row.created_at,
+            "emails_analyzed": row.emails_analyzed,
+            "fingerprint": row.fingerprint,
+            "report": report,
+        }
+
+    async def get_latest_outreach_analysis(self) -> dict[str, Any] | None:
+        """Return the most recently saved AI outreach analysis, if any."""
+        async with self._session() as session:
+            row = await session.get(OutreachAnalysisRecord, 1)
+            return self._outreach_analysis_to_dict(row) if row else None
+
+    async def save_outreach_analysis(
+        self,
+        report: dict[str, Any],
+        emails_analyzed: int,
+        fingerprint: str,
+    ) -> dict[str, Any]:
+        """Upsert the singleton latest outreach-analysis record (id=1)."""
+        now = _now()
+        payload = json.dumps(report or {}, ensure_ascii=False)
+        async with self._session() as session:
+            row = await session.get(OutreachAnalysisRecord, 1)
+            if row is None:
+                session.add(
+                    OutreachAnalysisRecord(
+                        id=1,
+                        created_at=now,
+                        report_json=payload,
+                        emails_analyzed=emails_analyzed,
+                        fingerprint=fingerprint,
+                    )
+                )
+            else:
+                row.created_at = now
+                row.report_json = payload
+                row.emails_analyzed = emails_analyzed
+                row.fingerprint = fingerprint
+            await session.commit()
+        return {
+            "created_at": now,
+            "emails_analyzed": emails_analyzed,
+            "fingerprint": fingerprint,
+            "report": report or {},
+        }
 
     # -- Practice session history ---------------------------------------------
 
@@ -2028,6 +2621,7 @@ class Database:
             "source_resume_id",
             "source_resume_title",
             "avatar",
+            "email_signature",
         )
         async with self._session() as session:
             row = await session.get(CareerProfile, profile["profile_id"])

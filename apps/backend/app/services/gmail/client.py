@@ -9,6 +9,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,9 @@ def _load_gmail_config() -> GmailConfig | None:
         password = keys.get("smtp", "")
 
         if not sender_email or not password:
+            logger.info("Gmail IMAP unavailable: sender_email=%s, smtp_key=%s",
+                        "set" if sender_email else "missing",
+                        "set" if password else "missing")
             return None
 
         return GmailConfig(email=sender_email, app_password=password)
@@ -178,10 +182,98 @@ def _parse_email(msg_data: bytes, uid: str) -> EmailMessage:
     )
 
 
+def extract_imap_folder_name(raw_folder: bytes | str) -> str | None:
+    """Extract the mailbox name from an IMAP LIST response.
+
+    Examples:
+        b'(\\HasNoChildren) "/" "INBOX"' -> 'INBOX'
+        b'(\\HasNoChildren \\Sent) "/" "[Gmail]/Sent Mail"'
+            -> '[Gmail]/Sent Mail'
+    """
+    if isinstance(raw_folder, bytes):
+        raw_folder = raw_folder.decode("utf-8", errors="replace")
+
+    match = re.search(r'\s"([^"]+)"\s*$', raw_folder)
+    if match:
+        return match.group(1)
+
+    parts = raw_folder.rsplit(" ", 1)
+    if len(parts) == 2:
+        return parts[1].strip('"')
+
+    return None
+
+
+def _has_sent_flag(raw_folder: bytes | str) -> bool:
+    """Check if an IMAP LIST response has the \\Sent special-use flag."""
+    text = (
+        raw_folder.decode("utf-8", errors="replace")
+        if isinstance(raw_folder, bytes)
+        else raw_folder
+    )
+    return "\\Sent" in text or "\\sent" in text.lower()
+
+
+def _normalize_folder(name: str) -> str:
+    """Normalize a folder name for comparison."""
+    return " ".join(name.strip().lower().split())
+
+
+def _find_folder(
+    raw_folders: list[bytes] | None,
+    requested: str,
+) -> tuple[str | None, list[str]]:
+    """Resolve the best-matching IMAP folder from raw LIST response.
+
+    Returns (resolved_folder, all_parsed_names).
+    """
+    if not raw_folders:
+        return None, []
+
+    parsed: list[str] = []
+    sent_folder: str | None = None
+
+    for raw in raw_folders:
+        name = extract_imap_folder_name(raw)
+        if name:
+            parsed.append(name)
+            if _has_sent_flag(raw):
+                sent_folder = name
+
+    requested_norm = _normalize_folder(requested)
+
+    # 1. Exact match
+    for name in parsed:
+        if _normalize_folder(name) == requested_norm:
+            return name, parsed
+
+    # 2. If requested is "sent", prefer the \Sent flag, then fuzzy match
+    if requested_norm in ("sent", "sent mail"):
+        if sent_folder:
+            return sent_folder, parsed
+        sent_candidates = {
+            "sent", "sent mail", "[gmail]/sent mail", "[gmail]/sent",
+        }
+        for name in parsed:
+            norm = _normalize_folder(name)
+            if norm in sent_candidates or "sent" in norm:
+                return name, parsed
+
+    return None, parsed
+
+
+def _quote_mailbox(mailbox: str) -> str:
+    """Quote a mailbox name for IMAP if it contains special characters."""
+    if " " in mailbox or "[" in mailbox or "/" in mailbox:
+        return f'"{mailbox}"'
+    return mailbox
+
+
 def _fetch_emails_sync(
     config: GmailConfig,
     search_criteria: str = "UNSEEN",
     max_results: int = 10,
+    folder: str = "INBOX",
 ) -> list[EmailMessage]:
     """Fetch emails via IMAP (blocking; run in a worker thread)."""
     results: list[EmailMessage] = []
@@ -189,17 +281,39 @@ def _fetch_emails_sync(
     try:
         mail = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
         mail.login(config.email, config.app_password)
-        mail.select("inbox")
+
+        # List available folders and resolve the target
+        status, raw_folders = mail.list()
+        logger.info("Gmail IMAP LIST status=%r, raw=%r", status, raw_folders[:5] if raw_folders else [])
+
+        resolved_folder, all_folders = _find_folder(raw_folders, folder)
+
+        if resolved_folder is None:
+            logger.error(
+                "Could not find IMAP folder '%s'. Available: %s",
+                folder, all_folders,
+            )
+            mail.logout()
+            return results
+
+        if resolved_folder != folder:
+            logger.info("IMAP folder resolved: %s -> %s", folder, resolved_folder)
+
+        status, data = mail.select(_quote_mailbox(resolved_folder))
+        if status != "OK":
+            logger.error("Failed to select folder '%s': %s", resolved_folder, data)
+            mail.logout()
+            return results
 
         status, data = mail.search(None, search_criteria)
         if status != "OK" or not data[0]:
+            logger.info("IMAP search '%s' returned 0 results in '%s'", search_criteria, resolved_folder)
             mail.logout()
             return results
 
         uid_list = data[0].split()
-        # Get the last N UIDs (most recent)
         recent_uids = uid_list[-max_results:] if len(uid_list) > max_results else uid_list
-        recent_uids.reverse()  # Most recent first
+        recent_uids.reverse()
 
         for uid in recent_uids:
             status, msg_data = mail.fetch(uid, "(RFC822)")
@@ -208,8 +322,9 @@ def _fetch_emails_sync(
                 results.append(_parse_email(raw, uid.decode()))
 
         mail.logout()
+        logger.info("IMAP search '%s' in '%s': found %d emails", search_criteria, resolved_folder, len(results))
     except imaplib.IMAP4.error as e:
-        logger.error("IMAP error: %s", e)
+        logger.error("IMAP error searching '%s' in '%s': %s", search_criteria, folder, e)
     except Exception as e:
         logger.error("Gmail fetch failed: %s", e)
 
@@ -237,6 +352,17 @@ async def search_emails(query: str, max_results: int = 10) -> list[EmailMessage]
     if not config:
         return []
     return await asyncio.to_thread(_fetch_emails_sync, config, query, max_results)
+
+
+async def search_sent_emails(query: str = "ALL", max_results: int = 10) -> list[EmailMessage]:
+    """Search emails in the Sent Mail folder.
+
+    Resolves the sent folder dynamically via IMAP LIST + \\Sent flag detection.
+    """
+    config = _load_gmail_config()
+    if not config:
+        return []
+    return await asyncio.to_thread(_fetch_emails_sync, config, query, max_results, folder="sent")
 
 
 async def get_inbox_summary(max_results: int = 20) -> list[EmailMessage]:

@@ -1,14 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageCircle, Target, Briefcase, BarChart3, FileText, Eye, Pencil, RotateCcw, Undo2, Check, X } from 'lucide-react';
+import {
+  MessageCircle,
+  Target,
+  Briefcase,
+  BarChart3,
+  FileText,
+  Eye,
+  Pencil,
+  RotateCcw,
+  Undo2,
+  Check,
+  X,
+} from 'lucide-react';
 import { MarkdownContent } from '@/components/common/markdown-content';
 import { ToolCards } from './tool-cards';
 import { ConfirmCard } from './confirm-card';
 import { MemoryCard } from './memory-card';
 import type { ToolCard, Action, PendingAction, MemoryCandidate } from '@/lib/api/chat';
 
-const MODE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
+const MODE_CONFIG: Record<
+  string,
+  { icon: React.ComponentType<{ className?: string }>; label: string }
+> = {
   ask: { icon: MessageCircle, label: 'Ask' },
   coach: { icon: Target, label: 'Coach' },
   recruiter: { icon: Briefcase, label: 'Recruiter' },
@@ -32,8 +47,9 @@ interface MessageCardProps {
   onDismissMemory?: (statement: string) => void;
   onFollowup?: (question: string) => void;
   onSelectResume?: (resumeId: string) => void;
+  onCompareResumes?: (names: string[]) => void;
   onViewFile?: (filename: string, resumeId: string) => void;
-  onJobSearch?: (query: string) => void;
+  onJobSearch?: (query: string, sources?: string[]) => void;
   onViewEmail?: (email: any) => void;
   onAddContact?: (data: { name: string; email?: string; company?: string }) => void;
   onAddCompany?: (data: { name: string; website?: string }) => void;
@@ -63,6 +79,7 @@ export function MessageCard({
   onDismissMemory,
   onFollowup,
   onSelectResume,
+  onCompareResumes,
   onViewFile,
   onJobSearch,
   onViewEmail,
@@ -109,13 +126,19 @@ export function MessageCard({
               />
               <div className="flex justify-end gap-1.5">
                 <button
-                  onClick={() => { setIsEditing(false); setEditContent(content); }}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(content);
+                  }}
                   className="flex items-center gap-1 rounded-lg border border-[#e6e3dc] bg-white px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-[#f0eeeb]"
                 >
                   <X className="h-3 w-3" /> Cancel
                 </button>
                 <button
-                  onClick={() => { onEdit?.(editContent); setIsEditing(false); }}
+                  onClick={() => {
+                    onEdit?.(editContent);
+                    setIsEditing(false);
+                  }}
                   className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/90"
                 >
                   <Check className="h-3 w-3" /> Save
@@ -128,7 +151,9 @@ export function MessageCard({
                 <p className="whitespace-pre-wrap text-sm text-white">{content}</p>
               </div>
               {version && version > 1 && (
-                <span className="ml-2 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">v{version}</span>
+                <span className="ml-2 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                  v{version}
+                </span>
               )}
               <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
@@ -188,24 +213,29 @@ export function MessageCard({
 
         {/* Tool result cards */}
         {cards.length > 0 && (
-          <ToolCards cards={cards} onSelectResume={onSelectResume} onViewFile={onViewFile} onJobSearch={onJobSearch} onViewEmail={onViewEmail} onAddContact={onAddContact} onAddCompany={onAddCompany} onSaveJob={onSaveJob} onTailorResume={onTailorResume} onClarify={onClarify} />
+          <ToolCards
+            cards={cards}
+            onSelectResume={onSelectResume}
+            onCompareResumes={onCompareResumes}
+            onViewFile={onViewFile}
+            onJobSearch={onJobSearch}
+            onViewEmail={onViewEmail}
+            onAddContact={onAddContact}
+            onAddCompany={onAddCompany}
+            onSaveJob={onSaveJob}
+            onTailorResume={onTailorResume}
+            onClarify={onClarify}
+          />
         )}
 
         {/* Pending action confirmation */}
         {pendingAction && onConfirm && onCancel && (
-          <ConfirmCard
-            pendingAction={pendingAction}
-            onConfirm={onConfirm}
-            onCancel={onCancel}
-          />
+          <ConfirmCard pendingAction={pendingAction} onConfirm={onConfirm} onCancel={onCancel} />
         )}
 
         {/* Memory candidates */}
         {memoryCandidates.length > 0 && onDismissMemory && (
-          <MemoryCard
-            candidates={memoryCandidates}
-            onDismiss={onDismissMemory}
-          />
+          <MemoryCard candidates={memoryCandidates} onDismiss={onDismissMemory} />
         )}
 
         {/* Follow-up suggestions */}

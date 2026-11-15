@@ -49,7 +49,7 @@ describe('MessageCard', () => {
         pendingAction={pending}
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText('Add Python')).toBeInTheDocument();
     expect(screen.getByText('chat.confirm.execute')).toBeInTheDocument();
@@ -57,14 +57,7 @@ describe('MessageCard', () => {
 
   it('renders follow-up buttons', () => {
     const followups = ['Tell me more', 'What else?'];
-    render(
-      <MessageCard
-        role="assistant"
-        content=""
-        followups={followups}
-        onFollowup={vi.fn()}
-      />,
-    );
+    render(<MessageCard role="assistant" content="" followups={followups} onFollowup={vi.fn()} />);
     expect(screen.getByText('Tell me more')).toBeInTheDocument();
     expect(screen.getByText('What else?')).toBeInTheDocument();
   });

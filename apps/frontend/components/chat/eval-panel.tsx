@@ -5,7 +5,9 @@ import { Activity, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const RadarChart = dynamic(() => import('recharts').then((m) => m.RadarChart), { ssr: false });
 const PolarGrid = dynamic(() => import('recharts').then((m) => m.PolarGrid), { ssr: false });
-const PolarAngleAxis = dynamic(() => import('recharts').then((m) => m.PolarAngleAxis), { ssr: false });
+const PolarAngleAxis = dynamic(() => import('recharts').then((m) => m.PolarAngleAxis), {
+  ssr: false,
+});
 const Radar = dynamic(() => import('recharts').then((m) => m.Radar), { ssr: false });
 const BarChart = dynamic(() => import('recharts').then((m) => m.BarChart), { ssr: false });
 const Bar = dynamic(() => import('recharts').then((m) => m.Bar), { ssr: false });
@@ -126,7 +128,14 @@ export function EvalPanel({ evalMetrics, polling, open, onToggle }: EvalPanelPro
             <>
               {/* Radar chart */}
               <div className="flex justify-center">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" width={200} height={180} data={radarData}>
+                <RadarChart
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="70%"
+                  width={200}
+                  height={180}
+                  data={radarData}
+                >
                   <PolarGrid stroke="#e6e3dc" />
                   <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#6b7280' }} />
                   <Radar

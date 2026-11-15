@@ -14,7 +14,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronDown, FileText, History, Loader2, Mail, Paperclip, Save, Send, Sparkles, X } from 'lucide-react';
+import {
+  ChevronDown,
+  FileText,
+  History,
+  Loader2,
+  Mail,
+  Paperclip,
+  Save,
+  Send,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import type { Company } from '@/lib/api/companies';
 import { updateCompany } from '@/lib/api/companies';
 import {
@@ -31,10 +42,7 @@ import {
   downloadResumePdf,
   type ResumeListItem,
 } from '@/lib/api/resume';
-import {
-  normalizeTemplateSettings,
-  type TemplateSettings,
-} from '@/lib/types/template-settings';
+import { normalizeTemplateSettings, type TemplateSettings } from '@/lib/types/template-settings';
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
 import { useToast } from '@/components/ui/toast';
 import { useTranslations } from '@/lib/i18n';
@@ -111,7 +119,12 @@ function formatSentAt(iso: string): string {
   });
 }
 
-export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: CompanyEmailDialogProps) {
+export function CompanyEmailDialog({
+  open,
+  onOpenChange,
+  company,
+  onSent,
+}: CompanyEmailDialogProps) {
   const { t } = useTranslations();
   const { contentLanguage } = useLanguage();
   const { showToast } = useToast();
@@ -168,9 +181,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
       fetchEmailConfig()
         .then((cfg) => {
           setSenderName(cfg.sender_name ?? '');
-          setSenderConfigured(
-            Boolean(cfg.smtp_host && cfg.sender_email && cfg.has_password)
-          );
+          setSenderConfigured(Boolean(cfg.smtp_host && cfg.sender_email && cfg.has_password));
         })
         .catch(() => {
           setSenderName('');
@@ -198,8 +209,8 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
     if (!open || !company) return;
     setHistoryLoading(true);
     setExpandedLogId(null);
-    fetchEmailHistory(company.company_id)
-      .then(setHistory)
+    fetchEmailHistory({ companyId: company.company_id })
+      .then(({ emails }) => setHistory(emails))
       .catch(() => setHistory([]))
       .finally(() => setHistoryLoading(false));
   }, [open, company]);
@@ -255,6 +266,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
         resume_id: selectedResumeId || null,
         instruction: instruction.trim() || null,
         temperature: 0.7,
+        company_research: company.description?.trim() || null,
       });
       if (result.subject) setSubject(result.subject);
       if (result.body) setBody(result.body);
@@ -289,6 +301,8 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
       form.append('company_id', company.company_id);
       form.append('subject', subject.trim());
       form.append('body', body);
+      form.append('purpose', purpose);
+      form.append('email_mode', 'personalized');
       if (attachment) {
         form.append('attachments', attachment, attachment.name);
       }
@@ -309,8 +323,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
           let fullName = senderName;
           try {
             const resumeData = await fetchResume(resumeId);
-            const personalName =
-              resumeData.processed_resume?.personalInfo?.name?.trim();
+            const personalName = resumeData.processed_resume?.personalInfo?.name?.trim();
             if (personalName) fullName = personalName;
             if (resumeData.template_settings) {
               settings = normalizeTemplateSettings(
@@ -389,9 +402,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
                 <History className="h-4 w-4 text-primary" />
                 {t('companies.emailDialog.historyTitle')}
                 {history.length > 0 && (
-                  <span className="text-xs font-normal text-steel-grey">
-                    ({history.length})
-                  </span>
+                  <span className="text-xs font-normal text-steel-grey">({history.length})</span>
                 )}
               </h3>
             </div>
@@ -482,22 +493,15 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
                 <Dropdown
                   options={resumes.map((r) => ({
                     id: r.resume_id,
-                    label:
-                      r.title ||
-                      r.filename ||
-                      t('companies.emailDialog.resumeUntitled'),
-                    description: r.is_master
-                      ? t('dashboard.masterResume')
-                      : undefined,
+                    label: r.title || r.filename || t('companies.emailDialog.resumeUntitled'),
+                    description: r.is_master ? t('dashboard.masterResume') : undefined,
                   }))}
                   value={selectedResumeId}
                   onChange={setSelectedResumeId}
                   disabled={resumesLoading || resumes.length === 0}
                   className="w-full"
                 />
-                <p className="text-xs text-steel-grey">
-                  {t('companies.emailDialog.resumeHint')}
-                </p>
+                <p className="text-xs text-steel-grey">{t('companies.emailDialog.resumeHint')}</p>
               </div>
 
               <div className="space-y-2">
@@ -540,9 +544,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wider text-ink-soft">
                   {t('companies.emailDialog.recipientName')}
-                  <span className="ml-1 normal-case text-steel-grey">
-                    ({t('common.optional')})
-                  </span>
+                  <span className="ml-1 normal-case text-steel-grey">({t('common.optional')})</span>
                 </Label>
                 <Input
                   value={recipientName}
@@ -584,11 +586,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
                   <Label className="text-xs uppercase tracking-wider text-ink-soft">
                     {t('companies.emailDialog.message')}
                   </Label>
-                  <MarkdownToolbar
-                    textareaRef={bodyTextareaRef}
-                    value={body}
-                    onChange={setBody}
-                  />
+                  <MarkdownToolbar textareaRef={bodyTextareaRef} value={body} onChange={setBody} />
                 </div>
                 <Textarea
                   ref={bodyTextareaRef}
@@ -602,9 +600,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wider text-ink-soft">
                   {t('companies.emailDialog.additionalInstructions')}
-                  <span className="ml-1 normal-case text-steel-grey">
-                    ({t('common.optional')})
-                  </span>
+                  <span className="ml-1 normal-case text-steel-grey">({t('common.optional')})</span>
                 </Label>
                 <Textarea
                   value={instruction}
@@ -617,9 +613,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wider text-ink-soft">
                   {t('companies.emailDialog.attachment')}
-                  <span className="ml-1 normal-case text-steel-grey">
-                    ({t('common.optional')})
-                  </span>
+                  <span className="ml-1 normal-case text-steel-grey">({t('common.optional')})</span>
                 </Label>
                 <input
                   ref={fileInputRef}
@@ -661,9 +655,7 @@ export function CompanyEmailDialog({ open, onOpenChange, company, onSent }: Comp
               <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-[#e6e3dc] bg-paper-tint px-3 py-2">
                 <span className="flex min-w-0 items-center gap-2 text-sm text-ink">
                   <FileText className="h-4 w-4 shrink-0 text-primary" />
-                  <span className="truncate">
-                    {t('companies.emailDialog.includeResume')}
-                  </span>
+                  <span className="truncate">{t('companies.emailDialog.includeResume')}</span>
                   {includeResume && (
                     <span className="truncate text-xs text-steel-grey">
                       {senderName || 'Resume'} - Resume.pdf

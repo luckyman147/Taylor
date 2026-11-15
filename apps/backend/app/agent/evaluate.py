@@ -8,7 +8,7 @@ import asyncio
 import logging
 from typing import Any
 
-from app.llm import complete_json
+from app.llm import complete_json, rate_limit_wait
 from app.agent.state import TaylorState
 
 logger = logging.getLogger(__name__)
@@ -77,11 +77,11 @@ Consider:
                     "confidence": response.get("confidence", 0.0),
                 }
             except Exception as e:
-                err_str = str(e).lower()
-                is_rate_limit = "429" in err_str or "rate" in err_str or "quota" in err_str
-                if is_rate_limit and attempt < 2:
-                    wait = 10 * (attempt + 1)
-                    logger.warning("Rate limited in evaluate, retrying in %ds", wait)
+                # Router already retried transport 429s — one extra attempt
+                # max (see rate_limit_wait), no content-retry multiplication.
+                wait = rate_limit_wait(e)
+                if wait is not None and attempt == 0:
+                    logger.warning("Rate limited in evaluate, retrying in %.0fs", wait)
                     await asyncio.sleep(wait)
                     continue
                 logger.error("Sufficiency evaluation failed: %s", e)

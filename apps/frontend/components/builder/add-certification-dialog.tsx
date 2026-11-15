@@ -72,9 +72,7 @@ export const AddCertificationDialog: React.FC<AddCertificationDialogProps> = ({
   }, [open, reset, loadCertifications]);
 
   const existing = new Set(existingNames.map((n) => n.trim().toLowerCase()).filter(Boolean));
-  const available = certifications.filter(
-    (c) => !existing.has(c.name.trim().toLowerCase())
-  );
+  const available = certifications.filter((c) => !existing.has(c.name.trim().toLowerCase()));
 
   const filtered = query.trim()
     ? available.filter(

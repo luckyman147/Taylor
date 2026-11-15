@@ -45,6 +45,32 @@ class TestExtractJobKeywords:
 class TestGenerateResumeDiffs:
     """Tests for generate_resume_diffs() with mocked LLM."""
 
+    @patch("app.services.improver.get_safe_max_tokens", return_value=8192)
+    @patch(
+        "app.services.improver.get_model_name",
+        return_value="gemini/gemini-3-flash-preview",
+    )
+    @patch("app.services.improver.get_llm_config")
+    @patch("app.services.improver.complete_json", new_callable=AsyncMock)
+    async def test_requests_full_json_budget(
+        self,
+        mock_llm,
+        mock_get_config,
+        mock_get_name,
+        mock_safe_max_tokens,
+        sample_resume,
+        sample_job_keywords,
+    ):
+        """Diffs must not start at 4096: reasoning models burn it on thinking."""
+        mock_llm.return_value = {"changes": [], "strategy_notes": "test"}
+        await generate_resume_diffs(
+            original_resume="# Resume",
+            job_description="JD",
+            job_keywords=sample_job_keywords,
+            original_resume_data=sample_resume,
+        )
+        assert mock_llm.call_args.kwargs["max_tokens"] == 8192
+
     @patch("app.services.improver.complete_json", new_callable=AsyncMock)
     async def test_returns_parsed_changes(self, mock_llm, sample_resume, sample_job_keywords, sample_job_description):
         mock_llm.return_value = {

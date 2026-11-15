@@ -57,7 +57,127 @@
     "chat": "AI Chat",
     "evalDashboard": "Eval Dashboard",
     "createResume": "Create Resume",
-    "interviewPractice": "Interview Practice"
+    "interviewPractice": "Interview Practice",
+    "emailAnalytics": "Email Analytics",
+    "leads": "Lead Scraper"
+  },
+  "leads": {
+    "title": "Lead Scraper",
+    "subtitle": "Find people, companies, and agencies — deduplicated across sources.",
+    "criteria": {
+      "recommend": "Recommend criteria",
+      "recommending": "Asking AI…",
+      "recommendHint": "AI optimizes your current params from your profile and goal — review the before/after diff, then apply.",
+      "suggestTitle": "Suggested changes — review, then apply",
+      "trackedNote": "Already tracked (excluded from suggestions)",
+      "apply": "Apply suggestions",
+      "dismiss": "Dismiss"
+    },
+    "drafts": {
+      "save": "Save draft",
+      "load": "Drafts",
+      "namePlaceholder": "Draft name…",
+      "empty": "No saved drafts yet.",
+      "delete": "Delete draft",
+      "saved": "Draft saved",
+      "loaded": "Draft loaded",
+      "saveFailed": "Could not save draft",
+      "deleteFailed": "Could not delete draft",
+      "nameRequired": "Enter a draft name (or use keywords/target) to save"
+    },
+    "form": {
+      "title": "Search",
+      "keywords": "Keywords",
+      "keywordsPlaceholder": "e.g. CTO, recruiting agency, fintech",
+      "locations": "Locations",
+      "locationsPlaceholder": "Comma-separated, e.g. Tunis, Paris",
+      "target": "Exact target",
+      "targetPlaceholder": "e.g. CTOs at 10-50 person fintech startups",
+      "purpose": "Why you're searching",
+      "purposePlaceholder": "e.g. selling an ATS to engineering leads",
+      "leadTypes": "Lead types",
+      "sources": "Sources",
+      "enrich": "Find emails/phones (best effort)",
+      "search": "Confirm & search",
+      "searching": "Searching & deduplicating…",
+      "phase": {
+        "search": "Searching LinkedIn & the web…",
+        "profiles": "Reading LinkedIn profiles…",
+        "companies": "Reading LinkedIn company pages…",
+        "filtering": "Filtering by location…",
+        "categorize": "Categorizing leads…",
+        "dedupe": "Removing duplicates…",
+        "persisted": "Saving to the database…",
+        "enrich": "Finding emails & phone numbers…",
+        "finalize": "Categorizing & saving results…",
+        "hint": "Profile reads run in a browser — the first search can take 1–3 minutes."
+      }
+    },
+    "stats": {
+      "raw": "Found",
+      "merged": "Merged",
+      "alreadyInDb": "Already known",
+      "inserted": "New leads"
+    },
+    "type": {
+      "person": "Person",
+      "company": "Company",
+      "agency": "Agency"
+    },
+    "table": {
+      "name": "Name",
+      "company": "Company",
+      "email": "Email",
+      "location": "Location",
+      "sources": "Sources",
+      "category": "Save as",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "category": {
+      "contact": "Contact",
+      "company": "Company",
+      "agency": "Agency",
+      "unsure": "Unsure",
+      "pickOne": "Pick a category for this lead before saving.",
+      "source": {
+        "heuristic": "auto",
+        "ai": "AI",
+        "user": "you",
+        "unsure": "unset"
+      }
+    },
+    "status": {
+      "new": "New",
+      "saved": "Saved",
+      "contacted": "Contacted",
+      "dismissed": "Dismissed"
+    },
+    "actions": {
+      "selected": "{count} selected",
+      "saveAsContact": "Add as contact",
+      "saveAsCompany": "Add as company",
+      "bulkSaveContact": "Add as contacts",
+      "bulkSaveCompany": "Add as companies",
+      "dismiss": "Dismiss",
+      "delete": "Delete",
+      "exportCsv": "Export CSV",
+      "selectAll": "Select all",
+      "savedOne": "Saved {name}."
+    },
+    "empty": {
+      "title": "No leads yet",
+      "description": "Recommend criteria, confirm them, then search — results are deduplicated across LinkedIn and the web."
+    },
+    "errors": {
+      "updateFailed": "Could not update the lead.",
+      "saveFailed": "Could not save the lead.",
+      "deleteFailed": "Could not delete the lead."
+    },
+    "toasts": {
+      "searchFailed": "Search failed",
+      "criteriaFailed": "Could not fetch AI recommendations"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -531,6 +651,7 @@
       "options": "Options",
       "compactMode": "Compact Mode",
       "contactIcons": "Contact Icons",
+      "contactSeparators": "Contact Separators",
       "bulletMarker": "Bullet Marker",
       "listSeparator": "List Separator",
       "markerOptions": {
@@ -696,6 +817,7 @@
       "dragToReorder": "Drag to reorder"
     },
     "actions": {
+      "undo": "Undo",
       "saveAsMaster": "Save as Master",
       "alreadyMaster": "This resume is already a master",
       "saveMoreOptions": "More save options",
@@ -931,13 +1053,19 @@
     },
     "projectsPicker": {
       "title": "Choose Projects for Your Tailored Resume",
-      "subtitle": "These career projects match the job description. Pick up to 4 — the Projects section of your tailored resume will be replaced with your selection.",
+      "subtitle": "Keep your current Projects section, or choose job-matched projects to replace it.",
+      "modeKeep": "Keep my current projects",
+      "modeKeepHint": "Your Projects section stays exactly as it is.",
+      "modeChoose": "Choose replacement projects",
+      "modeChooseHint": "Replace your Projects section with up to 4 job-matched projects.",
+      "keepNote": "No projects will be added or replaced. Your Projects section stays exactly as it is.",
       "matchScore": "Match",
       "inResume": "Already in resume",
       "noDescription": "No description could be drafted for this project (LLM unavailable).",
       "selectHint": "Select up to {count} projects",
-      "skip": "Skip — use top matches automatically",
-      "tailorWithSelection": "Tailor with selection"
+      "skip": "Use top matches automatically",
+      "tailorWithSelection": "Tailor with selection",
+      "tailorWithCurrent": "Tailor without changing projects"
     },
     "jobIntel": {
       "shouldApply": {
@@ -1102,7 +1230,8 @@
         "health_check_failed": "Health check failed.",
         "duplicate_v1_path": "Health check failed. The Base URL may contain a duplicate /v1 path.",
         "not_found_404": "Health check failed. 404 Not Found - check that the Base URL matches the provider.",
-        "html_response": "Health check failed. The Base URL returned HTML; it may be a console URL or an unsupported gateway path."
+        "html_response": "Health check failed. The Base URL returned HTML; it may be a console URL or an unsupported gateway path.",
+        "llm_timeout": "Health check timed out. The provider did not respond in time - check your network and try again."
       },
       "healthWarnings": {
         "empty_content": "LLM returned empty content for the health check."
@@ -1578,6 +1707,7 @@
     "status": {
       "watching": "Watching",
       "contacted": "Contacted",
+      "second_contact": "2nd Contact",
       "applied": "Applied",
       "interviewing": "Interviewing",
       "negotiating": "Negotiating",
@@ -1769,7 +1899,22 @@
       "websiteContent": "Website",
       "linkedinContent": "LinkedIn",
       "hiringSignals": "Hiring Signals",
-      "back": "Back"
+      "back": "Back",
+      "modeLabel": "Email mode",
+      "modePersonalized": "Personalized",
+      "modeShared": "Shared",
+      "modePersonalizedHint": "Generate a separate AI-written email for each recipient.",
+      "modeSharedHint": "Generate one general email and send it individually to every recipient. Recipients never see each other's addresses.",
+      "personalizeGreeting": "Personalize the greeting with each recipient's name",
+      "sharedGenerating": "Generating one shared email...",
+      "sharedPreviewHint": "This email will be sent individually to {count} recipients.",
+      "greetingHint": "The greeting placeholder will be replaced with each recipient's name (e.g. {example}).",
+      "sharedGenerateFailed": "Failed to generate the shared email. Please try again.",
+      "sharedRegenFailed": "Regeneration failed — keeping the current draft.",
+      "generateShared": "Generate Email",
+      "retry": "Retry",
+      "error": "Failed",
+      "cancel": "Cancel"
     },
     "approval": {
       "title": "Add company to database?",
@@ -2479,6 +2624,117 @@
       "info": "Info",
       "audit": "Audit",
       "stats": "Stats"
+    }
+  },
+  "emailAnalytics": {
+    "title": "Email Analytics",
+    "subtitle": "Track outreach responses and learn what to improve.",
+    "refresh": "Refresh",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load email analytics. Please try again.",
+    "stats": {
+      "totalSent": "Total sent",
+      "responded": "Responded",
+      "responseRate": "Response rate",
+      "pending": "Pending",
+      "bounced": "Bounced"
+    },
+    "chart": {
+      "title": "Sends & replies over time",
+      "sent": "Sent",
+      "responded": "Responded",
+      "empty": "No data yet — send some emails to see the trend."
+    },
+    "segments": {
+      "title": "Performance by segment",
+      "byRecipientType": "By recipient",
+      "byMode": "By send mode",
+      "byPurpose": "By purpose",
+      "segment": "Segment",
+      "sent": "Sent",
+      "replied": "Replied",
+      "rate": "Reply rate",
+      "company": "Company",
+      "contact": "Contact",
+      "personalized": "Personalized",
+      "shared": "Shared",
+      "general": "General",
+      "internship": "Internship",
+      "job": "Job",
+      "cold": "Cold",
+      "custom": "Custom"
+    },
+    "topSubjects": {
+      "title": "Subjects that got replies",
+      "subject": "Subject",
+      "empty": "No replies recorded yet."
+    },
+    "timeline": {
+      "title": "Sent emails",
+      "empty": "No emails sent yet.",
+      "recipient": "Recipient",
+      "sentAt": "Sent",
+      "outcome": "Outcome",
+      "prev": "Previous",
+      "next": "Next",
+      "showing": "Showing {from}–{to} of {total}",
+      "selectAll": "Select all",
+      "clearSelection": "Clear selection",
+      "selectedCount": "{count} selected",
+      "bulkAction": "Set outcome",
+      "bulkApply": "Apply",
+      "bulkSuccess": "Updated {count} emails.",
+      "bulkFailed": "Failed to update outcomes.",
+      "outcomeUpdated": "Outcome updated.",
+      "updateFailed": "Failed to update outcome.",
+      "outcomeAbbrev": {
+        "pending": "…",
+        "responded": "R",
+        "not_interested": "N",
+        "bounced": "B"
+      }
+    },
+    "outcomes": {
+      "pending": "Pending",
+      "responded": "Responded",
+      "not_interested": "Not interested",
+      "bounced": "Bounced"
+    },
+    "checkReplies": {
+      "title": "Check for replies",
+      "description": "Scan your inbox via IMAP for replies to pending emails. Matches are suggestions — confirm each one.",
+      "button": "Check for replies",
+      "checking": "Checking…",
+      "result": "Scanned {count} pending emails.",
+      "none": "No matching replies found.",
+      "confirm": "Mark as responded",
+      "confirmed": "Marked as responded.",
+      "confirmFailed": "Failed to mark as responded.",
+      "failed": "Reply check failed. Please try again.",
+      "sentSubject": "You sent",
+      "matchedSubject": "Their reply",
+      "from": "From"
+    },
+    "analyze": {
+      "title": "AI analysis",
+      "description": "Analyze your outreach history to learn what works and what to change.",
+      "button": "Analyze my outreach",
+      "analyzing": "Analyzing…",
+      "emailsAnalyzed": "Analyzed {count} emails.",
+      "empty": "Not enough data yet — send at least 3 emails.",
+      "failed": "Analysis failed. Please try again.",
+      "savedAt": "Saved {date}",
+      "whatWorks": "What works",
+      "whatFails": "What to fix",
+      "subjectTips": "Subject tips",
+      "bodyTips": "Body tips",
+      "ctaTips": "Call-to-action tips",
+      "example": "Example rewrite",
+      "exampleSubject": "Example subject"
+    },
+    "empty": {
+      "title": "No outreach yet",
+      "description": "Send emails from the Companies or Contacts pages, then come back to track responses."
     }
   }
 }

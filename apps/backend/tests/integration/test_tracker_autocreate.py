@@ -114,9 +114,11 @@ class TestTrackerAutoCreate:
         assert card["resume_id"] == tailored_id
         assert card["master_resume_id"] == resume_id
         assert card["job_id"] == job_id
-        # Company comes from the cached job; role falls back to the resume title.
+        # Company and role both come from the cached job — the generated
+        # resume title (which embeds the candidate name) must not pollute
+        # the tracker's role field.
         assert card["company"] == "Acme Corp"
-        assert card["role"] == "Senior Backend Engineer - Acme Corp"
+        assert card["role"] == "Senior Backend Engineer"
         assert card["applied_at"] is not None
 
     async def test_autocreate_is_idempotent_on_double_confirm(self, isolated_db, sample_resume):

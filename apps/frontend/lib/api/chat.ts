@@ -31,6 +31,7 @@ export interface PendingAction {
   token: string;
   tool: string;
   summary: string;
+  args: Record<string, any>;
 }
 
 export interface MemoryCandidate {
@@ -190,7 +191,7 @@ export async function listThreads(): Promise<ThreadSummary[]> {
 export async function createThread(
   mode: string = 'ask',
   title?: string,
-  skills: string[] = [],
+  skills: string[] = []
 ): Promise<ThreadSummary> {
   const res = await apiPost('/chat/threads', { mode, title, skills }, 30_000);
   return asJson<ThreadSummary>(res, 'Failed to create thread');
@@ -198,7 +199,7 @@ export async function createThread(
 
 export async function updateThread(
   threadId: string,
-  patch: { title?: string; mode?: string; skills?: string[] },
+  patch: { title?: string; mode?: string; skills?: string[] }
 ): Promise<void> {
   const res = await apiPatch(`/chat/threads/${threadId}`, patch);
   if (!res.ok) {
@@ -220,7 +221,7 @@ export async function deleteThread(threadId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function getResumeContent(
-  resumeId: string,
+  resumeId: string
 ): Promise<{ resume_id: string; filename: string; content: string }> {
   const res = await apiFetch(`/resumes/${resumeId}/content`, {
     credentials: 'include',
@@ -232,9 +233,7 @@ export async function getResumeContent(
 // Thread messages
 // ---------------------------------------------------------------------------
 
-export async function getThreadMessages(
-  threadId: string,
-): Promise<ThreadMessage[]> {
+export async function getThreadMessages(threadId: string): Promise<ThreadMessage[]> {
   const res = await apiFetch(`/chat/threads/${threadId}/messages`, {
     credentials: 'include',
   });
@@ -249,12 +248,12 @@ export async function sendTurn(
   threadId: string,
   message: string,
   resumeId?: string,
-  evalRequested?: boolean,
+  evalRequested?: boolean
 ): Promise<TurnResponse> {
   const res = await apiPost(
     `/chat/threads/${threadId}/turn`,
     { message, resume_id: resumeId || null, eval_requested: evalRequested || false },
-    300_000, // LLM timeout
+    300_000 // LLM timeout
   );
   return asJson<TurnResponse>(res, 'Failed to send message');
 }
@@ -278,17 +277,24 @@ export async function sendTurnStream(
   message: string,
   resumeId: string | undefined,
   callbacks: StreamCallbacks,
-  evalRequested?: boolean,
+  evalRequested?: boolean
 ): Promise<AbortController> {
   const controller = new AbortController();
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/chat/threads/${threadId}/turn/stream?stream=true`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, resume_id: resumeId || null, eval_requested: evalRequested || false }),
-      signal: controller.signal,
-    });
+    const res = await fetch(
+      `${BACKEND_URL}/api/v1/chat/threads/${threadId}/turn/stream?stream=true`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          resume_id: resumeId || null,
+          eval_requested: evalRequested || false,
+        }),
+        signal: controller.signal,
+      }
+    );
 
     if (!res.ok) {
       throw new Error(`Stream request failed: ${res.status}`);
@@ -351,10 +357,8 @@ export async function confirmAction(token: string, threadId: string): Promise<Co
   return asJson<ConfirmResponse>(res, 'Failed to confirm action');
 }
 
-export async function cancelAction(
-  token: string,
-): Promise<{ ok: boolean; message: string }> {
-  const res = await apiPost('/chat/cancel', { token }, 10_000);
+export async function cancelAction(token: string, threadId: string): Promise<{ ok: boolean; message: string }> {
+  const res = await apiPost('/chat/cancel', { token, thread_id: threadId }, 10_000);
   return asJson<{ ok: boolean; message: string }>(res, 'Failed to cancel action');
 }
 
@@ -364,21 +368,13 @@ export async function cancelAction(
 
 export async function saveMemory(
   statement: string,
-  sourceThreadId: string,
+  sourceThreadId: string
 ): Promise<{ ok: boolean; saved: MemoryCandidate[] }> {
-  const res = await apiPost(
-    '/chat/memory/save',
-    { statement, source_thread_id: sourceThreadId },
-  );
-  return asJson<{ ok: boolean; saved: MemoryCandidate[] }>(
-    res,
-    'Failed to save memory',
-  );
+  const res = await apiPost('/chat/memory/save', { statement, source_thread_id: sourceThreadId });
+  return asJson<{ ok: boolean; saved: MemoryCandidate[] }>(res, 'Failed to save memory');
 }
 
-export async function dismissMemory(
-  memoryId: string,
-): Promise<void> {
+export async function dismissMemory(memoryId: string): Promise<void> {
   const res = await apiDelete(`/chat/memory/${memoryId}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -405,7 +401,10 @@ export async function saveJobFromChat(params: {
 // Message versioning & revert
 // ---------------------------------------------------------------------------
 
-export async function supersedeMessage(threadId: string, messageId: string): Promise<{ ok: boolean }> {
+export async function supersedeMessage(
+  threadId: string,
+  messageId: string
+): Promise<{ ok: boolean }> {
   const res = await apiPost(`/chat/threads/${threadId}/messages/${messageId}/supersede`, {});
   return asJson(res, 'Failed to supersede message');
 }
@@ -419,7 +418,10 @@ export async function revertLastTurn(threadId: string): Promise<{
   return asJson(res, 'Failed to revert');
 }
 
-export async function getMessageVersions(threadId: string, messageId: string): Promise<{
+export async function getMessageVersions(
+  threadId: string,
+  messageId: string
+): Promise<{
   versions: ThreadMessage[];
 }> {
   const res = await apiFetch(`/chat/threads/${threadId}/versions/${messageId}`);

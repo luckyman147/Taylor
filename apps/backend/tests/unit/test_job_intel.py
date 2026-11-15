@@ -1,5 +1,9 @@
 """Unit tests for job intelligence (red flags, hiring probability)."""
 
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
+from app.services import job_intel
 from app.services.job_intel import (
     _career_seniority,
     _job_seniority,
@@ -264,3 +268,47 @@ class TestHiringProbability:
         assert result["skills"]["score"] == 90.0
         assert result["experience"]["score"] == 90.0
         assert result["seniority"]["score"] < 60
+
+
+class TestExtractJobDnaFallback:
+    async def test_llm_failure_falls_back_to_keywords(self, monkeypatch):
+        """A failed LLM call must degrade to deterministic DNA, not raise.
+
+        Regression: the except handler referenced an undefined ``logger``,
+        so a transient LLM failure became a NameError/500 instead of using
+        the documented fallback.
+        """
+
+        async def failing_complete_json(*args, **kwargs):
+            raise RuntimeError("LLM unavailable after retries")
+
+        monkeypatch.setattr(job_intel, "_llm_configured", lambda: True)
+        monkeypatch.setattr(job_intel, "get_content_language", lambda: "en")
+        monkeypatch.setattr(job_intel, "get_language_name", lambda _code: "English")
+        monkeypatch.setattr(job_intel, "get_llm_config", lambda: object())
+        monkeypatch.setattr(job_intel, "complete_json", failing_complete_json)
+        monkeypatch.setattr(job_intel.db, "update_job", AsyncMock(return_value={}))
+        job_intel._DNA_PROCESS_CACHE.clear()
+
+        job = {
+            "job_id": f"job-{uuid4()}",
+            "content": "Remote senior backend role. 5+ years.",
+            "metadata_json": {},
+        }
+        dna = await job_intel.extract_job_dna(
+            job,
+            {
+                "required_skills": ["Python"],
+                "preferred_skills": ["Docker"],
+                "keywords": ["FastAPI"],
+                "seniority_level": "senior",
+            },
+        )
+
+        assert dna["technical"] == [
+            {"skill": "Python", "weight": 10},
+            {"skill": "Docker", "weight": 7},
+            {"skill": "FastAPI", "weight": 5},
+        ]
+        assert dna["experience"][0] == {"domain": "backend", "level": "high"}
+        assert "remote" in dna["company"]

@@ -2,10 +2,14 @@
 
 import copy
 import logging
+
 import pytest
 
+from app.schemas.refinement import AlignmentViolation, RefinementConfig
 from app.services.refiner import (
     _normalize_company,
+    _normalize_project_name,
+    _restore_missing_projects,
     _restore_missing_work_experience,
     _validate_resume_structure,
     analyze_keyword_gaps,
@@ -15,7 +19,6 @@ from app.services.refiner import (
     remove_ai_phrases,
     validate_master_alignment,
 )
-from app.schemas.refinement import AlignmentViolation, RefinementConfig
 
 
 class TestRemoveAiPhrases:
@@ -353,6 +356,25 @@ class TestNormalizeCompany:
         assert _normalize_company("Acme Corp") == "acme corp"
 
 
+class TestNormalizeProjectName:
+    """Tests for _normalize_project_name() — project name normalization."""
+
+    def test_strips_technology_suffix_pipe(self):
+        assert _normalize_project_name("Tunisia_oggi | NestJS, React") == "tunisia_oggi"
+
+    def test_casefold_and_whitespace(self):
+        assert _normalize_project_name("  Pharma   Track  |  Next.js") == "pharma track"
+
+    def test_none_input(self):
+        assert _normalize_project_name(None) == ""
+
+    def test_empty_string(self):
+        assert _normalize_project_name("") == ""
+
+    def test_no_suffix_unchanged(self):
+        assert _normalize_project_name("Taylor") == "taylor"
+
+
 class TestValidateMasterAlignmentNormalized:
     """Tests for validate_master_alignment() with normalized company comparison."""
 
@@ -480,6 +502,28 @@ class TestValidateResumeStructureWithBaseline:
         data["workExperience"] = []
         assert _validate_resume_structure(data, baseline=sample_resume) is False
 
+    def test_accepts_same_projects(self, sample_resume):
+        assert _validate_resume_structure(sample_resume, baseline=sample_resume) is True
+
+    def test_rejects_missing_projects(self, sample_resume):
+        """Should reject if personalProjects key is missing."""
+        data = copy.deepcopy(sample_resume)
+        del data["personalProjects"]
+        assert _validate_resume_structure(data, baseline=sample_resume) is False
+
+    def test_rejects_empty_projects(self, sample_resume):
+        """Should reject if personalProjects is emptied when baseline had entries."""
+        data = copy.deepcopy(sample_resume)
+        data["personalProjects"] = []
+        assert _validate_resume_structure(data, baseline=sample_resume) is False
+
+    def test_accepts_when_baseline_has_no_projects(self, sample_resume):
+        data = copy.deepcopy(sample_resume)
+        data["personalProjects"] = []
+        baseline = copy.deepcopy(sample_resume)
+        baseline["personalProjects"] = []
+        assert _validate_resume_structure(data, baseline=baseline) is True
+
     def test_accepts_without_baseline(self, sample_resume):
         """Should accept if no baseline provided (backwards compat)."""
         data = copy.deepcopy(sample_resume)
@@ -537,3 +581,82 @@ class TestRestoreMissingWorkExperience:
         # Should recognize it's the same company and not add duplicate
         assert len(restored["workExperience"]) == len(baseline["workExperience"])
         assert len(warnings) == 0
+
+
+class TestRestoreMissingProjects:
+    """Tests for _restore_missing_projects() post-refinement guard."""
+
+    def test_restores_missing_entries(self, sample_resume):
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+        refined["personalProjects"] = []
+
+        restored, warnings = _restore_missing_projects(baseline, refined)
+
+        assert [p["name"] for p in restored["personalProjects"]] == [
+            "OpenAPI Generator"
+        ]
+        assert len(warnings) == 1
+        assert "restored" in warnings[0].lower()
+
+    def test_restores_missing_key(self, sample_resume):
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+        del refined["personalProjects"]
+
+        restored, warnings = _restore_missing_projects(baseline, refined)
+
+        assert len(restored["personalProjects"]) == 1
+        assert len(warnings) == 1
+
+    def test_keeps_additions_without_duplicates(self, sample_resume):
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+        refined["personalProjects"] = [
+            {"id": 2, "name": "New Project", "description": ["new"]},
+        ]
+
+        restored, warnings = _restore_missing_projects(baseline, refined)
+
+        assert [p["name"] for p in restored["personalProjects"]] == [
+            "New Project",
+            "OpenAPI Generator",
+        ]
+        assert len(warnings) == 1
+
+    def test_no_op_when_same(self, sample_resume):
+        baseline = copy.deepcopy(sample_resume)
+        refined = copy.deepcopy(sample_resume)
+
+        restored, warnings = _restore_missing_projects(baseline, refined)
+
+        assert len(restored["personalProjects"]) == 1
+        assert warnings == []
+
+    def test_matches_by_normalized_name(self, sample_resume):
+        baseline = copy.deepcopy(sample_resume)
+        baseline["personalProjects"][0]["name"] = "Tunisia_oggi | NestJS"
+        refined = copy.deepcopy(sample_resume)
+        refined["personalProjects"][0]["name"] = "Tunisia_oggi"
+
+        restored, warnings = _restore_missing_projects(baseline, refined)
+
+        assert len(restored["personalProjects"]) == 1
+        assert restored["personalProjects"][0]["name"] == "Tunisia_oggi"
+        assert warnings == []
+
+    def test_empty_baseline_is_noop(self):
+        refined = {"personalProjects": [{"name": "X"}]}
+        unchanged, warnings = _restore_missing_projects({}, refined)
+        assert unchanged is refined
+        assert warnings == []
+
+    def test_does_not_mutate_baseline(self, sample_resume):
+        baseline = copy.deepcopy(sample_resume)
+        baseline_before = copy.deepcopy(baseline)
+        refined = copy.deepcopy(sample_resume)
+        refined["personalProjects"] = []
+
+        _restore_missing_projects(baseline, refined)
+
+        assert baseline == baseline_before

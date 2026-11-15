@@ -1,15 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  Check,
-  Loader2,
-  X,
-  ChevronDown,
-  ChevronRight,
-  Pause,
-  RotateCcw,
-} from 'lucide-react';
+import { Check, Loader2, X, ChevronDown, ChevronRight, Pause, RotateCcw } from 'lucide-react';
 import type {
   AgentEvent,
   AgentStatusEvent,
@@ -200,9 +192,7 @@ function StepRow({
   return (
     <div>
       <div className="flex items-center gap-2 py-0.5">
-        <div className="flex w-4 shrink-0 justify-center">
-          {getStepIcon(step)}
-        </div>
+        <div className="flex w-4 shrink-0 justify-center">{getStepIcon(step)}</div>
         <span
           className={`text-[12px] leading-tight ${
             step.status === 'running'
@@ -265,9 +255,7 @@ function buildTimelineSteps(events: AgentEvent[]): TimelineStep[] {
       case 'agent_status': {
         const e = event as AgentStatusEvent;
         if (e.status === 'completed' || e.status === 'failed') break;
-        const existing = steps.find(
-          (s) => s.type === 'status' && s.id === e.status,
-        );
+        const existing = steps.find((s) => s.type === 'status' && s.id === e.status);
         if (existing) {
           existing.message = e.message || existing.message;
           existing.status = 'running';
@@ -385,7 +373,11 @@ function buildTimelineSteps(events: AgentEvent[]): TimelineStep[] {
         const stepKey = `step:${e.step_id}`;
         const existing = workflowStep.children?.find((s) => s.id === stepKey);
         const stepStatus: TimelineStep['status'] =
-          e.status === 'success' ? 'completed' : e.status === 'failed' ? 'failed' : e.status as TimelineStep['status'];
+          e.status === 'success'
+            ? 'completed'
+            : e.status === 'failed'
+              ? 'failed'
+              : (e.status as TimelineStep['status']);
         const stepIcon: TimelineStep['icon'] =
           e.status === 'success' ? 'check' : e.status === 'failed' ? 'x' : 'spinner';
 

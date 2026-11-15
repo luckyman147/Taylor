@@ -11,16 +11,16 @@ import MessageCircleQuestion from 'lucide-react/dist/esm/icons/message-circle-qu
 import X from 'lucide-react/dist/esm/icons/x';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
-import {
-  fetchPracticeSessions,
-  type PracticeSessionSummary,
-} from '@/lib/api/interview-practice';
+import { fetchPracticeSessions, type PracticeSessionSummary } from '@/lib/api/interview-practice';
 
 interface HistoryListProps {
   refreshKey: number;
 }
 
-function formatDate(iso: string, t: (key: string, params?: Record<string, string | number>) => string) {
+function formatDate(
+  iso: string,
+  t: (key: string, params?: Record<string, string | number>) => string
+) {
   try {
     return new Date(iso).toLocaleString();
   } catch {
@@ -97,12 +97,13 @@ export function HistoryList({ refreshKey }: HistoryListProps) {
                     </span>
                     <span className="flex items-center gap-2 text-xs text-steel-grey">
                       <span>{formatDate(session.created_at, t)}</span>
-                      {session.duration_minutes !== null && session.duration_minutes !== undefined && (
-                        <span className="flex items-center gap-0.5">
-                          <Clock className="h-3 w-3" />
-                          {t('interviewPractice.minutes', { count: session.duration_minutes })}
-                        </span>
-                      )}
+                      {session.duration_minutes !== null &&
+                        session.duration_minutes !== undefined && (
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="h-3 w-3" />
+                            {t('interviewPractice.minutes', { count: session.duration_minutes })}
+                          </span>
+                        )}
                     </span>
                   </span>
                   {session.score !== null && session.score !== undefined && (

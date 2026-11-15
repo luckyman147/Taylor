@@ -158,6 +158,24 @@ def _preview_stubs(original_data: dict, extra_bullets: dict | None = None):
     ]
 
 
+def _drop_projects_refiner():
+    """Patch refinement to simulate the LLM dropping personalProjects."""
+
+    async def fake_refine_resume(initial_tailored, **_kwargs):
+        data = copy.deepcopy(initial_tailored)
+        data.pop("personalProjects", None)
+        return SimpleNamespace(
+            refined_data=data,
+            passes_completed=0,
+            keyword_analysis=None,
+            ai_phrases_removed=[],
+            alignment_report=None,
+            final_match_percentage=0.0,
+        )
+
+    return patch("app.routers.resumes.refine_resume", new=fake_refine_resume)
+
+
 class TestMatchedProjectsInPreview:
     async def test_preview_replaces_projects_section(
         self, isolated_db, sample_resume, monkeypatch
@@ -176,7 +194,11 @@ class TestMatchedProjectsInPreview:
             async with _client() as client:
                 resp = await client.post(
                     "/api/v1/resumes/improve/preview",
-                    json={"resume_id": resume_id, "job_id": job_id},
+                    json={
+                        "resume_id": resume_id,
+                        "job_id": job_id,
+                        "keep_projects": False,
+                    },
                 )
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
@@ -241,6 +263,84 @@ class TestMatchedProjectsInPreview:
         assert not any(
             "Projects section replaced" in w for w in data["warnings"]
         )
+
+    async def test_preview_keeps_projects_by_default(
+        self, isolated_db, sample_resume, monkeypatch
+    ):
+        # Career projects match the JD, but with no explicit pick the user's
+        # section must be left untouched.
+        monkeypatch.setattr(
+            "app.services.matched_projects._llm_configured", lambda: True
+        )
+        resume_id, job_id, resume_data = await _seed_resume_and_job(
+            isolated_db, sample_resume
+        )
+        await _seed_career_projects(isolated_db)
+
+        with ExitStack() as stack:
+            for stub in _preview_stubs(resume_data):
+                stack.enter_context(stub)
+            async with _client() as client:
+                resp = await client.post(
+                    "/api/v1/resumes/improve/preview",
+                    json={"resume_id": resume_id, "job_id": job_id},
+                )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()["data"]
+        names = [p["name"] for p in data["resume_preview"]["personalProjects"]]
+        assert names == ["Legacy App", "Tiny Shell", "Old App"]
+        assert not any(
+            "Projects section replaced" in w for w in data["warnings"]
+        )
+
+    async def test_preview_keeps_projects_when_refinement_drops_them(
+        self, isolated_db, sample_resume
+    ):
+        resume_id, job_id, resume_data = await _seed_resume_and_job(
+            isolated_db, sample_resume
+        )
+        with ExitStack() as stack:
+            for stub in _preview_stubs(resume_data):
+                stack.enter_context(stub)
+            stack.enter_context(_drop_projects_refiner())
+            async with _client() as client:
+                resp = await client.post(
+                    "/api/v1/resumes/improve/preview",
+                    json={"resume_id": resume_id, "job_id": job_id},
+                )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()["data"]
+        names = [p["name"] for p in data["resume_preview"]["personalProjects"]]
+        assert names == ["Legacy App", "Tiny Shell", "Old App"]
+
+    async def test_preview_restores_picked_projects_when_refinement_drops_them(
+        self, isolated_db, sample_resume, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "app.services.matched_projects._llm_configured", lambda: True
+        )
+        resume_id, job_id, resume_data = await _seed_resume_and_job(
+            isolated_db, sample_resume
+        )
+        await _seed_career_projects(isolated_db)
+        with ExitStack() as stack:
+            for stub in _preview_stubs(resume_data):
+                stack.enter_context(stub)
+            stack.enter_context(_drop_projects_refiner())
+            async with _client() as client:
+                resp = await client.post(
+                    "/api/v1/resumes/improve/preview",
+                    json={
+                        "resume_id": resume_id,
+                        "job_id": job_id,
+                        "selected_projects": ["OpenAPI Generator"],
+                    },
+                )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()["data"]
+        names = [p["name"] for p in data["resume_preview"]["personalProjects"]]
+        assert names == ["OpenAPI Generator"]
+        assert any("restored from pre-refinement baseline" in w for w in data["warnings"])
 
     async def test_suggestions_endpoint_returns_pickable_projects(
         self, isolated_db, sample_resume, monkeypatch
@@ -339,6 +439,56 @@ class TestMatchedProjectsInPreview:
             "Projects section replaced with 1 job-matched" in w
             for w in data["warnings"]
         )
+
+    async def test_preview_keep_projects_freezes_section(
+        self, isolated_db, sample_resume, monkeypatch
+    ):
+        """keep_projects=True skips replacement and reverts project edits."""
+        monkeypatch.setattr(
+            "app.services.matched_projects._llm_configured", lambda: True
+        )
+        resume_id, job_id, resume_data = await _seed_resume_and_job(
+            isolated_db, sample_resume
+        )
+        await _seed_career_projects(isolated_db)
+
+        # Simulate the tailoring pipeline rewriting a project bullet.
+        mutated = copy.deepcopy(resume_data)
+        mutated["personalProjects"][0]["description"] = ["Rewritten by tailoring"]
+
+        stubs = _preview_stubs(resume_data)
+        stubs[5] = patch(
+            "app.routers.resumes.apply_diffs",
+            return_value=(mutated, [], []),
+        )
+        with ExitStack() as stack:
+            for stub in stubs:
+                stack.enter_context(stub)
+            async with _client() as client:
+                resp = await client.post(
+                    "/api/v1/resumes/improve/preview",
+                    json={
+                        "resume_id": resume_id,
+                        "job_id": job_id,
+                        "keep_projects": True,
+                    },
+                )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()["data"]
+
+        projects = data["resume_preview"]["personalProjects"]
+        assert [p["name"] for p in projects] == [
+            "Legacy App",
+            "Tiny Shell",
+            "Old App",
+        ], "keep_projects must preserve the original entries"
+        assert projects[0]["description"] == ["Old monolithic app"]
+        assert not any(
+            "Projects section replaced" in w for w in data["warnings"]
+        )
+        assert [
+            c for c in data["detailed_changes"] if c["field_type"] == "project"
+        ] == [], "project edits must be reverted before the diff is computed"
 
     async def test_preview_groups_and_trims_skills(
         self, isolated_db, sample_resume

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { useTranslations } from '@/lib/i18n';
 import { fetchEmailConfig, updateEmailConfig, type EmailConfig } from '@/lib/api/email';
+import { EmailSignatureField } from '@/components/common/email-signature-field';
 
 type Status = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
 
@@ -27,6 +28,7 @@ export function EmailSettings() {
   const [password, setPassword] = useState('');
   const [hasPassword, setHasPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailSignature, setEmailSignature] = useState('');
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -40,6 +42,7 @@ export function EmailSettings() {
       setSenderName(cfg.sender_name ?? '');
       setHasPassword(Boolean(cfg.has_password));
       setPassword('');
+      setEmailSignature(cfg.email_signature ?? '');
     } catch {
       setError(t('settings.email.loadFailed'));
     } finally {
@@ -62,6 +65,7 @@ export function EmailSettings() {
         sender_email: senderEmail.trim(),
         sender_name: senderName.trim(),
         password: password || undefined,
+        email_signature: emailSignature.trim(),
       });
       setHasPassword(password !== '' || hasPassword);
       setPassword('');
@@ -123,7 +127,10 @@ export function EmailSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sender-email" className="text-xs uppercase tracking-wider text-ink-soft">
+              <Label
+                htmlFor="sender-email"
+                className="text-xs uppercase tracking-wider text-ink-soft"
+              >
                 {t('settings.email.senderEmail')}
               </Label>
               <Input
@@ -137,7 +144,10 @@ export function EmailSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sender-name" className="text-xs uppercase tracking-wider text-ink-soft">
+              <Label
+                htmlFor="sender-name"
+                className="text-xs uppercase tracking-wider text-ink-soft"
+              >
                 {t('settings.email.senderName')}
               </Label>
               <Input
@@ -150,7 +160,10 @@ export function EmailSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="smtp-password" className="text-xs uppercase tracking-wider text-ink-soft">
+              <Label
+                htmlFor="smtp-password"
+                className="text-xs uppercase tracking-wider text-ink-soft"
+              >
                 {t('settings.email.password')}
               </Label>
               <div className="relative">
@@ -160,7 +173,9 @@ export function EmailSettings() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={
-                    hasPassword ? t('settings.email.passwordSet') : t('settings.email.passwordPlaceholder')
+                    hasPassword
+                      ? t('settings.email.passwordSet')
+                      : t('settings.email.passwordPlaceholder')
                   }
                   className="rounded-lg border-ink bg-white pr-10 focus-visible:border-primary"
                 />
@@ -184,6 +199,14 @@ export function EmailSettings() {
                 description={t('settings.email.useTlsHint')}
               />
             </div>
+          </div>
+
+          <div className="border-t border-[#e6e3dc] pt-4">
+            <EmailSignatureField
+              id="settings-email-signature"
+              value={emailSignature}
+              onChange={setEmailSignature}
+            />
           </div>
 
           {error && (
@@ -212,7 +235,9 @@ export function EmailSettings() {
                 {t('settings.email.saved')}
               </span>
             )}
-            {portInput <= 0 && <span className="text-xs text-destructive">{t('settings.email.invalidPort')}</span>}
+            {portInput <= 0 && (
+              <span className="text-xs text-destructive">{t('settings.email.invalidPort')}</span>
+            )}
           </div>
         </div>
       )}
