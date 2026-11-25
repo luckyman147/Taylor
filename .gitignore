@@ -164,3 +164,6 @@ config/mcporter.json
 
 # opencode local tooling
 .opencode/
+
+# Runtime error logs
+*.err
