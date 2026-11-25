@@ -2,6 +2,7 @@
 
 import { ResumeUploadDialog } from '@/components/dashboard/resume-upload-dialog';
 import { MasterResumeChoiceDialog } from '@/components/dashboard/master-resume-choice-dialog';
+import { ResumeThumbnail } from '@/components/dashboard/resume-thumbnail';
 import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -267,14 +268,6 @@ export default function DashboardPage() {
     setDeleteTargetId(resumeId);
     setShowDeleteDialog(true);
   };
-  const colors = [
-    'bg-red-500',
-    'bg-blue-500',
-    'bg-green-500',
-    'bg-yellow-500',
-    'bg-purple-500',
-    'bg-pink-500',
-  ];
   const confirmDeleteAndReupload = async () => {
     const resumeId = deleteTargetId ?? masterResumeId;
     if (!resumeId) return;
@@ -597,78 +590,81 @@ export default function DashboardPage() {
               {masters.map((master) => (
                 <div
                   key={master.resume_id}
-                  className="border border-ink p-6 hover:shadow-sw-sm transition-shadow cursor-pointer rounded-xl group"
+                  className="border border-ink p-4 hover:shadow-sw-sm transition-shadow cursor-pointer rounded-xl group"
                   onClick={() => router.push(`/resumes/${master.resume_id}`)}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div
-                        className={`w-12 h-12 border   text-white flex items-center justify-center shrink-0 rounded-xl ${colors[master.filename?.charCodeAt(0) ? master.filename.charCodeAt(0) % colors.length : 1]}`}
-                      >
-                        <span className=" font-bold text-sm uppercase">
-                          {master.filename?.charAt(0) || 'M'}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className=" text-xs font-bold uppercase break-words leading-snug">
-                          {master.title || master.filename || t('dashboard.masterResume')}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {getStatusBadge(master.processing_status as ProcessingStatus)}
+                  <div className="flex items-start gap-4">
+                    <ResumeThumbnail
+                      resumeId={master.resume_id}
+                      updatedAt={master.updated_at}
+                      processingStatus={master.processing_status}
+                      width={112}
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col self-stretch">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className=" text-xs font-bold uppercase break-words leading-snug">
+                            {master.title || master.filename || t('dashboard.masterResume')}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            {getStatusBadge(master.processing_status as ProcessingStatus)}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {(master.processing_status === 'failed' ||
-                        master.processing_status === 'processing') && (
-                        <>
+                        <div className="flex items-center gap-1">
+                          {(master.processing_status === 'failed' ||
+                            master.processing_status === 'processing') && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => handleRetryProcessing(e, master.resume_id)}
+                                disabled={isRetrying}
+                              >
+                                {isRetrying ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => handleRetryProcessing(e, master.resume_id)}
-                            disabled={isRetrying}
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-[#fdf3f2]"
+                            onClick={(e) => handleDeleteAndReupload(e, master.resume_id)}
                           >
-                            {isRetrying ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <ChevronRight className="w-4 h-4 text-ink-soft" />
+                        </div>
+                      </div>
+                      {master.processing_status === 'ready' && (
+                        <div className="mt-auto pt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-ink text-xs uppercase"
+                            onClick={(e) => handleCopyMaster(e, master.resume_id)}
+                            disabled={copyingId !== null}
+                          >
+                            {copyingId === master.resume_id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                Copying...
+                              </>
                             ) : (
-                              <RefreshCw className="w-4 h-4" />
+                              <>
+                                <Copy className="w-3.5 h-3.5 mr-1" />
+                                Make a copy
+                              </>
                             )}
                           </Button>
-                        </>
+                        </div>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-[#fdf3f2]"
-                        onClick={(e) => handleDeleteAndReupload(e, master.resume_id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <ChevronRight className="w-4 h-4 text-ink-soft" />
                     </div>
                   </div>
-                  {master.processing_status === 'ready' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-4 w-full border-ink text-xs uppercase"
-                      onClick={(e) => handleCopyMaster(e, master.resume_id)}
-                      disabled={copyingId !== null}
-                    >
-                      {copyingId === master.resume_id ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                          Copying...
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 mr-1" />
-                          Make a copy
-                        </>
-                      )}
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>
@@ -712,28 +708,35 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={resume.resume_id}
-                        className="border border-ink p-4 hover:shadow-sw-sm transition-shadow cursor-pointer group rounded-xl"
+                        className="border border-ink p-3 hover:shadow-sw-sm transition-shadow cursor-pointer group rounded-xl"
                         onClick={() => router.push(`/resumes/${resume.resume_id}`)}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="w-10 h-10 border border-ink bg-paper-tint flex items-center justify-center shrink-0 rounded-xl">
-                            <FileText className="w-4 h-4 text-ink-soft" />
+                        <div className="flex items-start gap-3">
+                          <ResumeThumbnail
+                            resumeId={resume.resume_id}
+                            updatedAt={resume.updated_at}
+                            processingStatus={resume.processing_status}
+                            width={88}
+                          />
+                          <div className="flex min-w-0 flex-1 flex-col self-stretch">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className=" text-xs font-bold break-words leading-snug">{title}</p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-[#fdf3f2]"
+                                onClick={(e) => handleDeleteTailored(e, resume.resume_id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                            <p className=" text-xs text-ink-soft mt-auto pt-2">
+                              {t('dashboard.edited', {
+                                date: formatDate(resume.updated_at || resume.created_at),
+                              })}
+                            </p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-[#fdf3f2]"
-                            onClick={(e) => handleDeleteTailored(e, resume.resume_id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
                         </div>
-                        <p className=" text-xs font-bold break-words leading-snug">{title}</p>
-                        <p className=" text-xs text-ink-soft mt-1">
-                          {t('dashboard.edited', {
-                            date: formatDate(resume.updated_at || resume.created_at),
-                          })}
-                        </p>
                       </div>
                     );
                   })}
